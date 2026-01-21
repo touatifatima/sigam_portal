@@ -4,7 +4,10 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateBaremProduitDroitDto, UpdateBaremProduitDroitDto } from './barem-produit-droit.dto';
+import {
+  CreateBaremProduitDroitDto,
+  UpdateBaremProduitDroitDto,
+} from './barem-produit-droit.dto';
 
 @Injectable()
 export class BaremProduitDroitService {
@@ -17,7 +20,9 @@ export class BaremProduitDroitService {
         where: { id: createDto.typePermisId },
       });
       if (!typePermis) {
-        throw new BadRequestException(`TypePermis with ID ${createDto.typePermisId} not found`);
+        throw new BadRequestException(
+          `TypePermis with ID ${createDto.typePermisId} not found`,
+        );
       }
 
       // Check if typeProcedure exists
@@ -25,7 +30,9 @@ export class BaremProduitDroitService {
         where: { id: createDto.typeProcedureId },
       });
       if (!typeProcedure) {
-        throw new BadRequestException(`TypeProcedure with ID ${createDto.typeProcedureId} not found`);
+        throw new BadRequestException(
+          `TypeProcedure with ID ${createDto.typeProcedureId} not found`,
+        );
       }
 
       const result = await this.prisma.baremProduitetDroit.create({
@@ -121,7 +128,9 @@ export class BaremProduitDroitService {
       });
 
       if (!existingEntry) {
-        throw new NotFoundException(`BaremProduitDroit with ID ${id} not found`);
+        throw new NotFoundException(
+          `BaremProduitDroit with ID ${id} not found`,
+        );
       }
 
       // Check if typePermis exists if provided
@@ -130,7 +139,9 @@ export class BaremProduitDroitService {
           where: { id: updateDto.typePermisId },
         });
         if (!typePermis) {
-          throw new BadRequestException(`TypePermis with ID ${updateDto.typePermisId} not found`);
+          throw new BadRequestException(
+            `TypePermis with ID ${updateDto.typePermisId} not found`,
+          );
         }
       }
 
@@ -140,7 +151,9 @@ export class BaremProduitDroitService {
           where: { id: updateDto.typeProcedureId },
         });
         if (!typeProcedure) {
-          throw new BadRequestException(`TypeProcedure with ID ${updateDto.typeProcedureId} not found`);
+          throw new BadRequestException(
+            `TypeProcedure with ID ${updateDto.typeProcedureId} not found`,
+          );
         }
       }
 
@@ -164,11 +177,16 @@ export class BaremProduitDroitService {
         },
       });
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
         throw error;
       }
       if (error.code === 'P2025') {
-        throw new NotFoundException(`BaremProduitDroit with ID ${id} not found`);
+        throw new NotFoundException(
+          `BaremProduitDroit with ID ${id} not found`,
+        );
       }
       throw new BadRequestException({
         message: 'Failed to update barem produit droit',
@@ -185,7 +203,9 @@ export class BaremProduitDroitService {
       });
 
       if (!existingEntry) {
-        throw new NotFoundException(`BaremProduitDroit with ID ${id} not found`);
+        throw new NotFoundException(
+          `BaremProduitDroit with ID ${id} not found`,
+        );
       }
 
       // Delete the barem
@@ -211,7 +231,9 @@ export class BaremProduitDroitService {
         throw error;
       }
       if (error.code === 'P2025') {
-        throw new NotFoundException(`BaremProduitDroit with ID ${id} not found`);
+        throw new NotFoundException(
+          `BaremProduitDroit with ID ${id} not found`,
+        );
       }
       throw new BadRequestException({
         message: 'Failed to delete barem produit droit',

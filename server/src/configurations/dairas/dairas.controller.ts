@@ -44,10 +44,7 @@ export class DairasController {
   @ApiOperation({ summary: 'Update a daira' })
   @ApiResponse({ status: 200, description: 'Daira updated successfully' })
   @ApiResponse({ status: 404, description: 'Daira not found' })
-  update(
-    @Param('id') id: string,
-    @Body() updateDairaDto: UpdateDairaDto,
-  ) {
+  update(@Param('id') id: string, @Body() updateDairaDto: UpdateDairaDto) {
     return this.dairasService.update(+id, updateDairaDto);
   }
 

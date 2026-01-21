@@ -12,7 +12,7 @@ export class AntennesService {
 
   async create(createAntenneDto: CreateAntenneDto) {
     try {
-      return await this.prisma.antennePortail.create({
+      return await this.prisma.antenne.create({
         data: createAntenneDto,
       });
     } catch (error) {
@@ -21,13 +21,13 @@ export class AntennesService {
   }
 
   async findAll() {
-    return this.prisma.antennePortail.findMany({
+    return this.prisma.antenne.findMany({
       orderBy: { nom: 'asc' },
     });
   }
 
   async findOne(id: number) {
-    const antenne = await this.prisma.antennePortail.findUnique({
+    const antenne = await this.prisma.antenne.findUnique({
       where: { id_antenne: id },
       include: {
         wilayas: true,
@@ -43,7 +43,7 @@ export class AntennesService {
 
   async update(id: number, updateAntenneDto: UpdateAntenneDto) {
     try {
-      return await this.prisma.antennePortail.update({
+      return await this.prisma.antenne.update({
         where: { id_antenne: id },
         data: updateAntenneDto,
       });
@@ -58,7 +58,7 @@ export class AntennesService {
   async remove(id: number) {
     try {
       // Check if there are associated wilayas before deleting
-      const associatedWilayas = await this.prisma.wilayaPortail.count({
+      const associatedWilayas = await this.prisma.wilaya.count({
         where: { id_antenne: id },
       });
 
@@ -68,7 +68,7 @@ export class AntennesService {
         );
       }
 
-      return await this.prisma.antennePortail.delete({
+      return await this.prisma.antenne.delete({
         where: { id_antenne: id },
       });
     } catch (error) {

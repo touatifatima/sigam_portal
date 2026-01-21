@@ -15,7 +15,7 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ProcedureController {
   constructor(
     private readonly procedureService: ProcedureService,
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
   ) {}
 
   // Specific static routes FIRST
@@ -26,47 +26,60 @@ export class ProcedureController {
   }
 
   @Get(':id_proc/demande')
-async getDemandeByProcedure(
-  @Param('id_proc', ParseIntPipe) id_proc: number
-) {
-  console.log(`GET /api/procedures/${id_proc}/demande`);
-  return this.prisma.demandePortail.findFirst({
-    where: { id_proc },
-    include: {
-      entreprise: {
-        include: {
-          statutJuridique: true,
-          registreCommerce: true,
-          fonctions: {
-            where: {
-              type_fonction: {
-                in: ['Representant', 'Actionnaire'],
+  async getDemandeByProcedure(@Param('id_proc', ParseIntPipe) id_proc: number) {
+    console.log(`GET /api/procedures/${id_proc}/demande`);
+    const raw = await this.prisma.demandePortail.findFirst({
+      where: { id_proc },
+      include: {
+        detenteurdemande: {
+          include: {
+            detenteur: {
+              include: {
+                // Statut juridique is now many-to-many via FormeJuridiqueDetenteur
+                FormeJuridiqueDetenteur: {
+                  include: { statutJuridique: true },
+                },
+                registreCommerce: true,
+                fonctions: {
+                  where: {
+                    type_fonction: {
+                      in: ['Representant', 'Actionnaire'],
+                    },
+                  },
+                  include: { personne: true },
+                },
               },
             },
-            include: { personne: true },
+          },
+        },
+        expertMinier: true,
+        typePermis: true,
+        typeProcedure: true,
+        procedure: {
+          include: {
+            ProcedureEtape: {
+              include: { etape: true },
+            },
           },
         },
       },
-      expertMinier: true,
-      typePermis: true,       
-      typeProcedure: true,    
-      procedure: {
-        include: {
-          ProcedureEtape: {
-            include: { etape: true },
-            orderBy: { etape: { ordre_etape: 'asc' } },
-          },
-        },
-      },
-    },
-  });
-}
+    });
 
+    if (!raw) {
+      return null;
+    }
+
+    const demande: any = raw;
+    const primaryDetenteur = demande.detenteurdemande?.[0]?.detenteur ?? null;
+    const { detenteurdemande, ...rest } = demande;
+    return {
+      ...rest,
+      detenteur: primaryDetenteur,
+    };
+  }
 
   @Put('terminer/:idProc')
-  async terminerProcedure(
-    @Param('idProc', ParseIntPipe) idProc: number
-  ) {
+  async terminerProcedure(@Param('idProc', ParseIntPipe) idProc: number) {
     console.log(`PUT /api/procedures/terminer/${idProc}`);
     return this.procedureService.terminerProcedure(idProc);
   }

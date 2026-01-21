@@ -347,9 +347,14 @@ const getWilayaName = useCallback((permis: Permis): string => {
   // Fetch dashboard data
   const fetchDashboardData = useCallback(async () => {
     try {
+      
       setLoading(true);
       setError(null);
-      
+      // 🔥 ADD LOGS HERE (Dashboard page - multiple calls)
+    console.log('=== PERMIS DASHBOARD - STATS CALLS ===');
+    console.log('🔑 Auth token exists?', !!auth?.token);
+    console.log('🔑 Token preview:', auth?.token ? auth.token.substring(0, 30) + '...' : 'NO TOKEN');
+    console.log('🔑 Full auth object:', auth);
       const [statsResponse, evolutionResponse, typesResponse, statusResponse] = await Promise.all([
         axios.get(`${apiURL}/api/dashboard/stats`),
         axios.get(`${apiURL}/api/dashboard/evolution`),
@@ -373,6 +378,11 @@ const getWilayaName = useCallback((permis: Permis): string => {
   const fetchPermisList = useCallback(async (page: number = 1) => {
     setIsLoadingPermis(true);
     try {
+      // 🔥 ADD LOGS HERE (Dashboard page - multiple calls)
+    console.log('=== PERMIS DASHBOARD - STATS CALLS ===');
+    console.log('🔑 Auth token exists?', !!auth?.token);
+    console.log('🔑 Token preview:', auth?.token ? auth.token.substring(0, 30) + '...' : 'NO TOKEN');
+    console.log('🔑 Full auth object:', auth);
       const response = await axios.get(`${apiURL}/Permisdashboard`, {
         params: {
           page: Number(page),

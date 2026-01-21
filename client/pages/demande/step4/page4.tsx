@@ -1327,7 +1327,6 @@ const checkButtonConditions = () => {
             )}
             <div className={styles['header-section']}>
               <h1 className={styles['page-title']}>
-                <FiMapPin className={styles['title-icon']} />
                 Étape 4: Substances & Coordonnées
               </h1>
               <p className={styles['page-subtitle']}>

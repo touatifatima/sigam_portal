@@ -1,4 +1,4 @@
-import * as fs from 'fs';
+/*import * as fs from 'fs';
 import * as csv from 'csv-parser';
 import { demandeObs, PrismaClient } from "@prisma/client";
 
@@ -38,7 +38,7 @@ export async function main() {
   // First, get all existing demande IDs to validate foreign keys
   let existingDemandeIds: Set<number>;
   try {
-    const existingDemandes = await prisma.demande.findMany({
+    const existingDemandes = await prisma.demandePortail.findMany({
       select: { id_demande: true }
     });
     existingDemandeIds = new Set(existingDemandes.map(d => d.id_demande));
@@ -123,4 +123,4 @@ main().catch(async (e) => {
   console.error(e);
   await prisma.$disconnect();
   process.exit(1);
-});
+});*/

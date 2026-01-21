@@ -44,10 +44,7 @@ export class WilayasController {
   @ApiOperation({ summary: 'Update a wilaya' })
   @ApiResponse({ status: 200, description: 'Wilaya updated successfully' })
   @ApiResponse({ status: 404, description: 'Wilaya not found' })
-  update(
-    @Param('id') id: string,
-    @Body() updateWilayaDto: UpdateWilayaDto,
-  ) {
+  update(@Param('id') id: string, @Body() updateWilayaDto: UpdateWilayaDto) {
     return this.wilayasService.update(+id, updateWilayaDto);
   }
 

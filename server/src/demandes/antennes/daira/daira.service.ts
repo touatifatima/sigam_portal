@@ -8,7 +8,7 @@ export class DairaService {
   constructor(private prisma: PrismaService) {}
 
   async findAll() {
-    return this.prisma.dairaPortail.findMany({
+    return this.prisma.daira.findMany({
       include: {
         wilaya: true,
       },
@@ -19,7 +19,7 @@ export class DairaService {
   }
 
   async findOne(id: number) {
-    return this.prisma.dairaPortail.findUnique({
+    return this.prisma.daira.findUnique({
       where: { id_daira: id },
       include: {
         wilaya: true,
@@ -35,7 +35,7 @@ export class DairaService {
   // }
 
   async findByWilaya(idWilaya: number) {
-    return this.prisma.dairaPortail.findMany({
+    return this.prisma.daira.findMany({
       where: { id_wilaya: idWilaya },
       orderBy: {
         nom_dairaFR: 'asc',
@@ -44,7 +44,7 @@ export class DairaService {
   }
 
   async findCommunesByDaira(id: number) {
-    return this.prisma.communePortail.findMany({
+    return this.prisma.commune.findMany({
       where: { id_daira: id },
       orderBy: {
         nom_communeFR: 'asc',
@@ -53,7 +53,7 @@ export class DairaService {
   }
 
   async create(createDairaDto: CreateDairaDto) {
-    return this.prisma.dairaPortail.create({
+    return this.prisma.daira.create({
       data: {
         ...createDairaDto,
       },
@@ -61,14 +61,14 @@ export class DairaService {
   }
 
   async update(id: number, updateDairaDto: UpdateDairaDto) {
-    return this.prisma.dairaPortail.update({
+    return this.prisma.daira.update({
       where: { id_daira: id },
       data: updateDairaDto,
     });
   }
 
   async remove(id: number) {
-    return this.prisma.dairaPortail.delete({
+    return this.prisma.daira.delete({
       where: { id_daira: id },
     });
   }

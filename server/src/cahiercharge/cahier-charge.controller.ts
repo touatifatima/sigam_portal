@@ -40,7 +40,7 @@ async getByPermisId(@Param('permisId', ParseIntPipe) permisId: number) {
 
 @Delete('/cahier/:id')
 async deleteOne(@Param('id', ParseIntPipe) id: number) {
-  return this.prisma.cahierCharge.delete({ where: { id } });
+  return this.prisma.cahierChargePortail.delete({ where: { id } });
 }
 
 @Post('/permis/:permisId')

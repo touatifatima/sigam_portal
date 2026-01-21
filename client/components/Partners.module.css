@@ -1,0 +1,81 @@
+.section {
+  padding: 4.5rem 0;
+  background: #f8fbff;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.label {
+  color: #1fb072;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 0.85rem;
+  display: block;
+}
+
+.title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #0f1724;
+}
+
+@media (min-width: 768px) {
+  .title {
+    font-size: 2.4rem;
+  }
+}
+
+.grid {
+  display: grid;
+  gap: 2.5rem;
+  justify-content: center;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.partnerItem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.partnerContent {
+  text-align: center;
+}
+
+.partnerLogo {
+  width: 5.5rem;
+  height: 5.5rem;
+  border-radius: 0.9rem;
+  background-color: #ffffff;
+  border: 1px solid #e4ecf5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 0.75rem;
+  box-shadow: 0 16px 40px -28px rgba(15, 23, 42, 0.35);
+  transition: all 0.2s ease;
+}
+
+.partnerItem:hover .partnerLogo {
+  border-color: rgba(31, 176, 114, 0.35);
+  box-shadow: 0 18px 44px -28px rgba(15, 23, 42, 0.45);
+  transform: translateY(-2px);
+}
+
+.partnerInitials {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #0f1724;
+}
+
+.partnerName {
+  font-size: 0.9rem;
+  color: #4b5568;
+}

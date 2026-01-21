@@ -12,7 +12,7 @@ export class CreateDairaDto {
   @IsNotEmpty()
   code_daira: string;
 
-  @ApiProperty({ description: 'Daira name', example: 'Sidi M\'Hamed' })
+  @ApiProperty({ description: 'Daira name', example: "Sidi M'Hamed" })
   @IsString()
   @IsNotEmpty()
   nom_dairaFR: string;
@@ -34,7 +34,11 @@ export class UpdateDairaDto {
   @IsNotEmpty()
   code_daira?: string;
 
-  @ApiProperty({ description: 'Daira name', example: 'Sidi M\'Hamed', required: false })
+  @ApiProperty({
+    description: 'Daira name',
+    example: "Sidi M'Hamed",
+    required: false,
+  })
   @IsString()
   @IsNotEmpty()
   nom_daira?: string;

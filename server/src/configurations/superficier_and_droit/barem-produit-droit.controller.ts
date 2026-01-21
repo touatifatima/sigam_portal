@@ -9,7 +9,10 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { BaremProduitDroitService } from './barem-produit-droit.service';
-import { CreateBaremProduitDroitDto, UpdateBaremProduitDroitDto } from './barem-produit-droit.dto';
+import {
+  CreateBaremProduitDroitDto,
+  UpdateBaremProduitDroitDto,
+} from './barem-produit-droit.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('conf/barem-produit-droit')
@@ -21,15 +24,18 @@ export class BaremProduitDroitController {
   @ApiOperation({ summary: 'Create a new barem produit droit entry' })
   @ApiResponse({ status: 201, description: 'Entry created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
-  @ApiResponse({ status: 404, description: 'TypePermis or TypeProcedure not found' })
+  @ApiResponse({
+    status: 404,
+    description: 'TypePermis or TypeProcedure not found',
+  })
   create(@Body() createDto: CreateBaremProduitDroitDto) {
     return this.service.create(createDto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Get all barem produit droit entries' })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'List of all entries',
   })
   async findAll() {
@@ -66,5 +72,4 @@ export class BaremProduitDroitController {
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);
   }
-  
 }

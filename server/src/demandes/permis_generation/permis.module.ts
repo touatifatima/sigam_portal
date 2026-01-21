@@ -3,9 +3,11 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { GeneratePermisController } from './permis.controller';
 import { GeneratePermisService } from './permis.service';
 import { PdfGeneratorService } from './generate_permis_pdf.service';
+import { GisModule } from '../gis/gis.module';
 
 @Module({
+  imports: [GisModule],
   controllers: [GeneratePermisController],
-  providers: [GeneratePermisService,PdfGeneratorService, PrismaService]
+  providers: [GeneratePermisService, PdfGeneratorService, PrismaService],
 })
 export class GeneratePermisModule {}

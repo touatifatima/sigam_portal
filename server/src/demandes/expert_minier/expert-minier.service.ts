@@ -10,7 +10,7 @@ export class ExpertMinierService {
   constructor(private readonly prisma: PrismaService, private notificationsService: NotificationsService,) {}
 
   async create(createExpertDto: CreateExpertDto): Promise<ExpertResponseDto> {
-  const expert = await this.prisma.expertMinierPortail.create({
+  const expert = await this.prisma.expertMinier.create({
     data: {
       ...createExpertDto,
       date_agrement: new Date(createExpertDto.date_agrement), 
@@ -22,19 +22,19 @@ export class ExpertMinierService {
 
 
   async findAll(): Promise<ExpertResponseDto[]> {
-    const experts = await this.prisma.expertMinierPortail.findMany();
+    const experts = await this.prisma.expertMinier.findMany();
     return experts.map(this.toResponseDto);
   }
 
   async findOne(id: number): Promise<ExpertResponseDto> {
-    const expert = await this.prisma.expertMinierPortail.findUnique({
+    const expert = await this.prisma.expertMinier.findUnique({
       where: { id_expert: id },
     });
     return this.toResponseDto(expert);
   }
 
   async update(id: number, updateExpertDto: UpdateExpertDto): Promise<ExpertResponseDto> {
-  const updatedExpert = await this.prisma.expertMinierPortail.update({
+  const updatedExpert = await this.prisma.expertMinier.update({
     where: { id_expert: id },
     data: {
       ...updateExpertDto,
@@ -48,7 +48,7 @@ export class ExpertMinierService {
 
 
   async remove(id: number): Promise<void> {
-    await this.prisma.expertMinierPortail.delete({
+    await this.prisma.expertMinier.delete({
       where: { id_expert: id },
     });
   }
@@ -103,7 +103,7 @@ date_agrement: row.date_agrement
           continue;
         }
 
-        const existingExpert = await this.prisma.expertMinierPortail.findFirst({
+        const existingExpert = await this.prisma.expertMinier.findFirst({
           where: {
             nom_expert: expertData.nom_expert,
             num_agrement: expertData.num_agrement,
@@ -111,12 +111,12 @@ date_agrement: row.date_agrement
         });
 
         if (existingExpert) {
-          await this.prisma.expertMinierPortail.update({
+          await this.prisma.expertMinier.update({
             where: { id_expert: existingExpert.id_expert },
             data: expertData,
           });
         } else {
-          await this.prisma.expertMinierPortail.create({
+          await this.prisma.expertMinier.create({
             data: expertData,
           });
         }

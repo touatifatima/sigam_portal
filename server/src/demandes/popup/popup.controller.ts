@@ -1,137 +1,145 @@
-import { Controller, Get, NotFoundException, Param, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Controller('api')
 export class DemandeSummaryController {
   constructor(private prisma: PrismaService) {}
 
-
   @Get('summary/by-proc/:idProc')
-async getFullDemandeSummaryByProc(@Param('idProc', ParseIntPipe) idProc: number) {
-  const demande = await this.prisma.demandePortail.findFirst({
-    where: { id_proc: idProc },
-    include: {
-      procedure: {
-        include: {
-          SubstanceAssocieeDemande: {
-            include: { substance: true },
+  async getFullDemandeSummaryByProc(
+    @Param('idProc', ParseIntPipe) idProc: number,
+  ) {
+    const demande = await this.prisma.demandePortail.findFirst({
+      where: { id_proc: idProc },
+      include: {
+        procedure: {
+          include: {
+            SubstanceAssocieeDemande: {
+              include: { substance: true },
+            },
           },
         },
-      },
-      typeProcedure: {
-        include: {
-          DossierAdministratif: {
-            include: {
-              dossierDocuments: {
-                include: {
-                  document: true,
+        typeProcedure: {
+          include: {
+            DossierAdministratif: {
+              include: {
+                dossierDocuments: {
+                  include: {
+                    document: true,
+                  },
                 },
+                typePermis: true,
               },
-              typePermis: true,
             },
           },
         },
-      },
-      typePermis: true,
-      entreprise: {
-        include: {
-          registreCommerce: true,
-          fonctions: {
-            include: {
-              personne: true,
+        typePermis: true,
+        detenteurdemande: {
+          take: 1,
+          include: {
+            detenteur: {
+              include: {
+                registreCommerce: true,
+                fonctions: { include: { personne: true } },
+              },
             },
           },
         },
-      },
-      wilaya: true,
-      daira: true,
-      commune: true,
-      dossiersFournis: {
-        include: {
-          documents: {
-            include: {
-              document: true,
+        wilaya: true,
+        daira: true,
+        commune: true,
+        dossiersFournis: {
+          include: {
+            documents: {
+              include: {
+                document: true,
+              },
             },
           },
+          orderBy: {
+            date_depot: 'desc',
+          },
+          take: 1,
         },
-        orderBy: {
-          date_depot: 'desc',
-        },
-        take: 1,
+        expertMinier: true,
       },
-      expertMinier: true,
-    },
-  });
+    });
 
-  if (!demande) {
-    throw new NotFoundException('Demande introuvable pour cette procédure');
+    if (!demande) {
+      throw new NotFoundException('Demande introuvable pour cette procédure');
+    }
+
+    return demande;
   }
 
-  return demande;
-}
-
-
   @Get('demande/:idDemande/summary')
-async getFullDemandeSummary(@Param('idDemande', ParseIntPipe) id: number) {
-  return this.prisma.demandePortail.findUnique({
-    where: { id_demande: id },
-    include: {
-      procedure: {
-        include: {
-          SubstanceAssocieeDemande: {
-            include: { substance: true }
-          },
-          coordonnees: {
-            include: {
-              coordonnee: true
-            }
-          }
-        }
-      },
-      typeProcedure: {   // ✅ moved here (linked directly to demande now)
-        include: {
-          DossierAdministratif: {
-            include: {
-              dossierDocuments: {
-                include: {
-                  document: true
-                }
+  async getFullDemandeSummary(@Param('idDemande', ParseIntPipe) id: number) {
+    return this.prisma.demandePortail.findUnique({
+      where: { id_demande: id },
+      include: {
+        procedure: {
+          include: {
+            SubstanceAssocieeDemande: {
+              include: { substance: true },
+            },
+            coordonnees: {
+              include: {
+                coordonnee: true,
               },
-              typePermis: true
-            }
-          }
-        }
-      },
-      typePermis: true,
-      entreprise: {
-        include: {
-          registreCommerce: true,
-          fonctions: {
-            include: {
-              personne: true
-            }
-          }
-        }
-      },
-      wilaya: true,
-      daira: true,
-      commune: true,
-      dossiersFournis: {
-        include: {
-          documents: {
-            include: {
-              document: true
-            }
-          }
+            },
+          },
         },
-        orderBy: {
-          date_depot: 'desc'
+        typeProcedure: {
+          // ✅ moved here (linked directly to demande now)
+          include: {
+            DossierAdministratif: {
+              include: {
+                dossierDocuments: {
+                  include: {
+                    document: true,
+                  },
+                },
+                typePermis: true,
+              },
+            },
+          },
         },
-        take: 1
+        typePermis: true,
+        detenteurdemande: {
+          take: 1,
+          include: {
+            detenteur: {
+              include: {
+                registreCommerce: true,
+                fonctions: { include: { personne: true } },
+              },
+            },
+          },
+        },
+        wilaya: true,
+        daira: true,
+        commune: true,
+        dossiersFournis: {
+          include: {
+            documents: {
+              include: {
+                document: true,
+              },
+            },
+          },
+          orderBy: {
+            date_depot: 'desc',
+          },
+          take: 1,
+        },
+        expertMinier: true,
       },
-      expertMinier: true
-    }
-  });
-}
-
+    });
+  }
 }

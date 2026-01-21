@@ -7,34 +7,33 @@ export class DecisionTrackingService {
   constructor(private prisma: PrismaService) {}
 
   async getDecisionTrackingData() {
-  return this.prisma.procedurePortail.findMany({
-    where: {
-      id_seance: { not: null },
-    },
-    include: {
-      demandes: {
-        include: {
-          entreprise: true,
-          typeProcedure: true, // 🔑 get TypeProcedure from demande
-        },
-        take: 1, // only first demande
+    return this.prisma.procedurePortail.findMany({
+      where: {
+        id_seance: { not: null },
       },
-      seance: {
-        include: {
-          comites: {
-            include: {
-              decisionCDs: true,
+      include: {
+        demandes: {
+          include: {
+            detenteurdemande: { take: 1, include: { detenteur: true } },
+            typeProcedure: true,
+          },
+          take: 1, // only first demande
+        },
+        seance: {
+          include: {
+            comites: {
+              include: {
+                decisionCDs: true,
+              },
             },
           },
         },
       },
-    },
-    orderBy: {
-      date_debut_proc: 'desc',
-    },
-  });
-}
-
+      orderBy: {
+        date_debut_proc: 'desc',
+      },
+    });
+  }
 
   async getDecisionStats() {
     const total = await this.prisma.procedurePortail.count({
@@ -42,43 +41,41 @@ export class DecisionTrackingService {
     });
 
     const approved = await this.prisma.decisionCD.count({
-      where: { decision_cd: 'favorable' }
+      where: { decision_cd: 'favorable' },
     });
 
     const rejected = await this.prisma.decisionCD.count({
-      where: { decision_cd: 'defavorable' }
+      where: { decision_cd: 'defavorable' },
     });
 
     return { total, approved, rejected };
   }
 
   async getProcedureDetails(id: number) {
-  return this.prisma.procedurePortail.findUnique({
-    where: { id_procedure: id },
-    include: {
-      demandes: {
-        include: {
-          entreprise: true,
-          typePermis: true,
-          typeProcedure: true, // 🔑 moved here
+    return this.prisma.procedurePortail.findUnique({
+      where: { id_proc: id },
+      include: {
+        demandes: {
+          include: {
+            detenteurdemande: { take: 1, include: { detenteur: true } },
+            typePermis: true,
+            typeProcedure: true,
+          },
+          take: 1,
         },
-        take: 1, // you’re taking only the first demande
-      },
-      seance: {
-        include: {
-          comites: {
-            include: {
-              decisionCDs: true,
+        seance: {
+          include: {
+            comites: {
+              include: {
+                decisionCDs: true,
+              },
             },
           },
         },
-      },
-      permis: {
-        include: {
-          detenteur: true,
+        permisProcedure: {
+          include: { permis: { include: { detenteur: true } } },
         },
       },
-    },
-  });
-}
+    });
+  }
 }

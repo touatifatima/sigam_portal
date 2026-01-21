@@ -11,7 +11,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       jwtFromRequest: ExtractJwt.fromExtractors([
   (req) => {
     // Check cookies first, then authorization header
-    let token = req?.cookies?.token;
+    let token = req?.cookies?.auth_token || req?.cookies?.token;
     
     // If no cookie, check headers
     if (!token && req.headers?.authorization) {

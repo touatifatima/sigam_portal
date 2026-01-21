@@ -1,4 +1,13 @@
-import { BadRequestException, Body, Controller, Get, NotFoundException, Param, Post, ValidationPipe } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  Post,
+  ValidationPipe,
+} from '@nestjs/common';
 import { ProcedureRenouvellementService } from './procedure_renouvellemnt.service';
 import { CreateRenewalDto } from './create-renouvellement.dto';
 import { PaymentService } from 'src/demandes/paiement/payment.service';
@@ -19,7 +28,10 @@ export class ProcedureRenouvellementController {
   }
 
   @Post(':id/renouvellement')
-  async createOrUpdateRenewal(@Param('id') id: string, @Body() renewalData: any) {
+  async createOrUpdateRenewal(
+    @Param('id') id: string,
+    @Body() renewalData: any,
+  ) {
     return this.proceduresService.createOrUpdateRenewal(+id, renewalData);
   }
 
@@ -40,22 +52,31 @@ export class ProcedureRenouvellementController {
 
   @Post('renouvellement/start')
   async startRenewal(@Body() dto: CreateRenewalDto) {
-    return this.proceduresService.startRenewalWithOriginalData(dto.permisId, dto.date_demande, StatutProcedure.EN_COURS);
+    return this.proceduresService.startRenewalWithOriginalData(
+      dto.permisId,
+      dto.date_demande,
+      StatutProcedure.EN_COURS,
+    );
   }
 
   @Post('renouvellement/check-payments')
   async checkPayments(@Body() body: { permisId: number }) {
-    const { isPaid, missing } = await this.paymentService.checkAllObligationsPaid(body.permisId);
+    const { isPaid, missing } =
+      await this.paymentService.checkAllObligationsPaid(body.permisId);
 
     const permit = await this.prisma.permisPortail.findUnique({
       where: { id: body.permisId },
       include: {
         typePermis: true,
-        procedures: {
+        permisProcedure: {
           include: {
-            demandes: {
+            procedure: {
               include: {
-                renouvellement: true,
+                demandes: {
+                  include: {
+                    renouvellement: true,
+                  },
+                },
               },
             },
           },
@@ -67,18 +88,31 @@ export class ProcedureRenouvellementController {
       throw new NotFoundException('Permis non trouvé');
     }
 
-    const renewalCount = permit.procedures.reduce((count, procedure) => {
-      return count + procedure.demandes.filter((demande) => demande.renouvellement).length;
+    const procedures =
+      permit.permisProcedure
+        ?.map((relation) => relation.procedure)
+        .filter(
+          (procedure): procedure is NonNullable<typeof procedure> =>
+            !!procedure,
+        ) ?? [];
+
+    const renewalCount = procedures.reduce((count, procedure) => {
+      const demandes = procedure.demandes || [];
+      return (
+        count + demandes.filter((demande) => demande.renouvellement).length
+      );
     }, 0);
 
-    if (renewalCount >= permit.typePermis.nbr_renouv_max) {
+    if (renewalCount >= permit.typePermis.nbr_renouv_max!) {
       throw new BadRequestException(
         `Nombre maximum de renouvellements (${permit.typePermis.nbr_renouv_max}) atteint pour ce permis`,
       );
     }
 
     if (!isPaid) {
-      const message = missing.map((m) => `- ${m.libelle}: ${m.montantRestant.toLocaleString()} DZD`).join('\n');
+      const message = missing
+        .map((m) => `- ${m.libelle}: ${m.montantRestant.toLocaleString()} DZD`)
+        .join('\n');
       throw new BadRequestException(`Renouvellement bloqué :\n${message}`);
     }
 

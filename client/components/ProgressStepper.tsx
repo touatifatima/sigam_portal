@@ -2,7 +2,7 @@
 import { FiCheck, FiPlay, FiArrowRight, FiX, FiRefreshCw } from 'react-icons/fi';
 import { useRouter } from 'next/router';
 import styles from './ProgressStepper.module.css';
-import { Phase, ProcedurePhase, EtapeProc } from '../src/types/procedure';
+import { Phase, ProcedurePhase, EtapeProc, ProcedureEtape } from '../src/types/procedure';
 import axios from 'axios';
 
 const MISSING_DOCS_STORAGE_KEY = 'sigam_missing_required_docs';
@@ -17,19 +17,25 @@ type MissingDocsPayload = {
 };
 
 interface Props {
-  phases: Phase[];
-  currentProcedureId: number | undefined;
+  phases?: Phase[];
+  currentProcedureId?: number;
   currentEtapeId?: number;
   procedurePhases?: ProcedurePhase[];
   procedureTypeId?: number;
+  procedureEtapes?: ProcedureEtape[];
+  steps?: string[];
+  currentStep?: number;
 }
 
 const ProgressStepper: React.FC<Props> = ({
-  phases,
+  phases = [],
   currentProcedureId,
   currentEtapeId,
   procedurePhases = [],
   procedureTypeId,
+  procedureEtapes = [],
+  steps,
+  currentStep = 1,
 }) => {
   const router = useRouter();
   const [expandedPhase, setExpandedPhase] = useState<number | null>(null);
@@ -37,6 +43,7 @@ const ProgressStepper: React.FC<Props> = ({
   const [hoveredStep, setHoveredStep] = useState<number | null>(null);
   const [isNavigating, setIsNavigating] = useState<boolean>(false);
   const [missingDocsPayload, setMissingDocsPayload] = useState<MissingDocsPayload | null>(null);
+  const [manualExpandedPhase, setManualExpandedPhase] = useState<number | null>(null);
 
 
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
@@ -52,14 +59,28 @@ const ProgressStepper: React.FC<Props> = ({
     if (!Array.isArray(phases) || phases.length === 0) {
       return [] as Phase[];
     }
-
-    const relevantPhases = procedureTypeId
-      ? phases.filter(phase => phase.typeProcedureId === procedureTypeId)
-      : phases;
-
-    return [...relevantPhases].sort((a, b) => a.ordre - b.ordre);
-  }, [phases, procedureTypeId]);
+    // Backend now determines which phases belong to the procedure via ProcedurePhase
+    // so we simply sort the provided phases by ordre without client-side filtering.
+    return [...phases].sort((a, b) => a.ordre - b.ordre);
+  }, [phases]);
   const firstPhaseId = useMemo(() => (filteredPhases[0]?.id_phase ?? null), [filteredPhases]);
+  const currentEtapePhase = useMemo(
+    () =>
+      currentEtapeId
+        ? filteredPhases.find((p) => p.etapes?.some((e) => e.id_etape === currentEtapeId)) ?? null
+        : null,
+    [filteredPhases, currentEtapeId],
+  );
+
+  const activePhaseId = useMemo(() => {
+    if (manualExpandedPhase && filteredPhases.some((p) => p.id_phase === manualExpandedPhase)) {
+      return manualExpandedPhase;
+    }
+    if (currentEtapePhase) return currentEtapePhase.id_phase;
+    if (expandedPhase && filteredPhases.some((p) => p.id_phase === expandedPhase)) return expandedPhase;
+    return filteredPhases[0]?.id_phase ?? null;
+  }, [manualExpandedPhase, currentEtapePhase, expandedPhase, filteredPhases]);
+  const hasSimpleSteps = Array.isArray(steps) && steps.length > 0;
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -163,20 +184,42 @@ const ProgressStepper: React.FC<Props> = ({
 
 
 
-  const getPhaseStatus = useCallback(
-    (phaseId: number): string => phaseStatuses.get(phaseId) ?? 'EN_ATTENTE',
-    [phaseStatuses]
-  );
-
   const getEtapeStatus = useCallback(
     (etape: EtapeProc): string => {
-      const procedureEtape = etape.procedureEtapes?.find(
-        et => et.id_proc === currentProcedureId
-      ) ?? etape.procedureEtapes?.[0];
+      if (!currentProcedureId) {
+        return 'EN_ATTENTE';
+      }
 
-      return procedureEtape?.statut ?? 'EN_ATTENTE';
+      // Merge all known statuses for this etape
+      const candidates: ProcedureEtape[] = [
+        ...procedureEtapes.filter((et) => et.id_etape === etape.id_etape),
+        ...(etape.procedureEtapes ?? []),
+      ];
+
+      const match = candidates.find(
+        (et) => et.id_proc === currentProcedureId && et.id_etape === etape.id_etape,
+      );
+      return match?.statut ?? 'EN_ATTENTE';
     },
-    [currentProcedureId]
+    [currentProcedureId, procedureEtapes],
+  );
+
+  const getPhaseStatus = useCallback(
+    (phaseId: number): string => {
+      const phase = filteredPhases.find((p) => p.id_phase === phaseId);
+      const raw = phaseStatuses.get(phaseId);
+      if (phase && Array.isArray(phase.etapes) && phase.etapes.length > 0) {
+        const statuses = phase.etapes.map((e) => getEtapeStatus(e));
+        const allTerminees = statuses.every((s) => s === 'TERMINEE');
+        if (allTerminees) return 'TERMINEE';
+        const anyEnCours = statuses.some((s) => s === 'EN_COURS');
+        if (anyEnCours) return 'EN_COURS';
+        const anyEnAttente = statuses.some((s) => s === 'EN_ATTENTE');
+        if (anyEnAttente) return 'EN_ATTENTE';
+      }
+      return raw ?? 'EN_ATTENTE';
+    },
+    [filteredPhases, phaseStatuses, getEtapeStatus]
   );
 
   const isPhaseCompleted = useCallback(
@@ -192,6 +235,17 @@ const ProgressStepper: React.FC<Props> = ({
   useEffect(() => {
     if (!filteredPhases.length) {
       setExpandedPhase(null);
+      return;
+    }
+
+    if (manualExpandedPhase && filteredPhases.some((p) => p.id_phase === manualExpandedPhase)) {
+      setExpandedPhase(manualExpandedPhase);
+      return;
+    }
+
+    // Priorité à la phase contenant l'étape courante
+    if (currentEtapePhase) {
+      setExpandedPhase(currentEtapePhase.id_phase);
       return;
     }
 
@@ -215,46 +269,29 @@ const ProgressStepper: React.FC<Props> = ({
 
       return filteredPhases[0]?.id_phase ?? null;
     });
-  }, [filteredPhases, isPhaseCompleted, isPhaseInProgress]);
+  }, [filteredPhases, isPhaseCompleted, isPhaseInProgress, currentEtapePhase, manualExpandedPhase]);
 
-  const canNavigateToPhase = useCallback(
-    (phase: Phase): boolean => {
-      if (!currentProcedureId || !filteredPhases.length) return false;
+  // Toujours afficher les étapes de la phase contenant l'étape courante
+  useEffect(() => {
+    if (currentEtapePhase && !manualExpandedPhase) {
+      setExpandedPhase(currentEtapePhase.id_phase);
+    }
+  }, [currentEtapePhase, manualExpandedPhase]);
 
-      // When required documents are missing, allow navigation only within the current phase
-      if (missingDocsInfo.lockPhase) {
-        const anyInProgress = filteredPhases.some(isPhaseInProgress);
-        if (anyInProgress) {
-          // Allow navigation within the current phase and back to any completed phases
-          return isPhaseInProgress(phase) || isPhaseCompleted(phase);
-        }
-        // If nothing started yet, allow the very first phase only
-        return firstPhaseId ? phase.id_phase === firstPhaseId : false;
-      }
-
-      if (isPhaseCompleted(phase) || isPhaseInProgress(phase)) return true;
-
-      const targetIndex = filteredPhases.findIndex(p => p.id_phase === phase.id_phase);
-      if (targetIndex === -1) return false;
-      const previousPhases = filteredPhases.slice(0, targetIndex);
-      return previousPhases.every(isPhaseCompleted);
-    },
-    [currentProcedureId, filteredPhases, firstPhaseId, isPhaseCompleted, isPhaseInProgress, missingDocsInfo]
-  );
+  const canNavigateToPhase = useCallback((phase: Phase): boolean => {
+      if (!currentProcedureId || filteredPhases.length === 0) return false;
+      const idx = filteredPhases.findIndex((p) => p.id_phase === phase.id_phase);
+      if (idx <= 0) return true;
+      // Toutes les phases précédentes doivent être terminées
+      return filteredPhases.slice(0, idx).every((p) => isPhaseCompleted(p));
+    }, [currentProcedureId, filteredPhases, isPhaseCompleted]);
 
   const canNavigateToEtape = useCallback(
-    (etape: EtapeProc, phase: Phase): boolean => {
-      if (!currentProcedureId) return false;
-
-      // If required docs lock navigation, still allow clicking steps
-      // in the current allowed phase (even if phase not yet EN_COURS)
-      if (missingDocsInfo.lockSteps) {
-        return canNavigateToPhase(phase);
-      }
-
+    (_etape: EtapeProc, phase: Phase): boolean => {
+      // Navigation libre entre toutes les étapes.
       return canNavigateToPhase(phase);
     },
-    [canNavigateToPhase, currentProcedureId, missingDocsInfo]
+    [canNavigateToPhase]
   );
   const canAdvanceToNextPhase = useCallback(
     (phase: Phase): boolean => {
@@ -285,11 +322,22 @@ const ProgressStepper: React.FC<Props> = ({
 
       try {
         if (getEtapeStatus(etape) === 'EN_ATTENTE') {
-          await axios.post(
-            `${apiURL}/api/procedure-etape/start/${currentProcedureId}/${etape.id_etape}`
-          );
+          await axios.post(`${apiURL}/api/procedure-etape/start`, {
+            id_proc: currentProcedureId,
+            phaseOrdre: phase.ordre,
+            etapeOrdre: etape.ordre_etape,
+            link: etape.page_route,
+          });
         }
-        router.push(`/demande/step${etape.id_etape}/page${etape.id_etape}?id=${currentProcedureId}`);
+
+        // Use stable page route if provided by backend, fallback to legacy pattern
+        const route = etape.page_route && etape.page_route.trim().length > 0
+          ? `/${etape.page_route.replace(/^\/+/, '')}`
+          : `/demande/step${etape.id_etape}/page${etape.id_etape}`;
+
+        const params = new URLSearchParams(); Object.entries(router.query ?? {}).forEach(([k,v])=>{ if(v==null)return; if(Array.isArray(v)){ if(v[0]!=null) params.set(k,String(v[0])); } else { params.set(k,String(v)); } }); if(!params.has("procId") && currentProcedureId!=null){ params.set("procId", String(currentProcedureId)); }
+        const target = params.toString() ? `${route}?${params.toString()}` : route;
+        router.push(target);
       } catch (error) {
         console.error('Error handling step navigation:', error);
       } finally {
@@ -298,6 +346,22 @@ const ProgressStepper: React.FC<Props> = ({
       }
     }, 300),
     [currentProcedureId, isNavigating, router, apiURL, getEtapeStatus, canNavigateToEtape, debounce]
+  );
+
+  // Ouvre une phase et déclenche l'étape active (première non terminée, sinon première)
+  const handlePhaseClick = useCallback(
+    (phase: Phase) => {
+      if (!canNavigateToPhase(phase)) return;
+      setManualExpandedPhase(phase.id_phase);
+      setExpandedPhase(phase.id_phase);
+      const etapes = phase.etapes || [];
+      const firstPending = etapes.find((e) => getEtapeStatus(e) !== 'TERMINEE');
+      const target = firstPending || etapes[0];
+      if (target) {
+        handleEtapeClick(target, phase);
+      }
+    },
+    [canNavigateToPhase, getEtapeStatus, handleEtapeClick],
   );
 
   const handleNextPhase = useCallback(
@@ -327,25 +391,107 @@ const ProgressStepper: React.FC<Props> = ({
   const hasStatusData = Array.isArray(procedurePhases);
   const isLoadingData = !hasPhaseList || !hasProcedureId;
 
+  // Auto-advance to next phase when all steps in the current phase are completed
+  const autoAdvancedRef = useRef<number | null>(null);
+  useEffect(() => {
+    const hasLists = Array.isArray(filteredPhases) && filteredPhases.length > 0;
+    if (!hasLists || typeof currentProcedureId !== 'number' || currentProcedureId <= 0) return;
+    if (isNavigating) return;
+
+    const currentInProgress = filteredPhases.find((p) => getPhaseStatus(p.id_phase) === 'EN_COURS');
+    if (!currentInProgress) return;
+
+    const readyForNext = currentInProgress.etapes.every((e) => getEtapeStatus(e) === 'TERMINEE');
+    if (readyForNext && autoAdvancedRef.current !== currentInProgress.id_phase) {
+      // Prevent repeated auto-advance loops across reloads using sessionStorage
+      const storageKey = `sigam:auto-advance:${currentProcedureId}:${currentInProgress.id_phase}`;
+      try {
+        if (typeof window !== 'undefined' && window.sessionStorage.getItem(storageKey)) {
+          return;
+        }
+      } catch {}
+
+      autoAdvancedRef.current = currentInProgress.id_phase;
+      const idx = filteredPhases.findIndex((p) => p.id_phase === currentInProgress.id_phase);
+      const next = filteredPhases[idx + 1];
+      if (next) setExpandedPhase(next.id_phase);
+      try {
+        if (typeof window !== 'undefined') window.sessionStorage.setItem(storageKey, '1');
+      } catch {}
+      handleNextPhase(currentInProgress.id_phase);
+    }
+  }, [filteredPhases, currentProcedureId, isNavigating, getPhaseStatus, getEtapeStatus, handleNextPhase]);
+
   if (isLoadingData) {
     return (
       <div className={styles.dataLoadingContainer}>
         <div className={styles.dataLoadingContent}>
           <FiRefreshCw className={styles.dataLoadingSpinner} />
           <div className={styles.dataLoadingText}>
-            <h4>Chargement des données de progression...</h4>
+            <h4>Chargement des donnees de progression...</h4>
             <div className={styles.dataReadinessStatus}>
               <span className={hasPhaseList ? styles.ready : styles.pending}>
-                Phases: {hasPhaseList ? '✓' : '...'}
+                Phases: {hasPhaseList ? '?' : '...'}
               </span>
               <span className={hasStatusData ? styles.ready : styles.pending}>
-                Statuts: {hasStatusData ? '✓' : '...'}
+                Statuts: {hasStatusData ? '?' : '...'}
               </span>
               <span className={hasProcedureId ? styles.ready : styles.pending}>
-                Procédure: {hasProcedureId ? '✓' : '...'}
+                Procedure: {hasProcedureId ? '?' : '...'}
               </span>
             </div>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (hasSimpleSteps) {
+    return (
+      <div className={styles.progressContainer}>
+        <div className={styles.horizontalPhases}>
+          {steps!.map((label, index) => {
+            const isCompleted = index + 1 < currentStep;
+            const isInProgress = index + 1 === currentStep;
+            return (
+              <React.Fragment key={label}>
+                {index > 0 && (
+                  <div
+                    className={`${styles.phaseConnector} ${
+                      isCompleted || isInProgress ? styles.connectorActive : ''
+                    }`}
+                  >
+                    <FiArrowRight className={styles.connectorIcon} />
+                  </div>
+                )}
+                <div
+                  className={`${styles.phaseItem} ${
+                    isCompleted ? styles.phaseCompleted : ''
+                  } ${isInProgress ? styles.phaseInProgress : ''}`}
+                >
+                  <div className={styles.phaseContent}>
+                    <div
+                      className={`${styles.phaseCircle} ${isCompleted ? styles.completed : ''} ${
+                        isInProgress ? styles.inProgress : ''
+                      }`}
+                    >
+                      {isCompleted ? (
+                        <FiCheck className={styles.phaseIcon} />
+                      ) : (
+                        <span className={styles.phaseNumber}>{index + 1}</span>
+                      )}
+                    </div>
+                    <div className={styles.phaseInfo}>
+                      <span className={styles.phaseTitle}>{label}</span>
+                      <span className={`${styles.phaseStatus} ${isInProgress ? styles['en_cours'] : ''}`}>
+                        {isCompleted ? 'TERMINEE' : isInProgress ? 'EN_COURS' : 'EN_ATTENTE'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </React.Fragment>
+            );
+          })}
         </div>
       </div>
     );
@@ -357,52 +503,22 @@ const ProgressStepper: React.FC<Props> = ({
         <div className={styles.noDataContent}>
           <FiX className={styles.noDataIcon} />
           <h4>Aucune phase disponible</h4>
-          <p>Les données de progression ne sont pas disponibles pour le moment.</p>
+          <p>Les donnees de progression ne sont pas disponibles pour le moment.</p>
         </div>
       </div>
     );
   }
 
 
-  // Auto-advance to next phase when all steps in the current phase are completed
-  const autoAdvancedRef = useRef<number | null>(null);
-  useEffect(() => {
-    const hasLists = Array.isArray(filteredPhases) && filteredPhases.length > 0;
-    if (!hasLists || typeof currentProcedureId !== "number" || currentProcedureId <= 0) return;
-    if (isNavigating) return;
-
-    const currentInProgress = filteredPhases.find(p => getPhaseStatus(p.id_phase) === "EN_COURS");
-    if (!currentInProgress) return;
-
-    const readyForNext = currentInProgress.etapes.every(e => getEtapeStatus(e) === "TERMINEE");
-    if (readyForNext && autoAdvancedRef.current !== currentInProgress.id_phase) {
-      // Prevent repeated auto-advance loops across reloads using sessionStorage
-      const storageKey = `sigam:auto-advance:${currentProcedureId}:${currentInProgress.id_phase}`;
-      try {
-        if (typeof window !== 'undefined' && window.sessionStorage.getItem(storageKey)) {
-          return;
-        }
-      } catch {}
-
-      autoAdvancedRef.current = currentInProgress.id_phase;
-      const idx = filteredPhases.findIndex(p => p.id_phase === currentInProgress.id_phase);
-      const next = filteredPhases[idx + 1];
-      if (next) setExpandedPhase(next.id_phase);
-      try { if (typeof window !== 'undefined') window.sessionStorage.setItem(storageKey, '1'); } catch {}
-      handleNextPhase(currentInProgress.id_phase);
-    }
-  }, [filteredPhases, currentProcedureId, isNavigating, getPhaseStatus, getEtapeStatus, handleNextPhase]);
-
-                {loading ? 'Chargement...' : 'Phase suivante →'}
   return (
     <div className={styles.progressContainer}>
       {/* Horizontal Phases */}
       <div className={styles.horizontalPhases}>
         {filteredPhases.map((phase, phaseIndex) => {
-          const phaseStatus = getPhaseStatus(phase.id_phase);
-          const isCompleted = isPhaseCompleted(phase);
-          const isInProgress = isPhaseInProgress(phase);
-          const isExpanded = expandedPhase === phase.id_phase;
+      const phaseStatus = getPhaseStatus(phase.id_phase);
+      const isCompleted = isPhaseCompleted(phase);
+      const isInProgress = isPhaseInProgress(phase);
+          const isExpanded = activePhaseId === phase.id_phase;
           const isNavigable = canNavigateToPhase(phase);
           const phaseStatusClass = styles[phaseStatus.toLowerCase?.() ?? ''] ?? '';
 
@@ -417,16 +533,16 @@ const ProgressStepper: React.FC<Props> = ({
                   <FiArrowRight className={styles.connectorIcon} />
                 </div>
               )}
-              <div
-                className={`${styles.phaseItem} ${
-                  isCompleted ? styles.phaseCompleted : ''
-                } ${isInProgress ? styles.phaseInProgress : ''} ${
+                <div
+                  className={`${styles.phaseItem} ${
+                    isCompleted ? styles.phaseCompleted : ''
+                  } ${isInProgress ? styles.phaseInProgress : ''} ${
                   isExpanded ? styles.phaseExpanded : ''
                 } ${!isNavigable ? styles.phaseLocked : ''}`}
-              >
+                >
                 <div
                   className={styles.phaseContent}
-                  onClick={() => isNavigable && setExpandedPhase(isExpanded ? null : phase.id_phase)}
+                  onClick={() => handlePhaseClick(phase)}
                 >
                   <div
                     className={`${styles.phaseCircle} ${isCompleted ? styles.completed : ''} ${
@@ -458,10 +574,9 @@ const ProgressStepper: React.FC<Props> = ({
       {expandedPhase !== null && (
         <div className={styles.stepsSection}>
           <div className={styles.horizontalSteps}>
-            {filteredPhases
-              .find(p => p.id_phase === expandedPhase)
+            {(filteredPhases.find(p => p.id_phase === activePhaseId) ?? filteredPhases[0])
               ?.etapes.map((etape, etapeIndex) => {
-                const phase = filteredPhases.find(p => p.id_phase === expandedPhase)!;
+                const phase = filteredPhases.find(p => p.id_phase === activePhaseId)!;
                 const etapeStatus = getEtapeStatus(etape);
                 const isEtapeCompleted = etapeStatus === 'TERMINEE';
                 const isEtapeActive = etape.id_etape === currentEtapeId;
@@ -528,7 +643,6 @@ const ProgressStepper: React.FC<Props> = ({
 };
 
 export default ProgressStepper;
-
 
 
 

@@ -6,19 +6,31 @@ export class CreateAntenneDto {
   @IsString()
   nom: string;
 
-  @ApiProperty({ description: 'Antenne location', example: 'Alger', required: false })
+  @ApiProperty({
+    description: 'Antenne location',
+    example: 'Alger',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   localisation?: string;
 }
 
 export class UpdateAntenneDto {
-  @ApiProperty({ description: 'Antenne name', example: 'Antenne Nord', required: false })
+  @ApiProperty({
+    description: 'Antenne name',
+    example: 'Antenne Nord',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   nom?: string;
 
-  @ApiProperty({ description: 'Antenne location', example: 'Alger', required: false })
+  @ApiProperty({
+    description: 'Antenne location',
+    example: 'Alger',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   localisation?: string;

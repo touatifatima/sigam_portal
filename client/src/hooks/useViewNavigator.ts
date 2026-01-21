@@ -12,6 +12,8 @@ const permissionMap: Record<ViewType, string> = {
   'gestion-permis': 'manage_permits',
   'procedures': 'view_procedures',
   'instruction-cadastrale': 'view_cadastre',
+  'carte-sig': 'carte_sig',
+  'demande-interactive': 'create_demande',
   'generateur-permis': 'generate_permits',
   'parametres': 'manage_settings',
   'gestion-utilisateurs': 'manage_users',
@@ -23,17 +25,26 @@ const permissionMap: Record<ViewType, string> = {
   'Audit_Logs': 'Audit_Logs',
   'gestion_experts': 'manage_documents',
   'Gestion_seances': 'view_dashboard',
-  'Configurations': 'Admin-Panel'
+  'Configurations': 'Admin-Panel',
+  'promotion': 'dashboard',
+  'convertisseur': 'dashboard', 
+  'mes-demandes': 'dashboard',
+  'operateur_mes_demandes': 'operateur',
+  'operateur_mes_procedures': 'operateur',
+  'operateur_nvl_demande': 'operateur',
+   'outils': 'dashboard',
 };
 
 const routeMap: Record<ViewType, string> = {
   'Chat': '/chat/chat1',
   'dashboard': '/permis_dashboard/PermisDashboard',
   'Permis': '/permis_dashboard/PermisListTable',
-  'nouvelle-demande': '/demande/step1_typepermis/page1_typepermis',
+  'nouvelle-demande': '/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis',
   'gestion-permis': '/gestion-permis',
   'procedures': '/dashboard/suivi_procedure',
   'instruction-cadastrale': '/instruction-cadastrale',
+  'carte-sig': '/investisseur/carte/CarteSIG',
+  'demande-interactive': '/investisseur/interactive',
   'generateur-permis': '/generateur-permis',
   'parametres': '/parametres',
   'gestion-utilisateurs': '/gestion-utilisateurs',
@@ -45,8 +56,14 @@ const routeMap: Record<ViewType, string> = {
   'Audit_Logs': '/audit-logs/page',
   'gestion_experts': '/gestion_experts/page',
   'Gestion_seances': '/seances/Dashboard_seances',
-  'Configurations': '/configuration/ConfigurationPanel'
-
+  'Configurations': '/configuration/ConfigurationPanel',
+  'promotion': '/promotion',
+  'convertisseur': '/tools/convertisseur',
+  'mes-demandes': '/demand_dashboard/mine',
+  'operateur_mes_demandes': '/operateur/demand_dashboard/mine',
+  'operateur_mes_procedures': '/operateur/dashboard/mes_procedures',
+  'operateur_nvl_demande': '/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis',
+  'outils': '/tools/convertisseur',
 };
 
 export const useViewNavigator = (initialView: ViewType = 'dashboard') => {

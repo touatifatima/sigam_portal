@@ -2,7 +2,8 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Expert } from './expertminier';
 
-@Entity('notifications')
+// Map to the existing prisma-managed table
+@Entity('notifications_portail')
 export class Notification {
   @PrimaryGeneratedColumn()
   id: number;
@@ -32,7 +33,7 @@ export class Notification {
   @Column({ nullable: true })
   expertId: number;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'createdAt' })
   createdAt: Date;
 
   @Column({ default: 'info' })

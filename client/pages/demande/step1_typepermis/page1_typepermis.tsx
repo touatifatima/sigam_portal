@@ -47,7 +47,9 @@ export default function DemandeStart() {
 
   const [codeDemande, setCodeDemande] = useState('');
   const [heureDemarrage, setHeureDemarrage] = useState('');
-  const [dateSoumission, setDateSoumission] = useState<Date | null>(new Date());
+  // Official submission date is set only at final deposit (server-side),
+  // keep null here to avoid sending an invalid date.
+  const [dateSoumission, setDateSoumission] = useState<Date | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   // Ensure global route spinner is cleared when landing on this page
@@ -155,8 +157,8 @@ export default function DemandeStart() {
   const handleStartProcedure = async () => {
     const permis = effectivePermis;
 
-    if (!permis || !dateSoumission) {
-      toast.warning('Selectionnez un type de permis et une date de soumission.');
+    if (!permis) {
+      toast.warning('Selectionnez un type de permis.');
       return;
     }
 
@@ -175,8 +177,8 @@ export default function DemandeStart() {
         {
           id_typepermis: permis.id,
           objet_demande: 'Instruction initialisee',
-          date_demande: dateSoumission.toISOString(),
-          date_instruction: new Date().toISOString(),
+          // date_demande handled server-side at final deposit
+          // date_instruction handled later by agent; do not send here
         },
         { withCredentials: true },
       );

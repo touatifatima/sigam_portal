@@ -7,14 +7,14 @@ export class DetenteurMoraleService {
   constructor(private prisma: PrismaService) {}
 
   async findAll() {
-    return this.prisma.entreprisePortail.findMany({
+    return this.prisma.detenteurMoralePortail.findMany({
       orderBy: { nom_societeFR: 'asc' },
     });
   }
 
   async findOne(id: number) {
-    const detenteur = await this.prisma.entreprisePortail.findUnique({
-      where: { id_entreprise: id },
+    const detenteur = await this.prisma.detenteurMoralePortail.findUnique({
+      where: { id_detenteur: id },
     });
 
     if (!detenteur) {

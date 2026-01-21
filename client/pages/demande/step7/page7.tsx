@@ -13,7 +13,8 @@ import ProgressStepper from '@/components/ProgressStepper';
 import { useViewNavigator } from '@/src/hooks/useViewNavigator';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import logo from '@/public/logo.jpg';
+// Use public asset URL directly instead of importing from /public
+const logo = '/assets/logo.jpg';
 import { useActivateEtape } from '@/src/hooks/useActivateEtape';
 import { Phase, Procedure, ProcedureEtape, ProcedurePhase, StatutProcedure } from '@/src/types/procedure';
 interface Procedure1 {

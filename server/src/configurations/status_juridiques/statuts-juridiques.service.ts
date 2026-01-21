@@ -4,7 +4,10 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateStatutJuridiqueDto, UpdateStatutJuridiqueDto } from './statuts-juridiques.dto';
+import {
+  CreateStatutJuridiqueDto,
+  UpdateStatutJuridiqueDto,
+} from './statuts-juridiques.dto';
 
 @Injectable()
 export class StatutsJuridiquesService {
@@ -30,7 +33,7 @@ export class StatutsJuridiquesService {
   }
 
   async findOne(id: number) {
-    const statut = await this.prisma.statutJuridiquePortail    .findUnique({
+    const statut = await this.prisma.statutJuridiquePortail.findUnique({
       where: { id_statutJuridique: id },
     });
 
@@ -60,10 +63,12 @@ export class StatutsJuridiquesService {
 
   async remove(id: number) {
     try {
-      // Check if there are associated detenteurs before deleting
-      const associatedDetenteurs = await this.prisma.entreprisePortail.count({
-        where: { id_statutJuridique: id },
-      });
+      // Check if there are associated detenteurs before deleting.
+      // With the new many-to-many relation, the link is stored in FormeJuridiqueDetenteur.
+      const associatedDetenteurs =
+        await this.prisma.formeJuridiqueDetenteur.count({
+          where: { id_statut: id },
+        });
 
       if (associatedDetenteurs > 0) {
         throw new BadRequestException(

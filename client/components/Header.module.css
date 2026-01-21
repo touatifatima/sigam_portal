@@ -1,0 +1,194 @@
+.header {
+  position: fixed;
+  top: 0;
+  z-index: 50;
+  width: 100%;
+  transition: all 0.5s ease;
+}
+
+.headerScrolled {
+  background-color: hsl(var(--secondary) / 0.95);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.headerTransparent {
+  background: linear-gradient(180deg, rgba(12, 18, 30, 0.85) 0%, rgba(12, 18, 30, 0.65) 45%, rgba(12, 18, 30, 0.35) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+}
+
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logoLink {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.logoLink:hover .logoImage {
+  transform: scale(1.05);
+}
+
+.logoImage {
+  height: 3rem;
+  width: auto;
+  transition: transform 0.3s ease;
+}
+
+.logoText {
+  display: flex;
+  flex-direction: column;
+}
+
+.logoTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: hsl(var(--primary-foreground));
+  letter-spacing: -0.025em;
+}
+
+.logoSubtitle {
+  font-size: 0.625rem;
+  color: hsl(var(--primary-foreground) / 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.nav {
+  display: none;
+  align-items: center;
+  gap: 2rem;
+}
+
+@media (min-width: 1024px) {
+  .nav {
+    display: flex;
+  }
+}
+
+.navLink {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(var(--primary-foreground) / 0.8);
+  transition: color 0.2s ease;
+  position: relative;
+}
+
+.navLink:hover {
+  color: hsl(var(--primary));
+}
+
+.navLinkUnderline {
+  position: absolute;
+  bottom: -0.25rem;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: hsl(var(--primary));
+  transition: width 0.3s ease;
+}
+
+.navLink:hover .navLinkUnderline {
+  width: 100%;
+}
+
+.actions {
+  display: none;
+  align-items: center;
+  gap: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .actions {
+    display: flex;
+  }
+}
+
+.globeButton {
+  padding: 0.5rem;
+  color: hsl(var(--primary-foreground) / 0.8);
+  transition: color 0.2s ease;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.globeButton:hover {
+  color: hsl(var(--primary));
+}
+
+.mobileMenuButton {
+  display: block;
+  padding: 0.5rem;
+  color: hsl(var(--primary-foreground));
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+@media (min-width: 1024px) {
+  .mobileMenuButton {
+    display: none;
+  }
+}
+
+.mobileMenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  background-color: hsl(var(--secondary) / 0.98);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid hsl(var(--border) / 0.1);
+  animation: fadeIn 0.3s ease;
+}
+
+@media (min-width: 1024px) {
+  .mobileMenu {
+    display: none;
+  }
+}
+
+.mobileNav {
+  padding: 1.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.mobileNavLink {
+  color: hsl(var(--primary-foreground) / 0.8);
+  padding: 0.5rem 0;
+  transition: color 0.2s ease;
+}
+
+.mobileNavLink:hover {
+  color: hsl(var(--primary));
+}
+
+.mobileActions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid hsl(var(--border) / 0.1);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

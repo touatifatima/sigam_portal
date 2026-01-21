@@ -6,17 +6,22 @@ export class VerificationGeoService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getByDemande(id_demande: number) {
-    return this.prisma.demandeVerificationGeo.findUnique({ where: { id_demande } });
+    return this.prisma.demandeVerificationGeo.findUnique({
+      where: { id_demande },
+    });
   }
 
-  async upsertByDemande(id_demande: number, body: {
-    sit_geo_ok?: boolean;
-    empiet_ok?: boolean;
-    superf_ok?: boolean;
-    geom_ok?: boolean;
-    verification_cadastrale_ok?: boolean;
-    superficie_cadastrale?: number;
-  }) {
+  async upsertByDemande(
+    id_demande: number,
+    body: {
+      sit_geo_ok?: boolean;
+      empiet_ok?: boolean;
+      superf_ok?: boolean;
+      geom_ok?: boolean;
+      verification_cadastrale_ok?: boolean;
+      superficie_cadastrale?: number;
+    },
+  ) {
     const computedOk =
       body.verification_cadastrale_ok !== undefined
         ? body.verification_cadastrale_ok

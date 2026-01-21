@@ -1,0 +1,286 @@
+:root {
+  --bg: #f3f5f9;
+  --card: #ffffff;
+  --text-main: #2b2730;
+  --text-muted: #6e7080;
+  --accent: #9b2c58;
+  --accent-strong: #7f2044;
+  --accent-soft: #f5e5ed;
+  --success: #18b574;
+  --border: #e2e5ec;
+  --shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+  --radius-lg: 18px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+  --transition: all 0.2s ease;
+}
+
+.appContainer {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text-main);
+}
+
+.appContent {
+  display: flex;
+  gap: 22px;
+}
+
+.mainContent {
+  flex: 1;
+  padding: 28px 32px 48px;
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.breadcrumbArrow {
+  color: var(--text-muted);
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.pageTitle {
+  font-size: 28px;
+  font-weight: 800;
+  margin: 0;
+}
+
+.pageSubtitle {
+  margin: 0 0 18px;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.cancelButton {
+  margin-left: auto;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-main);
+  padding: 10px 18px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.cancelButton:hover {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+}
+
+.progressBar {
+  height: 6px;
+  border-radius: 999px;
+  background: #e6d9e2;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.progressFill {
+  height: 100%;
+  width: 33%;
+  background: linear-gradient(90deg, #b13d6c, #7f2044);
+  transition: width 0.3s ease;
+}
+
+.card {
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 22px 24px;
+}
+
+.stepCard {
+  margin-top: 18px;
+  width: 100%;
+}
+
+.stepTitle {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 700;
+}
+.stepMeta {
+  margin: 0 0 16px;
+  color: var(--text-muted);
+}
+
+/* Form */
+.label {
+  display: block;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 6px;
+}
+.requiredMark {
+  color: var(--accent);
+}
+
+.select,
+.datepicker-wrapper input {
+  width: 100%;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  padding: 0 14px;
+  background: #fff;
+  color: var(--text-main);
+  font-size: 14px;
+  transition: var(--transition);
+}
+.select:focus,
+.datepicker-wrapper input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(155, 44, 88, 0.18);
+  outline: none;
+}
+.selectSelected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(155, 44, 88, 0.1);
+}
+
+/* Info/error */
+.errorBox {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: #ffecec;
+  color: #b3002c;
+  border: 1px solid #f5c2c7;
+}
+.infoBox {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--text-main);
+}
+
+/* Permis details card */
+.permisDetails {
+  margin-top: 16px;
+  border: 1px solid #e7eded;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.06);
+}
+
+.permisDetailsHeader {
+  background: #e8f6f6;
+  padding: 14px 16px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+.permisDetailsText {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.permisStats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  padding: 14px;
+}
+
+.statCard {
+  background: #f6f2ee;
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 90px;
+}
+
+.statLabel {
+  color: var(--text-muted);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.statValue {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+/* Buttons */
+.buttonGroup {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+.button {
+  border: none;
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.start {
+  background: var(--accent);
+  color: #fff;
+}
+.start:hover {
+  box-shadow: 0 12px 20px rgba(155, 44, 88, 0.25);
+}
+.secondary {
+  background: #fff;
+  color: var(--text-main);
+  border: 1px solid var(--border);
+}
+.secondary:hover {
+  box-shadow: 0 8px 14px rgba(0, 0, 0, 0.05);
+}
+
+/* Loading */
+.loadingContainer {
+  display: grid;
+  place-items: center;
+  padding: 40px 0;
+}
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e7dde3;
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+.loadingHint {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-top: 8px;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .mainContent { padding: 22px; }
+}
+@media (max-width: 600px) {
+  .buttonGroup { flex-direction: column; align-items: stretch; }
+}

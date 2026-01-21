@@ -15,9 +15,10 @@ export class PaymentController {
 @Get('procedures/:id')
 async getProcedure(@Param('id') id: number) {
   const procedure = await this.paymentService.getProcedureWithPermis(+id);
+  const permit = procedure?.permisProcedure?.[0]?.permis ?? null;
   return {
     ...procedure,
-    permis: procedure!.permis?.[0] || null, // renvoie directement l'objet
+    permis: permit,
   };
 }
 

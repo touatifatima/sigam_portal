@@ -44,10 +44,7 @@ export class CommunesController {
   @ApiOperation({ summary: 'Update a commune' })
   @ApiResponse({ status: 200, description: 'Commune updated successfully' })
   @ApiResponse({ status: 404, description: 'Commune not found' })
-  update(
-    @Param('id') id: string,
-    @Body() updateCommuneDto: UpdateCommuneDto,
-  ) {
+  update(@Param('id') id: string, @Body() updateCommuneDto: UpdateCommuneDto) {
     return this.communesService.update(+id, updateCommuneDto);
   }
 

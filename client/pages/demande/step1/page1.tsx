@@ -558,48 +558,6 @@ export default function Step5_Documents() {
               >
                 Compris
               </button>
-              {hasBlockingNextMissingDocs && idDemande && (
-                <a
-                  href={`${apiURL}/api/demande/${idDemande}/mise-en-demeure.pdf`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`${styles['btn']} ${styles['btn-primary']}`}
-                  style={{ marginLeft: '8px' }}
-                >
-                  Télécharger la mise en demeure (PDF)
-                </a>
-              )}
-              {hasBlockingNextMissingDocs && (
-                <button
-                  className={`${styles['btn']} ${styles['btn-outline']}`}
-                  onClick={async () => {
-                    if (!idDemande) return;
-                    try {
-                      let res;
-                      try {
-                        res = await axios.get(`${apiURL}/api/demande/${idDemande}/letters`);
-                      } catch (err: any) {
-                        if (err?.response?.status === 404) {
-                          res = await axios.get(`${apiURL}/api/procedure/${idDemande}/letters`);
-                        } else {
-                          throw err;
-                        }
-                      }
-                      if (res.data?.letters?.miseEnDemeure) {
-                        setLetterPreview({
-                          type: 'MISE_EN_DEMEURE',
-                          content: res.data.letters.miseEnDemeure.content,
-                          deadline: res.data.letters.miseEnDemeure.deadline || null,
-                        });
-                      }
-                    } catch (e) {
-                      console.error('Erreur génération lettre mise en demeure', e);
-                    }
-                  }}
-                >
-                  Prévisualiser la mise en demeure
-                </button>
-              )}
               {hasBlockingMissingDocs && (
                 <button
                   className={`${styles['btn']} ${styles['btn-outline']}`}
@@ -801,7 +759,7 @@ export default function Step5_Documents() {
           setShowMissingDocsModal(true);
           return;
         }
-        await router.push(`/demande/step2/page2?id=${idProc}`);
+        await router.push(`/investisseur/nouvelle_demande/step2/Step2?id=${idProc}`);
       } catch (err) {
         console.error("Erreur lors de la soumission du dossier", err);
         setError("Erreur lors de la soumission du dossier");
@@ -814,10 +772,10 @@ export default function Step5_Documents() {
   );
 
   const handlecompris = async() => {
-      router.push(`/demande/step2/page2?id=${idProc}`)
+      router.push(`/investisseur/nouvelle_demande/step2/Step2?id=${idProc}`)
   }
   const handleBack =async () => {
-      router.push(`/demande/step1_typepermis/page1_typepermis?id=${idProc}`)
+      router.push(`/investisseur/nouvelle_demande/step1/Step1?id=${idProc}`)
   }
 
   const handleSaveEtape = async () => {
@@ -895,7 +853,7 @@ export default function Step5_Documents() {
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles['main-content']}>
           <div className={styles['breadcrumb']}>
-            <span>SIGAM</span>
+            <span>GUNAM</span>
             <FiChevronRight className={styles['breadcrumb-arrow']} />
             <span>Documents</span>
           </div>
@@ -1033,20 +991,6 @@ export default function Step5_Documents() {
               )}
 
               
-<div style={{ marginTop: '8px' }}>
-               
-                    
-                        <a
-                          href={`${apiURL}/api/demande/${idDemande}/recepisse.pdf`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`${styles['btn']} ${styles['btn-primary']}`}
-                          style={{ marginBottom: '8px' }}
-                        >
-                          Télécharger le récépissé (PDF)
-                        </a>
-                      
-                    </div>
               {missingSummary && missingSummary.requiredMissing.length > 0 && (
                 <div className={styles['missing-summary']}>
                   <h3>Pièces manquantes du dossier</h3>

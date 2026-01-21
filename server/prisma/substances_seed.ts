@@ -1,68 +1,90 @@
-import { PrismaClient } from '@prisma/client';
+import * as fs from 'fs';
+import csv = require('csv-parser');
 
-const prisma = new PrismaClient();
+import { config as loadEnv } from 'dotenv';
+import * as path from 'path';
+import { createPrismaClient } from '../src/prisma/prisma-factory';
 
-async function main() {
-  // 1. Crée une redevance par défaut
-  const redevance = await prisma.redevanceBareme.upsert({
-    where: { id_redevance: 1 },
-    update: {},
-    create: {
-      taux_redevance: 0,
-      valeur_marchande: 0,
-      unite: 'tonne',
-      devise: 'DZD',
-      description: 'Redevance par défaut',
-    },
-  });
-  await prisma.substance.createMany({
-    data: [
-      {
-        nom_subFR: 'Fer',
-        nom_subAR: 'الحديد',
-        categorie_sub: 'métalliques',
-        famille_sub: '',
-        id_redevance:1
-      },
-      {
-        nom_subFR: 'Cuivre',
-        nom_subAR: 'النحاس',
-        categorie_sub: 'métalliques',
-        famille_sub: '',
-        id_redevance:1
-      },
-      {
-        nom_subFR: 'Argile',
-        nom_subAR: 'الطين',
-        categorie_sub: 'non-métalliques',
-        famille_sub: '',
-        id_redevance:1
-      },
-      {
-        nom_subFR: 'Sable',
-        nom_subAR: 'الرمل',
-        categorie_sub: 'non-métalliques',
-        famille_sub: '',
-        id_redevance:1
-      },
-      {
-        nom_subFR: 'Uranium',
-        nom_subAR: 'اليورانيوم',
-        categorie_sub: 'radioactives',
-        famille_sub: '',
-        id_redevance:1
-      }
-    ],
-    skipDuplicates: true,
-  });
+loadEnv({ path: path.resolve(process.cwd(), '.env') });
 
-  console.log('✅ Substances inserted successfully');
+const databaseUrl = process.env.DATABASE_URL_PORTAIL;
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL_PORTAIL is not set in the environment.');
 }
 
-main()
-  .catch((e) => {
-    console.error('❌ Error inserting substances:', e);
-  })
-  .finally(() => {
-    prisma.$disconnect();
-  });
+const prisma = createPrismaClient();
+type SubstancesCSV = {
+  id: string;
+  nom_subFR: string;
+  nom_subAR: string;
+  categorie_sub: string;
+  id_redevance: string;
+};
+
+export async function main() {
+  const substancesData: any[] = [];
+  const csvFilePath = path.join('T:', 'cleaned_df', 'df_substances.csv');
+
+  if (!fs.existsSync(csvFilePath)) {
+    console.error(`Fichier non trouvé : ${csvFilePath}`);
+    await prisma.$disconnect();
+    process.exit(1);
+  }
+
+  fs.createReadStream(csvFilePath)
+    .pipe(
+      csv({
+        separator: ';',
+        mapHeaders: ({ header }) => header.trim().replace(/\uFEFF/g, ""),
+      })
+    )
+    .on("data", (row: SubstancesCSV) => {
+      substancesData.push({
+        id_sub: Number(row.id?.trim()),
+        nom_subFR: row.nom_subFR,
+        nom_subAR: row.nom_subAR,
+        categorie_sub: row.categorie_sub,
+          id_redevance: row.id_redevance && row.id_redevance.trim() !== '' 
+                ? Number(row.id_redevance.trim()) 
+                : null,
+      });
+    })
+    .on("end", async () => {
+      console.log("CSV loaded, inserting into database...");
+
+      const failedRows: any[] = [];
+
+      // insertion ligne par ligne pour identifier les erreurs
+      for (const row of substancesData) {
+        try {
+          await prisma.substance.create({
+            data: row,
+          });
+        } catch (error: any) {
+          console.error("Error inserting row:", row);
+          console.error("Error message:", error.message);
+          failedRows.push({ row, error: error.message });
+        }
+      }
+
+      if (failedRows.length > 0) {
+        console.log(`Total rows failed: ${failedRows.length}`);
+        fs.writeFileSync(
+          "substances_failed_rows.json",
+          JSON.stringify(failedRows, null, 2),
+          "utf-8"
+        );
+        console.log("Failed rows saved to substances_failed_rows.json");
+      } else {
+        console.log("All rows inserted successfully!");
+      }
+
+      await prisma.$disconnect();
+    });
+}
+
+main().catch(async (e) => {
+  console.error(e);
+  await prisma.$disconnect();
+  process.exit(1);
+});

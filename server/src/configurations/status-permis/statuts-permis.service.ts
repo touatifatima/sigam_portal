@@ -1,6 +1,13 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateStatutPermisDto, UpdateStatutPermisDto } from './statuts-permis.dto';
+import {
+  CreateStatutPermisDto,
+  UpdateStatutPermisDto,
+} from './statuts-permis.dto';
 
 @Injectable()
 export class StatutPermisService {
@@ -11,7 +18,7 @@ export class StatutPermisService {
       return await this.prisma.statutPermis.create({
         data: {
           lib_statut: createStatutPermisDto.lib_statut,
-          description: createStatutPermisDto.description
+          description: createStatutPermisDto.description,
         },
       });
     } catch (error) {

@@ -7,13 +7,13 @@ export class AntenneService {
   constructor(private prisma: PrismaService) {}
 
   async findAll() {
-    return this.prisma.antennePortail.findMany({
+    return this.prisma.antenne.findMany({
       orderBy: { nom: 'asc' },
     });
   }
 
   async findOne(id: number) {
-    const antenne = await this.prisma.antennePortail.findUnique({
+    const antenne = await this.prisma.antenne.findUnique({
       where: { id_antenne: id },
     });
 

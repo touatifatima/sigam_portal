@@ -37,12 +37,16 @@ export class CreateTypePermisDto {
   @IsNotEmpty()
   delai_renouv: number;
 
-  @ApiProperty({ description: 'Maximum surface area', example: 1000, required: false })
+  @ApiProperty({
+    description: 'Maximum surface area',
+    example: 1000,
+    required: false,
+  })
   @IsNumber()
   @IsOptional()
   superficie_max?: number;
 
-    @IsNumber()
+  @IsNumber()
   @IsNotEmpty()
   id_droit: number;
 
@@ -52,7 +56,11 @@ export class CreateTypePermisDto {
 }
 
 export class UpdateTypePermisDto {
-  @ApiProperty({ description: 'Type label', example: 'Concession minière', required: false })
+  @ApiProperty({
+    description: 'Type label',
+    example: 'Concession minière',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   lib_type?: string;
@@ -67,7 +75,11 @@ export class UpdateTypePermisDto {
   @IsOptional()
   regime?: string;
 
-  @ApiProperty({ description: 'Initial duration in years', example: 5, required: false })
+  @ApiProperty({
+    description: 'Initial duration in years',
+    example: 5,
+    required: false,
+  })
   @IsNumber()
   @IsOptional()
   duree_initiale?: number;
@@ -77,17 +89,29 @@ export class UpdateTypePermisDto {
   @IsOptional()
   nbr_renouv_max?: number;
 
-  @ApiProperty({ description: 'Renewal duration in years', example: 5, required: false })
+  @ApiProperty({
+    description: 'Renewal duration in years',
+    example: 5,
+    required: false,
+  })
   @IsNumber()
   @IsOptional()
   duree_renouv?: number;
 
-  @ApiProperty({ description: 'Renewal delay in days', example: 180, required: false })
+  @ApiProperty({
+    description: 'Renewal delay in days',
+    example: 180,
+    required: false,
+  })
   @IsNumber()
   @IsOptional()
   delai_renouv?: number;
 
-  @ApiProperty({ description: 'Maximum surface area', example: 1000, required: false })
+  @ApiProperty({
+    description: 'Maximum surface area',
+    example: 1000,
+    required: false,
+  })
   @IsNumber()
   @IsOptional()
   superficie_max?: number;
@@ -95,5 +119,4 @@ export class UpdateTypePermisDto {
   @IsNumber()
   @IsNotEmpty()
   id_taxe: number;
-  
 }

@@ -1,0 +1,328 @@
+.page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--muted)) 100%);
+  padding: 2rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.container {
+  max-width: 600px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+/* Animation de succès */
+.successAnimation {
+  margin-bottom: 0.5rem;
+}
+
+.checkCircle {
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(142 76% 46%) 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  animation: scaleIn 0.5s ease, pulse 2s ease-in-out infinite;
+  box-shadow: 0 8px 30px hsl(142 76% 36% / 0.4);
+}
+
+@keyframes scaleIn {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 8px 30px hsl(142 76% 36% / 0.4);
+  }
+  50% {
+    box-shadow: 0 8px 50px hsl(142 76% 36% / 0.6);
+  }
+}
+
+/* Header */
+.header {
+  text-align: center;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.5rem;
+  animation: fadeInUp 0.6s ease 0.2s both;
+}
+
+.subtitle {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.95rem;
+  animation: fadeInUp 0.6s ease 0.3s both;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Carte de confirmation */
+.confirmationCard {
+  width: 100%;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 30px hsl(var(--foreground) / 0.08);
+  animation: fadeInUp 0.6s ease 0.4s both;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.cardIcon {
+  color: hsl(var(--primary));
+}
+
+.cardTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.detailsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+.detailItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.detailIcon {
+  width: 36px;
+  height: 36px;
+  background: hsl(var(--primary) / 0.1);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: hsl(var(--primary));
+  flex-shrink: 0;
+}
+
+.detailContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.detailLabel {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+}
+
+.detailValue {
+  font-size: 0.9rem;
+  color: hsl(var(--foreground));
+  font-weight: 500;
+  word-break: break-all;
+}
+
+/* Section total */
+.totalSection {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 2px dashed hsl(var(--border));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.totalLabel {
+  font-size: 1rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.totalAmount {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: hsl(var(--primary));
+}
+
+/* Boutons d'action */
+.actions {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+  animation: fadeInUp 0.6s ease 0.5s both;
+}
+
+.btnPrimary {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1.5rem;
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.85) 100%);
+  color: hsl(var(--primary-foreground));
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px hsl(var(--primary) / 0.3);
+}
+
+.btnPrimary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px hsl(var(--primary) / 0.4);
+}
+
+.btnSecondary {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1.5rem;
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btnSecondary:hover {
+  background: hsl(var(--muted) / 0.8);
+  border-color: hsl(var(--foreground) / 0.2);
+}
+
+/* Navigation */
+.navigation {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+  animation: fadeInUp 0.6s ease 0.6s both;
+}
+
+.navButton {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  color: hsl(var(--primary));
+  border: 1px solid hsl(var(--primary));
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.navButton:hover {
+  background: hsl(var(--primary) / 0.08);
+}
+
+/* Info box */
+.infoBox {
+  width: 100%;
+  padding: 1rem 1.25rem;
+  background: hsl(var(--primary) / 0.05);
+  border: 1px solid hsl(var(--primary) / 0.15);
+  border-radius: 12px;
+  animation: fadeInUp 0.6s ease 0.7s both;
+}
+
+.infoBox p {
+  font-size: 0.9rem;
+  color: hsl(var(--foreground));
+  line-height: 1.6;
+  text-align: center;
+}
+
+.infoBox strong {
+  color: hsl(var(--primary));
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .page {
+    padding: 1rem 0.5rem;
+    align-items: flex-start;
+    padding-top: 2rem;
+  }
+
+  .title {
+    font-size: 1.35rem;
+  }
+
+  .detailsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .actions,
+  .navigation {
+    flex-direction: column;
+  }
+
+  .totalSection {
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
+  }
+
+  .checkCircle {
+    width: 80px;
+    height: 80px;
+  }
+
+  .checkCircle svg {
+    width: 36px;
+    height: 36px;
+  }
+}

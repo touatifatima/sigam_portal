@@ -48,7 +48,11 @@ export class CdService {
           include: {
             demandes: {
               include: {
-                entreprise: true
+                detenteurdemande: {
+                  include: { detenteur: true },
+                },
+                typeProcedure: true,
+                typePermis: true,
               }
             }
           }
@@ -266,7 +270,7 @@ export class CdService {
       where: { id_seance: seanceId },
       data: {
         procedures: {
-          connect: { id_procedure: procedureId }
+          connect: { id_proc: procedureId }
         }
       },
       include: {
@@ -280,7 +284,7 @@ export class CdService {
       where: { id_seance: seanceId },
       data: {
         procedures: {
-          disconnect: { id_procedure: procedureId }
+          disconnect: { id_proc: procedureId }
         }
       },
       include: {

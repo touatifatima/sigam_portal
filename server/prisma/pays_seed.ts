@@ -1,46 +1,58 @@
-import * as fs from 'fs'
-import * as csv from 'csv-parser'
-import { PrismaClient, Pays } from '@prisma/client'
+// seeds/seed-pays.ts
+import * as fs from 'fs';
+import * as path from 'path';
+import * as csv from 'csv-parser';
+import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient();
+const CSV_PATH = path.join('T:', 'cleaned_df', 'pays_nationalites_codes.csv');
 
-type PaysCSV = {
-  Pays: string
-  Code_pays: string
-}
+async function seedPays() {
+  if (!fs.existsSync(CSV_PATH)) {
+    console.error(`Fichier non trouvé : ${CSV_PATH}`);
+    process.exit(1);
+  }
 
-export async function main() {
-  const paysData: Array<Pick<Pays, 'code_pays' | 'nom_pays'>> = []
-  const csvFilePath = "C:\\Users\\A\\Desktop\\cleaned_df\\pays_nationalites_codes.csv"
+  const paysToInsert: { code_pays: string; nom_pays: string }[] = [];
 
   await new Promise<void>((resolve, reject) => {
-    fs.createReadStream(csvFilePath)
-      .pipe(csv({ separator: ';' }))
-      .on('data', (row: PaysCSV) => {
-        paysData.push({ code_pays: (row as any).Code_pays, nom_pays: (row as any).Pays })
+    fs.createReadStream(CSV_PATH)
+      .pipe(
+        csv({
+          separator: ';',
+          mapHeaders: ({ header }) => header.trim().replace(/\uFEFF/g, ''),
+        })
+      )
+      .on('data', (row) => {
+        const code = (row.Code_pays || row.code_pays || '').toString().trim();
+        const nom = (row.Pays || row.pays || '').toString().trim();
+
+        if (code && nom) {
+          paysToInsert.push({ code_pays: code, nom_pays: nom });
+        }
       })
       .on('end', () => resolve())
-      .on('error', (e) => reject(e))
-  })
+      .on('error', reject);
+  });
 
-  for (const pays of paysData) {
+  console.log(`Chargement de ${paysToInsert.length} pays...`);
+
+  for (const pays of paysToInsert) {
     await prisma.pays.upsert({
       where: { code_pays: pays.code_pays },
       update: {},
       create: pays,
-    })
+    });
   }
+
+  console.log(' Seed pays terminé avec succès !');
 }
 
-if (require.main === module) {
-  main()
-    .catch(async (e) => {
-      console.error(e)
-      await prisma.$disconnect()
-      process.exit(1)
-    })
-    .finally(async () => {
-      await prisma.$disconnect()
-    })
-}
-
+seedPays()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

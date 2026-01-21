@@ -30,7 +30,8 @@ export class ProcedureController {
       throw new NotFoundException('Invalid ID');
     }
 
-const data = await this.procedureService.getFullDemandeSummaryByProc(procedureId);
+    const data =
+      await this.procedureService.getFullDemandeSummaryByProc(procedureId);
     if (!data) {
       throw new NotFoundException('Procédure non trouvée');
     }

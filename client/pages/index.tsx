@@ -1,39 +1,33 @@
-'use client';
-import { useState } from 'react';
+'use client';// page login 
+
+import React, { useState } from 'react';
 import axios from 'axios';
-import { useAuthStore } from '../src/store/useAuthStore';
-import { FiMail, FiLock, FiEye, FiEyeOff, FiAlertCircle } from 'react-icons/fi';
 import Image from 'next/image';
-import styles from './login.module.css';
 import Link from 'next/link';
-import router from 'next/router';
-import { useLoading } from '@/components/globalspinner/LoadingContext';
+import { useRouter } from 'next/router';
+import { useAuthStore } from '../src/store/useAuthStore';
+import styles from './login.module.css';
+
+const logo = '/assets/logo.jpg';
 
 export default function LoginPage() {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const { startLoading, stopLoading, isLoading } = useLoading();
-  const login = useAuthStore((s) => s.login); 
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const auth = useAuthStore.getState().auth;
+  
+  const router = useRouter();
+  const login = useAuthStore((s) => s.login);
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
 
-  const apiClient = axios.create({
-    baseURL: API_URL,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-User-Id': auth?.id, 
-      'X-User-Name': auth?.username || auth?.email 
-    }
-  });
-  const handleLogin = async () => {
-    startLoading();
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
     setError(null);
     
     try {
-      const response = await apiClient.post(
+      const response = await axios.post(
         `${apiURL}/auth/login`, 
         { email, password },
         { 
@@ -44,133 +38,125 @@ export default function LoginPage() {
         }
       );
 
-      useAuthStore.getState().login(response.data);
-      router.push('/permis_dashboard/PermisDashboard');
+      login(response.data);
+      router.push('/investisseur/investorDashboard');
       
-    } catch (err) {
+    } catch (err: any) {
       console.error('Login error:', err);
-      setError('Email ou mot de passe invalide');
+      setError(err?.response?.data?.detail || 'Email ou mot de passe invalide');
     } finally {
-      stopLoading();
+      setIsLoading(false);
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleLogin();
+      handleLogin(e as any);
     }
   };
 
   return (
-    <div className={styles.loginContainer}>
-      {/* GlobalSpinner is handled at App level via LoadingProvider */}
-
-      {/* Left side - Branding/Illustration */}
-      <div className={`${styles.brandSection} ${isLoading ? styles.blurred : ''}`}>
-        <div className={styles.brandLogo}>
-          <Image 
-            src="/logo-white.png" 
-            alt="SIGAM Logo" 
-            width={400} 
-            height={200} 
-          />
+    <div className={styles.container}>
+      {/* SECTION GAUCHE - Identique au sign up */}
+      <div className={styles.leftSection}>
+        <div className={styles.logoContainer}>
+          <Image src={logo} alt="ANAM Logo" className={styles.logo} width={256} height={256} />
         </div>
-        <h1 className={styles.brandTitle}>Bienvenue sur SIGAM</h1>
-        <p className={styles.brandSubtitle}>
-          Système Intégré de Gestion des Autorisations Minières
-        </p>
-        <div className={styles.brandIllustration}>
-          <Image 
-            src="/auth-illustration.png" 
-            alt="Authentication Illustration" 
-            width={500} 
-            height={400} 
-          />
-        </div>
+        <h1 className={styles.title}>
+          AGENCE NATIONALE DES <br />
+          ACTIVITÉS MINIÈRES
+        </h1>
+        <p className={styles.subtitle}>Plateforme de gestion et de suivi des activités minières</p>
       </div>
 
-      {/* Right side - Login Form */}
-      <div className={`${styles.loginFormSection} ${isLoading ? styles.blurred : ''}`}>
-        <div className={styles.loginFormContainer}>
-          <div className={styles.loginHeader}>
-            <h2 className={styles.loginTitle}>Connexion</h2>
-            <p className={styles.loginSubtitle}>Entrez vos identifiants pour accéder à votre compte</p>
+      {/* SECTION DROITE - Formulaire de connexion */}
+      <div className={styles.rightSection}>
+        <div className={styles.formCard}>
+          <div className={styles.formHeader}>
+            <h2>Connexion</h2>
+            <p>Accédez à votre espace personnel</p>
           </div>
 
           {error && (
             <div className={styles.errorMessage}>
-              <FiAlertCircle className={styles.errorIcon} />
-              <div>{error}</div>
+              <svg className={styles.errorIcon} width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <span>{error}</span>
             </div>
           )}
 
-          <div className={styles.formGroup}>
-            <label htmlFor="email" className={styles.formLabel}>
-              Adresse email
-            </label>
-            <div className={styles.inputContainer}>
-              <FiMail className={styles.inputIcon} />
+          <form onSubmit={handleLogin} className={styles.form}>
+            <div className={styles.inputGroup}>
+              <label htmlFor="email">Email *</label>
               <input
                 id="email"
                 type="email"
-                placeholder="votre@email.com"
-                className={styles.formInput}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 onKeyPress={handleKeyPress}
+                placeholder="exemple@email.com"
+                disabled={isLoading}
+                required
               />
             </div>
-          </div>
 
-          <div className={styles.formGroup}>
-            <label htmlFor="password" className={styles.formLabel}>
-              Mot de passe
-            </label>
-            <div className={styles.inputContainer}>
-              <FiLock className={styles.inputIcon} />
-              <input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                className={styles.formInput}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyPress={handleKeyPress}
-              />
-              <button
-                type="button"
-                className={styles.passwordToggle}
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? <FiEyeOff /> : <FiEye />}
-              </button>
+            <div className={styles.inputGroup}>
+              <label htmlFor="password">Mot de passe *</label>
+              <div className={styles.passwordWrapper}>
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Entrez votre mot de passe"
+                  disabled={isLoading}
+                  required
+                />
+                <button
+                  type="button"
+                  className={styles.passwordToggle}
+                  onClick={() => setShowPassword(!showPassword)}
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                  ) : (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
-            <div className={styles.forgotPassword}>
-              <a href="#" className={styles.forgotPasswordLink}>
+
+            <div className={styles.rememberForgot}>
+              <label className={styles.rememberMe}>
+                <input type="checkbox" />
+                <span>Se souvenir de moi</span>
+              </label>
+              <Link href="/forgot-password" className={styles.forgotPassword}>
                 Mot de passe oublié ?
-              </a>
-            </div>
-          </div>
-
-          <button
-            onClick={handleLogin}
-            disabled={isLoading}
-            className={styles.submitButton}
-          >
-            Se connecter
-          </button>
-
-          <div className={styles.loginFooter}>
-            <p>
-              Vous n'avez pas de compte ?{' '}
-              <Link href="/Signup/page" className={styles.footerLink}>
-               Sign Up
               </Link>
+            </div>
+
+            <button 
+              type="submit" 
+              className={styles.submitBtn} 
+              disabled={isLoading}
+            >
+              {isLoading ? 'Connexion...' : 'Se connecter'}
+            </button>
+
+            <p className={styles.signupLink}>
+              Vous n'avez pas de compte ? <Link href="/Signup/page">Créer un compte</Link>
             </p>
-            <a href="/admin_panel/page" className={styles.footerLink}>
-              Admin Page
-            </a>
-          </div>
+          </form>
         </div>
       </div>
     </div>

@@ -8,33 +8,42 @@ import {
   Delete,
 } from '@nestjs/common';
 import { StatutsJuridiquesService } from './statuts-juridiques.service';
-import { CreateStatutJuridiqueDto, UpdateStatutJuridiqueDto } from './statuts-juridiques.dto';
+import {
+  CreateStatutJuridiqueDto,
+  UpdateStatutJuridiqueDto,
+} from './statuts-juridiques.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @ApiTags('statuts-juridiques')
 @Controller('statuts-juridiques')
 export class StatutsJuridiquesController {
-  constructor(private readonly statutsJuridiquesService: StatutsJuridiquesService ,private prisma: PrismaService) {}
+  constructor(
+    private readonly statutsJuridiquesService: StatutsJuridiquesService,
+    private prisma: PrismaService,
+  ) {}
 
   // In your backend controller
-@Get('pays')
-async getPays() {
-  return this.prisma.pays.findMany({
-    orderBy: { nom_pays: 'asc' }
-  });
-}
+  @Get('pays')
+  async getPays() {
+    return this.prisma.pays.findMany({
+      orderBy: { nom_pays: 'asc' },
+    });
+  }
 
-@Get('nationalites')
-async getNationalites() {
-  return this.prisma.nationalite.findMany({
-    orderBy: { libelle: 'asc' }
-  })
-}
+  @Get('nationalites')
+  async getNationalites() {
+    return this.prisma.nationalite.findMany({
+      orderBy: { libelle: 'asc' },
+    });
+  }
 
   @Post()
   @ApiOperation({ summary: 'Create a new legal status' })
-  @ApiResponse({ status: 201, description: 'Legal status created successfully' })
+  @ApiResponse({
+    status: 201,
+    description: 'Legal status created successfully',
+  })
   @ApiResponse({ status: 400, description: 'Bad request' })
   create(@Body() createStatutJuridiqueDto: CreateStatutJuridiqueDto) {
     return this.statutsJuridiquesService.create(createStatutJuridiqueDto);
@@ -57,7 +66,10 @@ async getNationalites() {
 
   @Put(':id')
   @ApiOperation({ summary: 'Update a legal status' })
-  @ApiResponse({ status: 200, description: 'Legal status updated successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Legal status updated successfully',
+  })
   @ApiResponse({ status: 404, description: 'Legal status not found' })
   update(
     @Param('id') id: string,
@@ -68,7 +80,10 @@ async getNationalites() {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a legal status' })
-  @ApiResponse({ status: 200, description: 'Legal status deleted successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Legal status deleted successfully',
+  })
   @ApiResponse({ status: 404, description: 'Legal status not found' })
   remove(@Param('id') id: string) {
     return this.statutsJuridiquesService.remove(+id);

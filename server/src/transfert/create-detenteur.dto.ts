@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsNumber, IsArray, ValidateNested } from 'class-validator';
+/**import { IsOptional, IsString, IsNumber, IsArray, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateRegistreCommerceDto {
@@ -50,4 +50,4 @@ export class CreateDetenteurDto {
   @IsOptional() @ValidateNested() @Type(() => CreateRegistreCommerceDto) registreCommerce?: CreateRegistreCommerceDto;
   @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => CreatePersonnePhysiqueDto) personnes?: CreatePersonnePhysiqueDto[];
   @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => CreateFonctionDto) fonctions?: CreateFonctionDto[];
-}
+}**/

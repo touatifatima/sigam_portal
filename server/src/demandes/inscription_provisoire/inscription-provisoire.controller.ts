@@ -1,4 +1,11 @@
-import { Body, Controller, Get, NotFoundException, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  Post,
+} from '@nestjs/common';
 import { InscriptionProvisoireService } from './inscription-provisoire.service';
 
 @Controller('inscription-provisoire')
@@ -6,15 +13,25 @@ export class InscriptionProvisoireController {
   constructor(private readonly service: InscriptionProvisoireService) {}
 
   @Post()
-  async upsert(@Body() body: {
-    id_proc: number;
-    id_demande?: number;
-    points: { x: number; y: number; z?: number; system?: string; zone?: number; hemisphere?: string }[];
-    system?: string;
-    zone?: number;
-    hemisphere?: string;
-    superficie_declaree?: number;
-  }) {
+  async upsert(
+    @Body()
+    body: {
+      id_proc: number;
+      id_demande?: number;
+      points: {
+        x: number;
+        y: number;
+        z?: number;
+        system?: string;
+        zone?: number;
+        hemisphere?: string;
+      }[];
+      system?: string;
+      zone?: number;
+      hemisphere?: string;
+      superficie_declaree?: number;
+    },
+  ) {
     return this.service.upsertByProcedure(body);
   }
 

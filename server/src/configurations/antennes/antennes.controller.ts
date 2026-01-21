@@ -44,10 +44,7 @@ export class AntennesController {
   @ApiOperation({ summary: 'Update an antenne' })
   @ApiResponse({ status: 200, description: 'Antenne updated successfully' })
   @ApiResponse({ status: 404, description: 'Antenne not found' })
-  update(
-    @Param('id') id: string,
-    @Body() updateAntenneDto: UpdateAntenneDto,
-  ) {
+  update(@Param('id') id: string, @Body() updateAntenneDto: UpdateAntenneDto) {
     return this.antennesService.update(+id, updateAntenneDto);
   }
 

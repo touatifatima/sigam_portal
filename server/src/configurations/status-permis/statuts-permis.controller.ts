@@ -8,7 +8,10 @@ import {
   Delete,
 } from '@nestjs/common';
 import { StatutPermisService } from './statuts-permis.service';
-import { CreateStatutPermisDto, UpdateStatutPermisDto } from './statuts-permis.dto';
+import {
+  CreateStatutPermisDto,
+  UpdateStatutPermisDto,
+} from './statuts-permis.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('conf/statuts-permis')

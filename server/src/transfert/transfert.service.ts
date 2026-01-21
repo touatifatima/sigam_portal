@@ -1,10 +1,20 @@
-﻿import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+
+/** 
+
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { Prisma, StatutProcedure } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { ProcedureEtapeService } from '../procedure_etape/procedure-etape.service';
 import { StartTransfertDto } from './start-transfert.dto';
 import { CreateDetenteurDto } from './create-detenteur.dto';
+import { Req, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+
 
 @Injectable()
 export class TransfertService {
@@ -15,9 +25,9 @@ export class TransfertService {
 
   /**
    * Recupere les informations du permis, du detenteur actuel et de la derniere demande liee.
-   */
+   
   async getPermisDetails(permisId: number) {
-    const permis = await this.prisma.permis.findUnique({
+    const permis = await this.prisma.permisPortail.findUnique({
       where: { id: permisId },
       include: {
         detenteur: {
@@ -28,13 +38,16 @@ export class TransfertService {
         },
         typePermis: true,
         statut: true,
-        procedures: {
-          orderBy: { date_debut_proc: 'desc' },
+        permisProcedure: {
           include: {
-            demandes: {
-              orderBy: { date_demande: 'desc' },
+            procedure: {
               include: {
-                typeProcedure: true,
+                demandes: {
+                  orderBy: { date_demande: 'desc' },
+                  include: {
+                    typeProcedure: true,
+                  },
+                },
               },
             },
           },
@@ -46,19 +59,25 @@ export class TransfertService {
       throw new NotFoundException('Permis not found');
     }
 
-    const latestDemande = permis.procedures
-      ?.flatMap((procedure) => procedure.demandes ?? [])
-      ?.sort((a, b) => {
-        const dateA = a.date_demande ? new Date(a.date_demande).getTime() : 0;
-        const dateB = b.date_demande ? new Date(b.date_demande).getTime() : 0;
-        return dateB - dateA;
-      })[0] ?? null;
+    const procedures =
+      permis.permisProcedure
+        ?.map((relation) => relation.procedure)
+        .filter((proc): proc is NonNullable<typeof proc> => !!proc) ?? [];
 
-    return { permis, latestDemande };
+    const latestDemande =
+      procedures
+        .flatMap((procedure) => procedure.demandes ?? [])
+        ?.sort((a, b) => {
+          const dateA = a.date_demande ? new Date(a.date_demande).getTime() : 0;
+          const dateB = b.date_demande ? new Date(b.date_demande).getTime() : 0;
+          return dateB - dateA;
+        })[0] ?? null;
+
+    return { permis: { ...permis, procedures }, latestDemande };
   }
 
   async searchDetenteurs(q?: string, take = 20, skip = 0) {
-    const where: Prisma.DetenteurMoraleWhereInput = q
+    const where: Prisma.DetenteurMoralePortailWhereInput = q
       ? {
           OR: [
             { nom_societeFR: { contains: q, mode: 'insensitive' } },
@@ -69,7 +88,7 @@ export class TransfertService {
         }
       : {};
 
-    return this.prisma.detenteurMorale.findMany({
+    return this.prisma.detenteurMoralePortail.findMany({
       where,
       take,
       skip,
@@ -82,7 +101,7 @@ export class TransfertService {
   }
 
   async getDetenteurFull(id_detenteur: number) {
-    const detenteur = await this.prisma.detenteurMorale.findUnique({
+    const detenteur = await this.prisma.detenteurMoralePortail.findUnique({
       where: { id_detenteur },
       include: {
         registreCommerce: true,
@@ -107,24 +126,35 @@ export class TransfertService {
   }
   /**
    * Cree un detenteur moral complet (registre, personnes, fonctions) a l'interieur d'une transaction.
-   */
-  private async createDetenteur(payload: any, tx: Prisma.TransactionClient = this.prisma) {
-    const detenteur = await tx.detenteurMorale.create({
+ 
+  private async createDetenteur(
+    payload: any,
+    tx: Prisma.TransactionClient = this.prisma,
+  ) {
+    const detenteur = await tx.detenteurMoralePortail.create({
       data: {
         nom_societeFR: payload.nom_societeFR,
         nom_societeAR: payload.nom_societeAR,
-        id_statutJuridique: payload.id_statutJuridique ? Number(payload.id_statutJuridique) : null,
         id_pays: payload.id_pays ?? null,
         adresse_siege: payload.adresse_siege ?? null,
         telephone: payload.telephone ?? null,
         fax: payload.fax ?? null,
         email: payload.email ?? null,
         site_web: payload.site_web ?? null,
+        // Link statut juridique via join table when provided
+        ...(payload.id_statutJuridique && {
+          FormeJuridiqueDetenteur: {
+            create: {
+              id_statut: Number(payload.id_statutJuridique),
+              date: new Date(),
+            },
+          },
+        }),
       },
     });
 
     if (payload.registreCommerce) {
-      await tx.registreCommerce.create({
+      await tx.registreCommercePortail.create({
         data: {
           id_detenteur: detenteur.id_detenteur,
           numero_rc: payload.registreCommerce.numero_rc ?? null,
@@ -145,16 +175,17 @@ export class TransfertService {
 
     if (Array.isArray(payload.personnes)) {
       for (const person of payload.personnes) {
-        const created = await tx.personnePhysique.create({
+        const created = await tx.personnePhysiquePortail.create({
           data: {
             id_pays: person.id_pays ? Number(person.id_pays) : 1,
             nomFR: person.nomFR,
             nomAR: person.nomAR ?? '',
             prenomFR: person.prenomFR,
             prenomAR: person.prenomAR ?? '',
-            date_naissance: person.date_naissance ? new Date(person.date_naissance) : null,
+            date_naissance: person.date_naissance
+              ? new Date(person.date_naissance)
+              : null,
             lieu_naissance: person.lieu_naissance ?? '',
-            nationalite: person.nationalite ?? '',
             adresse_domicile: person.adresse_domicile ?? '',
             telephone: person.telephone ?? '',
             fax: person.fax ?? '',
@@ -174,7 +205,9 @@ export class TransfertService {
 
     if (Array.isArray(payload.fonctions)) {
       for (const fonction of payload.fonctions) {
-        let id_personne = fonction.id_personne ? Number(fonction.id_personne) : undefined;
+        let id_personne = fonction.id_personne
+          ? Number(fonction.id_personne)
+          : undefined;
 
         if (!id_personne && typeof fonction.id_personne_temp === 'number') {
           id_personne = personneIdByTemp.get(fonction.id_personne_temp);
@@ -184,13 +217,21 @@ export class TransfertService {
           continue;
         }
 
+        const maxId = await tx.fonctionPersonneMoral.aggregate({
+          _max: { id_fonctionDetent: true },
+        });
+        const nextId = (maxId._max.id_fonctionDetent || 0) + 1;
+
         await tx.fonctionPersonneMoral.create({
           data: {
+            id_fonctionDetent: nextId,
             id_detenteur: detenteur.id_detenteur,
             id_personne,
-            type_fonction: fonction.type_fonction,
+            type_fonction: fonction.type_fonction ?? '',
             statut_personne: fonction.statut_personne ?? '',
-            taux_participation: fonction.taux_participation ? Number(fonction.taux_participation) : 0,
+            taux_participation: fonction.taux_participation
+              ? Number(fonction.taux_participation)
+              : 0,
           },
         });
       }
@@ -201,10 +242,10 @@ export class TransfertService {
 
   /**
    * Lance une procedure de transfert : cree la demande, la procedure et enregistre les deux detenteurs.
-   */
+   
   async startTransfert(dto: StartTransfertDto) {
     const result = await this.prisma.$transaction(async (tx) => {
-      const permis = await tx.permis.findUnique({
+      const permis = await tx.permisPortail.findUnique({
         where: { id: dto.permisId },
         include: { typePermis: true },
       });
@@ -213,7 +254,9 @@ export class TransfertService {
         throw new NotFoundException('Permis not found');
       }
 
-      let newDetenteurId = dto.existingDetenteurId ? Number(dto.existingDetenteurId) : undefined;
+      let newDetenteurId = dto.existingDetenteurId
+        ? Number(dto.existingDetenteurId)
+        : undefined;
 
       if (!newDetenteurId && dto.newDetenteur) {
         const created = await this.createDetenteur(dto.newDetenteur, tx);
@@ -225,7 +268,9 @@ export class TransfertService {
       }
 
       if (newDetenteurId === permis.id_detenteur) {
-        throw new BadRequestException('Le nouveau detenteur doit etre different du detenteur actuel');
+        throw new BadRequestException(
+          'Le nouveau detenteur doit etre different du detenteur actuel',
+        );
       }
 
       let typeProc = await tx.typeProcedure.findFirst({
@@ -249,42 +294,88 @@ export class TransfertService {
       }
 
       if (!typeProc) {
-        throw new BadRequestException('Le type de procedure TRANSFERT est introuvable');
+        throw new BadRequestException(
+          'Le type de procedure TRANSFERT est introuvable',
+        );
       }
 
-      const activeProcedure = await tx.procedure.findFirst({
+      const activeProcedure = await tx.procedurePortail.findFirst({
         where: {
           typeProcedureId: typeProc.id,
-          statut_proc: { in: [StatutProcedure.EN_COURS, StatutProcedure.EN_ATTENTE] },
-          permis: { some: { id: dto.permisId } },
+          statut_proc: {
+            in: [StatutProcedure.EN_COURS, StatutProcedure.EN_ATTENTE],
+          },
+          permisProcedure: { some: { id_permis: dto.permisId } },
         },
       });
 
       if (activeProcedure) {
-        throw new BadRequestException('Un transfert est deja en cours pour ce permis');
+        throw new BadRequestException(
+          'Un transfert est deja en cours pour ce permis',
+        );
       }
 
-      const newProcedure = await tx.procedure.create({
-        data: {
-          num_proc: `TRF-${Date.now()}`,
-          date_debut_proc: new Date(),
-          statut_proc: StatutProcedure.EN_COURS,
-          typeProcedureId: typeProc.id,
-          permis: { connect: { id: dto.permisId } },
+      // Generate codes based on permit type
+      const codeType = permis.typePermis?.code_type ?? 'UNK';
+
+      const procCount = await tx.procedurePortail.count({
+        where: {
+          demandes: {
+            some: {
+              id_typePermis: permis.id_typePermis,
+            },
+          },
         },
       });
 
-      const newDemande = await tx.demande.create({
+      const demCount = await tx.demandePortail.count({
+        where: {
+          id_typePermis: permis.id_typePermis,
+        },
+      });
+
+      const numProc = `PROC-${codeType}-${procCount + 1}`;
+      const codeDemande = `DEM-${codeType}-${demCount + 1}`;
+
+      const newProcedure = await tx.procedurePortail.create({
         data: {
+          num_proc: numProc,
+          date_debut_proc: new Date(),
+          statut_proc: StatutProcedure.EN_COURS,
+          typeProcedureId: typeProc.id,
+        },
+      });
+
+      await tx.permisProcedure.create({
+        data: {
+          id_permis: dto.permisId,
           id_proc: newProcedure.id_proc,
-          id_detenteur: permis.id_detenteur,
+        },
+      });
+
+      const newDemande = await tx.demandePortail.create({
+        data: {
+          
+          id_proc: newProcedure.id_proc,
           id_typeProc: typeProc.id,
           id_typePermis: permis.id_typePermis,
-          code_demande: `TRF-DEMANDE-${Date.now()}`,
-          date_demande: dto.date_demande ? new Date(dto.date_demande) : new Date(),
+          code_demande: codeDemande,
+          date_demande: dto.date_demande
+            ? new Date(dto.date_demande)
+            : new Date(),
           statut_demande: StatutProcedure.EN_COURS,
-          intitule_projet: dto.motif_transfert || 'Transfert de detention',
-          description_travaux: dto.observations || '',
+           // ✅ هذا هو الحل
+          utilisateurId: lastDemande.utilisateurId,
+          ...(permis.id_detenteur
+            ? {
+                detenteurdemande: {
+                  create: {
+                    id_detenteur: permis.id_detenteur,
+                    role_detenteur: 'ANCIEN',
+                  },
+                },
+              }
+            : {}),
         },
       });
 
@@ -317,7 +408,7 @@ export class TransfertService {
       });
 
       if (dto.applyTransferToPermis) {
-        await tx.permis.update({
+        await tx.permisPortail.update({
           where: { id: dto.permisId },
           data: { id_detenteur: newDetenteurId },
         });
@@ -339,13 +430,16 @@ export class TransfertService {
       include: {
         phase: {
           include: {
-            etapes: { orderBy: { ordre_etape: 'asc' } },
+            ManyEtapes: {
+              include: { etape: true },
+              orderBy: { ordre_etape: 'asc' },
+            },
           },
         },
       },
     });
 
-    const firstEtape = firstPhase?.phase?.etapes?.[0];
+    const firstEtape = firstPhase?.phase?.ManyEtapes?.[0]?.etape;
 
     if (firstEtape) {
       await this.procedureEtapeService.setStepStatus(
@@ -360,14 +454,22 @@ export class TransfertService {
 
   /**
    * Retourne lhistorique des transferts associes a un permis donne.
-   */
+   
   async getHistoryByPermis(permisId: number) {
-    const procedures = await this.prisma.procedure.findMany({
-      where: { permis: { some: { id: permisId } } },
-      include: { demandes: true },
+    const relations = await this.prisma.permisProcedure.findMany({
+      where: { id_permis: permisId },
+      include: { procedure: { include: { demandes: true } } },
     });
 
-    const demandeIds = procedures.flatMap((procedure) => procedure.demandes.map((demande) => demande.id_demande));
+    const procedures = relations
+      .map((relation) => relation.procedure)
+      .filter(
+        (procedure): procedure is NonNullable<typeof procedure> => !!procedure,
+      );
+
+    const demandeIds = procedures.flatMap((procedure) =>
+      procedure.demandes.map((demande) => demande.id_demande),
+    );
 
     if (demandeIds.length === 0) {
       return [];
@@ -389,12 +491,4 @@ export class TransfertService {
       },
     });
   }
-}
-
-
-
-
-
-
-
-
+}*/

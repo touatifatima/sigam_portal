@@ -10,4 +10,3 @@ export class CapacitesController {
     return this.service.saveCapacites(data); // ✅ Fixed this line
   }
 }
-

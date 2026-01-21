@@ -19,7 +19,7 @@ import { Phase, Procedure, ProcedureEtape, ProcedurePhase, StatutProcedure } fro
 
 type InteractionWali = {
   id_interaction: number;
-  id_procedure: number;
+  id_proc: number;
   type_interaction: "envoi" | "reponse";
   date_interaction: string;
   date_reponse?: string;
@@ -475,7 +475,7 @@ projectFields.forEach(({ label, value }) => {
     setError(null);
     try {
       await axios.post(`${apiURL}/interactions-wali`, {
-        id_procedure: idProcedure,
+        id_proc: idProcedure,
         type_interaction: "envoi",
         date_interaction: envoiForm.date_envoi,
         remarques: envoiForm.remarques,
@@ -515,7 +515,7 @@ projectFields.forEach(({ label, value }) => {
     try {
       await axios.post(`${apiURL}/interactions-wali`, {
         ...form,
-        id_procedure: idProcedure,
+        id_proc: idProcedure,
         id_wilaya: id_wilaya,
         date_interaction: form.date_reponse,
         type_interaction: "reponse"

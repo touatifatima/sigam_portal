@@ -176,8 +176,8 @@ function createAuthStore(): BoundStore {
         set({
           auth: { ...emptyAuthState },
           isLoaded: true,
-});
-}
+        });
+      }
 
       set({ isLoaded: true });
     },

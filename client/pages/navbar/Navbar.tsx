@@ -21,39 +21,74 @@ interface Notification {
   };
 }
 
+const NOTIFICATIONS_FLAG =
+  (process.env.NEXT_PUBLIC_ENABLE_NOTIFICATIONS ??
+    (import.meta as any)?.env?.VITE_ENABLE_NOTIFICATIONS ??
+    'true')
+    .toString()
+    .toLowerCase();
+const NOTIFICATIONS_ENABLED =
+  NOTIFICATIONS_FLAG !== 'false' && NOTIFICATIONS_FLAG !== '0' && NOTIFICATIONS_FLAG !== 'off';
+
 export default function Navbar() {
   const { auth, logout } = useAuthStore();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationsSuppressed, setNotificationsSuppressed] = useState(!NOTIFICATIONS_ENABLED);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
-  const apiURL = process.env.NEXT_PUBLIC_API_URL;
+  const apiURL = process.env.NEXT_PUBLIC_API_URL || (import.meta as any)?.env?.VITE_API_URL || '';
 
   useEffect(() => {
+    if (notificationsSuppressed) return;
     fetchNotifications();
     const cleanup = setupSSE();
     return cleanup;
-  }, []);
+  }, [notificationsSuppressed]);
 
   const fetchNotifications = async () => {
-  try {
-    const response = await fetch(`${apiURL}/notifications?unreadOnly=true`);
-    const data = await response.json();
+    if (notificationsSuppressed) return;
+    if (!apiURL) {
+      console.warn('Notifications API URL manquante, la recuperation est ignoree.');
+      setNotificationsSuppressed(true);
+      return;
+    }
 
-    // If backend wraps notifications in an object
-    const notificationsArray = Array.isArray(data) ? data : data.notifications;
+    try {
+      const response = await fetch(`${apiURL}/notifications?unreadOnly=true`, {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        console.warn(`Notifications API a renvoye ${response.status}, notifications desactivees.`);
+        setNotificationsSuppressed(true);
+        return;
+      }
 
-    setNotifications(notificationsArray);
-    setUnreadCount(notificationsArray?.filter((n: Notification) => !n.isRead).length);
-  } catch (error) {
-    console.error('Error fetching notifications:', error);
-  }
-};
+      const data = await response.json();
+      const notificationsArray = Array.isArray(data) ? data : data.notifications;
+
+      setNotifications(notificationsArray);
+      setUnreadCount(notificationsArray?.filter((n: Notification) => !n.isRead).length);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      setNotificationsSuppressed(true);
+      setNotifications([]);
+      setUnreadCount(0);
+    }
+  };
 
 
   const setupSSE = () => {
+    if (notificationsSuppressed) {
+      return () => {};
+    }
+
+    if (!apiURL) {
+      return () => {};
+    }
+
     let reconnectTimer: number | undefined;
     const es = new EventSource(`${apiURL}/notifications/sse`);
 
@@ -72,8 +107,19 @@ export default function Navbar() {
 
     es.onerror = (error) => {
       console.error('SSE connection error:', error);
+      const message = (error as MessageEvent)?.data;
+      const schemaMissing =
+        typeof message === 'string' &&
+        message.toLowerCase().includes('relation') &&
+        message.toLowerCase().includes('notifications');
+
       try { es.close(); } catch {}
-      // Lazy reconnect
+
+      if (schemaMissing) {
+        setNotificationsSuppressed(true);
+        return;
+      }
+
       reconnectTimer = window.setTimeout(() => {
         setupSSE();
       }, 5000);
@@ -87,7 +133,7 @@ export default function Navbar() {
 
   const markAsRead = async (notificationId: number) => {
     try {
-      await fetch(`${apiURL}/notifications/${notificationId}/read`, { method: 'POST' });
+      await fetch(`${apiURL}/notifications/${notificationId}/read`, { method: 'POST', credentials: 'include' });
       setNotifications(prev => prev.map(n =>
         n.id === notificationId ? { ...n, isRead: true } : n
       ));
@@ -99,7 +145,7 @@ export default function Navbar() {
 
   const markAllAsRead = async () => {
     try {
-      await fetch(`${apiURL}/notifications/read-all`, { method: 'POST' });
+      await fetch(`${apiURL}/notifications/read-all`, { method: 'POST', credentials: 'include' });
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);
     } catch (error) {
@@ -151,8 +197,8 @@ export default function Navbar() {
     <nav className={styles['navbar']}>
       <div className={styles['navbar-header']}>
         <div className={styles['app-logo']}>
-          <span>SIGAM</span>
-          <span className={styles['app-version']}>v2.0</span>
+          <span>GUNAM</span>
+          <span className={styles['app-version']}>v1.0</span>
         </div>
       </div>
 

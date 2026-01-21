@@ -59,7 +59,7 @@ async createInitialDemandeObligations(
       // We can identify initial obligations by their earlier years or specific pattern
       annee_fiscale: {
         gte: dateAttribution.getFullYear(),
-        lte: dateAttribution.getFullYear() + permis.typePermis.duree_initiale - 1
+        lte: dateAttribution.getFullYear() + ((permis.typePermis.duree_initiale ?? 0) - 1)
       }
     },
     include: { typePaiement: true },
@@ -115,7 +115,7 @@ async createInitialDemandeObligations(
     permisId, 
     dateAttribution,
     false, // isRenewal = false
-    permis.typePermis.duree_initiale // Use initial duration
+    (permis.typePermis.duree_initiale ?? 0) // Use initial duration
   );
 
   // Combine all obligations
@@ -154,7 +154,7 @@ async createInitialDemandeObligations(
         dateAttribution, 
         tx,
         false, // isRenewal = false
-        permis.typePermis.duree_initiale
+        (permis.typePermis.duree_initiale ?? 0)
       );
     }
 
@@ -364,7 +364,7 @@ async createRenewalObligations(
     // For renewals, use the renewal duration, otherwise use initial duration
     const permitDuration = isRenewal && renewalDuration 
       ? renewalDuration 
-      : obligation.permis.typePermis.duree_initiale;
+      : (obligation.permis.typePermis.duree_initiale ?? 0);
 
     console.log('Parameters:', { obligationYear, attributionYear, permitDuration, isRenewal });
 
@@ -406,10 +406,12 @@ async createRenewalObligations(
     let superficie = 0;
     try {
       const calculationDetails = JSON.parse(obligation.details_calcul || '{}');
-      superficie = calculationDetails.superficie || obligation.permis.superficie || 0;
+      const permisSuperficie = (obligation.permis as any)?.superficie ?? 0;
+      superficie = calculationDetails.superficie || permisSuperficie || 0;
     } catch (error) {
       console.warn('Failed to parse details_calcul, using permis superficie:', error);
-      superficie = obligation.permis.superficie || 0;
+      const permisSuperficie = (obligation.permis as any)?.superficie ?? 0;
+      superficie = permisSuperficie;
     }
 
     console.log('TsPaiement data:', {
@@ -466,7 +468,7 @@ async createRenewalObligations(
   const attributionMonth = dateAttribution.getMonth() + 1;
   const obligationYear = obligation.annee_fiscale;
   
-  let periodeType = this.getPeriodeType(obligation.permis.nombre_renouvellements);
+  let periodeType = this.getPeriodeType(obligation.permis.nombre_renouvellements ?? 0);
   let numberOfMonths = 12;
 
   if (isRenewal) {
@@ -496,7 +498,7 @@ async createRenewalObligations(
 
   const taxCalculation = this.calculateSurfaceTaxForPeriod(
     obligation.permis.typePermis.taxe,
-    obligation.permis.superficie || 0,
+    ((obligation.permis as any)?.superficie ?? 0),
     periodeType,
     numberOfMonths
   );
@@ -538,7 +540,7 @@ async createRenewalObligations(
     throw new HttpException('Permis not found', HttpStatus.NOT_FOUND);
   }
 
-  const requiresSurfaceTax = ['PEM', 'PXM', 'PEC', 'PXC'].includes(permis.typePermis.code_type);
+    const requiresSurfaceTax = ['PEM', 'PXM', 'PEC', 'PXC'].includes(permis.typePermis.code_type ?? '');
   if (!requiresSurfaceTax) {
     console.log('No surface tax required for permit type:', permis.typePermis.code_type);
     return [];
@@ -548,14 +550,14 @@ async createRenewalObligations(
   const attributionMonth = dateAttribution.getMonth() + 1; // JavaScript months are 0-indexed
   
   // For renewals, use the provided renewal duration instead of initial duration
-  const dureeTotale = isRenewal && renewalDuration 
+  const dureeTotale = (isRenewal && renewalDuration 
     ? renewalDuration 
-    : permis.typePermis.duree_initiale;
+    : permis.typePermis.duree_initiale) ?? 0;
   
   // For renewals, use the appropriate period type based on nombre_renouvellements
   const periodeType = isRenewal 
     ? permis.nombre_renouvellements === 0 ? 'premier_renouvellement' : 'autre_renouvellement'
-    : this.getPeriodeType(permis.nombre_renouvellements);
+    : this.getPeriodeType(permis.nombre_renouvellements ?? 0);
 
   const obligations: any[] = [];
 
@@ -606,7 +608,7 @@ async createRenewalObligations(
 
     const taxCalculation = this.calculateSurfaceTaxForPeriod(
       permis.typePermis.taxe,
-      permis.superficie || 0,
+      ((permis as any)?.superficie ?? 0),
       periodeType,
       numberOfMonths
     );
@@ -638,10 +640,11 @@ async createRenewalObligations(
   return obligations;
 }
 
-  private getPeriodeType(nombreRenouvellements: number): 'initial' | 'premier_renouvellement' | 'autre_renouvellement' {
-    if (nombreRenouvellements === 0) {
+  private getPeriodeType(nombreRenouvellements: number | null): 'initial' | 'premier_renouvellement' | 'autre_renouvellement' {
+    const count = nombreRenouvellements ?? 0;
+    if (count === 0) {
       return 'initial';
-    } else if (nombreRenouvellements === 1) {
+    } else if (count === 1) {
       return 'premier_renouvellement';
     } else {
       return 'autre_renouvellement';
@@ -749,11 +752,13 @@ async createRenewalObligations(
 
   async getProcedureWithPermis(procedureId: number) {
     return this.prisma.procedurePortail.findUnique({
-      where: { id_procedure: procedureId },
+      where: { id_proc: procedureId },
       include: {
-        permis: {
+        permisProcedure: {
           include: {
-            typePermis: true,
+            permis: {
+              include: { typePermis: true },
+            },
           },
         },
       },
@@ -909,24 +914,6 @@ async createRenewalObligations(
       include: {
         typePermis: { include: { taxe: true } },
         detenteur: true,
-        commune: true,
-        statut: true,
-        procedures: {
-          include: {
-            demandes: {
-              include: {
-                typeProcedure: true,
-                typePermis: true,
-                expertMinier: true,
-                wilaya: true,
-                daira: true,
-                commune: true,
-              },
-            },
-            ProcedureEtape: true,
-            ProcedurePhase: true,
-          },
-        },
         ObligationFiscale: {
           include: {
             typePaiement: true,

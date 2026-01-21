@@ -9,6 +9,8 @@ export type ViewType =
   | 'gestion-permis'
   | 'procedures'
   | 'instruction-cadastrale'
+  | 'carte-sig'
+  | 'demande-interactive'
   | 'generateur-permis'
   | 'parametres'
   | 'gestion-utilisateurs'
@@ -20,4 +22,12 @@ export type ViewType =
   | 'Audit_Logs'
   | 'gestion_experts'
   | 'Gestion_seances'
-  | 'Configurations';
+  | 'Configurations' 
+  | 'promotion'
+  | 'convertisseur'
+  | 'mes-demandes'
+  | 'operateur_mes_demandes'
+  | 'operateur_mes_procedures'
+  | 'operateur_nvl_demande'
+  | 'outils';
+

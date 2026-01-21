@@ -11,6 +11,22 @@ body {
   line-height: 1.2;
 }
 
+/* Force light form fields even under OS/browser dark mode */
+input,
+textarea,
+select,
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: #ffffff !important;
+  color: #2d1b27 !important;
+  border: 2px solid #e5d5dd !important;
+}
+input::placeholder,
+textarea::placeholder {
+  color: #b5a0ab !important;
+}
+
 /* Global icon sizing for interactive elements
    Many react-icons default to 1em. If parent font-size is compact,
    icons become unreadably small. Normalize common interactive icons

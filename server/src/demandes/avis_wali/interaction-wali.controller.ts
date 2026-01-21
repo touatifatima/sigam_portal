@@ -12,8 +12,8 @@ export class InteractionWaliController {
     return this.service.create(dto);
   }
 
-  @Get(':id_procedure')
-  getByProcedure(@Param('id_procedure') id: string) {
+  @Get(':id_proc')
+  getByProcedure(@Param('id_proc') id: string) {
     return this.service.findByProcedure(Number(id));
   }
 }

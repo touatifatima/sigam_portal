@@ -8,7 +8,7 @@ export class CommuneService {
   constructor(private prisma: PrismaService) {}
 
   async findAll() {
-    return this.prisma.communePortail.findMany({
+    return this.prisma.commune.findMany({
       include: {
         daira: {
           include: {
@@ -23,7 +23,7 @@ export class CommuneService {
   }
 
   async findOne(id: number) {
-    return this.prisma.communePortail.findUnique({
+    return this.prisma.commune.findUnique({
       where: { id_commune: id },
       include: {
         daira: {
@@ -42,7 +42,7 @@ export class CommuneService {
   }*/
 
   async findByDaira(idDaira: number) {
-    return this.prisma.communePortail.findMany({
+    return this.prisma.commune.findMany({
       where: { id_daira: idDaira },
       orderBy: {
         nom_communeFR: 'asc',
@@ -51,7 +51,7 @@ export class CommuneService {
   }
 
   async create(createCommuneDto: CreateCommuneDto) {
-    return this.prisma.communePortail.create({
+    return this.prisma.commune.create({
       data: {
         ...createCommuneDto,
       },
@@ -59,14 +59,14 @@ export class CommuneService {
   }
 
   async update(id: number, updateCommuneDto: UpdateCommuneDto) {
-    return this.prisma.communePortail.update({
+    return this.prisma.commune.update({
       where: { id_commune: id },
       data: updateCommuneDto,
     });
   }
 
   async remove(id: number) {
-    return this.prisma.communePortail.delete({
+    return this.prisma.commune.delete({
       where: { id_commune: id },
     });
   }

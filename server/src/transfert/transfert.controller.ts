@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, Post, Body } from '@nestjs/common';
+/**import { Controller, Get, Param, Query, Post, Body } from '@nestjs/common';
 import { TransfertService } from './transfert.service';
 import { StartTransfertDto } from './start-transfert.dto';
 import { CreateDetenteurDto } from './create-detenteur.dto';
@@ -36,4 +36,4 @@ export class TransfertController {
   async getHistory(@Param('permisId') id: string) {
     return this.svc.getHistoryByPermis(Number(id));
   }
-}
+}**/

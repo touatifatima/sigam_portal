@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../src/store/useAuthStore';
-import { FiHome, FiFile, FiMap, FiSettings, FiUsers, FiChevronRight, 
+import { FiHome, FiFile, FiMap, FiMapPin, FiSettings, FiUsers, FiChevronRight, 
          FiLogOut, FiChevronLeft, FiActivity, FiBriefcase, FiClipboard, 
          FiDollarSign, FiFileText, FiLayers, FiLock, FiShield, FiChevronDown, 
-         FiMessageSquare} from 'react-icons/fi';
+         FiMessageSquare,
+         FiTool} from 'react-icons/fi';
 import styles from './sidebar.module.css';
 import type { ViewType } from '../../src/types/viewtype';
 
@@ -51,6 +52,8 @@ export default function Sidebar({ currentView, navigateTo }: SidebarProps) {
     { id: 'nouvelle-demande', icon: <FiFileText />, label: 'Nouvelle demande', permission: 'create_demande' },
     { id: 'gestion-permis', icon: <FiLayers />, label: 'Gestion des permis', permission: 'manage_permits' },
     { id: 'instruction-cadastrale', icon: <FiMap />, label: 'Instruction cadastrale', permission: 'view_cadastre' },
+    { id: 'carte-sig', icon: <FiMapPin />, label: 'Carte SIG', permission: 'carte_sig' },
+    { id: 'demande-interactive', icon: <FiFileText />, label: 'Demande interactive', permission: 'create_demande' },
     { id: 'generateur-permis', icon: <FiBriefcase />, label: 'Générateur permis', permission: 'generate_permits' },
     { id: 'parametres', icon: <FiSettings />, label: 'Paramètres', permission: 'manage_settings' },
     { 
@@ -67,10 +70,25 @@ export default function Sidebar({ currentView, navigateTo }: SidebarProps) {
 
       ]
     },
+ 
     { id: 'Payments', icon: <FiDollarSign />, label: 'Paiements', permission: 'Payments' },
-    { id: 'controle_minier', icon: <FiShield />, label: 'Contrôle minier', permission: 'controle_minier' },
-    { id: 'Gestion_seances', icon: <FiHome />, label: 'Gestion_seances', permission: 'dashboard' }
-
+    /*{ id: 'controle_minier', icon: <FiShield />, label: 'Contrôle minier', permission: 'controle_minier' },*/
+    { id: 'Gestion_seances', icon: <FiHome />, label: 'Gestion_seances', permission: 'dashboard' },
+    { id: 'parametres', icon: <FiSettings />, label: 'Paramètres', permission: 'manage_settings' },
+    { id: 'mes-demandes', icon: <FiClipboard />, label: 'Mes Demandes', permission: 'dashboard' },
+    { id: 'operateur_mes_demandes', icon: <FiClipboard />, label: 'Mes Demandes', permission: 'operateur' },
+    { id: 'operateur_mes_procedures', icon: <FiClipboard />, label: 'Mes procedures', permission: 'operateur' },
+    { id: 'operateur_nvl_demande', icon: <FiFileText />, label: 'Nouvelle Demande', permission: 'operateur' },
+        {
+      id: 'outils',
+      icon: <FiTool />,
+      label: 'Outils',
+      permission: 'dashboard',
+      subItems: [
+        { id: 'promotion', icon: <FiDollarSign />, label: 'Promotion', permission: 'dashboard' },
+        { id: 'convertisseur', icon: <FiMap />, label: 'Convertisseur', permission: 'dashboard' },
+      ],
+    },
   ];
 
   const toggleSidebar = () => {

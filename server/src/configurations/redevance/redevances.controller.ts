@@ -18,7 +18,10 @@ export class RedevancesController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new royalty rate' })
-  @ApiResponse({ status: 201, description: 'Royalty rate created successfully' })
+  @ApiResponse({
+    status: 201,
+    description: 'Royalty rate created successfully',
+  })
   @ApiResponse({ status: 400, description: 'Bad request' })
   create(@Body() createRedevanceDto: CreateRedevanceDto) {
     return this.redevancesService.create(createRedevanceDto);
@@ -41,7 +44,10 @@ export class RedevancesController {
 
   @Put(':id')
   @ApiOperation({ summary: 'Update a royalty rate' })
-  @ApiResponse({ status: 200, description: 'Royalty rate updated successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Royalty rate updated successfully',
+  })
   @ApiResponse({ status: 404, description: 'Royalty rate not found' })
   update(
     @Param('id') id: string,
@@ -52,7 +58,10 @@ export class RedevancesController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a royalty rate' })
-  @ApiResponse({ status: 200, description: 'Royalty rate deleted successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Royalty rate deleted successfully',
+  })
   @ApiResponse({ status: 404, description: 'Royalty rate not found' })
   remove(@Param('id') id: string) {
     return this.redevancesService.remove(+id);

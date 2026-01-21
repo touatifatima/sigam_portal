@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as csv from 'csv-parser';
-import { DemandePortail, PrismaClient } from "@prisma/client";
+import { demandePortail, PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -79,15 +79,15 @@ export async function main() {
      existingDairaIds, existingCommuneIds, existingTypeProcIds, 
      existingTypePermisIds, existingExpertIds] = await Promise.all([
       // Adjust these to match your actual Prisma model names
-      prisma.procedurePortail.findMany({ select: { id_procedure: true } }).then(res => new Set(res.map(r => r.id_procedure))),
-      prisma.entreprisePortail.findMany({ select: { id_entreprise: true } }).then(res => new Set(res.map(r => r.id_entreprise))),
+      prisma.procedurePortail.findMany({ select: { id_proc: true } }).then(res => new Set(res.map(r => r.id_proc))),
+      prisma.detenteurMoralePortail.findMany({ select: { id_detenteur: true } }).then(res => new Set(res.map(r => r.id_detenteur))),
       prisma.pays.findMany({ select: { id_pays: true } }).then(res => new Set(res.map(r => r.id_pays))),
-      prisma.wilayaPortail.findMany({ select: { id_wilaya: true } }).then(res => new Set(res.map(r => r.id_wilaya))),
-      prisma.dairaPortail.findMany({ select: { id_daira: true } }).then(res => new Set(res.map(r => r.id_daira))),
-      prisma.communePortail.findMany({ select: { id_commune: true } }).then(res => new Set(res.map(r => r.id_commune))),
+      prisma.wilaya.findMany({ select: { id_wilaya: true } }).then(res => new Set(res.map(r => r.id_wilaya))),
+      prisma.daira.findMany({ select: { id_daira: true } }).then(res => new Set(res.map(r => r.id_daira))),
+      prisma.commune.findMany({ select: { id_commune: true } }).then(res => new Set(res.map(r => r.id_commune))),
       prisma.typeProcedure.findMany({ select: { id: true } }).then(res => new Set(res.map(r => r.id))),
       prisma.typePermis.findMany({ select: { id: true } }).then(res => new Set(res.map(r => r.id))),
-      prisma.expertMinierPortail.findMany({ select: { id_expert: true } }).then(res => new Set(res.map(r => r.id_expert)))
+      prisma.expertMinier.findMany({ select: { id_expert: true } }).then(res => new Set(res.map(r => r.id_expert)))
     ]);
 
     console.log("Foreign key references loaded successfully");

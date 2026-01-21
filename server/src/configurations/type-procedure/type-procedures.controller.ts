@@ -8,7 +8,10 @@ import {
   Delete,
 } from '@nestjs/common';
 import { TypeProceduresService } from './type-procedures.service';
-import { CreateTypeProcedureDto, UpdateTypeProcedureDto } from './type-procedures.dto';
+import {
+  CreateTypeProcedureDto,
+  UpdateTypeProcedureDto,
+} from './type-procedures.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('conf/type-procedures')
@@ -18,7 +21,10 @@ export class TypeProceduresController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new procedure type' })
-  @ApiResponse({ status: 201, description: 'Procedure type created successfully' })
+  @ApiResponse({
+    status: 201,
+    description: 'Procedure type created successfully',
+  })
   @ApiResponse({ status: 400, description: 'Bad request' })
   create(@Body() createTypeProcedureDto: CreateTypeProcedureDto) {
     return this.typeProceduresService.create(createTypeProcedureDto);
@@ -41,7 +47,10 @@ export class TypeProceduresController {
 
   @Put(':id')
   @ApiOperation({ summary: 'Update a procedure type' })
-  @ApiResponse({ status: 200, description: 'Procedure type updated successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Procedure type updated successfully',
+  })
   @ApiResponse({ status: 404, description: 'Procedure type not found' })
   update(
     @Param('id') id: string,
@@ -52,7 +61,10 @@ export class TypeProceduresController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a procedure type' })
-  @ApiResponse({ status: 200, description: 'Procedure type deleted successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Procedure type deleted successfully',
+  })
   @ApiResponse({ status: 404, description: 'Procedure type not found' })
   remove(@Param('id') id: string) {
     return this.typeProceduresService.remove(+id);

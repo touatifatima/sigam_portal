@@ -1,0 +1,151 @@
+.section {
+  padding: 6.5rem 0;
+  background: #f6f9fc;
+  position: relative;
+  overflow: hidden;
+}
+
+.backgroundGradient {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% 20%, rgba(32, 165, 102, 0.05), transparent 30%),
+              radial-gradient(circle at 80% 10%, rgba(56, 189, 248, 0.05), transparent 28%),
+              #f6f9fc;
+}
+
+.container {
+  position: relative;
+  z-index: 10;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 3.5rem;
+}
+
+.label {
+  color: #1fb072;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.title {
+  font-size: 2.6rem;
+  font-weight: 800;
+  color: #0f1724;
+  margin-bottom: 1.25rem;
+  line-height: 1.2;
+}
+
+@media (min-width: 768px) {
+  .title {
+    font-size: 3.1rem;
+  }
+}
+
+.titleHighlight {
+  color: #1fb072;
+}
+
+.description {
+  font-size: 1.05rem;
+  color: #4b5568;
+  max-width: 46rem;
+  margin: 0 auto;
+  line-height: 1.7;
+}
+
+.grid {
+  display: grid;
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+}
+
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.stepCard {
+  position: relative;
+  padding: 2rem;
+  border-radius: 1rem;
+  background-color: #ffffff;
+  border: 1px solid #e5eef5;
+  transition: all 0.25s ease;
+  box-shadow: 0 18px 40px -28px rgba(15, 23, 42, 0.25);
+}
+
+.stepCard:hover {
+  border-color: rgba(31, 176, 114, 0.35);
+  box-shadow: 0 22px 50px -26px rgba(15, 23, 42, 0.35);
+  transform: translateY(-3px);
+}
+
+.stepNumber {
+  position: absolute;
+  top: -1rem;
+  left: -1rem;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 1rem;
+  background-color: #1fb072;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #ffffff;
+  box-shadow: 0 12px 24px -12px rgba(31, 176, 114, 0.4);
+}
+
+.stepContent {
+  padding-top: 0.5rem;
+}
+
+.stepTitle {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f1724;
+  margin-bottom: 0.65rem;
+}
+
+.stepDescription {
+  color: #4b5568;
+  margin-bottom: 1.25rem;
+  line-height: 1.7;
+  font-size: 0.98rem;
+}
+
+.featuresList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.featureItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  color: #1f2933;
+}
+
+.featureIcon {
+  width: 1rem;
+  height: 1rem;
+  color: #1fb072;
+  flex-shrink: 0;
+}
+
+.cta {
+  text-align: center;
+}

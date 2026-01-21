@@ -1,9 +1,17 @@
 // seed.ts
-import { PrismaClient, MissingAction } from '@prisma/client';
+import { MissingAction } from '@prisma/client';
+import { config as loadEnv } from 'dotenv';
+import * as path from 'path';
+import { createPrismaClient } from '../src/prisma/prisma-factory';
 
-const prisma = new PrismaClient();
+loadEnv({ path: path.resolve(process.cwd(), '.env') });
 
+const databaseUrl = process.env.DATABASE_URL_PORTAIL;
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL is not set in the environment.');
+}
 
+const prisma = createPrismaClient();
 type SeedDocument = {
   nom_doc: string;
   description: string;
@@ -77,7 +85,7 @@ const dossierData: SeedDossier[] = [
   // 1. Permis de prospection (PPM) - Demande initiale
   {
     id_typeproc: 1, // Demande initiale
-    id_typePermis: 1, // Permis de prospection
+    id_typePermis: 16, // autorisation de prospection
     nombre_doc: 8,
     remarques: "Dossier standard de demande de permis de prospection miniere",
     documents: [
@@ -136,7 +144,7 @@ const dossierData: SeedDossier[] = [
   // 2. Permis de prospection (PPM) - Renouvellement
   {
     id_typeproc: 2, // Renouvellement
-    id_typePermis: 1, // Permis de prospection
+    id_typePermis: 16, // Permis de prospection
     nombre_doc: 4,
     remarques: "Dossier standard de demande de prorogation de permis de prospection miniere",
     documents: [
@@ -170,7 +178,7 @@ const dossierData: SeedDossier[] = [
   // 3. Permis d'exploration (PEM) - Demande initiale
   {
     id_typeproc: 1, // Demande initiale
-    id_typePermis: 2, // Permis d'exploration
+    id_typePermis: 17, // titre d'exploration
     nombre_doc: 14,
     remarques: "Dossier standard de demande de permis d'exploration miniere",
     documents: [
@@ -264,7 +272,7 @@ const dossierData: SeedDossier[] = [
   // 4. Permis d'exploration (PEM) - Renouvellement
   {
     id_typeproc: 2, // Renouvellement
-    id_typePermis: 2, // Permis d'exploration
+    id_typePermis: 17, // Permis d'exploration
     nombre_doc: 10,
     remarques: "Dossier standard de prorogation de permis d'exploration miniere",
     documents: [
@@ -334,7 +342,7 @@ const dossierData: SeedDossier[] = [
   // 5. Permis d'exploitation (PEX) - Demande initiale
   {
     id_typeproc: 1, // Demande initiale
-    id_typePermis: 3, // Permis d'exploitation
+    id_typePermis: 21, // Permis d'exploitation
     nombre_doc: 13,
     remarques: "Dossier standard de demande de permis d'exploitation de mines",
     documents: [
@@ -422,7 +430,7 @@ const dossierData: SeedDossier[] = [
   // 6. Permis d'exploitation (PEX) - Renouvellement
   {
     id_typeproc: 2, // Renouvellement
-    id_typePermis: 3, // Permis d'exploitation
+    id_typePermis: 21, // Permis d'exploitation
     nombre_doc: 12,
     remarques: "Dossier standard de renouvellement de permis d'exploitation de mines",
     documents: [
@@ -504,7 +512,7 @@ const dossierData: SeedDossier[] = [
   // 7. Permis de recherche carriere (PRC) - Demande initiale
   {
     id_typeproc: 1, // Demande initiale
-    id_typePermis: 5, // Permis de recherche carriere
+    id_typePermis: 18, // Titre d'exploration de carrières - TEC
     nombre_doc: 8,
     remarques: "Dossier standard de demande de permis de recherche carriere",
     documents: [
@@ -562,7 +570,7 @@ const dossierData: SeedDossier[] = [
   // 8. Permis d'exploitation carriere (PEC) - Demande initiale
   {
     id_typeproc: 1, // Demande initiale
-    id_typePermis: 6, // Permis d'exploitation carriere
+    id_typePermis: 19, // Permis d'exploitation carriere
     nombre_doc: 14,
     remarques: "Dossier standard de demande de permis d'exploitation de carrieres",
     documents: [
@@ -656,7 +664,7 @@ const dossierData: SeedDossier[] = [
   // 9. Autorisation artisanale mine (ARM) - Demande initiale
   {
     id_typeproc: 1, // Demande initiale
-    id_typePermis: 7, // Autorisation artisanale mine
+    id_typePermis: 20, // Autorisation artisanale mine
     nombre_doc: 8,
     remarques: "Dossier standard de demande d'autorisation artisanale miniere",
     documents: [
@@ -714,7 +722,7 @@ const dossierData: SeedDossier[] = [
   // 10. Permis de ramassage (PRA) - Demande initiale
   {
     id_typeproc: 1, // Demande initiale
-    id_typePermis: 9, // Permis de ramassage
+    id_typePermis: 22, // Permis de ramassage
     nombre_doc: 7,
     remarques: "Dossier standard de demande de permis de ramassage",
     documents: [
@@ -770,7 +778,7 @@ async function seedDatabase() {
 
   // 1. First delete existing data if needed (optional)
   await prisma.dossierDocumentPortail.deleteMany();
-  await prisma.dossierAdministratifPortail.deleteMany();
+  await prisma.dossierAdministratif.deleteMany();
   await prisma.documentPortail.deleteMany();
 
   // 2. Create all unique documents first
@@ -804,7 +812,7 @@ async function seedDatabase() {
 
   // 3. Create dossiers and their relationships
   for (const dossier of dossierData) {
-    const createdDossier = await prisma.dossierAdministratifPortail.create({
+    const createdDossier = await prisma.dossierAdministratif.create({
       data: {
         id_typeproc: dossier.id_typeproc,
         id_typePermis: dossier.id_typePermis,
@@ -870,3 +878,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+

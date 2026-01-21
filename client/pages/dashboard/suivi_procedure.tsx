@@ -32,11 +32,13 @@ interface Detenteur {
 }
 
 interface TypeProcedure {
-  id_type: number;
-  nom: string;
-  description?: string;
-  code?: string;
-  duree_validite?: number;
+  id_type?: number;
+  id?: number;
+  nom?: string;
+  libelle?: string;
+  description?: string | null;
+  code?: string | null;
+  duree_validite?: number | null;
 }
 
 interface Etape {
@@ -49,7 +51,10 @@ interface Etape {
 }
 
 interface ProcedureEtape {
-  id_proc_etape: number;
+  id_proc_etape?: number;
+  id_proc?: number;
+  id_etape?: number;
+  link?: string | null;
   statut: 'EN_COURS' | 'TERMINEE' | 'NON_DEBUTEE' | 'EN_RETARD';
   date_debut?: string;
   date_fin?: string;
@@ -58,10 +63,21 @@ interface ProcedureEtape {
 }
 
 interface Permis {
-  id_permis: number;
-  num_permis: string;
+  id_permis?: number;
+  num_permis?: string;
+  id?: number;
+  code_permis?: string;
+  typePermis?: {
+    id?: number;
+    code_type?: string | null;
+    lib_type?: string | null;
+  };
   detenteur?: Detenteur;
-  procedures: Procedure[];
+  procedures?: Procedure[];
+}
+
+interface PermisProcedure {
+  permis: Permis;
 }
 
 interface Procedure {
@@ -71,6 +87,7 @@ interface Procedure {
   date_creation: string;
   date_modification?: string;
   permis: Permis[];
+  permisProcedure?: PermisProcedure[];
   ProcedureEtape: ProcedureEtape[];
   demandes: Demande[];
 }
@@ -82,13 +99,20 @@ interface Demande {
   date_instruction?: string;
   statut_demande?: string;
   detenteur?: Detenteur;
+  detenteurdemande?: { detenteur?: Detenteur }[];
   typeProcedure?: TypeProcedure;
+  typePermis?: {
+    id?: number;
+    code_type?: string | null;
+    lib_type?: string | null;
+  };
   procedure: Procedure;
 }
 
 interface FilterOptions {
   procedureType: string;
   permitCode: string;
+  typePermis: string;
   sector: string;
   phase: string;
   status: string;
@@ -117,18 +141,18 @@ const LIB_PHASES = STEP_LABELS;
 
 const STATUS_CONFIG = {
   'Identification': { bg: styles['bg-blue-100'], text: styles['text-blue-800'], icon: <FiClock className={styles['text-blue-500']} /> },
-  'CapacitÃ©s': { bg: styles['bg-blue-100'], text: styles['text-blue-800'], icon: <FiClock className={styles['text-blue-500']} /> },
+  'Capacités': { bg: styles['bg-blue-100'], text: styles['text-blue-800'], icon: <FiClock className={styles['text-blue-500']} /> },
   'Substances & Travaux': { bg: styles['bg-blue-100'], text: styles['text-blue-800'], icon: <FiClock className={styles['text-blue-500']} /> },
   'Documents': { bg: styles['bg-yellow-100'], text: styles['text-yellow-800'], icon: <FiAlertTriangle className={styles['text-yellow-500']} /> },
   'Cadastre': { bg: styles['bg-orange-300'], text: styles['text-orange-800'], icon: <FiClock className={styles['text-orange-500']} /> },
   'Avis Wali': { bg: styles['bg-orange-100'], text: styles['text-orange-800'], icon: <FiClock className={styles['text-orange-500']} /> },
-  'ComitÃ© de direction': { bg: styles['bg-purple-100'], text: styles['text-purple-800'], icon: <FiClock className={styles['text-purple-500']} /> },
-  'GÃ©nÃ©ration du permis': { bg: styles['bg-green-100'], text: styles['text-green-800'], icon: <FiCheck className={styles['text-green-500']} /> },
+  'Comité de direction': { bg: styles['bg-purple-100'], text: styles['text-purple-800'], icon: <FiClock className={styles['text-purple-500']} /> },
+  'Génération du permis': { bg: styles['bg-green-100'], text: styles['text-green-800'], icon: <FiCheck className={styles['text-green-500']} /> },
   'Paiement': { bg: styles['bg-green-100'], text: styles['text-green-800'], icon: <FiClock className={styles['text-green-500']} /> },
   'en_instruction': { bg: styles['bg-blue-100'], text: styles['text-blue-800'], icon: <FiClock className={styles['text-blue-500']} /> },
   'avis_wilaya': { bg: styles['bg-orange-100'], text: styles['text-orange-800'], icon: <FiClock className={styles['text-orange-500']} /> },
   'retard': { bg: styles['bg-red-100'], text: styles['text-red-800'], icon: <FiAlertTriangle className={styles['text-red-500']} /> },
-  'acceptÃ©e': { bg: styles['bg-green-100'], text: styles['text-green-800'], icon: <FiCheck className={styles['text-green-500']} /> },
+  'acceptée': { bg: styles['bg-green-100'], text: styles['text-green-800'], icon: <FiCheck className={styles['text-green-500']} /> },
   'rejete': { bg: styles['bg-red-100'], text: styles['text-red-800'], icon: <FiX className={styles['text-red-500']} /> },
   'default': { bg: styles['bg-gray-100'], text: styles['text-gray-800'], icon: <FiClock className={styles['text-gray-500']} /> }
 };
@@ -172,6 +196,7 @@ export default function SuiviDemandes() {
   const [filters, setFilters] = useState<FilterOptions>({
     procedureType: 'Tous les types',
     permitCode: 'Tous les codes',
+    typePermis: 'Tous les types de permis',
     sector: 'Mine',
     phase: 'Toutes les phases',
     status: 'Tous les statuts',
@@ -201,16 +226,39 @@ const toggleDropdown = (demandeId: number) => {
 };
 
 
+  const getProcedureType = useCallback((demande: Demande): TypeProcedure | null => {
+    if (demande.typeProcedure) return demande.typeProcedure;
+    const fromSameProc = demande.procedure?.demandes?.find((d: Demande) => d.typeProcedure)?.typeProcedure;
+    return fromSameProc || null;
+  }, []);
+
+  const getProcedureTypeLabel = useCallback((demande: Demande): string => {
+    const typeProc = getProcedureType(demande);
+    return (
+      typeProc?.libelle ||
+      typeProc?.nom ||
+      typeProc?.description ||
+      typeProc?.code ||
+      ''
+    );
+  }, [getProcedureType]);
+
+  const getPermisType = useCallback((demande: Demande) => {
+    return (
+      demande.typePermis ||
+      demande?.procedure?.permisProcedure?.[0]?.permis?.typePermis ||
+      null
+    );
+  }, []);
   // Memoized data processing
   const procedureTypes = useMemo(() => {
     const types = new Set<string>();
     demandes.forEach(d => {
-      if (d.typeProcedure?.nom) {
-        types.add(d.typeProcedure.nom);
-      }
+      const label = getProcedureTypeLabel(d);
+      if (label) types.add(label);
     });
-    return ['Tous les types', ...Array.from(types)];
-  }, [demandes]);
+    return ['Tous les types', ...Array.from(types).sort()];
+  }, [demandes, getProcedureTypeLabel]);
 
   const permitCodes = useMemo(() => {
     const codes = new Set<string>();
@@ -221,6 +269,21 @@ const toggleDropdown = (demandeId: number) => {
     });
     return ['Tous les codes', ...Array.from(codes)];
   }, [demandes]);
+
+  
+  const getPermisTypeCode = useCallback((demande: Demande): string => {
+    return (getPermisType(demande)?.code_type || '').toString();
+  }, [getPermisType]);
+
+
+  const permitTypes = useMemo(() => {
+    const types = new Set<string>();
+    demandes.forEach(d => {
+      const code = getPermisTypeCode(d);
+      if (code) types.add(code);
+    });
+    return ['Tous les types de permis', ...Array.from(types).sort()];
+  }, [demandes, getPermisTypeCode]);
 
   const phases = useMemo(() => {
     const allPhases = new Set<string>();
@@ -274,7 +337,7 @@ const toggleDropdown = (demandeId: number) => {
       setError(null);
       
       if (isBackgroundRefresh) {
-        toast.success('DonnÃ©es actualisÃ©es avec succÃ¨s');
+        toast.success('Données actualisées avec succès');
       }
     } catch (err: unknown) {
       if (axios.isCancel(err)) {
@@ -283,7 +346,7 @@ const toggleDropdown = (demandeId: number) => {
         const error = err as AxiosError<{ message?: string }>;
         console.error("Erreur de chargement des demandes :", error);
         setError(error.response?.data?.message || "Erreur lors du chargement des demandes");
-        toast.error(error.response?.data?.message || 'Erreur lors du chargement des donnÃ©es');
+        toast.error(error.response?.data?.message || 'Erreur lors du chargement des données');
       }
     } finally {
       setIsLoading(false);
@@ -326,30 +389,161 @@ const toggleDropdown = (demandeId: number) => {
   }, [currentView, fetchDemandes, isAuthReady, isLoaded]);
 
   // Navigation functions
-  const goToEtape = async (idProc: number) => {
+  const goToEtape = async (idProc: number, demande?: Demande) => {
+    const toQueryString = (
+      params: Record<string, string | number | null | undefined>,
+    ) => {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value === undefined || value === null || value === '') return;
+        qs.set(key, String(value));
+      });
+      const str = qs.toString();
+      return str ? `?${str}` : '';
+    };
+
+    const normalizeLabel = (value: string) =>
+      value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase();
+
+    const resolvedType = demande ? getProcedureType(demande) : null;
+    const rawTypeLabel =
+      (resolvedType?.nom ??
+        (resolvedType as any)?.libelle ??
+        resolvedType?.description ??
+        '')?.toString() ?? '';
+    const numProc = demande?.procedure?.num_proc ?? '';
+
+    const matchLabel = normalizeLabel(rawTypeLabel);
+    const matchNumProc = normalizeLabel(numProc);
+
+    const permis =
+      demande?.procedure?.permisProcedure?.[0]?.permis ??
+      demande?.procedure?.permis?.[0];
+    const permisId = permis
+      ? (permis.id ?? permis.id_permis ?? undefined)
+      : undefined;
+    const extractPermisCode = (value: string) => {
+      const match = value
+        .toUpperCase()
+        .match(/\b(APM|TEC|TEM|TXM|TXC|AAM|AAC|AXW|AXH|ARO)\b/);
+      return match ? match[1] : '';
+    };
+    const permisTypeCode = (
+      permis?.typePermis?.code_type ||
+      extractPermisCode(demande?.code_demande ?? '') ||
+      extractPermisCode(numProc)
+    ).toUpperCase();
+
+    const kind = (() => {
+      if (matchLabel.includes('extension') || matchLabel.includes('modification'))
+        return 'extension';
+      if (matchLabel.includes('renouvel')) return 'renouvellement';
+      if (matchLabel.includes('fusion')) return 'fusion';
+      if (matchLabel.includes('transfert') || matchLabel.includes('transfer'))
+        return 'transfert';
+      if (matchLabel.includes('demande')) return 'demande';
+
+      if (matchNumProc.includes('ext')) return 'extension';
+      if (matchNumProc.includes('ren')) return 'renouvellement';
+      if (matchNumProc.includes('fus')) return 'fusion';
+      if (matchNumProc.includes('trf') || matchNumProc.includes('transf'))
+        return 'transfert';
+
+      return 'demande';
+    })();
+
+    const startLink = demande
+      ? (() => {
+          switch (kind) {
+            case 'extension':
+              return `/extension_permis/step1/page1${toQueryString({
+                procId: idProc,
+                permisId,
+                numProc,
+              })}`;
+            case 'renouvellement':
+              return `/renouvellement/step1/page1${toQueryString({
+                id: idProc,
+                permisId,
+                numProc,
+              })}`;
+            case 'fusion':
+              return `/fusion_permis/step2/page2${toQueryString({
+                id: idProc,
+                permisId,
+                numProc,
+              })}`;
+            case 'transfert':
+              return `/transfert/step1/page1${toQueryString({
+                id: idProc,
+                permisId,
+                numProc,
+              })}`;
+            case 'demande':
+            default:
+              const demandeBaseRoute = (() => {
+                if (permisTypeCode === 'APM') {
+                  return '/demande_apm/step1/page1';
+                }
+                if (permisTypeCode === 'TXM' || permisTypeCode === 'TXC') {
+                  return '/demande_exploitation/step1/page1';
+                }
+                if (permisTypeCode === 'TEM') {
+                  return '/demande_exploration_mines/step1/page1';
+                }
+                return '/demande/step1/page1';
+              })();
+              return `${demandeBaseRoute}${toQueryString({
+                id: idProc,
+                permisId,
+                numProc,
+              })}`;
+          }
+        })()
+      : null;
     try {
       setIsLoading(true);
       const res = await axios.get(`${apiURL}/api/procedure-etape/current/${idProc}`,
         { withCredentials: true });
       const etape = res.data;
       // Fallback link if backend doesn't supply one
-      const __fallbackLink = (typeof etape?.id_etape === 'number'
+      const __fallbackLink = startLink ?? (typeof etape?.id_etape === 'number'
         ? `/demande/step${etape.id_etape}/page${etape.id_etape}?id=${idProc}`
         : (typeof etape?.etape?.id_etape === 'number'
             ? `/demande/step${etape.etape.id_etape}/page${etape.etape.id_etape}?id=${idProc}`
             : null));
-      if (!etape?.link && __fallbackLink) {
+
+      const backendLink =
+        typeof etape === 'string'
+          ? etape
+          : (typeof etape?.link === 'string' && etape.link.trim() !== ''
+              ? etape.link
+              : null);
+
+      if (!backendLink && __fallbackLink) {
         router.push(__fallbackLink);
         return;
       }
-      if (etape?.link) {
-        router.push(`${etape.link}`);
+      if (backendLink) {
+        router.push(backendLink);
       } else {
-        setError("Lien de l'Ã©tape introuvable");
+        setError("Lien de l'étape introuvable");
       }
     } catch (err) {
-      console.error("Erreur lors de la rÃ©cupÃ©ration de l'Ã©tape :", err);
-      setError("Impossible de rÃ©cupÃ©rer l'Ã©tape actuelle");
+      if (startLink) {
+        console.error(
+          'Erreur lors de la récupération de la prochaine étape, utilisation du fallback :',
+          err,
+        );
+        router.push(startLink);
+        return;
+      }
+      console.error("Erreur lors de la récupération de l'étape :", err);
+      setError("Impossible de récupérer l'étape actuelle");
     } finally {
       setIsLoading(false);
     }
@@ -367,63 +561,78 @@ const toggleDropdown = (demandeId: number) => {
   const getCurrentPhase = useCallback((etapes: ProcedureEtape[]): ProcedureEtape | undefined => {
     if (!etapes || etapes.length === 0) return undefined;
 
-    // Cherche une Ã©tape EN_COURS
-    const enCours = etapes.find(
-      (et) =>
-        et.etape &&
-        LIB_PHASES.includes(et.etape.lib_etape) &&
-        et.statut === 'EN_COURS'
-    );
+    const getTime = (value?: string | Date | null) => {
+      if (!value) return 0;
+      const time = new Date(value).getTime();
+      return Number.isNaN(time) ? 0 : time;
+    };
+    const pickMostRecent = (items: ProcedureEtape[]) =>
+      items
+        .slice()
+        .sort(
+          (a, b) =>
+            getTime(b.date_debut ?? b.date_fin) - getTime(a.date_debut ?? a.date_fin),
+        )[0];
 
-    if (enCours) return enCours;
+    const enCours = etapes.filter((et) => et.statut === 'EN_COURS');
+    if (enCours.length) return pickMostRecent(enCours);
 
-    // Si aucune Ã©tape en cours, retourne la derniÃ¨re TERMINÃ‰E
-    const terminees = etapes
-      .filter(
-        (et) =>
-          et.etape &&
-          LIB_PHASES.includes(et.etape.lib_etape) &&
-          et.statut === 'TERMINEE'
-      )
-      .sort(
-        (a, b) =>
-          (b.etape?.ordre_etape ?? 0) - (a.etape?.ordre_etape ?? 0)
-      );
+    const terminees = etapes.filter((et) => et.statut === 'TERMINEE');
+    if (terminees.length) {
+      return terminees
+        .slice()
+        .sort(
+          (a, b) => getTime(b.date_fin ?? b.date_debut) - getTime(a.date_fin ?? a.date_debut),
+        )[0];
+    }
 
-    return terminees[0]; // peut Ãªtre undefined si aucune trouvÃ©e
+    return undefined;
   }, []);
 
-  const getProcedureType = useCallback((demande: Demande): TypeProcedure | null => {
-    return demande.typeProcedure || null;
-  }, []);
+
+  const getPermisTypeLabel = useCallback((demande: Demande): string => {
+    const typePermis = getPermisType(demande);
+    const code = typePermis?.code_type || '';
+    const label = typePermis?.lib_type || '';
+    if (code && label) return `${code} - ${label}`;
+    return code || label || '---';
+  }, [getPermisType]);
 
   const getStatusConfig = useCallback((status: string) => {
     return STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.default;
   }, []);
 
   const getSocieteName = useCallback((demande: Demande): string => {
-    // Try current demande first
+    // Try current demande direct detenteur
     if (demande.detenteur?.nom_societeFR) {
       return demande.detenteur.nom_societeFR;
     }
-    
+    // Try flattened detenteurdemande
+    const detFromJoin = (demande as any)?.detenteurdemande?.[0]?.detenteur?.nom_societeFR;
+    if (detFromJoin) return detFromJoin;
+
     // For procedures linked to permis, get the original demande's detenteur
     if (demande.procedure?.permis?.length > 0) {
-      // Get the first permis
       const permis = demande.procedure.permis[0];
-      
-      // Try the permis's direct detenteur
-      if (permis.detenteur?.nom_societeFR) {
-        return permis.detenteur.nom_societeFR;
-      }
-      
-      // Try the original demande from the permis's procedures
-      const originalProcedure = permis.procedures[0];
+      if (permis?.detenteur?.nom_societeFR) return permis.detenteur.nom_societeFR;
+      const originalProcedure = permis.procedures![0];
       if (originalProcedure?.demandes[0]?.detenteur?.nom_societeFR) {
         return originalProcedure.demandes[0].detenteur.nom_societeFR;
       }
     }
-    
+    // via permisProcedure -> permis
+    const permisViaLink = demande.procedure?.permisProcedure?.[0]?.permis?.detenteur?.nom_societeFR;
+    if (permisViaLink) return permisViaLink;
+    // Fallback: look at any demande on the procedure that has a detenteur
+    const anyDemande = demande.procedure?.demandes?.find((d: Demande) => d.detenteur?.nom_societeFR);
+    if (anyDemande?.detenteur?.nom_societeFR) {
+      return anyDemande.detenteur.nom_societeFR;
+    }
+    const anyFromJoin = demande.procedure?.demandes?.find((d: any) => d.detenteurdemande?.[0]?.detenteur?.nom_societeFR);
+    if (anyFromJoin?.detenteurdemande?.[0]?.detenteur?.nom_societeFR) {
+      return anyFromJoin.detenteurdemande[0].detenteur.nom_societeFR;
+    }
+
     return '---';
   }, []);
 
@@ -444,7 +653,7 @@ const toggleDropdown = (demandeId: number) => {
     // Apply procedure type filter
     if (filters.procedureType !== 'Tous les types') {
       result = result.filter(d => 
-        getProcedureType(d)?.nom === filters.procedureType
+        getProcedureTypeLabel(d) === filters.procedureType
       );
     }
 
@@ -453,6 +662,11 @@ const toggleDropdown = (demandeId: number) => {
       result = result.filter(d => 
         d.code_demande?.startsWith(filters.permitCode)
       );
+    }
+
+    // Apply permit type filter
+    if (filters.typePermis !== 'Tous les types de permis') {
+      result = result.filter(d => getPermisTypeCode(d) === filters.typePermis);
     }
 
     // Apply phase filter
@@ -523,7 +737,16 @@ const toggleDropdown = (demandeId: number) => {
     }));
 
     return result;
-  }, [demandes, searchTerm, filters, sortConfig, getSocieteName, getProcedureType, getCurrentPhase]);
+  }, [
+    demandes,
+    searchTerm,
+    filters,
+    sortConfig,
+    getSocieteName,
+    getProcedureTypeLabel,
+    getPermisTypeCode,
+    getCurrentPhase,
+  ]);
 
   // Paginated data
   const paginatedDemandes = useMemo(() => {
@@ -549,13 +772,13 @@ const toggleDropdown = (demandeId: number) => {
       );
       
       if (response.status === 200) {
-        toast.success('ProcÃ©dure supprimÃ©e avec succÃ¨s');
+        toast.success('Procédure supprimée avec succès');
         
         // Refresh data to ensure consistency
         const controller = axios.CancelToken.source();
         fetchDemandes(controller, true);
       } else {
-        throw new Error("Ã‰chec de la suppression");
+        throw new Error("Échec de la suppression");
       }
     } catch (error) {
       console.error("Erreur lors de la suppression:", error);
@@ -564,7 +787,7 @@ const toggleDropdown = (demandeId: number) => {
       const controller = axios.CancelToken.source();
       fetchDemandes(controller, true);
       
-      toast.error('Erreur lors de la suppression de la procÃ©dure');
+      toast.error('Erreur lors de la suppression de la procédure');
     }
   };
 
@@ -579,14 +802,15 @@ const toggleDropdown = (demandeId: number) => {
       // In a real application, this would call a server endpoint
       // For now, we'll create a client-side export
       const csvContent = [
-        ['Code ProcÃ©dure', 'Titulaire', 'Type de ProcÃ©dure', 'Date Demande', 'Statut', 'Phase Actuelle'],
+        ['Code Procédure', 'Titulaire', 'Type de Procédure', 'Type Permis', 'Date Demande', 'Statut', 'Phase Actuelle'],
         ...filteredDemandes.map(d => [
           d.procedure.num_proc,
           getSocieteName(d),
-          getProcedureType(d)?.description || '---',
+          getProcedureTypeLabel(d) || '---',
+          getPermisTypeLabel(d),
           new Date(d.date_demande).toLocaleDateString('fr-FR'),
           d.procedure.statut_proc,
-          getCurrentPhase(d.procedure.ProcedureEtape)?.etape?.lib_etape || 'Non dÃ©marrÃ©e'
+          getCurrentPhase(d.procedure.ProcedureEtape)?.etape?.lib_etape || 'Non démarrée'
         ])
       ].map(row => row.join(',')).join('\n');
 
@@ -602,10 +826,10 @@ const toggleDropdown = (demandeId: number) => {
       link.click();
       document.body.removeChild(link);
       
-      toast.success('Export rÃ©alisÃ© avec succÃ¨s');
+      toast.success('Export réalisé avec succès');
     } catch (error) {
       console.error('Erreur lors de l\'export:', error);
-      toast.error('Erreur lors de l\'export des donnÃ©es');
+      toast.error('Erreur lors de l\'export des données');
     } finally {
       setIsExporting(false);
     }
@@ -671,7 +895,7 @@ const toggleDropdown = (demandeId: number) => {
           disabled={pagination.currentPage === 1}
           onClick={() => handlePageChange(pagination.currentPage - 1)}
         >
-          PrÃ©cÃ©dent
+          Précédent
         </button>
         
         {startPage > 1 && (
@@ -730,7 +954,7 @@ const toggleDropdown = (demandeId: number) => {
                   Suivi des demandes en cours d'instruction
                 </h1>
                 <p className={styles.pageSubtitle}>
-                  Consultez, filtrez et gÃ©rez les demandes de permis en attente de traitement
+                  Consultez, filtrez et gérez les demandes de permis en attente de traitement
                 </p>
               </div>
               
@@ -739,7 +963,7 @@ const toggleDropdown = (demandeId: number) => {
                   className={styles.iconButton}
                   onClick={handleRefreshData}
                   disabled={isRefreshing}
-                  title="Actualiser les donnÃ©es"
+                  title="Actualiser les données"
                 >
                   <FiRefreshCw className={isRefreshing ? styles.spinning : ''} />
                 </button>
@@ -754,7 +978,7 @@ const toggleDropdown = (demandeId: number) => {
                   className={styles.iconButton}
                   onClick={handleExportData}
                   disabled={isExporting || filteredDemandes.length === 0}
-                  title="Exporter les donnÃ©es"
+                  title="Exporter les données"
                 >
                   <FiDownload />
                 </button>
@@ -776,7 +1000,7 @@ const toggleDropdown = (demandeId: number) => {
                   className={styles.retryButton}
                   onClick={handleRefreshData}
                 >
-                  RÃ©essayer
+                  Réessayer
                 </button>
               </div>
             )}
@@ -800,7 +1024,7 @@ const toggleDropdown = (demandeId: number) => {
                 <div className={styles.filtersContent}>
                   <div className={styles.filtersGrid}>
                     <div className={styles.filterGroup}>
-                      <label className={styles.filterLabel}>Type de procÃ©dure</label>
+                      <label className={styles.filterLabel}>Type de procédure</label>
                       <select
                         className={styles.filterSelect}
                         value={filters.procedureType}
@@ -826,6 +1050,19 @@ const toggleDropdown = (demandeId: number) => {
                     </div>
 
                     <div className={styles.filterGroup}>
+                      <label className={styles.filterLabel}>Type permis</label>
+                      <select
+                        className={styles.filterSelect}
+                        value={filters.typePermis}
+                        onChange={(e) => setFilters({ ...filters, typePermis: e.target.value })}
+                      >
+                        {permitTypes.map((type) => (
+                          <option key={type} value={type}>{type}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className={styles.filterGroup}>
                       <label className={styles.filterLabel}>Secteur</label>
                       <div className={styles.radioGroup}>
                         <label
@@ -841,16 +1078,16 @@ const toggleDropdown = (demandeId: number) => {
                           Mine
                         </label>
                         <label
-                          className={`${styles.radioOption} ${filters.sector === 'CarriÃ¨re' ? styles.selected : ''}`}
+                          className={`${styles.radioOption} ${filters.sector === 'Carrière' ? styles.selected : ''}`}
                         >
                           <input
                             type="radio"
                             name="sector"
-                            checked={filters.sector === 'CarriÃ¨re'}
-                            onChange={() => setFilters({ ...filters, sector: 'CarriÃ¨re' })}
+                            checked={filters.sector === 'Carrière'}
+                            onChange={() => setFilters({ ...filters, sector: 'Carrière' })}
                           />
                           <span className={styles.radioCustom}></span>
-                          CarriÃ¨re
+                          Carrière
                         </label>
                       </div>
                     </div>
@@ -914,6 +1151,7 @@ const toggleDropdown = (demandeId: number) => {
                         setFilters({
                           procedureType: 'Tous les types',
                           permitCode: 'Tous les codes',
+                          typePermis: 'Tous les types de permis',
                           sector: 'Mine',
                           phase: 'Toutes les phases',
                           status: 'Tous les statuts',
@@ -922,7 +1160,7 @@ const toggleDropdown = (demandeId: number) => {
                         setSearchTerm('');
                       }}
                     >
-                      RÃ©initialiser les filtres
+                      Réinitialiser les filtres
                     </button>
                   </div>
                 </div>
@@ -936,7 +1174,7 @@ const toggleDropdown = (demandeId: number) => {
                 <input
                   type="text"
                   className={styles.searchInput}
-                  placeholder="Rechercher par code, titulaire ou numÃ©ro de procÃ©dure..."
+                  placeholder="Rechercher par code, titulaire ou numéro de procédure..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -952,7 +1190,7 @@ const toggleDropdown = (demandeId: number) => {
               
               <div className={styles.resultsInfo}>
                 <span>
-                  {filteredDemandes.length} rÃ©sultat{filteredDemandes.length !== 1 ? 's' : ''} trouvÃ©{filteredDemandes.length !== 1 ? 's' : ''}
+                  {filteredDemandes.length} résultat{filteredDemandes.length !== 1 ? 's' : ''} trouvé{filteredDemandes.length !== 1 ? 's' : ''}
                 </span>
               </div>
             </div>
@@ -967,19 +1205,19 @@ const toggleDropdown = (demandeId: number) => {
               ) : filteredDemandes.length === 0 ? (
                 <div className={styles.emptyState}>
                   <FiInfo className={styles.emptyIcon} />
-                  <h3>Aucune demande trouvÃ©e</h3>
+                  <h3>Aucune demande trouvée</h3>
                   <p>
                     {searchTerm || Object.values(filters).some(v => 
-                      v !== 'Tous les types' && v !== 'Tous les codes' && 
+                      v !== 'Tous les types' && v !== 'Tous les codes' && v !== 'Tous les types de permis' &&
                       v !== 'Toutes les phases' && v !== 'Tous les statuts' &&
                       (typeof v !== 'object' || (v as any).start !== '')
                     ) 
-                      ? 'Aucune demande ne correspond Ã  vos critÃ¨res de recherche. Veuillez modifier vos filtres.'
-                      : 'Aucune demande en cours. Commencez par crÃ©er une nouvelle procÃ©dure.'
+                      ? 'Aucune demande ne correspond à vos critères de recherche. Veuillez modifier vos filtres.'
+                      : 'Aucune demande en cours. Commencez par créer une nouvelle procédure.'
                     }
                   </p>
                   {(!searchTerm && !Object.values(filters).some(v => 
-                    v !== 'Tous les types' && v !== 'Tous les codes' && 
+                    v !== 'Tous les types' && v !== 'Tous les codes' && v !== 'Tous les types de permis' &&
                     v !== 'Toutes les phases' && v !== 'Tous les statuts' &&
                     (typeof v !== 'object' || (v as any).start !== '')
                   )) && (
@@ -988,7 +1226,7 @@ const toggleDropdown = (demandeId: number) => {
                       onClick={() => router.push('/procedures/nouvelle')}
                     >
                       <FiPlus className={styles.buttonIcon} />
-                      CrÃ©er une nouvelle procÃ©dure
+                      Créer une nouvelle procédure
                     </button>
                   )}
                 </div>
@@ -1002,8 +1240,15 @@ const toggleDropdown = (demandeId: number) => {
                             className={styles.sortableHeader}
                             onClick={() => handleSort('procedure.num_proc')}
                           >
-                            CODE Procedure
+                            CODE PROCÉDURE
                             {renderSortIndicator('procedure.num_proc')}
+                          </th>
+                          <th
+                            className={styles.sortableHeader}
+                            onClick={() => handleSort('code_demande')}
+                          >
+                            CODE DEMANDE
+                            {renderSortIndicator('code_demande')}
                           </th>
                           <th 
                             className={styles.sortableHeader}
@@ -1012,7 +1257,8 @@ const toggleDropdown = (demandeId: number) => {
                             TITULAIRE
                             {renderSortIndicator('detenteur.nom_societeFR')}
                           </th>
-                          <th>TYPE DE PROCÃ‰DURE</th>
+                          <th>TYPE DE PROCÉDURE</th>
+                          <th>TYPE PERMIS</th>
                           <th 
                             className={styles.sortableHeader}
                             onClick={() => handleSort('date_demande')}
@@ -1047,10 +1293,13 @@ const toggleDropdown = (demandeId: number) => {
                               <td>
                                 <span className={styles.codeHighlight}>{d.procedure?.num_proc}</span>
                               </td>
+                              <td>
+                                <span className={styles.codeHighlight}>{d.code_demande}</span>
+                              </td>
                               <td>{getSocieteName(d)}</td>
                               <td>
                                 <div className={styles.procedureType}>
-                                  {getProcedureType(d)?.description || '---'}
+                                  {getProcedureTypeLabel(d) || '---'}
                                   {getProcedureType(d)?.code && (
                                     <span className={styles.procedureCode}>
                                       ({getProcedureType(d)?.code})
@@ -1058,6 +1307,7 @@ const toggleDropdown = (demandeId: number) => {
                                   )}
                                 </div>
                               </td>
+                              <td>{getPermisTypeLabel(d)}</td>
                               <td>{new Date(d.date_demande).toLocaleDateString('fr-FR')}</td>
                               <td>
                                 <div className={`${styles.statusTag} ${statusConfig.bg} ${statusConfig.text}`}>
@@ -1077,7 +1327,7 @@ const toggleDropdown = (demandeId: number) => {
                                 ) : (
                                   <div className={`${styles.statusTag} ${styles['bg-gray-100']} ${styles['text-gray-800']}`}>
                                     <FiClock className={styles['text-gray-500']} />
-                                    Non dÃ©marrÃ©e
+                                    Non démarrée
                                   </div>
                                 )}
                               </td>
@@ -1099,7 +1349,7 @@ const toggleDropdown = (demandeId: number) => {
       className={styles.dropdownItem}
       onClick={() => {
         setOpenDropdown(null);
-        goToEtape(d.procedure.id_proc);
+        goToEtape(d.procedure.id_proc, d);
       }}
     >
       <FiChevronRight className={styles.dropdownIcon} /> Continuer
@@ -1138,18 +1388,18 @@ const toggleDropdown = (demandeId: number) => {
                           <option key={option} value={option}>{option}</option>
                         ))}
                       </select>
-                      <span>entrÃ©es par page</span>
+                      <span>entrées par page</span>
                     </div>
                     
                     <div className={styles.paginationInfo}>
                       {pagination.totalItems > 0 ? (
                         <span>
-                          Affichage de {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} Ã {' '}
+                          Affichage de {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} à{' '}
                           {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} sur{' '}
-                          {pagination.totalItems} entrÃ©es
+                          {pagination.totalItems} entrées
                         </span>
                       ) : (
-                        <span>Aucune entrÃ©e Ã  afficher</span>
+                        <span>Aucune entrée à afficher</span>
                       )}
                     </div>
                     
@@ -1168,8 +1418,8 @@ const toggleDropdown = (demandeId: number) => {
                     <h3 className={styles.modalTitle}>Confirmer la suppression</h3>
                   </div>
                   <p className={styles.modalBody}>
-                    ÃŠtes-vous sÃ»r de vouloir supprimer cette procÃ©dure et toutes ses
-                    donnÃ©es associÃ©es ? Cette action est irrÃ©versible.
+                    Êtes-vous sûr de vouloir supprimer cette procédure et toutes ses
+                    données associées ? Cette action est irréversible.
                   </p>
                   <div className={styles.modalActions}>
                     <button
@@ -1185,7 +1435,7 @@ const toggleDropdown = (demandeId: number) => {
                         setProcedureToDelete(null);
                       }}
                     >
-                      Supprimer dÃ©finitivement
+                      Supprimer définitivement
                     </button>
                   </div>
                 </div>
@@ -1228,11 +1478,11 @@ function getStatutLabel(statut: string) {
   switch (statut) {
     case 'en_instruction': return 'En instruction';
     case 'avis_wilaya': return 'Avis Wilaya';
-    case 'ComitÃ© de direction': return 'CD Ã  convoquer';
+    case 'Comité de direction': return 'CD à convoquer';
     case 'retard': return 'En retard';
-    case 'acceptÃ©e': return 'AcceptÃ©e';
-    case 'rejete': return 'RejetÃ©e';
-    case 'Documents': return 'RÃ©serves';
+    case 'acceptée': return 'Acceptée';
+    case 'rejete': return 'Rejetée';
+    case 'Documents': return 'Réserves';
     default: return statut || '---';
   }
 }

@@ -32,7 +32,7 @@ export class ChatService {
     }
 
     // Create message
-    const message = await this.prisma.message.create({
+    const message = await this.prisma.messagePortail.create({
       data: {
         content,
         senderId,
@@ -78,7 +78,7 @@ export class ChatService {
     return Promise.all(
       conversations.map(async (conv) => {
         const otherUser = conv.user1Id === userId ? conv.user2 : conv.user1;
-        const unreadCount = await this.prisma.message.count({
+        const unreadCount = await this.prisma.messagePortail.count({
           where: {
             conversationId: conv.id,
             receiverId: userId,
@@ -106,7 +106,7 @@ export class ChatService {
   }
 
  async getAvailableUsers(currentUserId: number) {
-  return this.prisma.user.findMany({
+  return this.prisma.utilisateurPortail.findMany({
     where: {
       id: { not: currentUserId },
     },
@@ -131,7 +131,7 @@ export class ChatService {
     }
 
     // Mark messages as read
-    await this.prisma.message.updateMany({
+    await this.prisma.messagePortail.updateMany({
       where: {
         conversationId,
         receiverId: userId,
@@ -140,7 +140,7 @@ export class ChatService {
       data: { isRead: true },
     });
 
-    const messages = await this.prisma.message.findMany({
+    const messages = await this.prisma.messagePortail.findMany({
       where: { conversationId },
       include: {
         sender: { select: { id: true, nom: true, Prenom: true, username: true } },
@@ -152,7 +152,7 @@ export class ChatService {
   }
 
   async getUnreadCount(userId: number): Promise<number> {
-    return this.prisma.message.count({
+    return this.prisma.messagePortail.count({
       where: {
         receiverId: userId,
         isRead: false,

@@ -32,8 +32,8 @@ async function bootstrap() {
     optionsSuccessStatus: 204,
   });
 
-  // ✅ Serving static files from public
-  const publicPath = join(process.cwd(), 'server', 'public');
+  // ✅ Serving static files from public (ensure correct path, no double "server")
+  const publicPath = join(process.cwd(), 'public');
   if (!fs.existsSync(publicPath)) {
     console.warn('⚠️ Warning: public folder not found at:', publicPath);
   }

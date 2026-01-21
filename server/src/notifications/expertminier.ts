@@ -1,8 +1,9 @@
 // expertminier.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
-@Entity('expertminier') // Use the actual table name
-export class Expert{
+// Align with Prisma table name (@@map("expertminier"))
+@Entity('expertminier')
+export class Expert {
   @PrimaryGeneratedColumn()
   id_expert: number;
 

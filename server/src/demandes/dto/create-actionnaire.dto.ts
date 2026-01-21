@@ -23,9 +23,9 @@ export class CreateActionnaireDto {
   lieu_naissance: any;
   id_pays: number
 }
-import { PersonnePhysiquePortail, FonctionPersonneMoralePortail } from '@prisma/client';
+import { PersonnePhysiquePortail, FonctionPersonneMoral } from '@prisma/client';
 
 export type ActionnaireResult = {
   personne: PersonnePhysiquePortail;
-  lien: FonctionPersonneMoralePortail;
+  lien: FonctionPersonneMoral;
 };

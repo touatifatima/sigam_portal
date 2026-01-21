@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as csv from 'csv-parser';
-import { ExpertMinierPortail, PrismaClient } from "@prisma/client";
+import { ExpertMinier, PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -31,7 +31,7 @@ export async function main() {
       console.log("CSV loaded, inserting into database...");
 
       try {
-        await prisma.expertMinierPortail.createMany({
+        await prisma.expertMinier.createMany({
           data: expertData,
           skipDuplicates: true,
         });

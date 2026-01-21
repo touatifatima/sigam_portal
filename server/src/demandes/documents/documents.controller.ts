@@ -1,7 +1,22 @@
-import { Controller, Get, Param, ParseIntPipe, Post, Body, Put } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Body,
+  Put,
+  UploadedFile,
+  UseInterceptors,
+  BadRequestException,
+} from '@nestjs/common';
 import { DocumentsService } from './documents.service';
 import { Response } from 'express';
 import { Res } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Controller('api')
 export class DocumentsController {
@@ -11,38 +26,55 @@ export class DocumentsController {
   async getDocs(@Param('id_demande', ParseIntPipe) id_demande: number) {
     return this.service.getDocumentsByDemande(id_demande);
   }
-  
+
   @Post('demande/:id_demande/dossier-fournis')
   async createOrUpdateDossierFournis(
     @Param('id_demande', ParseIntPipe) id_demande: number,
-    @Body() body: { 
-      documents: { 
-        id_doc: number; 
-        status: 'present' | 'manquant'; 
-        file_url?: string 
-      }[],
-      remarques?: string
-    }
+    @Body()
+    body: {
+      documents: {
+        id_doc: number;
+        status: 'present' | 'manquant';
+        file_url?: string;
+      }[];
+      remarques?: string;
+    },
   ) {
     return this.service.createOrUpdateDossierFournis(
-      id_demande, 
-      body.documents, 
-      body.remarques
+      id_demande,
+      body.documents,
+      body.remarques,
     );
   }
 
- @Put('demande/:id_demande/status')
-async updateDemandeStatus(
-  @Param('id_demande', ParseIntPipe) id_demande: number,
-  @Body() body: { statut_demande: 'ACCEPTEE' | 'REJETEE'; rejectionReason?: string; motif_rejet?: string }
-) {
-  const reason = body.rejectionReason ?? body.motif_rejet;
-  return this.service.updateDemandeStatus(
-    id_demande,
-    body.statut_demande,
-    reason
-  );
-}
+  @Put('demande/:id_demande/recevabilite')
+  async updateDemandeRecevabilite(
+    @Param('id_demande', ParseIntPipe) id_demande: number,
+    @Body() body: { dossier_recevable: boolean },
+  ) {
+    return this.service.updateDemandeRecevabilite(
+      id_demande,
+      body.dossier_recevable,
+    );
+  }
+
+  @Put('demande/:id_demande/status')
+  async updateDemandeStatus(
+    @Param('id_demande', ParseIntPipe) id_demande: number,
+    @Body()
+    body: {
+      statut_demande: 'ACCEPTEE' | 'REJETEE';
+      rejectionReason?: string;
+      motif_rejet?: string;
+    },
+  ) {
+    const reason = body.rejectionReason ?? body.motif_rejet;
+    return this.service.updateDemandeStatus(
+      id_demande,
+      body.statut_demande,
+      reason,
+    );
+  }
 
   @Get('demande/:id_demande/letters')
   async getLetters(@Param('id_demande', ParseIntPipe) id_demande: number) {
@@ -55,12 +87,50 @@ async updateDemandeStatus(
     return this.service.generateLetters(id_demande);
   }
 
+  @Post('demande/:id_demande/document/:id_doc/upload')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (req, file, cb) => {
+          const id_demande = req.params?.id_demande;
+          const uploadPath = path.join(
+            process.cwd(),
+            'public',
+            'uploads',
+            'demandes',
+            id_demande ?? 'unknown',
+          );
+          fs.mkdirSync(uploadPath, { recursive: true });
+          cb(null, uploadPath);
+        },
+        filename: (req, file, cb) => {
+          const id_doc = req.params?.id_doc ?? 'doc';
+          const ext = path.extname(file.originalname || '').toLowerCase();
+          const ts = Date.now();
+          cb(null, `${id_doc}_${ts}${ext}`);
+        },
+      }),
+    }),
+  )
+  async uploadDocument(
+    @Param('id_demande', ParseIntPipe) id_demande: number,
+    @Param('id_doc', ParseIntPipe) id_doc: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Aucun fichier fourni');
+    }
+    const fileUrl = `/uploads/demandes/${id_demande}/${file.filename}`;
+    return this.service.markDocumentAsUploaded(id_demande, id_doc, fileUrl);
+  }
+
   @Get('demande/:id_demande/recepisse.pdf')
   async downloadRecepisse(
     @Param('id_demande', ParseIntPipe) id_demande: number,
     @Res() res: Response,
   ) {
-    const { buffer, filename } = await this.service.generateRecepissePdf(id_demande);
+    const { buffer, filename } =
+      await this.service.generateRecepissePdf(id_demande);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.end(buffer);
@@ -71,7 +141,8 @@ async updateDemandeStatus(
     @Param('id_demande', ParseIntPipe) id_demande: number,
     @Res() res: Response,
   ) {
-    const { buffer, filename } = await this.service.generateMiseEnDemeurePdf(id_demande);
+    const { buffer, filename } =
+      await this.service.generateMiseEnDemeurePdf(id_demande);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.end(buffer);

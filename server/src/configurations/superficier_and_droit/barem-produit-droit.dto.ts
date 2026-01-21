@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsNotEmpty, IsOptional, IsUUID, IsPositive } from 'class-validator';
+import {
+  IsNumber,
+  IsNotEmpty,
+  IsOptional,
+  IsUUID,
+  IsPositive,
+} from 'class-validator';
 
 export class BaremProduitDroitDto {
   @ApiProperty()
@@ -40,7 +46,10 @@ export class CreateBaremProduitDroitDto {
 }
 
 export class UpdateBaremProduitDroitDto {
-  @ApiProperty({ description: 'Montant du droit établissement', required: false })
+  @ApiProperty({
+    description: 'Montant du droit établissement',
+    required: false,
+  })
   @IsNumber()
   @IsPositive()
   montant_droit_etab?: number;

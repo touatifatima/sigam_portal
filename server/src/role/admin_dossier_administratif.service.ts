@@ -8,7 +8,7 @@ export class DossierService {
   constructor(private prisma: PrismaService) {}
 
   async findAllWithDetails() {
-    return this.prisma.dossierAdministratifPortail.findMany({
+    return this.prisma.dossierAdministratif.findMany({
       include: {
         typePermis: true,
         typeProcedure: true,
@@ -36,7 +36,7 @@ export class DossierService {
     }[];
   }) {
     return this.prisma.$transaction(async (prisma) => {
-      const dossier = await prisma.dossierAdministratifPortail.create({
+      const dossier = await prisma.dossierAdministratif.create({
         data: {
           id_typeproc: data.id_typeproc,
           id_typePermis: data.id_typePermis,
@@ -97,7 +97,7 @@ export class DossierService {
     }[];
   }) {
     return this.prisma.$transaction(async (prisma) => {
-      const dossier = await prisma.dossierAdministratifPortail.update({
+      const dossier = await prisma.dossierAdministratif.update({
         where: { id_dossier: id },
         data: { remarques: data.remarques }
       });
@@ -173,7 +173,7 @@ export class DossierService {
           where: { id_dossier: id }
         });
         
-        await prisma.dossierAdministratifPortail.update({
+        await prisma.dossierAdministratif.update({
           where: { id_dossier: id },
           data: { nombre_doc: count }
         });
@@ -189,7 +189,7 @@ export class DossierService {
         where: { id_dossier: id }
       });
       
-      return prisma.dossierAdministratifPortail.delete({
+      return prisma.dossierAdministratif.delete({
         where: { id_dossier: id }
       });
     });
@@ -219,7 +219,7 @@ export class DossierService {
         where: { id_dossier: dossierId }
       });
 
-      return prisma.dossierAdministratifPortail.update({
+      return prisma.dossierAdministratif.update({
         where: { id_dossier: dossierId },
         data: { nombre_doc: count }
       });
@@ -239,7 +239,7 @@ export class DossierService {
         where: { id_dossier: dossierId }
       });
 
-      return prisma.dossierAdministratifPortail.update({
+      return prisma.dossierAdministratif.update({
         where: { id_dossier: dossierId },
         data: { nombre_doc: count }
       });
@@ -247,7 +247,7 @@ export class DossierService {
   }
 
   private async getDossierWithDocuments(id: number) {
-    return this.prisma.dossierAdministratifPortail.findUnique({
+    return this.prisma.dossierAdministratif.findUnique({
       where: { id_dossier: id },
       include: {
         typePermis: true,

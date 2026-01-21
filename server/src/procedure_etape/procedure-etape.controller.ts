@@ -1,5 +1,13 @@
 // src/procedure-etape/procedure-etape.controller.ts
-import { Controller, Param, Post, Get, Body, NotFoundException, InternalServerErrorException } from '@nestjs/common';
+import {
+  Controller,
+  Param,
+  Post,
+  Get,
+  Body,
+  NotFoundException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ProcedureEtapeService } from './procedure-etape.service';
 import { StatutProcedure } from '@prisma/client';
 
@@ -11,10 +19,15 @@ export class ProcedureEtapeController {
   async startStep(
     @Param('id_proc') id_proc: string,
     @Param('id_etape') id_etape: string,
-    @Body('link') link?: string
+    @Body('link') link?: string,
   ) {
     try {
-      return await this.service.setStepStatus(+id_proc, +id_etape, StatutProcedure.EN_COURS, link);
+      return await this.service.setStepStatus(
+        +id_proc,
+        +id_etape,
+        StatutProcedure.EN_COURS,
+        link,
+      );
     } catch (error) {
       console.error('Error starting step:', error);
       throw new InternalServerErrorException('Failed to start step');
@@ -24,10 +37,16 @@ export class ProcedureEtapeController {
   @Post('finish/:id_proc/:id_etape')
   async finishStep(
     @Param('id_proc') id_proc: string,
-    @Param('id_etape') id_etape: string
+    @Param('id_etape') id_etape: string,
+    @Body('link') link?: string,
   ) {
     try {
-      return await this.service.setStepStatus(+id_proc, +id_etape, StatutProcedure.TERMINEE);
+      return await this.service.setStepStatus(
+        +id_proc,
+        +id_etape,
+        StatutProcedure.TERMINEE,
+        link,
+      );
     } catch (error) {
       console.error('Error finishing step:', error);
       throw new InternalServerErrorException('Failed to finish step');
@@ -38,11 +57,11 @@ export class ProcedureEtapeController {
   async getProcedureWithPhases(@Param('id_proc') id_proc: string) {
     try {
       const procedure = await this.service.getProcedureWithPhases(+id_proc);
-      
+
       if (!procedure) {
         throw new NotFoundException(`Procedure with ID ${id_proc} not found`);
       }
-      
+
       return procedure;
     } catch (error) {
       console.error('Error fetching procedure:', error);
@@ -53,7 +72,7 @@ export class ProcedureEtapeController {
   @Post('phase/:id_proc/next')
   async startNextPhase(
     @Param('id_proc') id_proc: string,
-    @Body('currentPhaseId') currentPhaseId: number
+    @Body('currentPhaseId') currentPhaseId: number,
   ) {
     try {
       return await this.service.startNextPhase(+id_proc, currentPhaseId);

@@ -28,4 +28,3 @@ export class VerificationGeoController {
     return this.service.upsertByDemande(id_demande, body);
   }
 }
-

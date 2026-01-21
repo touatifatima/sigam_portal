@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { MissingAction, Prisma, StatutProcedure } from '@prisma/client';
 
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -65,7 +65,7 @@ export class DocumentsService {
       missing_action: MissingAction;
       reject_message: string | null;
     }>,
-    statuses: Array<{ id_doc: number; status: string }>
+    statuses: Array<{ id_doc: number; status: string }>,
   ) {
     const missingRequired = definitions.filter((def) => {
       if (!def.is_required) {
@@ -75,9 +75,15 @@ export class DocumentsService {
       return !match || match.status !== 'present';
     });
 
-    const blocking = missingRequired.filter((def) => def.missing_action === MissingAction.REJECT);
-    const blockingNext = missingRequired.filter((def) => def.missing_action === MissingAction.BLOCK_NEXT);
-    const warnings = missingRequired.filter((def) => def.missing_action === MissingAction.WARNING);
+    const blocking = missingRequired.filter(
+      (def) => def.missing_action === MissingAction.REJECT,
+    );
+    const blockingNext = missingRequired.filter(
+      (def) => def.missing_action === MissingAction.BLOCK_NEXT,
+    );
+    const warnings = missingRequired.filter(
+      (def) => def.missing_action === MissingAction.WARNING,
+    );
 
     const summary: MissingSummary = {
       requiredMissing: missingRequired.map((def) => ({
@@ -129,11 +135,15 @@ export class DocumentsService {
       dateDepot?: Date | null;
       dateMiseEnDemeure?: Date | null;
       dateRecepisse?: Date | null;
-    }
+    },
   ): DeadlinePayload {
     const depot = options.dateDepot ? new Date(options.dateDepot) : null;
-    const miseBase = options.dateMiseEnDemeure ? new Date(options.dateMiseEnDemeure) : depot;
-    const recepisseBase = options.dateRecepisse ? new Date(options.dateRecepisse) : depot;
+    const miseBase = options.dateMiseEnDemeure
+      ? new Date(options.dateMiseEnDemeure)
+      : depot;
+    const recepisseBase = options.dateRecepisse
+      ? new Date(options.dateRecepisse)
+      : depot;
 
     // 30 jours calendaires (pas jours ouvrables)
     const miseEnDemeureDeadline =
@@ -142,7 +152,9 @@ export class DocumentsService {
         : null;
 
     const instructionDeadline =
-      summary.blocking.length === 0 && summary.blockingNext.length === 0 && recepisseBase
+      summary.blocking.length === 0 &&
+      summary.blockingNext.length === 0 &&
+      recepisseBase
         ? this.addBusinessDays(recepisseBase, 10).toISOString()
         : null;
 
@@ -173,11 +185,55 @@ export class DocumentsService {
       },
     });
 
-    if (!demande?.id_typeProc || !demande?.id_typePermis) {
-      throw new Error('Type procedure or type permis data is missing.');
+    if (!demande) {
+      return {
+        documents: [],
+        dossierFournis: null,
+        missingSummary: {
+          requiredMissing: [],
+          blocking: [],
+          blockingNext: [],
+          warnings: [],
+        },
+        deadlines: { miseEnDemeure: null, instruction: null },
+        demande: {
+          id_demande,
+          date_demande: null,
+          date_instruction: null,
+          date_refus: null,
+          statut_demande: null,
+          dossier_recevable: null,
+          dossier_complet: null,
+          duree_instruction: null,
+        },
+      };
     }
 
-    const dossier = await this.prisma.dossierAdministratifPortail.findFirst({
+    if (!demande?.id_typeProc || !demande?.id_typePermis) {
+      return {
+        documents: [],
+        dossierFournis: null,
+        missingSummary: {
+          requiredMissing: [],
+          blocking: [],
+          blockingNext: [],
+          warnings: [],
+        },
+        deadlines: { miseEnDemeure: null, instruction: null },
+        demande: {
+          id_demande: demande?.id_demande ?? id_demande,
+          date_demande: demande?.date_demande ?? null,
+          date_instruction: demande?.date_instruction ?? null,
+          date_refus: demande?.date_refus ?? null,
+          statut_demande: demande?.statut_demande ?? null,
+          dossier_recevable: demande?.dossier_recevable ?? null,
+          dossier_complet: demande?.dossier_complet ?? null,
+          duree_instruction: demande?.duree_instruction ?? null,
+        },
+      };
+    }
+
+    const dossier = await this.prisma.dossierAdministratif.findFirst({
       where: {
         id_typeproc: demande.id_typeProc,
         id_typePermis: demande.id_typePermis,
@@ -192,7 +248,27 @@ export class DocumentsService {
     });
 
     if (!dossier) {
-      throw new Error('No dossier administratif configured for this procedure/permis.');
+      return {
+        documents: [],
+        dossierFournis: null,
+        missingSummary: {
+          requiredMissing: [],
+          blocking: [],
+          blockingNext: [],
+          warnings: [],
+        },
+        deadlines: { miseEnDemeure: null, instruction: null },
+        demande: {
+          id_demande: demande.id_demande,
+          date_demande: demande.date_demande,
+          date_instruction: demande.date_instruction,
+          date_refus: demande.date_refus,
+          statut_demande: demande.statut_demande,
+          dossier_recevable: demande.dossier_recevable ?? null,
+          dossier_complet: demande.dossier_complet ?? null,
+          duree_instruction: demande.duree_instruction ?? null,
+        },
+      };
     }
 
     const docDefinitions = dossier.dossierDocuments.map((dd) => ({
@@ -213,14 +289,16 @@ export class DocumentsService {
       })) ?? [];
 
     const { summary, dossierStatus } = this.summariseMissing(
-      docDefinitions.map(({ id_doc, nom_doc, is_required, missing_action, reject_message }) => ({
-        id_doc,
-        nom_doc,
-        is_required,
-        missing_action,
-        reject_message,
-      })),
-      existingStatuses
+      docDefinitions.map(
+        ({ id_doc, nom_doc, is_required, missing_action, reject_message }) => ({
+          id_doc,
+          nom_doc,
+          is_required,
+          missing_action,
+          reject_message,
+        }),
+      ),
+      existingStatuses,
     );
 
     const documents = docDefinitions.map((def) => {
@@ -258,7 +336,8 @@ export class DocumentsService {
             date_accuse: latestDossierFournis.date_accuse,
             numero_recepisse: latestDossierFournis.numero_recepisse,
             date_recepisse: latestDossierFournis.date_recepisse,
-            mise_en_demeure_envoyee: latestDossierFournis.mise_en_demeure_envoyee,
+            mise_en_demeure_envoyee:
+              latestDossierFournis.mise_en_demeure_envoyee,
             date_mise_en_demeure: latestDossierFournis.date_mise_en_demeure,
             pieces_manquantes: latestDossierFournis.pieces_manquantes,
             verification_phase: latestDossierFournis.verification_phase,
@@ -267,13 +346,27 @@ export class DocumentsService {
         : null,
       missingSummary: summary,
       deadlines,
+      demande: {
+        id_demande: demande.id_demande,
+        date_demande: demande.date_demande,
+        date_instruction: demande.date_instruction,
+        date_refus: demande.date_refus,
+        statut_demande: demande.statut_demande,
+        dossier_recevable: demande.dossier_recevable ?? null,
+        dossier_complet: demande.dossier_complet ?? null,
+        duree_instruction: demande.duree_instruction ?? null,
+      },
     };
   }
 
   async createOrUpdateDossierFournis(
     id_demande: number,
-    documents: { id_doc: number; status: DocStatus; file_url?: string | null }[],
-    remarques?: string
+    documents: {
+      id_doc: number;
+      status: DocStatus;
+      file_url?: string | null;
+    }[],
+    remarques?: string,
   ) {
     return this.prisma.$transaction(async (prisma) => {
       const demande = await prisma.demandePortail.findUnique({
@@ -287,7 +380,7 @@ export class DocumentsService {
         throw new Error('Type procedure or type permis data is missing.');
       }
 
-      const dossierDefinition = await prisma.dossierAdministratifPortail.findFirst({
+      const dossierDefinition = await prisma.dossierAdministratif.findFirst({
         where: {
           id_typeproc: demande.id_typeProc,
           id_typePermis: demande.id_typePermis,
@@ -302,7 +395,9 @@ export class DocumentsService {
       });
 
       if (!dossierDefinition) {
-        throw new Error('No dossier administratif configured for this procedure/permis.');
+        throw new Error(
+          'No dossier administratif configured for this procedure/permis.',
+        );
       }
 
       const definitionMap = new Map<
@@ -343,7 +438,7 @@ export class DocumentsService {
           missing_action: meta.missing_action,
           reject_message: meta.reject_message,
         })),
-        summarySource
+        summarySource,
       );
 
       const now = new Date();
@@ -353,34 +448,40 @@ export class DocumentsService {
         include: { documents: true },
       });
 
-      const piecesManquantes: MissingSummaryEntry[] = summary.requiredMissing.map((item) => ({
-        id_doc: item.id_doc,
-        nom_doc: item.nom_doc,
-        missing_action: item.missing_action,
-        reject_message: item.reject_message,
-      }));
+      const piecesManquantes: MissingSummaryEntry[] =
+        summary.requiredMissing.map((item) => ({
+          id_doc: item.id_doc,
+          nom_doc: item.nom_doc,
+          missing_action: item.missing_action,
+          reject_message: item.reject_message,
+        }));
 
       // 30 jours calendaires (pas jours ouvrables)
-      const miseEnDemeureDeadlineDate = summary.blockingNext.length > 0 ? this.addDays(now, 30) : null;
+      const miseEnDemeureDeadlineDate =
+        summary.blockingNext.length > 0 ? this.addDays(now, 30) : null;
 
-      const piecesManquantesValue: Prisma.NullableJsonNullValueInput | Prisma.InputJsonValue =
+      const piecesManquantesValue:
+        | Prisma.NullableJsonNullValueInput
+        | Prisma.InputJsonValue =
         piecesManquantes.length > 0
           ? ({
               generated_at: now.toISOString(),
               deadline: miseEnDemeureDeadlineDate?.toISOString() ?? null,
               deadlines: {
-                mise_en_demeure: miseEnDemeureDeadlineDate?.toISOString() ?? null,
+                mise_en_demeure:
+                  miseEnDemeureDeadlineDate?.toISOString() ?? null,
                 instruction: null,
               },
               items: piecesManquantes,
             } as Prisma.InputJsonValue)
           : Prisma.NullableJsonNullValueInput.JsonNull;
 
-      const verificationPhase = summary.blocking.length > 0
-        ? 'REJET'
-        : summary.blockingNext.length > 0
-        ? 'MISE_EN_DEMEURE'
-        : 'RECEVABILITE';
+      const verificationPhase =
+        summary.blocking.length > 0
+          ? 'REJET'
+          : summary.blockingNext.length > 0
+            ? 'MISE_EN_DEMEURE'
+            : 'RECEVABILITE';
 
       const commonData: {
         statut_dossier: string;
@@ -389,7 +490,9 @@ export class DocumentsService {
         verification_phase: string;
         mise_en_demeure_envoyee: boolean;
         date_mise_en_demeure: Date | null;
-        pieces_manquantes: Prisma.NullableJsonNullValueInput | Prisma.InputJsonValue;
+        pieces_manquantes:
+          | Prisma.NullableJsonNullValueInput
+          | Prisma.InputJsonValue;
       } = {
         statut_dossier: dossierStatus,
         remarques,
@@ -416,19 +519,21 @@ export class DocumentsService {
           where: { id_dossierFournis: existingDossier.id_dossierFournis },
           data: {
             ...commonData,
-            numero_accuse: existingDossier.numero_accuse ?? this.generateReference('ACC'),
+            numero_accuse:
+              existingDossier.numero_accuse ?? this.generateReference('ACC'),
             date_accuse: existingDossier.date_accuse ?? now,
             numero_recepisse:
               piecesManquantes.length === 0
-                ? existingDossier.numero_recepisse ?? this.generateReference('REC')
+                ? (existingDossier.numero_recepisse ??
+                  this.generateReference('REC'))
                 : existingDossier.numero_recepisse,
             date_recepisse:
               piecesManquantes.length === 0
-                ? existingDossier.date_recepisse ?? now
+                ? (existingDossier.date_recepisse ?? now)
                 : existingDossier.date_recepisse,
             date_preannotation:
               piecesManquantes.length === 0
-                ? existingDossier.date_preannotation ?? now
+                ? (existingDossier.date_preannotation ?? now)
                 : existingDossier.date_preannotation,
             documents: {
               createMany: {
@@ -445,7 +550,10 @@ export class DocumentsService {
             ...commonData,
             numero_accuse: this.generateReference('ACC'),
             date_accuse: now,
-            numero_recepisse: piecesManquantes.length === 0 ? this.generateReference('REC') : null,
+            numero_recepisse:
+              piecesManquantes.length === 0
+                ? this.generateReference('REC')
+                : null,
             date_recepisse: piecesManquantes.length === 0 ? now : null,
             date_preannotation: piecesManquantes.length === 0 ? now : null,
             documents: {
@@ -470,7 +578,7 @@ export class DocumentsService {
         });
       }
 
-      if (summary.blocking.length > 0) {
+      if (false && summary.blocking.length > 0) {
         const reason = summary.blocking
           .map((item) => item.reject_message || 'Document obligatoire manquant')
           .join(', ');
@@ -506,6 +614,14 @@ export class DocumentsService {
         dateRecepisse: dossierResult.date_recepisse,
       });
 
+      // Synchronise le statut de complétude du dossier au niveau de la demande
+      await prisma.demandePortail.update({
+        where: { id_demande },
+        data: {
+          dossier_complet: dossierStatus === 'complet',
+        },
+      });
+
       return {
         message: 'Dossier fournis enregistre',
         dossierFournis: dossierResult,
@@ -515,10 +631,87 @@ export class DocumentsService {
     });
   }
 
+  async markDocumentAsUploaded(
+    id_demande: number,
+    id_doc: number,
+    file_url: string,
+  ) {
+    const now = new Date();
+    const updated = await this.prisma.$transaction(async (prisma) => {
+      const demande = await prisma.demandePortail.findUnique({
+        where: { id_demande },
+        include: {
+          dossiersFournis: {
+            include: { documents: true },
+            orderBy: { date_depot: 'desc' },
+            take: 1,
+          },
+        },
+      });
+
+      if (!demande) {
+        throw new NotFoundException('Demande introuvable');
+      }
+
+      const dossierDef = await prisma.dossierAdministratif.findFirst({
+        where: {
+          id_typeproc: demande.id_typeProc ?? undefined,
+          id_typePermis: demande.id_typePermis ?? undefined,
+        },
+      });
+      if (!dossierDef) {
+        throw new NotFoundException(
+          'Aucun dossier administratif configuré pour cette demande',
+        );
+      }
+
+      const existingDossier = demande.dossiersFournis[0];
+      const dossier =
+        existingDossier ??
+        (await prisma.dossierFournisPortail.create({
+          data: {
+            id_demande,
+            statut_dossier: 'incomplet',
+            verification_phase: 'RECEVABILITE',
+            date_depot: now,
+            numero_accuse: `ACC-${Date.now()}`,
+            date_accuse: now,
+            mise_en_demeure_envoyee: false,
+            pieces_manquantes: Prisma.NullableJsonNullValueInput.JsonNull,
+          },
+          include: { documents: true },
+        }));
+
+      await prisma.dossierFournisDocumentPortail.upsert({
+        where: {
+          id_dossierFournis_id_doc: {
+            id_dossierFournis: dossier.id_dossierFournis,
+            id_doc,
+          },
+        },
+        update: {
+          status: 'present',
+          file_url,
+          updated_at: now,
+        },
+        create: {
+          id_dossierFournis: dossier.id_dossierFournis,
+          id_doc,
+          status: 'present',
+          file_url,
+        },
+      });
+
+      return this.getDocumentsByDemande(id_demande);
+    });
+
+    return { fileUrl: file_url, ...updated };
+  }
+
   async updateDemandeStatus(
     id_demande: number,
     statut_demande: 'ACCEPTEE' | 'REJETEE',
-    rejectionReason?: string
+    rejectionReason?: string,
   ) {
     // Update demande with correct fields present in schema
     const now = new Date();
@@ -558,11 +751,30 @@ export class DocumentsService {
     return updatedDemande;
   }
 
+  async updateDemandeRecevabilite(
+    id_demande: number,
+    dossier_recevable: boolean,
+  ) {
+    const now = new Date();
+    const data: Prisma.demandePortailUpdateInput = {
+      dossier_recevable,
+      date_instruction: dossier_recevable ? now : null,
+    };
+
+    return this.prisma.demandePortail.update({
+      where: { id_demande },
+      data,
+    });
+  }
+
   async generateLetters(id_demande: number) {
     const data = await this.getDocumentsByDemande(id_demande);
     const demande = await this.prisma.demandePortail.findUnique({
       where: { id_demande },
-      include: { entreprise: true, procedure: true },
+      include: {
+        detenteurdemande: { include: { detenteur: true } },
+        procedure: true,
+      },
     });
 
     if (!demande) {
@@ -570,10 +782,13 @@ export class DocumentsService {
     }
 
     const now = new Date();
-    const detenteurName = demande.entreprise?.nom_societeFR || 'Le demandeur';
+    const detenteurName =
+      demande.detenteurdemande?.[0]?.detenteur?.nom_societeFR || 'Le demandeur';
     const dossier = data.dossierFournis;
 
-    const missingList = data.missingSummary.requiredMissing.map((m: any) => `- ${m.nom_doc}`).join('\n');
+    const missingList = data.missingSummary.requiredMissing
+      .map((m: any) => `- ${m.nom_doc}`)
+      .join('\n');
     const blockingNext = data.missingSummary.blockingNext.length > 0;
     const blocking = data.missingSummary.blocking.length > 0;
     const isComplete = data.missingSummary.requiredMissing.length === 0;
@@ -583,7 +798,8 @@ export class DocumentsService {
           type: 'MISE_EN_DEMEURE' as const,
           createdAt: now.toISOString(),
           deadline: data.deadlines.miseEnDemeure,
-          content: `Objet: Mise en demeure de compléter le dossier\n\n` +
+          content:
+            `Objet: Mise en demeure de compléter le dossier\n\n` +
             `${detenteurName},\n\n` +
             `Suite au dépôt de votre dossier (ACC: ${dossier?.numero_accuse ?? 'N/A'}), ` +
             `nous constatons l'absence des pièces suivantes:\n\n${missingList}\n\n` +
@@ -591,7 +807,9 @@ export class DocumentsService {
             `à compter de la date de cette notification pour compléter votre dossier. ` +
             `Passé ce délai, votre demande sera rejetée.\n\n` +
             `Date: ${now.toLocaleDateString()}\n` +
-            (data.deadlines.miseEnDemeure ? `Date limite: ${new Date(data.deadlines.miseEnDemeure).toLocaleDateString()}\n` : ''),
+            (data.deadlines.miseEnDemeure
+              ? `Date limite: ${new Date(data.deadlines.miseEnDemeure).toLocaleDateString()}\n`
+              : ''),
           items: data.missingSummary.requiredMissing,
         }
       : null;
@@ -600,7 +818,8 @@ export class DocumentsService {
       ? {
           type: 'REJET' as const,
           createdAt: now.toISOString(),
-          content: `Objet: Notification de rejet de la demande\n\n` +
+          content:
+            `Objet: Notification de rejet de la demande\n\n` +
             `${detenteurName},\n\n` +
             `Votre demande a été rejetée en raison des manquements suivants:\n\n${missingList}\n\n` +
             `Vous pouvez déposer une nouvelle demande après correction.\n\nDate: ${now.toLocaleDateString()}`,
@@ -612,8 +831,10 @@ export class DocumentsService {
       ? {
           type: 'RECEPISSE' as const,
           createdAt: now.toISOString(),
-          numero_recepisse: dossier?.numero_recepisse ?? this.generateReference('REC'),
-          content: `Objet: Récépissé de recevabilité\n\n` +
+          numero_recepisse:
+            dossier?.numero_recepisse ?? this.generateReference('REC'),
+          content:
+            `Objet: Récépissé de recevabilité\n\n` +
             `${detenteurName},\n\n` +
             `Nous accusons réception d'un dossier complet et recevable pour instruction. ` +
             `Le délai d'instruction démarre à compter de ce jour.\n\n` +
@@ -623,19 +844,25 @@ export class DocumentsService {
       : null;
 
     return {
-      demande: { id_demande, code_demande: demande.code_demande, num_enregist: demande.num_enregist },
+      demande: {
+        id_demande,
+        code_demande: demande.code_demande,
+        num_enregist: demande.num_enregist,
+      },
       dossierFournis: dossier,
       letters: { miseEnDemeure, rejet, recepisse },
     };
   }
 
-  async generateRecepissePdf(id_demande: number): Promise<{ buffer: Buffer; filename: string }> {
+  async generateRecepissePdf(
+    id_demande: number,
+  ): Promise<{ buffer: Buffer; filename: string }> {
     const data = await this.getDocumentsByDemande(id_demande);
     const demande = await this.prisma.demandePortail.findUnique({
       where: { id_demande },
       include: {
         typePermis: true,
-        entreprise: true,
+        detenteurdemande: { include: { detenteur: true } },
         wilaya: true,
         daira: true,
         commune: true,
@@ -657,7 +884,10 @@ export class DocumentsService {
     const MARGIN = { l: 60, r: 60, t: 70, b: 70 };
     const maxWidth = PAGE.w - MARGIN.l - MARGIN.r;
 
-    const fontPath = path.resolve(__dirname, '../permis_generation/Amiri-Regular.ttf');
+    const fontPath = path.resolve(
+      __dirname,
+      '../permis_generation/Amiri-Regular.ttf',
+    );
     let font = null as any;
     try {
       const fontBytes = fs.readFileSync(fontPath);
@@ -682,7 +912,8 @@ export class DocumentsService {
     };
     drawPageBorder();
 
-    const measure = (text: string, size: number) => font.widthOfTextAtSize(text, size);
+    const measure = (text: string, size: number) =>
+      font.widthOfTextAtSize(text, size);
 
     const wrapLines = (text: string, size: number): string[] => {
       const words = (text || '').split(/\s+/).filter(Boolean);
@@ -732,7 +963,13 @@ export class DocumentsService {
         if (line === '') {
           cursorY -= lh; // paragraph spacing
         } else {
-          page.drawText(line, { x: MARGIN.l, y: cursorY, size, font, color: rgb(0, 0, 0) });
+          page.drawText(line, {
+            x: MARGIN.l,
+            y: cursorY,
+            size,
+            font,
+            color: rgb(0, 0, 0),
+          });
           cursorY -= lh;
         }
       }
@@ -754,9 +991,12 @@ export class DocumentsService {
 
     // Body
     const num = dossier.numero_recepisse || '—';
-    const dateStr = (dossier.date_recepisse ? new Date(dossier.date_recepisse) : new Date()).toLocaleDateString('fr-DZ');
+    const dateStr = (
+      dossier.date_recepisse ? new Date(dossier.date_recepisse) : new Date()
+    ).toLocaleDateString('fr-DZ');
     const demandeCode = demande.code_demande || String(id_demande);
-    const detenteur = demande.entreprise?.nom_societeFR || 'Le demandeur';
+    const detenteur =
+      demande.detenteurdemande?.[0]?.detenteur?.nom_societeFR || 'Le demandeur';
     const typePermis = demande.typePermis?.lib_type || '—';
 
     drawParagraph(`Numéro de récépissé: ${num}`, 12);
@@ -765,25 +1005,42 @@ export class DocumentsService {
     drawParagraph(`Détenteur: ${detenteur}`, 12);
     drawParagraph(`Type de permis: ${typePermis}`, 12);
     cursorY -= 6;
-    drawParagraph(`Nous accusons réception d'un dossier complet et recevable pour instruction.`, 12);
+    drawParagraph(
+      `Nous accusons réception d'un dossier complet et recevable pour instruction.`,
+      12,
+    );
     cursorY -= 12;
-    drawParagraph('Ce récépissé marque le départ des délais d’instruction.', 10);
+    drawParagraph(
+      'Ce récépissé marque le départ des délais d’instruction.',
+      10,
+    );
 
     const buffer = Buffer.from(await pdf.save());
     const filename = `recepisse-${demandeCode}.pdf`;
     return { buffer, filename };
   }
 
-  async generateMiseEnDemeurePdf(id_demande: number): Promise<{ buffer: Buffer; filename: string }> {
+  async generateMiseEnDemeurePdf(
+    id_demande: number,
+  ): Promise<{ buffer: Buffer; filename: string }> {
     const data = await this.getDocumentsByDemande(id_demande);
     const demande = await this.prisma.demandePortail.findUnique({
       where: { id_demande },
-      include: { entreprise: true, typePermis: true },
+      include: {
+        detenteurdemande: { include: { detenteur: true } },
+        typePermis: true,
+      },
     });
 
     if (!demande) throw new Error('Demande not found');
-    if (!data || !data.missingSummary || data.missingSummary.requiredMissing.length === 0) {
-      throw new Error('Mise en demeure disponible uniquement pour dossier incomplet');
+    if (
+      !data ||
+      !data.missingSummary ||
+      data.missingSummary.requiredMissing.length === 0
+    ) {
+      throw new Error(
+        'Mise en demeure disponible uniquement pour dossier incomplet',
+      );
     }
 
     // PDF layout helpers
@@ -792,7 +1049,10 @@ export class DocumentsService {
     const MARGIN = { l: 60, r: 60, t: 70, b: 70 };
     const maxWidth = PAGE.w - MARGIN.l - MARGIN.r;
 
-    const fontPath = path.resolve(__dirname, '../permis_generation/Amiri-Regular.ttf');
+    const fontPath = path.resolve(
+      __dirname,
+      '../permis_generation/Amiri-Regular.ttf',
+    );
     let font = null as any;
     try {
       const fontBytes = fs.readFileSync(fontPath);
@@ -805,7 +1065,8 @@ export class DocumentsService {
     let cursorY = PAGE.h - MARGIN.t;
     const lineGap = 6;
 
-    const measure = (text: string, size: number) => font.widthOfTextAtSize(text, size);
+    const measure = (text: string, size: number) =>
+      font.widthOfTextAtSize(text, size);
     // Draw a subtle border on the page to keep content visually contained
     const drawPageBorder = () => {
       page.drawRectangle({
@@ -867,7 +1128,13 @@ export class DocumentsService {
       const lines = wrapLines(text, size);
       ensureSpace(lh * lines.length);
       for (const line of lines) {
-        page.drawText(line, { x: MARGIN.l, y: cursorY, size, font, color: rgb(0, 0, 0) });
+        page.drawText(line, {
+          x: MARGIN.l,
+          y: cursorY,
+          size,
+          font,
+          color: rgb(0, 0, 0),
+        });
         cursorY -= lh;
       }
     };
@@ -890,7 +1157,13 @@ export class DocumentsService {
         wrapped.forEach((line, idx) => {
           const x = MARGIN.l + (idx === 0 ? 0 : bulletIndent);
           const text = idx === 0 ? line : line.trimStart();
-          page.drawText(text, { x, y: cursorY, size, font, color: rgb(0, 0, 0) });
+          page.drawText(text, {
+            x,
+            y: cursorY,
+            size,
+            font,
+            color: rgb(0, 0, 0),
+          });
           cursorY -= lh;
         });
       }
@@ -902,7 +1175,13 @@ export class DocumentsService {
         const lines = wrapLines(bullet + it, size);
         ensureSpace(lh * lines.length);
         for (let idx = 0; idx < lines.length; idx++) {
-          page.drawText(lines[idx], { x: MARGIN.l, y: cursorY, size, font, color: rgb(0, 0, 0) });
+          page.drawText(lines[idx], {
+            x: MARGIN.l,
+            y: cursorY,
+            size,
+            font,
+            color: rgb(0, 0, 0),
+          });
           cursorY -= lh;
         }
       }
@@ -915,7 +1194,8 @@ export class DocumentsService {
     drawTitle('MISE EN DEMEURE', 16);
 
     // Meta
-    const detenteur = demande.entreprise?.nom_societeFR || 'Le demandeur';
+    const detenteur =
+      demande.detenteurdemande?.[0]?.detenteur?.nom_societeFR || 'Le demandeur';
     const codeDemande = demande.code_demande || String(id_demande);
     const deadlineStr = data.deadlines?.miseEnDemeure
       ? new Date(data.deadlines.miseEnDemeure).toLocaleDateString('fr-DZ')
@@ -926,13 +1206,26 @@ export class DocumentsService {
     cursorY -= 8;
 
     // Body
-    drawParagraph(`Suite au dépôt de votre dossier, nous constatons l'absence des pièces suivantes:`, 12);
-    const items: Array<{ nom_doc: string }> = data.missingSummary.requiredMissing;
-    drawBulletsWrapped(items.map((i) => i.nom_doc), 12);
+    drawParagraph(
+      `Suite au dépôt de votre dossier, nous constatons l'absence des pièces suivantes:`,
+      12,
+    );
+    const items: Array<{ nom_doc: string }> =
+      data.missingSummary.requiredMissing;
+    drawBulletsWrapped(
+      items.map((i) => i.nom_doc),
+      12,
+    );
     cursorY -= 8;
     // Clarify instruction delay with clean typography
-    drawParagraph("Conformément aux procédures en vigueur, vous disposez d'un délai maximum de 30 jours à compter de la date de cette notification pour compléter votre dossier.", 12);
-    drawParagraph(`Vous disposez d'un délai maximum de 30 jours à compter de la date de cette notification pour compléter votre dossier.`, 12);
+    drawParagraph(
+      "Conformément aux procédures en vigueur, vous disposez d'un délai maximum de 30 jours à compter de la date de cette notification pour compléter votre dossier.",
+      12,
+    );
+    drawParagraph(
+      `Vous disposez d'un délai maximum de 30 jours à compter de la date de cette notification pour compléter votre dossier.`,
+      12,
+    );
     drawParagraph(`Date limite: ${deadlineStr}`, 12);
 
     const buffer = Buffer.from(await pdf.save());

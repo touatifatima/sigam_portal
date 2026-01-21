@@ -12,6 +12,7 @@ import { DemandeSummaryControllerModule } from './demandes/popup/popup.module';
 import { InteractionWaliModule } from './demandes/avis_wali/interaction-wali.module';
 import { ComiteDirectionModule } from './demandes/cd/cd.module';
 import { ProcedureModule } from './dashboard/procedure.module';
+import { ProcedureOperateurModule } from './dashboard/operateur/procedure.module';//
 import { ProcedureEtapeModule } from './procedure_etape/procedure-etape.module';
 import { AuthModule } from './auth/auth.module';
 import { AdminModule } from './role/admin.module';
@@ -27,6 +28,7 @@ import { GeneratePdfModule } from './demandes/permis_generation/generate_permis_
 import { PermisDashboardfModule } from './permis_dashboard/permis-dashboard.module';
 import { CahierChargeModule } from './cahiercharge/cahier-charge.module';
 import { PaymentModule } from './demandes/paiement/payement.module';
+import { FactureModule } from './facture/facture.module';
 import { ProcedureRenouvellementModule } from './renouvellement/procedure_renouvellement.module';
 import { ConfigModule } from '@nestjs/config';
 import { TimelineModule } from './demandes/timeline of procedure/timeline.module';
@@ -60,14 +62,18 @@ import { DemandesDashboardModule } from './demande_dashboard/demandes.module';
 //import { TransfertModule } from './transfert/transfert.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
-
+import { GisModule } from './gis/gis.module';
 import { Notification } from './notifications/notification.entity';
-//import { ChatModule } from './chat/chat.module';
+import { ChatModule } from './chat/chat.module';
 // import { ProceduretechniqueModule } from './fichetechnique/fichtechnique.module';
 //import { PortailModule } from './portail/portail.module';
 import { ArticleSetsModule } from './article_sets/article-sets.module';
 import { InscriptionProvisoireModule } from './demandes/inscription_provisoire/inscription-provisoire.module';
 import { Expert } from './notifications/expertminier';
+import { PhasesEtapesConfigModule } from './configurations/phases-etapes/phases-etapes.module';
+
+
+
 
 
 @Module({
@@ -86,11 +92,11 @@ import { Expert } from './notifications/expertminier';
     RedevancesconfModule,StatutPermisconfModule,TypePermisconfModule,DecisionTrackingModule,ComitenModule,DecisionModule,
     SeanceModule,ExpertMinierModule,SessionModule,AuditLogModule,PermisDashboardfModule,TimelineModule,CahierChargeModule,
     GeneratePdfModule,GeneratePermisModule,WilayaModule,DairaModule,CommuneModule,AdminDossierModule,CoordonneesModule,VerificationGeoModule,
-    TypePermisModule,AuthModule,AdminModule,PrismaModule,ProcedureEtapeModule,ProcedureModule,ComiteDirectionModule,SocieteModule,
+    TypePermisModule,AuthModule,AdminModule,PrismaModule,ProcedureEtapeModule,ProcedureModule,ProcedureOperateurModule,ComiteDirectionModule,SocieteModule,
     InteractionWaliModule,CapacitesModule,SubstancesModule,DocumentsModule,DemandeSummaryControllerModule,SubstancesconfModule,
     StatutsJuridiquesconfconfModule,WilayasconfModule,DairasconfModule,CommunesconfModule,AntennesconfModule,DetenteurMorale_confModule,
-    TypePermis_confModule,StatutPermis_confModule,Permis_confModule,Antenne_confModule,DemandesDashboardModule,
-    NotificationsModule,ArticleSetsModule,InscriptionProvisoireModule],
+    TypePermis_confModule,StatutPermis_confModule,Permis_confModule,Antenne_confModule,DemandesDashboardModule,GisModule,VerificationGeoModule,
+    NotificationsModule,ArticleSetsModule,InscriptionProvisoireModule,PhasesEtapesConfigModule,ChatModule,FactureModule],
   controllers: [DemandesController],
   providers: [DemandeService,
     //{

@@ -58,5 +58,4 @@ export class TypePermisController {
   remove(@Param('id') id: string) {
     return this.typePermisService.remove(+id);
   }
-  
 }

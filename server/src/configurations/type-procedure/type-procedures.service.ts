@@ -1,6 +1,13 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateTypeProcedureDto, UpdateTypeProcedureDto } from './type-procedures.dto';
+import {
+  CreateTypeProcedureDto,
+  UpdateTypeProcedureDto,
+} from './type-procedures.dto';
 
 @Injectable()
 export class TypeProceduresService {
@@ -49,27 +56,26 @@ export class TypeProceduresService {
   }
 
   async remove(id: number) {
-  try {
-    // ✅ Check if there are associated demandes before deleting
-    const associatedDemandes = await this.prisma.demandePortail.count({
-      where: { id_typeProc: id },
-    });
+    try {
+      // ✅ Check if there are associated demandes before deleting
+      const associatedDemandes = await this.prisma.demandePortail.count({
+        where: { id_typeProc: id },
+      });
 
-    if (associatedDemandes > 0) {
-      throw new BadRequestException(
-        'Cannot delete procedure type with associated demandes',
-      );
-    }
+      if (associatedDemandes > 0) {
+        throw new BadRequestException(
+          'Cannot delete procedure type with associated demandes',
+        );
+      }
 
-    return await this.prisma.typeProcedure.delete({
-      where: { id },
-    });
-  } catch (error) {
-    if (error.code === 'P2025') {
-      throw new NotFoundException(`TypeProcedure with ID ${id} not found`);
+      return await this.prisma.typeProcedure.delete({
+        where: { id },
+      });
+    } catch (error) {
+      if (error.code === 'P2025') {
+        throw new NotFoundException(`TypeProcedure with ID ${id} not found`);
+      }
+      throw error;
     }
-    throw error;
   }
-}
-
 }

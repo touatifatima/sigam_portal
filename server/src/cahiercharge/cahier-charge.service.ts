@@ -7,7 +7,7 @@ export class CahierService {
   constructor(private prisma: PrismaService) {}
 
   async findOneByDemande(id_demande: number) {
-    const cahier = await this.prisma.cahierCharge.findFirst({
+    const cahier = await this.prisma.cahierChargePortail.findFirst({
       where: { demandeId: id_demande },
     });
 
@@ -55,13 +55,13 @@ export class CahierService {
 
 
   if (isUpdate) {
-    await this.prisma.cahierCharge.updateMany({
+    await this.prisma.cahierChargePortail.updateMany({
       where: { demandeId: id_demande },
       data: payload,
     });
     return this.findOneByDemande(id_demande);
   } else {
-    return this.prisma.cahierCharge.create({
+    return this.prisma.cahierChargePortail.create({
       data: payload,
     });
   }
@@ -95,7 +95,7 @@ async createOrUpdateByPermis(permisId: number, data: any, isUpdate = false) {
     commentaires: rest.commentaires || null,
   };
 
-  const existing = await this.prisma.cahierCharge.findFirst({
+  const existing = await this.prisma.cahierChargePortail.findFirst({
     where: {
       permisId,
       num_cdc:rest.num_cdc,
@@ -103,15 +103,15 @@ async createOrUpdateByPermis(permisId: number, data: any, isUpdate = false) {
   });
 
   if (existing && isUpdate) {
-    await this.prisma.cahierCharge.update({
+    await this.prisma.cahierChargePortail.update({
       where: { id: existing.id },
       data: payload,
     });
-    return this.prisma.cahierCharge.findUnique({ where: { id: existing.id } });
+    return this.prisma.cahierChargePortail.findUnique({ where: { id: existing.id } });
   }
 
   if (!existing && !isUpdate) {
-    return this.prisma.cahierCharge.create({ data: payload });
+    return this.prisma.cahierChargePortail.create({ data: payload });
   }
 
   throw new NotFoundException('Aucune entrée existante à mettre à jour');
@@ -121,13 +121,13 @@ async createOrUpdateByPermis(permisId: number, data: any, isUpdate = false) {
 
 
 async delete(id_demande: number) {
-  return await this.prisma.cahierCharge.deleteMany({
+  return await this.prisma.cahierChargePortail.deleteMany({
     where: { demandeId: id_demande }, // Fix here too
   });
 }
 
 async findManyByPermis(permisId: number) {
-  return await this.prisma.cahierCharge.findMany({
+  return await this.prisma.cahierChargePortail.findMany({
     where: {
       permisId: permisId,
     },

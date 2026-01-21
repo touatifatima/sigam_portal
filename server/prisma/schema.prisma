@@ -8,31 +8,28 @@ datasource db {
 }
 
 model UtilisateurPortail {
-  id                    Int                   @id @default(autoincrement())
-  idInterne             Int?                  @unique
+  id                    Int               @id @default(autoincrement())
+  idInterne             Int?              @unique
   roleId                Int?
-  email                 String                @unique
-  telephone             String?               @db.VarChar(20)
-  modifieLe             DateTime              @updatedAt
+  email                 String            @unique
+  telephone             String?           @db.VarChar(20)
+  modifieLe             DateTime          @updatedAt
   deletedAt             DateTime?
   Prenom                String
-  createdAt             DateTime              @default(now())
+  createdAt             DateTime          @default(now())
   nom                   String
   password              String
-  username              String                @unique
+  username              String            @unique
   auditLogs             AuditLogPortail[]
-  conversationsInitiees Conversation[]        @relation("ConversationUser1")
-  conversationsRecues   Conversation[]        @relation("ConversationUser2")
-  historiques           HistoriquePortail[]
-  messagesRecus         MessagePortail[]      @relation("ReceivedMessages")
-  messagesEnvoyes       MessagePortail[]      @relation("SentMessages")
-
-  paiements             PaiementPortail[]
-  //procedures            ProcedurePortail[]
+  conversationsInitiees Conversation[]    @relation("ConversationUser1")
+  conversationsRecues   Conversation[]    @relation("ConversationUser2")
+  demandes              demandePortail[]
+  messagesRecus         MessagePortail[]  @relation("ReceivedMessages")
+  messagesEnvoyes       MessagePortail[]  @relation("SentMessages")
+  paiements             Paiement[]
   sessions              SessionPortail[]
   userGroups            UserGroup[]
-  role                  Role?                 @relation(fields: [roleId], references: [id])
-
+  role                  Role?             @relation(fields: [roleId], references: [id])
 
   @@map("utilisateurs_portail")
 }
@@ -52,23 +49,22 @@ model SessionPortail {
 }
 
 model AuditLogPortail {
-  id            Int                 @id @default(autoincrement())
-  action        String              @db.VarChar(100)
-  entityType    String              @db.VarChar(100)
-  entityId      Int?
-  userId        Int?
-  timestamp     DateTime            @default(now())
-  changes       Json?
-  previousState Json?
-  ipAddress     String?             @db.VarChar(45)
-  userAgent     String?
-  status        String              @default("SUCCESS") @db.VarChar(20)
-  errorMessage  String?
-  contextId     String?            
-  sessionId     String?             
-  user          UtilisateurPortail? @relation(fields: [userId], references: [id])
+  id             Int                 @id @default(autoincrement())
+  action         String              @db.VarChar(100)
+  entityType     String              @db.VarChar(100)
+  entityId       Int?
+  userId         Int?
+  timestamp      DateTime            @default(now())
+  changes        Json?
+  previousState  Json?
+  ipAddress      String?             @db.VarChar(45)
+  userAgent      String?
+  status         String              @default("SUCCESS") @db.VarChar(20)
+  errorMessage   String?
+  contextId      String?
+  sessionId      String?
   additionalData Json?
-
+  user           UtilisateurPortail? @relation(fields: [userId], references: [id])
 
   @@index([entityType])
   @@index([entityId])
@@ -174,234 +170,250 @@ model MessagePortail {
 }
 
 model NotificationPortail {
-  id            Int                @id @default(autoincrement())
- 
-  type          String
-  title         String             @db.VarChar(255)
-  message       String
-  isRead           Boolean  @default(false)
-  createdAt        DateTime @default(now())
-
-  relatedEntityId  Int?
+  id                Int           @id @default(autoincrement())
+  type              String
+  title             String        @db.VarChar(255)
+  message           String
+  isRead            Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  relatedEntityId   Int?
   relatedEntityType String?
-  expertId         Int?
-  expert           ExpertMinierPortail?  @relation(fields: [expertId], references: [id_expert])
-  priority         String   @default("info")
- 
-  
+  expertId          Int?
+  priority          String        @default("info")
+  expert            ExpertMinier? @relation(fields: [expertId], references: [id_expert])
+
   @@map("notifications_portail")
 }
 
-model AntennePortail {
+model Antenne {
   id_antenne   Int             @id @default(autoincrement())
-  nom          String          @db.VarChar(255)
+  nom          String
   localisation String?
-  wilayas      WilayaPortail[]
-
-  @@map("antennes_portail")
+  Email        String?
+  Telephone    String?
+  Responsable  String?
+  wilayas      Wilaya[]
+  permis       PermisPortail[]
 }
 
-model WilayaPortail {
+model Wilaya {
   id_wilaya    Int                      @id @default(autoincrement())
   id_antenne   Int
-  code_wilaya  String                   @unique 
-  nom_wilayaFR String                   @db.VarChar(100)
-  nom_wilayaAR String                   @db.VarChar(100)
+  code_wilaya  String                   @unique
+  nom_wilayaFR String
+  nom_wilayaAR String
   zone         String
-  daira       DairaPortail[]
-  demande     DemandePortail[]
-  interactions InteractionWaliPortail[]
-  antenne      AntennePortail           @relation(fields: [id_antenne], references: [id_antenne])
-
-  @@map("wilayas_portail")
+  daira        Daira[]
+  antenne      Antenne                  @relation(fields: [id_antenne], references: [id_antenne])
+  Demande      demandePortail[]
+  Interaction  InteractionWaliPortail[]
 }
 
-model DairaPortail {
+model Daira {
   id_daira    Int              @id @default(autoincrement())
   id_wilaya   Int
-  nom_dairaFR String           @db.VarChar(100)
-  nom_dairaAR String           @db.VarChar(100)
-  communes    CommunePortail[]
-  wilaya      WilayaPortail    @relation(fields: [id_wilaya], references: [id_wilaya], onDelete: Cascade)
-  demandes    DemandePortail[]
-
-  @@map("dairas_portail")
+  nom_dairaFR String
+  nom_dairaAR String
+  communes    Commune[]
+  wilaya      Wilaya           @relation(fields: [id_wilaya], references: [id_wilaya])
+  Demande     demandePortail[]
 }
 
-model CommunePortail {
+model Commune {
   id_commune    Int              @id @default(autoincrement())
   id_daira      Int?
-  nom_communeFR String           @db.VarChar(100)
-  nom_communeAR String           @db.VarChar(100)
-  nature        String?          @db.VarChar(50)
-  daira         DairaPortail?    @relation(fields: [id_daira], references: [id_daira])
-  demandes      DemandePortail[]
-  permis        PermisPortail[]
-
-  @@map("communes_portail")
+  nom_communeFR String
+  nom_communeAR String
+  nature        String?
+  daira         Daira?           @relation(fields: [id_daira], references: [id_daira])
+  Demande       demandePortail[]
 }
 
 model Pays {
   id_pays     Int                       @id @default(autoincrement())
   code_pays   String                    @unique @db.VarChar(10)
   nom_pays    String                    @db.VarChar(100)
-  entreprises EntreprisePortail[]
+  entreprises DetenteurMoralePortail[]
   personnes   PersonnePhysiquePortail[]
 
   @@map("pays")
 }
 
 model Nationalite {
-  id_nationalite Int                       @id @default(autoincrement())
-  libelle        String                    @unique @db.VarChar(100)
-  entreprises    EntreprisePortail[]
-  personnes      PersonnePhysiquePortail[]
+  id_nationalite     Int                       @id @default(autoincrement())
+  libelle            String                    @unique
+  detenteurs         DetenteurMoralePortail[]
+  personnesPhysiques PersonnePhysiquePortail[]
 
   @@map("nationalite")
 }
 
 model StatutJuridiquePortail {
-  id_statutJuridique Int                 @id @default(autoincrement())
-  code_statut        String              @unique @db.VarChar(20)
-  statut_fr          String              @db.VarChar(100)
-  statut_ar          String?             @db.VarChar(100)
-  entreprises        EntreprisePortail[]
+  id_statutJuridique      Int                       @id @default(autoincrement())
+  code_statut             String                    @unique
+  statut_fr               String
+  statut_ar               String
+  FormeJuridiqueDetenteur FormeJuridiqueDetenteur[]
 
-  @@map("statut_juridique_portail")
+  @@map("statutjuridique")
 }
 
-model ExpertMinierPortail {
-  id_expert      Int       @id @default(autoincrement())
-  nom_expert     String    @db.VarChar(255)
-  num_agrement   String?   @db.VarChar(50)
+model FormeJuridiqueDetenteur {
+  id_formeDetenteur Int                    @id @default(autoincrement())
+  id_statut         Int
+  id_detenteur      Int
+  date              DateTime?
+  detenteur         DetenteurMoralePortail @relation(fields: [id_detenteur], references: [id_detenteur])
+  statutJuridique   StatutJuridiquePortail @relation(fields: [id_statut], references: [id_statutJuridique])
+
+  @@map("formejuridiquedetenteur")
+}
+
+model ExpertMinier {
+  id_expert      Int                   @id @default(autoincrement())
+  nom_expert     String
+  num_agrement   String?
   date_agrement  DateTime?
-  etat_agrement  String?   @db.VarChar(50)
+  etat_agrement  String?
   adresse        String?
-  email          String?   @db.VarChar(255)
-  tel_expert     String?   @db.VarChar(20)
-  fax_expert     String?   @db.VarChar(20)
+  email          String?
+  tel_expert     String?
+  fax_expert     String?
   specialisation String?
+  demandes       demandePortail[]
+  Notification   NotificationPortail[]
 
- 
- Notification NotificationPortail[]
-
-    demandes DemandePortail[] //  One-to-many inverse side
-
-  @@map("experts_miniers_portail")
+  @@map("expertminier")
 }
 
 model PersonnePhysiquePortail {
-  id_personne          Int                             @id @default(autoincrement())
+  id_personne          Int                     @id @default(autoincrement())
   id_pays              Int?
   id_nationalite       Int?
-  nomFR                String                          @db.VarChar(100)
-  nomAR                String                          @db.VarChar(100)
-  prenomFR             String                          @db.VarChar(100)
-  prenomAR             String                          @db.VarChar(100)
+  nomFR                String
+  nomAR                String?
+  prenomFR             String
+  prenomAR             String?
   date_naissance       DateTime?
-  lieu_naissance       String?                         @db.VarChar(150)
+  lieu_naissance       String?
   adresse_domicile     String?
-  telephone            String?                         @db.VarChar(20)
-  fax                  String?                         @db.VarChar(20)
-  email                String?                         @db.VarChar(255)
+  telephone            String?
+  fax                  String?
+  email                String?
   qualification        String?
-  num_carte_identite   String?                         @unique @db.VarChar(50)
+  siteWeb              String?
+  num_carte_identite   String?                 @unique
+  lieu_juridique_soc   String?
   ref_professionnelles String?
-  fonctions            FonctionPersonneMoralePortail[]
-   nationaliteRef        Nationalite?                    @relation(fields: [id_nationalite], references: [id_nationalite])
-  pays                 Pays?                           @relation(fields: [id_pays], references: [id_pays])
-    cessionsAncien  demCession[]            @relation("AncienCessionnaire")
-    cessionsNouveau demCession[]            @relation("NouveauCessionnaire")
+  cessionsAncien       demCession[]            @relation("AncienCessionnaire")
+  cessionsNouveau      demCession[]            @relation("NouveauCessionnaire")
+  fonctions            FonctionPersonneMoral[]
+  nationaliteRef       Nationalite?            @relation(fields: [id_nationalite], references: [id_nationalite])
+  pays                 Pays?                   @relation(fields: [id_pays], references: [id_pays])
 
-  @@index([num_carte_identite])
-  @@map("personnes_physiques_portail")
+  @@map("personnephysique")
 }
 
-model EntreprisePortail {
-  id_entreprise      Int                             @id @default(autoincrement())
-  idInterne          Int?                            @unique
-  id_statutJuridique Int?
-  id_pays            Int?
-  id_nationalite     Int?
-  nom_societeFR      String                          @db.VarChar(255)
-  nom_societeAR      String?                         @db.VarChar(255)
-  adresse_siege      String?
-  telephone          String?                         @db.VarChar(20)
-  fax                String?                         @db.VarChar(20)
-  email              String?                         @db.VarChar(255)
-  site_web           String?                         @db.VarChar(255)
-  creeLe             DateTime                        @default(now())
-  modifieLe          DateTime                        @updatedAt
-  
-  demande           DemandePortail[]
-    nationaliteRef       Nationalite?                    @relation(fields: [id_nationalite], references: [id_nationalite])
-  pays               Pays?                           @relation(fields: [id_pays], references: [id_pays])
-  statutJuridique    StatutJuridiquePortail?         @relation(fields: [id_statutJuridique], references: [id_statutJuridique])
-  fonctions          FonctionPersonneMoralePortail[]
-  permis             PermisPortail[]
-  registreCommerce   RegistreCommercePortail[]
- transfertDetenteur TransfertDetenteur[]
+model DetenteurMoralePortail {
+  id_detenteur            Int                       @id @default(autoincrement())
+  idInterne               Int?                      @unique
+  date_constitution       DateTime
+  id_pays                 Int?
+  id_nationalite          Int?
+  PP                      Boolean?
+  National                Boolean?
+  Privé                  Boolean?
+  remarques               String?
+  nom_societeFR           String?
+  nom_societeAR           String?
+  adresse_siege           String?
+  telephone               String?
+  fax                     String?
+  email                   String?
+  site_web                String?
+  statutDetenteur         StatutDetenteur?
+  detenteurdemande        DetenteurDemandePortail[]
+  nationaliteRef          Nationalite?              @relation(fields: [id_nationalite], references: [id_nationalite])
+  pays                    Pays?                     @relation(fields: [id_pays], references: [id_pays])
+  fonctions               FonctionPersonneMoral[]
+  FormeJuridiqueDetenteur FormeJuridiqueDetenteur[]
+  Permis                  PermisPortail[]
+  registreCommerce        RegistreCommercePortail[]
+  transfertDetenteur      TransfertDetenteur[]
 
-
-  @@index([nom_societeFR])
-  @@map("entreprises_portail")
+  @@map("detenteurmorale")
 }
 
-model FonctionPersonneMoralePortail {
-  id_personne        Int//
-  type_fonction      EnumTypeFonction//
-  statut_personne    String?                 @db.VarChar(100)//
-  taux_participation Float                   @default(0)//
-  id_entreprise      Int   //
-  entreprise         EntreprisePortail       @relation(fields: [id_entreprise], references: [id_entreprise], onDelete: Cascade)
-  personne           PersonnePhysiquePortail @relation(fields: [id_personne], references: [id_personne], onDelete: Cascade)
+model DetenteurDemandePortail {
+  id_detenteurDemande Int                    @id @default(autoincrement())
+  id_demande          Int
+  id_detenteur        Int
+  role_detenteur      String?
+  demande             demandePortail         @relation(fields: [id_demande], references: [id_demande], onDelete: Cascade)
+  detenteur           DetenteurMoralePortail @relation(fields: [id_detenteur], references: [id_detenteur], onDelete: Cascade)
 
-  @@id([id_entreprise, id_personne])
-  @@map("fonction_personne_morale_portail")
+  @@index([id_demande])
+  @@index([id_detenteur])
+  @@map("detenteur_demande_portail")
+}
+
+model FonctionPersonneMoral {
+  id_fonctionDetent  Int                      @id
+  id_detenteur       Int?
+  id_personne        Int?
+  type_fonction      EnumTypeFonction?
+  statut_personne    String?
+  taux_participation Float?
+  detenteur          DetenteurMoralePortail?  @relation(fields: [id_detenteur], references: [id_detenteur])
+  personne           PersonnePhysiquePortail? @relation(fields: [id_personne], references: [id_personne])
+
+  @@map("fonctionpersonnemoral")
 }
 
 model RegistreCommercePortail {
-  id                  Int                @id @default(autoincrement())
-  numero_rc           String?            @db.VarChar(50)
+  id                  Int                     @id @default(autoincrement())
+  id_detenteur        Int?
+  numero_rc           String?
   date_enregistrement DateTime?
   capital_social      Float?
-  nis                 String?            @db.VarChar(50)
-  nif                 String?            @db.VarChar(50)
+  nis                 String?
+  nif                 String?
   adresse_legale      String?
-  id_entreprise       Int?
-  entreprise          EntreprisePortail? @relation(fields: [id_entreprise], references: [id_entreprise])
+  detenteur           DetenteurMoralePortail? @relation(fields: [id_detenteur], references: [id_detenteur])
 
-  @@map("registre_commerce_portail")
+  @@map("registrecommerce")
 }
 
 model TypePermis {
-  id             Int                           @id @default(autoincrement())
-  id_taxe        Int
-  lib_type       String                        @unique @db.VarChar(255)
-  code_type      String                        @unique @db.VarChar(20)
-  regime         String                        @db.VarChar(50)
-  duree_initiale Float
-  nbr_renouv_max Int
-  duree_renouv   Float
-  delai_renouv   Int
-  superficie_max Float?
-  barems         BaremProduitetDroit[]
-  demandes       DemandePortail[]
-  dossiers       DossierAdministratifPortail[]
-  permis         PermisPortail[]
-  templates      PermisTemplate[]
-  taxe           SuperficiaireBareme           @relation(fields: [id_taxe], references: [id])
+  id                     Int                     @id @default(autoincrement())
+  id_taxe                Int?
+  lib_type               String?                 @unique
+  code_type              String?                 @unique
+  regime                 String?
+  duree_initiale         Float?
+  nbr_renouv_max         Int?
+  duree_renouv           Float?
+  delai_renouv           Int?
+  superficie_max         Float?
+  ref_legales            String?
+  DossierAdministratif   DossierAdministratif[]
+  Barems                 BaremProduitetDroit[]
+  combinaisionPermisProc combinaisonPermisProc[]
+  Demande                demandePortail[]
+  permis                 PermisPortail[]
+  PermisTemplate         PermisTemplate[]
+  taxe                   SuperficiaireBareme?    @relation(fields: [id_taxe], references: [id])
 
   @@map("typepermis")
 }
 
 model SuperficiaireBareme {
   id               Int          @id @default(autoincrement())
-  autre_renouv     Float
-  devise           String
   droit_fixe       Float
   periode_initiale Float
   premier_renouv   Float
+  autre_renouv     Float
+  devise           String
   typePermis       TypePermis[]
 
   @@map("superficiaire_bareme")
@@ -413,15 +425,15 @@ model BaremProduitetDroit {
   produit_attribution Float
   typePermisId        Int
   typeProcedureId     Int
-  typePermis          TypePermis    @relation(fields: [typePermisId], references: [id], onDelete: Cascade)
-  typeProcedure       TypeProcedure @relation(fields: [typeProcedureId], references: [id], onDelete: Cascade)
+  typePermis          TypePermis    @relation(fields: [typePermisId], references: [id])
+  typeProcedure       TypeProcedure @relation(fields: [typeProcedureId], references: [id])
 
   @@map("barem_produit_droit")
 }
 
 model PermisTemplate {
   id           Int            @id @default(autoincrement())
-  name         String         @db.VarChar(255)
+  name         String
   elements     Json
   typePermisId Int
   permisId     Int?
@@ -429,295 +441,342 @@ model PermisTemplate {
   updatedAt    DateTime       @updatedAt
   version      Int            @default(1)
   permis       PermisPortail? @relation(fields: [permisId], references: [id])
-  typePermis   TypePermis     @relation(fields: [typePermisId], references: [id], onDelete: Cascade)
+  typePermis   TypePermis     @relation(fields: [typePermisId], references: [id])
 
   @@index([typePermisId])
   @@index([permisId])
   @@map("permis_templates")
 }
 
-model DemandePortail {
-    id_demande              Int                      @id @default(autoincrement())
-    //idInterne       Int?                     @unique
-    id_proc                  Int?
-    id_entreprise           Int?
-    id_wilaya                Int?
-    id_daira                 Int?
-    id_commune               Int?
-    id_typeProc              Int?
-    id_typePermis            Int?
-    id_expert                Int?
-    code_demande             String?         @unique
-    date_demande             DateTime?      // @default(now())
-    date_instruction         DateTime?
-    intitule_projet          String?
-    date_fin_instruction     DateTime?
-    date_refus               DateTime?
-    lieu_ditFR               String?
-    lieu_dit_ar              String?
-    superficie               Float?
-    statut_juridique_terrain String?
-    occupant_terrain_legal   String?
-    destination              String?
-    locPointOrigine          String?
-    duree_travaux_estimee    String?
-    date_demarrage_prevue    DateTime?
-    // nom_pre_signataire       String?
-    qualite_signataire       String?
-    montant_produit          String?
-    con_res_geo              String?
-    con_res_exp              String?
-    volume_prevu             String?
-    capital_social_disponible             Float?
-    budget_prevu             Float?
-    description_travaux String?
-    sources_financement  String?
-    remarques                String?
-    date_fin_ramassage         DateTime?
-    num_enregist             String?
-    AreaCat                  Float?                           
+model demandePortail {
+  id_demande               Int                           @id @default(autoincrement())
+  id_proc                  Int?
+  id_wilaya                Int?
+  id_daira                 Int?
+  id_commune               Int?
+  id_typeProc              Int?
+  id_typePermis            Int?
+  id_expert                Int?
+  code_demande             String?
+  date_demande             DateTime?
+  date_instruction         DateTime?
+  date_fin_instruction     DateTime?
+  date_refus               DateTime?
+  lieu_ditFR               String?
+  lieu_dit_ar              String?
+  superficie               Float?
+  statut_juridique_terrain String?
+  occupant_terrain_legal   String?
+  destination              String?
+  LocPointOrigine          String?
+  description_travaux      String?
+  sources_financement      String?
+  remarques                String?
+  num_enregist             String?
+  Nom_Prenom_Resp_Enregist String?
+  statut_demande           String
+  dossier_recevable        Boolean?
+  dossier_complet          Boolean?
+  duree_instruction        Int?
+  PP                       Boolean?
+  id_sourceProc            Int?
+  utilisateurId            Int
+  facture                  Facture?
+  CahierCharge             CahierChargePortail[]
+  cession                  demCession?
+  demFermeture             demFermeture?
+  fusion                   demFusion?
+  Substitution             demSubstitution?
+  transfert                demTransfert?
+  demAnnulation            demAnnulation?
+  demInitial               demInitial?
+  modification             demModification?
+  renonciation             demRenonciation?
+  commune                  Commune?                      @relation(fields: [id_commune], references: [id_commune])
+  daira                    Daira?                        @relation(fields: [id_daira], references: [id_daira])
+  expertMinier             ExpertMinier?                 @relation(fields: [id_expert], references: [id_expert])
+  procedure                ProcedurePortail?             @relation(fields: [id_proc], references: [id_proc])
+  sourceProcedure          ProcedurePortail?             @relation("DemandeSource", fields: [id_sourceProc], references: [id_proc])
+  typePermis               TypePermis?                   @relation(fields: [id_typePermis], references: [id])
+  typeProcedure            TypeProcedure?                @relation(fields: [id_typeProc], references: [id])
+  wilaya                   Wilaya?                       @relation(fields: [id_wilaya], references: [id_wilaya])
+  utilisateur              UtilisateurPortail            @relation(fields: [utilisateurId], references: [id])
+  demandeMins              demandeMin?
+  verificationGeo          demandeVerificationGeo?
+  detenteurdemande         DetenteurDemandePortail[]
+  dossiersFournis          DossierFournisPortail[]
+  droitPreemption          DroitPreemption?
+  inscriptionProvisoire    InscriptionProvisoirePortail?
+  renouvellement           ProcedureRenouvellement?
 
-    statut_demande           String     //StatutDemande?
- 
-  CahierCharge    CahierCharge[]   //
-  commune         CommunePortail?          @relation(fields: [id_commune], references: [id_commune])//
-  daira           DairaPortail?            @relation(fields: [id_daira], references: [id_daira])//
-  entreprise      EntreprisePortail?       @relation(fields: [id_entreprise], references: [id_entreprise])
-  procedure       ProcedurePortail?        @relation(fields: [id_proc], references: [id_procedure])//
-  wilaya          WilayaPortail?           @relation(fields: [id_wilaya], references: [id_wilaya])//
-  documents       DocumentDemandePortail[]
-  historiques     HistoriquePortail[]        @relation("DemandeHistorique")
-  paiements       PaiementPortail[]
-    expertMinier    ExpertMinierPortail?      @relation(fields: [id_expert], references: [id_expert])//
-    typePermis      TypePermis?               @relation(fields: [id_typePermis], references: [id])//
-    typeProcedure   TypeProcedure?            @relation(fields: [id_typeProc], references: [id])//
-    dossiersFournis DossierFournisPortail[]       //
-    inscriptionProvisoire InscriptionProvisoirePortail?//
-    //les demandes 
-    renouvellement  ProcedureRenouvellement?
-    demFermeture    demFermeture?
-    demAnnulation   demAnnulation?
-    Substitution    demSubstitution?
-    modification    demModification?
-    cession         demCession?
-    renonciation    demRenonciation?
-    fusion          demFusion?
-    transfert       demTransfert?
-    verificationGeo demandeVerificationGeo?
-    obs             demandeObs?
-    min             demandeMin?
-    
-
-  
-
-  @@map("demandes_portail")
+  @@map("demande")
 }
 
+model demInitial {
+  id_demInitial         Int            @id @default(autoincrement())
+  id_demande            Int            @unique
+  duree_trvx            Int?
+  qualite_signataire    String?
+  date_demarrage_prevue DateTime?
+  dossier_recevable     Boolean?
+  dossier_complet       Boolean?
+  rec_enquete_date      DateTime?
+  rec_enquete_nomRespon String?
+  obs_attestation       String?
+  ConResGeo             Float?
+  ConResExp             Float?
+  VolumePrevu           Float?
+  obs_sit_geo           String?
+  obs_empiet            String?
+  obs_emplacement       String?
+  obs_geom              String?
+  obs_superficie        String?
+  inscripProv           Boolean?
+  intitule_projet       String?
+  montant_produit       Float?
+  demande               demandePortail @relation(fields: [id_demande], references: [id_demande], onDelete: Cascade)
 
- 
+  @@map("dem_initial_portail")
+}
+
 model ProcedureRenouvellement {
-    id_renouvellement   Int       @id @default(autoincrement())
-    id_demande          Int       @unique
-    num_decision        String?
-    date_decision       DateTime?
-    date_debut_validite DateTime?
-    date_fin_validite   DateTime?
-    commentaire         String?
-    demande             DemandePortail   @relation(fields: [id_demande], references: [id_demande])
+  id_renouvellement     Int            @id @default(autoincrement())
+  id_demande            Int            @unique
+  duree_trvx            Int?
+  qualite_signataire    String?
+  date_demarrage_prevue DateTime?
+  dossier_recevable     Boolean?
+  dossier_complet       Boolean?
+  rec_enquete_date      DateTime?
+  rec_enquete_nomRespon String?
+  obs_attestation       String?
+  ConResGeo             Float?
+  ConResExp             Float?
+  VolumePrevu           Float?
+  obs_sit_geo           String?
+  obs_empiet            String?
+  obs_emplacement       String?
+  obs_geom              String?
+  obs_superficie        String?
+  inscripProv           Boolean?
+  num_decision          String?
+  date_decision         DateTime?
+  date_debut_validite   DateTime?
+  date_fin_validite     DateTime?
+  commentaire           String?
+  demande               demandePortail @relation(fields: [id_demande], references: [id_demande], onDelete: Cascade)
+
+  @@map("procedure_renouvellement_portail")
 }
 
 model demFermeture {
-    id_fermeture Int       @id @default(autoincrement())
-    id_demande   Int       @unique
-    num_decision String?
-    date_constat DateTime?
-    rapport      String?
-    demande      DemandePortail   @relation(fields: [id_demande], references: [id_demande])
+  id_fermeture Int            @id @default(autoincrement())
+  id_demande   Int            @unique
+  num_decision String?
+  date_constat DateTime?
+  rapport      String?
+  demande      demandePortail @relation(fields: [id_demande], references: [id_demande])
 }
 
 model demAnnulation {
-    id_annulation     Int       @id @default(autoincrement())
-    id_demande        Int       @unique
-    num_decision      String?
-    date_constat      DateTime?
-    date_annulation   DateTime?
-    cause_annulation  String?
-    statut_annulation String?
-    demande           DemandePortail   @relation(fields: [id_demande], references: [id_demande])
+  id_annulation         Int            @id @default(autoincrement())
+  id_demande            Int            @unique
+  origin_cadastre       Boolean?
+  verif_doc             String?
+  permis_annule         Boolean?
+  date_vigueur          DateTime?
+  DatePrepDocAnnulation DateTime?
+  num_decision          String?
+  date_constat          DateTime?
+  date_annulation       DateTime?
+  cause_annulation      String?
+  statut_annulation     String?
+  demande               demandePortail @relation(fields: [id_demande], references: [id_demande], onDelete: Cascade)
+
+  @@map("dem_annulation_portail")
 }
 
 model demSubstitution {
-    id_substitution    Int       @id @default(autoincrement())
-    id_demande         Int       @unique
-    num_decision       String?
-    date_decision      DateTime?
-    motif_substitution String?
-    commentaires       String?
-    demande            DemandePortail   @relation(fields: [id_demande], references: [id_demande])
+  id_substitution    Int            @id @default(autoincrement())
+  id_demande         Int            @unique
+  num_decision       String?
+  date_decision      DateTime?
+  motif_substitution String?
+  commentaires       String?
+  demande            demandePortail @relation(fields: [id_demande], references: [id_demande])
 }
 
 model demModification {
-    id_modification     Int     @id @default(autoincrement())
-    id_demande          Int     @unique
-    type_modif          String?
-    statut_modification String?
-    demande             DemandePortail @relation(fields: [id_demande], references: [id_demande])
+  id_modification       Int            @id @default(autoincrement())
+  id_demande            Int            @unique
+  duree_trvx            Int?
+  qualite_signataire    String?
+  date_demarrage_prevue DateTime?
+  dossier_recevable     Boolean?
+  dossier_complet       Boolean?
+  rec_enquete_date      DateTime?
+  rec_enquete_nomRespon String?
+  obs_attestation       String?
+  ConResGeo             Float?
+  ConResExp             Float?
+  VolumePrevu           Float?
+  obs_sit_geo           String?
+  obs_empiet            String?
+  obs_emplacement       String?
+  obs_geom              String?
+  obs_superficie        String?
+  inscripProv           Boolean?
+  intitule_projet       String?
+  montant_produit       Float?
+  type_modif            String?
+  type_modification     String?
+  statut_modification   String?
+  idDivisionEnCurso     Int?
+  demande               demandePortail @relation(fields: [id_demande], references: [id_demande], onDelete: Cascade)
+
+  @@map("dem_modification_portail")
 }
 
 model demCession {
-    id_cession             Int              @id @default(autoincrement())
-    id_demande             Int              @unique
-    id_ancienCessionnaire  Int
-    id_nouveauCessionnaire Int
-    motif_cession          String?
-    nature_cession         String? //partiel, complet
-    taux_cession           Float?
-    date_validation        DateTime?
-    //   statut_cession             String?   
-    demande                DemandePortail          @relation(fields: [id_demande], references: [id_demande])
-    ancienCessionnaire     PersonnePhysiquePortail @relation("AncienCessionnaire", fields: [id_ancienCessionnaire], references: [id_personne])
-    NouveauCessionnaire    PersonnePhysiquePortail @relation("NouveauCessionnaire", fields: [id_nouveauCessionnaire], references: [id_personne])
+  id_cession             Int                     @id @default(autoincrement())
+  id_demande             Int                     @unique
+  id_ancienCessionnaire  Int
+  id_nouveauCessionnaire Int
+  motif_cession          String?
+  nature_cession         String?
+  taux_cession           Float?
+  date_validation        DateTime?
+  ancienCessionnaire     PersonnePhysiquePortail @relation("AncienCessionnaire", fields: [id_ancienCessionnaire], references: [id_personne])
+  demande                demandePortail          @relation(fields: [id_demande], references: [id_demande])
+  NouveauCessionnaire    PersonnePhysiquePortail @relation("NouveauCessionnaire", fields: [id_nouveauCessionnaire], references: [id_personne])
 }
 
 model demRenonciation {
-    id_renonciation    Int     @id @default(autoincrement())
-    id_demande         Int     @unique
-    motif_renonciation String?
-    rapport_technique  String?
-    demande            DemandePortail @relation(fields: [id_demande], references: [id_demande])
+  id_renonciation    Int            @id @default(autoincrement())
+  id_demande         Int            @unique
+  motif_renonciation String?
+  rapport_technique  String?
+  RenonOct           Boolean?
+  demande            demandePortail @relation(fields: [id_demande], references: [id_demande], onDelete: Cascade)
+
+  @@map("dem_renonciation_portail")
 }
 
 model demFusion {
-    id_fusion          Int                  @id @default(autoincrement())
-    id_demande         Int                  @unique
-    id_permisResultant Int                  @unique
-    date_fusion        DateTime
-    motif_fusion       String?
-    statut_fusion      String?
-    demande            DemandePortail              @relation(fields: [id_demande], references: [id_demande])
-    permis             PermisPortail               @relation(fields: [id_permisResultant], references: [id])
-    fusionPermisSource fusionPermisSource[]
+  id_fusion          Int                  @id @default(autoincrement())
+  id_demande         Int                  @unique
+  id_permisResultant Int                  @unique
+  date_fusion        DateTime
+  motif_fusion       String?
+  statut_fusion      String?
+  demande            demandePortail       @relation(fields: [id_demande], references: [id_demande])
+  permis             PermisPortail        @relation(fields: [id_permisResultant], references: [id])
+  fusionPermisSource fusionPermisSource[]
 }
-
-
 
 model demTransfert {
-  id_transfert     Int       @id @default(autoincrement())
-  id_demande       Int       @unique
-  motif_transfert  String?
-  observations     String?
-  date_transfert   DateTime  @default(now())
-
-  // Relations
-  demande            DemandePortail              @relation(fields: [id_demande], references: [id_demande])
+  id_transfert       Int                  @id @default(autoincrement())
+  id_demande         Int                  @unique
+  motif_transfert    String?
+  observations       String?
+  dossier_octroyable Boolean?
+  transfer_obtenu    Boolean?
+  date_transfert     DateTime             @default(now())
+  demande            demandePortail       @relation(fields: [id_demande], references: [id_demande])
   transfertDetenteur TransfertDetenteur[]
 }
-model TransfertDetenteur {
-  id                   Int              @id @default(autoincrement())
-  id_transfert         Int
-  id_detenteur         Int?             // Le detenteur concerne (ancien ou nouveau)
-  type_detenteur       EnumTypeDetenteur  // ANCIEN ou NOUVEAU
-  role                 String?          // "CEDANT / AMODIANT" ou "CESSIONNAIRE / AMODIATAIRE"
-  date_enregistrement  DateTime?
 
-  // Relations
-  transfert demTransfert   @relation(fields: [id_transfert], references: [id_transfert])
-  detenteur EntreprisePortail? @relation(fields: [id_detenteur], references: [id_entreprise])
+model TransfertDetenteur {
+  id                  Int                     @id @default(autoincrement())
+  id_transfert        Int
+  id_detenteur        Int?
+  type_detenteur      EnumTypeDetenteur
+  role                String?
+  date_enregistrement DateTime?
+  detenteur           DetenteurMoralePortail? @relation(fields: [id_detenteur], references: [id_detenteur])
+  transfert           demTransfert            @relation(fields: [id_transfert], references: [id_transfert])
 
   @@map("transfert_detenteur")
 }
 
-enum EnumTypeDetenteur {
-  ANCIEN
-  NOUVEAU
-}
-
-
 model demandeVerificationGeo {
-    id_demVerif                Int       @id @default(autoincrement())
-    id_demande                 Int       @unique
-    sit_geo_ok                 Boolean?
-    empiet_ok                  Boolean?
-    superf_ok                  Boolean?
-    geom_ok                    Boolean?
-    verification_cadastrale_ok Boolean?
-    superficie_cadastrale      Float?
-
-    demande DemandePortail @relation(fields: [id_demande], references: [id_demande])
+  id_demVerif                Int            @id @default(autoincrement())
+  id_demande                 Int            @unique
+  sit_geo_ok                 Boolean?
+  empiet_ok                  Boolean?
+  superf_ok                  Boolean?
+  geom_ok                    Boolean?
+  verification_cadastrale_ok Boolean?
+  superficie_cadastrale      Float?
+  demande                    demandePortail @relation(fields: [id_demande], references: [id_demande])
 }
 
-model demandeObs {
-    id_demandeObs     Int     @id @default(autoincrement())
-    id_demande        Int     @unique
-    obs_situation_geo String?
-    obs_empietement   String?
-    obs_emplacement   String?
-    obs_geom          String?
-    obs_superficie    String?
-
-    demande DemandePortail @relation(fields: [id_demande], references: [id_demande])
-}
-
+/// model demandeObs {
+/// id_demandeObs     Int            @id @default(autoincrement())
+/// id_demande        Int            @unique
+/// obs_situation_geo String?
+/// obs_empietement   String?
+/// obs_emplacement   String?
+/// obs_geom          String?
+/// obs_superficie    String?
+/// demande           DemandePortail @relation(fields: [id_demande], references: [id_demande], onDelete: Cascade)
+///
+/// @@map("demande_obs_portail")
+/// }
 model demandeMin {
-    id_demMin     Int     @id @default(autoincrement())
-    id_demande    Int     @unique
-    min_label     String?
-    min_teneur    Float?
-    ordre_mineral String?
-
-    demande DemandePortail @relation(fields: [id_demande], references: [id_demande])
+  id_demMin     Int            @id @default(autoincrement())
+  id_demande    Int            @unique
+  min_label     String?
+  min_teneur    Float?
+  ordre_mineral String?
+  demande       demandePortail @relation(fields: [id_demande], references: [id_demande])
 }
+
 model PermisPortail {
-  id                 Int                  @id @default(autoincrement())
-  idInterne          Int?                 @unique
-    id_typePermis            Int
-    id_commune               Int?
-    id_detenteur             Int?
-    id_statut                Int?
-    code_permis              String?   
-    date_adjudication        DateTime?
-    date_octroi              DateTime?
-    date_expiration          DateTime?
-    //   date_renouvellement    DateTime?
-    date_annulation          DateTime?
-    date_renonciation        DateTime?
-    duree_validite           Int // in years
-    lieu_ditFR               String?
-    lieu_ditAR               String?
-    mode_attribution         String?
-    superficie               Float?
-    utilisation              String?
-    invest_prevu             String?
-    invest_real              String?
-    montant_offre            String?
-    statut_juridique_terrain String?
-    duree_prevue_travaux     String?
-    date_demarrage_travaux   DateTime?
-    statut_activites         String?
-    nombre_renouvellements   Int
-    hypothec                 String?
-    nom_projet               String?
-    volume_prevu             String?
-    date_conversion_permis   DateTime?
-    commentaires             String?
+  id                     Int                     @id @default(autoincrement())
+  id_typePermis          Int
+  id_antenne             Int?
+  id_detenteur           Int?
+  id_statut              Int?
+  code_permis            String?
+  date_adjudication      DateTime?
+  date_octroi            DateTime?
+  date_expiration        DateTime?
+  duree_validite         Int?
+  lieu_ditFR             String?
+  lieu_ditAR             String?
+  mode_attribution       String?
+  utilisation            String?
+  montant_offre          String?
+  statut_activites       String?
+  nombre_renouvellements Int?
+  hypothec               String?
+  date_conversion_permis DateTime?
+  commentaires           String?
+  validation             Boolean?
+  is_signed              Boolean?                @default(false)
+  date_remise_titre      DateTime?
+  nom_remise_titre       String?
+  qr_code                String?
+  date_heure_systeme     DateTime?
+  qr_inserer_par         String?
+  code_wilaya            String?
+  superficie             Float?
+  CahierCharge           CahierChargePortail[]
+  codeAssimilation       codeAssimilation[]
+  demFusion              demFusion?
+  fusionPermisSource     fusionPermisSource[]
+  ObligationFiscale      ObligationFiscale[]
+  antenne                Antenne?                @relation(fields: [id_antenne], references: [id_antenne])
+  detenteur              DetenteurMoralePortail? @relation(fields: [id_detenteur], references: [id_detenteur])
+  statut                 StatutPermis?           @relation(fields: [id_statut], references: [id])
+  typePermis             TypePermis              @relation(fields: [id_typePermis], references: [id])
+  permisProcedure        permisProcedure[]
+  PermisTemplate         PermisTemplate[]
+  RapportActivite        RapportActivite[]
 
-    // Relations
-    typePermis         TypePermis             @relation(fields: [id_typePermis], references: [id])
-    commune            CommunePortail?        @relation(fields: [id_commune], references: [id_commune])
-    detenteur          EntreprisePortail?     @relation(fields: [id_detenteur], references: [id_entreprise])
-    statut             StatutPermis?          @relation(fields: [id_statut], references: [id])
-    procedures         ProcedurePortail[]          @relation("PermisProcedure")
-    RapportActivite    RapportActivite[]
-    CahierCharge       CahierCharge[]
-    ObligationFiscale  ObligationFiscale[]
-    demFusion          demFusion?
-    fusionPermisSource fusionPermisSource[]
-    codeAssimilation   codeAssimilation[]
-    PermisTemplate     PermisTemplate[]
-  @@map("permis_portail")
+  @@map("permis")
 }
-
-
 
 model fusionPermisSource {
   id_permis Int
@@ -727,8 +786,6 @@ model fusionPermisSource {
 
   @@id([id_permis, id_fusion])
 }
-
-
 
 model codeAssimilation {
   id_code       Int              @id @default(autoincrement())
@@ -746,7 +803,7 @@ model AncienTypePermis {
   codeAssimilation codeAssimilation[]
 }
 
-model CahierCharge {
+model CahierChargePortail {
   id                        Int             @id @default(autoincrement())
   permisId                  Int?
   demandeId                 Int?
@@ -777,7 +834,7 @@ model CahierCharge {
   commentaires              String?
   createdAt                 DateTime        @default(now())
   updatedAt                 DateTime        @updatedAt
-  demande                   DemandePortail? @relation(fields: [demandeId], references: [id_demande])
+  demande                   demandePortail? @relation(fields: [demandeId], references: [id_demande])
   permis                    PermisPortail?  @relation(fields: [permisId], references: [id])
 
   @@map("cahiercharge")
@@ -791,147 +848,244 @@ model StatutPermis {
 }
 
 model documentPortail {
-  id_doc      Int                             @id @default(autoincrement())
-  nom_doc     String
-  description String
- 
-  creeLe      DateTime                        @default(now())
-  modifieLe   DateTime                        @updatedAt
-
-  dossierDocuments  DossierDocumentPortail[]
+  id_doc                  Int                             @id @default(autoincrement())
+  nom_doc                 String
+  description             String
+  format                  String
+  taille_doc              String
+  statutDetenteur         StatutDetenteur?
+  dossierDocuments        DossierDocumentPortail[]
   dossierFournisDocuments DossierFournisDocumentPortail[]
-    format                  String
-    taille_doc              String
- 
-
-  @@map("documents_portail")
-}
-
-model DossierAdministratifPortail {
-  id_dossier       Int                      @id @default(autoincrement())
-  creeLe           DateTime                 @default(now())
-  modifieLe        DateTime                 @updatedAt
-    id_typeproc      Int
-    id_typePermis    Int
-    nombre_doc       Int
-    remarques        String?
-    typePermis       TypePermis        @relation(fields: [id_typePermis], references: [id])
-    typeProcedure    TypeProcedure     @relation(fields: [id_typeproc], references: [id])
-    dossierDocuments DossierDocumentPortail[]
-
-  @@unique([id_typePermis, id_typeproc])
-  @@map("dossiers_administratifs_portail")
 }
 
 model DossierDocumentPortail {
   id_dossier     Int
   id_doc         Int
-  is_obligatoire Boolean                     @default(true)
-  missing_action MissingAction               @default(BLOCK_NEXT)
-  reject_message String?                     @db.VarChar(500)
-  document       documentPortail             @relation(fields: [id_doc], references: [id_doc], onDelete: Cascade)
-  dossier        DossierAdministratifPortail @relation(fields: [id_dossier], references: [id_dossier], onDelete: Cascade)
+  is_obligatoire Boolean              @default(true)
+  missing_action MissingAction        @default(BLOCK_NEXT)
+  reject_message String?              @db.VarChar(500)
+  document       documentPortail      @relation(fields: [id_doc], references: [id_doc], onDelete: Cascade)
+  dossier        DossierAdministratif @relation(fields: [id_dossier], references: [id_dossier], onDelete: Cascade)
 
   @@id([id_dossier, id_doc])
   @@map("dossier_documents_portail")
 }
 
-model DossierFournisPortail {
-   id_dossierFournis Int      @id @default(autoincrement())
- // idInterne            Int?                            @unique
-  id_demande           Int
-  date_depot           DateTime                        @default(now())
- recevabilite_doss           Boolean?
- statut_dossier               String                          @default("EN_ATTENTE") @db.VarChar(50)    // e.g., 'complet', 'incomplet', 'en_revision'
-  remarques            String?
-  numero_accuse        String?                         @db.VarChar(100)
-  date_accuse          DateTime?
-  numero_recepisse     String?                         @db.VarChar(100)
-  date_recepisse       DateTime?
- mise_en_demeure_envoyee     Boolean                         @default(false)
-   date_mise_en_demeure  DateTime?
-  
-    pieces_manquantes     Json?
-  verification_phase   String?                         @db.VarChar(100)
-  date_preannotation   DateTime?
-  creeLe               DateTime                        @default(now())
-  modifieLe            DateTime                        @updatedAt
-  documents            DossierFournisDocumentPortail[]
-  demande              DemandePortail                  @relation(fields: [id_demande], references: [id_demande], onDelete: Cascade)
+model DossierAdministratif {
+  id_dossier       Int                      @id @default(autoincrement())
+  id_typeproc      Int
+  id_typePermis    Int
+  nombre_doc       Int
+  remarques        String?
+  typePermis       TypePermis               @relation(fields: [id_typePermis], references: [id])
+  typeProcedure    TypeProcedure            @relation(fields: [id_typeproc], references: [id])
+  dossierDocuments DossierDocumentPortail[]
 
-  @@index([id_demande])
-  @@index([statut_dossier])
-  @@map("dossiers_fournis_portail")
+  @@unique([id_typePermis, id_typeproc])
+}
+
+model DossierFournisPortail {
+  id_dossierFournis       Int                             @id @default(autoincrement())
+  id_demande              Int
+  date_depot              DateTime                        @default(now())
+  recevabilite_doss       Boolean?
+  statut_dossier          String
+  remarques               String?
+  numero_accuse           String?
+  date_accuse             DateTime?
+  numero_recepisse        String?
+  date_recepisse          DateTime?
+  mise_en_demeure_envoyee Boolean                         @default(false)
+  date_mise_en_demeure    DateTime?
+  pieces_manquantes       Json?
+  verification_phase      String?
+  date_preannotation      DateTime?
+  demande                 demandePortail                  @relation(fields: [id_demande], references: [id_demande])
+  documents               DossierFournisDocumentPortail[]
+
+  @@map("dossier_fournis")
 }
 
 model DossierFournisDocumentPortail {
   id_dossierFournis Int
   id_doc            Int
-  status            String                @default("MANQUANT") @db.VarChar(20)
-  file_url        String?               @db.VarChar(500)
-   created_at           DateTime              @default(now())
-  updated_at         DateTime              @updatedAt
+  status            String
+  file_url          String?
+  created_at        DateTime              @default(now())
+  updated_at        DateTime              @updatedAt
   document          documentPortail       @relation(fields: [id_doc], references: [id_doc])
-  dossierFournis    DossierFournisPortail @relation(fields: [id_dossierFournis], references: [id_dossierFournis], onDelete: Cascade)
-
-
-   
+  dossierFournis    DossierFournisPortail @relation(fields: [id_dossierFournis], references: [id_dossierFournis])
 
   @@id([id_dossierFournis, id_doc])
-  @@index([status])
-  @@map("dossiers_fournis_documents_portail")
+  @@map("dossier_fournis_document")
 }
 
 model TypeProcedure {
-  id          Int                           @id @default(autoincrement())
-  libelle     String?                       @db.VarChar(150)//
-  description String?//
-  Bareme      BaremProduitetDroit[]//
-  demande    DemandePortail[]//
-  DossierAdministratif    DossierAdministratifPortail[]//
-  phases      Phase[]//
- // procedures  ProcedurePortail[]
-  @@map("types_procedures_portail")
+  id                     Int                     @id @default(autoincrement())
+  libelle                String?
+  description            String?
+  DossierAdministratif   DossierAdministratif[]
+  Bareme                 BaremProduitetDroit[]
+  combinaisionPermisProc combinaisonPermisProc[]
+  Demande                demandePortail[]
+
+  @@map("typeprocedure")
+}
+
+/// model Phase {
+/// id_phase              Int                     @id @default(autoincrement())
+/// libelle               String
+/// ordre                 Int
+/// description           String?
+/// etapes                EtapeProc[]
+/// procedurePhases       ProcedurePhase[]
+/// procedurePhaseEtapes  procedurePhaseEtapes[]
+/// relationPhaseTypeProc relationPhaseTypeProc[]
+///
+/// @@map("phase")
+/// }
+///
+/// model EtapeProc {
+/// id_etape             Int                    @id @default(autoincrement())
+/// lib_etape            String
+/// duree_etape          Int?
+/// ordre_etape          Int
+/// id_phase             Int?
+/// page_route           String?
+/// phase                Phase?                 @relation(fields: [id_phase], references: [id_phase])
+/// procedureEtapes      ProcedureEtape[]
+/// procedurePhaseEtapes procedurePhaseEtapes[]
+///
+/// @@map("etape_proc")
+/// }
+///
+/// model ProcedurePhase {
+/// id_proc   Int
+/// id_phase  Int
+/// ordre     Int
+/// statut    StatutProcedure?
+/// phase     Phase            @relation(fields: [id_phase], references: [id_phase])
+/// procedure ProcedurePortail @relation(fields: [id_proc], references: [id_procedure])
+///
+/// @@id([id_proc, id_phase])
+/// @@map("procedure_phase")
+/// }
+///
+/// model ProcedureEtape {
+/// id_proc    Int
+/// id_etape   Int
+/// statut     StatutProcedure
+/// date_debut DateTime
+/// date_fin   DateTime?
+/// link       String?
+/// etape      EtapeProc        @relation(fields: [id_etape], references: [id_etape])
+/// procedure  ProcedurePortail @relation(fields: [id_proc], references: [id_procedure])
+///
+/// @@id([id_proc, id_etape])
+/// @@map("procedure_etape")
+/// }
+///
+/// model procedurePhaseEtapes {
+/// id_procPhaseEtape Int              @id @default(autoincrement())
+/// id_proc           Int
+/// id_phase          Int
+/// id_etape          Int?
+/// statut_etape      String?
+/// date_debut        DateTime?
+/// date_fin          DateTime?
+/// link              String?
+/// etape             EtapeProc?       @relation(fields: [id_etape], references: [id_etape])
+/// phase             Phase            @relation(fields: [id_phase], references: [id_phase])
+/// procedure         ProcedurePortail @relation(fields: [id_proc], references: [id_procedure])
+///
+/// @@map("procedure_phase_etapes")
+/// }
+///
+/// model combinaisonPermisProc {
+/// id_combinaison        Int                     @id @default(autoincrement())
+/// id_typePermis         Int
+/// id_typeProc           Int
+/// duree_regl_proc       Int?
+/// typePermis            TypePermis              @relation(fields: [id_typePermis], references: [id])
+/// typeProc              TypeProcedure           @relation(fields: [id_typeProc], references: [id])
+/// relationPhaseTypeProc relationPhaseTypeProc[]
+///
+/// @@unique([id_typePermis, id_typeProc])
+/// @@map("combinaison_typepermis")
+/// }
+///
+/// model relationPhaseTypeProc {
+/// id_relation    Int                   @id @default(autoincrement())
+/// id_phase       Int
+/// id_combinaison Int
+/// ordre          Int?
+/// dureeEstimee   Int?
+/// combinaison    combinaisonPermisProc @relation(fields: [id_combinaison], references: [id_combinaison])
+/// phase          Phase                 @relation(fields: [id_phase], references: [id_phase])
+///
+/// @@map("relation_phase_typeprocedure")
+/// }
+/// ////////
+model EtapeProc {
+  id_etape        Int              @id @default(autoincrement())
+  lib_etape       String
+  ManyEtapes      ManyEtape[]
+  procedureEtapes ProcedureEtape[]
+
+  @@map("etape_proc")
 }
 
 model Phase {
   id_phase        Int              @id @default(autoincrement())
-  libelle         String           @db.VarChar(255)
+  libelle         String
   ordre           Int
   description     String?
-  dureeEstimee    Int?
-  typeProcedureId Int?
-  etapes          EtapeProc[]  //les etapes dune phase
-  typeProcedure   TypeProcedure?   @relation(fields: [typeProcedureId], references: [id])
+  ManyEtapes      ManyEtape[]
   procedurePhases ProcedurePhase[]
 
-  @@map("phases_portail")
+  @@map("phase")
 }
-//les etapes
-model EtapeProc {
-  id_etape    Int              @id @default(autoincrement())
-  lib_etape   String           @db.VarChar(255)
-  duree_etape Int?
-  ordre_etape Int
-  id_phase    Int
-  phase       Phase            @relation(fields: [id_phase], references: [id_phase], onDelete: Cascade)
-  procedureEtapes     ProcedureEtape[]
 
-  @@map("etapes_proc_portail")
+model ManyEtape {
+  id_manyEtape          Int                     @id @default(autoincrement())
+  id_phase              Int
+  id_etape              Int
+  duree_etape           Int?
+  ordre_etape           Int
+  page_route            String?
+  etape                 EtapeProc               @relation(fields: [id_etape], references: [id_etape])
+  phase                 Phase                   @relation(fields: [id_phase], references: [id_phase])
+  procedurePhaseEtapes  procedurePhaseEtapes[]
+  relationPhaseTypeProc relationPhaseTypeProc[]
+
+  @@unique([id_phase, id_etape])
+  @@map("many_etape")
 }
-//associative 
+
+model relationPhaseTypeProc {
+  id_relation    Int                   @id @default(autoincrement())
+  id_combinaison Int
+  ordre          Int?
+  dureeEstimee   Int?
+  id_manyEtape   Int?
+  combinaison    combinaisonPermisProc @relation(fields: [id_combinaison], references: [id_combinaison])
+  manyEtape      ManyEtape?            @relation(fields: [id_manyEtape], references: [id_manyEtape])
+
+  @@map("relation_phase_typeprocedure")
+}
+
 model ProcedurePhase {
   id_proc   Int
   id_phase  Int
   ordre     Int
   statut    StatutProcedure?
-  phase     Phase            @relation(fields: [id_phase], references: [id_phase], onDelete: Cascade)
-  procedure ProcedurePortail @relation(fields: [id_proc], references: [id_procedure], onDelete: Cascade)
+  phase     Phase            @relation(fields: [id_phase], references: [id_phase])
+  procedure ProcedurePortail @relation(fields: [id_proc], references: [id_proc])
 
   @@id([id_proc, id_phase])
-  @@map("procedure_phase_portail")
+  @@map("procedure_phase")
 }
-//associative
+
 model ProcedureEtape {
   id_proc    Int
   id_etape   Int
@@ -939,23 +1093,59 @@ model ProcedureEtape {
   date_debut DateTime
   date_fin   DateTime?
   link       String?
-  etape      EtapeProc        @relation(fields: [id_etape], references: [id_etape], onDelete: Cascade)
-  procedure  ProcedurePortail @relation(fields: [id_proc], references: [id_procedure], onDelete: Cascade)
+  etape      EtapeProc        @relation(fields: [id_etape], references: [id_etape])
+  procedure  ProcedurePortail @relation(fields: [id_proc], references: [id_proc])
 
   @@id([id_proc, id_etape])
-  @@map("procedure_etape_portail")
+  @@map("procedure_etape")
 }
 
+model procedurePhaseEtapes {
+  id_procPhaseEtape Int              @id @default(autoincrement())
+  id_proc           Int
+  statut_etape      String?
+  date_debut        DateTime?
+  date_fin          DateTime?
+  link              String?
+  id_manyEtape      Int?
+  manyEtape         ManyEtape?       @relation(fields: [id_manyEtape], references: [id_manyEtape])
+  procedure         ProcedurePortail @relation(fields: [id_proc], references: [id_proc])
+
+  @@map("procedure_phase_etapes")
+}
+
+model permisProcedure {
+  id_procedurePermis Int              @id @default(autoincrement())
+  id_permis          Int
+  id_proc            Int
+  permis             PermisPortail    @relation(fields: [id_permis], references: [id])
+  procedure          ProcedurePortail @relation(fields: [id_proc], references: [id_proc])
+
+  @@unique([id_permis, id_proc])
+  @@map("permis_procedure")
+}
+
+model combinaisonPermisProc {
+  id_combinaison        Int                     @id @default(autoincrement())
+  id_typePermis         Int
+  id_typeProc           Int
+  duree_regl_proc       Int?
+  typePermis            TypePermis              @relation(fields: [id_typePermis], references: [id])
+  typeProc              TypeProcedure           @relation(fields: [id_typeProc], references: [id])
+  relationPhaseTypeProc relationPhaseTypeProc[]
+
+  @@unique([id_typePermis, id_typeProc])
+  @@map("combinaison_typepermis")
+}
 
 model Substance {
-  id_sub        Int                        @id @default(autoincrement())
-  nom_subFR     String                     @db.VarChar(150)
-  nom_subAR     String?                    @db.VarChar(150)
-  categorie_sub String?                    @db.VarChar(100)
-  famille_sub   String?                    @db.VarChar(100)
-  id_redevance  Int
-  associees     SubstanceAssocieeDemande[]
-  redevance     RedevanceBareme           @relation(fields: [id_redevance], references: [id_redevance])
+  id_sub           Int                        @id @default(autoincrement())
+  nom_subFR        String?
+  nom_subAR        String?
+  categorie_sub    String?
+  id_redevance     Int?
+  associeesDemande SubstanceAssocieeDemande[]
+  redevance        RedevanceBareme?           @relation(fields: [id_redevance], references: [id_redevance])
 
   @@map("substances")
 }
@@ -964,128 +1154,101 @@ model RedevanceBareme {
   id_redevance     Int         @id @default(autoincrement())
   taux_redevance   Float
   valeur_marchande Float
-  unite            String      @db.VarChar(20)
-  devise           String      @db.VarChar(10)
-  description      String?
+  unite            String
+  devise           String
+  description      String
   substances       Substance[]
+
   @@map("redevance_bareme")
 }
 
 model SubstanceAssocieeDemande {
   id_assoc     Int              @id @default(autoincrement())
   id_proc      Int
-  id_substance Int
-  priorite     EnumPriorite
-  date_ajout   DateTime         @default(now())
-  procedure    ProcedurePortail @relation(fields: [id_proc], references: [id_procedure], onDelete: Cascade)
-  substance    Substance        @relation(fields: [id_substance], references: [id_sub], onDelete: Cascade)
+  id_substance Int?
+  priorite     Enumpriorite?
+  date_ajout   DateTime?        @default(now())
+  procedure    ProcedurePortail @relation(fields: [id_proc], references: [id_proc])
+  substance    Substance?       @relation(fields: [id_substance], references: [id_sub])
 
   @@unique([id_proc, id_substance])
   @@map("substance_associee_demande")
 }
 
 model ProcedurePortail {
-  id_procedure              Int                           @id @default(autoincrement())
-  statut          StatutDemande                           @default(EN_ATTENTE)
-  typeProcedureId Int?
-   num_proc        String          @unique
-   date_debut_proc DateTime
-    date_fin_proc   DateTime?
-    statut_proc     StatutProcedure
-    resultat        String?
-    observations    String?
-      id_seance       Int?
-  //type            TypeProcedureEnum
-  //documents       DocumentProcedurePortail[]
-  historiques     HistoriquePortail[]           @relation("ProcedureHistorique")
-  inscriptionProvisoire  InscriptionProvisoirePortail?//
-   InteractionWali     InteractionWaliPortail[]  //
-  coordonnees          ProcedureCoordPortail[]//
-  ProcedureEtape           ProcedureEtape[]           // status of etapes
-  ProcedurePhase           ProcedurePhase[]               //
-  //typeProcedure        TypeProcedure?                @relation(fields: [typeProcedureId], references: [id])
-  SubstanceAssocieeDemande SubstanceAssocieeDemande[]//
-  permis               PermisPortail[]               @relation("PermisProcedure")//
-  demandes             DemandePortail[]//   
-      seance                   SeanceCDPrevue?            @relation("SeanceProcedures", fields: [id_seance], references: [id_seance])
+  id_seance                Int?
+  num_proc                 String?                       @unique
+  date_debut_proc          DateTime?
+  date_fin_proc            DateTime?
+  statut_proc              StatutProcedure
+  resultat                 String?
+  observations             String?
+  cause_blocage            String?
+  date_blocage             DateTime?
+  typeProcedureId          Int?
+  id_proc                  Int                           @id @default(autoincrement())
+  coordonnees              ProcedureCoord[]
+  demandes                 demandePortail[]
+  sourceDemandes           demandePortail[]              @relation("DemandeSource")
+  inscriptionProvisoire    InscriptionProvisoirePortail?
+  InteractionWali          InteractionWaliPortail[]
+  permisProcedure          permisProcedure[]
+  seance                   SeanceCDPrevue?               @relation("SeanceProcedures", fields: [id_seance], references: [id_seance])
+  ProcedureEtape           ProcedureEtape[]
+  ProcedurePhase           ProcedurePhase[]
+  procedurePhaseEtapes     procedurePhaseEtapes[]
+  SubstanceAssocieeDemande SubstanceAssocieeDemande[]
 
-  @@map("procedures_portail")
+  @@map("procedure")
 }
 
-model DocumentDemandePortail {
-  id         Int            @id @default(autoincrement())
-  idDemande  Int
-  nomFichier String         @db.VarChar(255)
-  urlFichier String
-  statut     String         @default("DEPOT") @db.VarChar(50)
-  deposeLe   DateTime       @default(now())
-  demande    DemandePortail @relation(fields: [idDemande], references: [id_demande], onDelete: Cascade)
-
-  @@map("documents_demande_portail")
-}
-/*
-model DocumentProcedurePortail {
-  id          Int              @id @default(autoincrement())
-  idProcedure Int
-  nomFichier  String           @db.VarChar(255)
-  urlFichier  String
-  statut      String           @default("DEPOT") @db.VarChar(50)
-  deposeLe    DateTime         @default(now())
-  //procedure   ProcedurePortail @relation(fields: [idProcedure], references: [id_procedure], onDelete: Cascade)
-
-  @@map("documents_procedure_portail")
-}*/
-
-model ProcedureCoordPortail {
-  id_procedureCoord Int                @id @default(autoincrement())
+model ProcedureCoord {
+  id_procedureCoord Int               @id @default(autoincrement())
   id_proc           Int
   id_coordonnees    Int
-  statut_coord      StatutCoordPortail
-  coordonnee        CoordonneePortail  @relation(fields: [id_coordonnees], references: [id_coordonnees], onDelete: Cascade)
-  procedure         ProcedurePortail   @relation(fields: [id_proc], references: [id_procedure], onDelete: Cascade)
+  statut_coord      StatutCoord
+  coordonnee        CoordonneePortail @relation(fields: [id_coordonnees], references: [id_coordonnees])
+  procedure         ProcedurePortail  @relation(fields: [id_proc], references: [id_proc])
 
   @@unique([id_proc, id_coordonnees])
-  @@map("procedure_coord_portail")
 }
 
 model CoordonneePortail {
-  id_coordonnees Int                     @id @default(autoincrement())
-   id_zone_interdite Int?
-  point          String?                 @db.VarChar(100)
-  x              Float
-  y              Float
-  z              Float                   @default(0)
-  system         String?                 @default("WGS84") @db.VarChar(20)
-  zone           Int?
-  hemisphere     String?                 @db.VarChar(1)
-  procedureLinks ProcedureCoordPortail[]
+  id_coordonnees    Int              @id @default(autoincrement())
+  id_zone_interdite Int?
+  point             String?          @db.VarChar(100)
+  x                 Float
+  y                 Float
+  z                 Float            @default(0)
+  system            String?          @default("WGS84") @db.VarChar(20)
+  zone              Int?
+  hemisphere        String?          @db.VarChar(1)
+  procedureLinks    ProcedureCoord[]
 
   @@map("coordonnee_portail")
 }
 
-
-
 model InscriptionProvisoirePortail {
-  id_i_p                   Int        @id @default(autoincrement())
-  id_proc              Int        @unique
-  id_demande           Int        @unique
-  points               Json
-  system               String?
-  zone                 Int?
-  hemisphere           String?
-  superficie_declaree  Float?
-  createdAt            DateTime   @default(now())
-  updatedAt            DateTime   @updatedAt
-    procedure            ProcedurePortail  @relation(fields: [id_i_p], references: [id_procedure])
-  demande              DemandePortail    @relation(fields: [id_demande], references: [id_demande])
+  id                  Int              @id @default(autoincrement())
+  id_proc             Int              @unique
+  id_demande          Int              @unique
+  points              Json
+  system              String?
+  zone                Int?
+  hemisphere          String?
+  superficie_declaree Float?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  demande             demandePortail   @relation(fields: [id_demande], references: [id_demande])
+  procedure           ProcedurePortail @relation(fields: [id_proc], references: [id_proc])
 
-  @@map("inscription_provisoire_portail")
+  @@map("inscription_provisoire")
 }
 
 model InteractionWaliPortail {
   id                        Int                      @id @default(autoincrement())
   idInterne                 Int?                     @unique
-  id_procedure              Int
+  id_procedure              Int                      @map("id_procedure")
   id_wilaya                 Int
   type_interaction          EnumTypeInteraction?
   avis_wali                 EnumAvisWali?            @default(EN_ATTENTE)
@@ -1099,8 +1262,8 @@ model InteractionWaliPortail {
   relance_parent_id         Int?
   creeLe                    DateTime                 @default(now())
   modifieLe                 DateTime                 @updatedAt
-  procedure                 ProcedurePortail         @relation(fields: [id_procedure], references: [id_procedure], onDelete: Cascade)
-  wilaya                    WilayaPortail            @relation(fields: [id_wilaya], references: [id_wilaya])
+  procedure                 ProcedurePortail         @relation(fields: [id_procedure], references: [id_proc], onDelete: Cascade)
+  wilaya                    Wilaya                   @relation(fields: [id_wilaya], references: [id_wilaya])
   relance_parent            InteractionWaliPortail?  @relation("RelanceInteraction", fields: [relance_parent_id], references: [id])
   relances                  InteractionWaliPortail[] @relation("RelanceInteraction")
 
@@ -1111,48 +1274,6 @@ model InteractionWaliPortail {
   @@index([is_relance])
   @@map("interactions_wali_portail")
 }
-
-model PaiementPortail {
-  id            Int                @id @default(autoincrement())
-  idInterne     Int?
-  idUtilisateur Int
-  idDemande     Int?
-  idProcedure   Int?
-  montant       Float
-  devise        String             @default("DZD") @db.VarChar(3)
-  fournisseur   String?            @db.VarChar(100)
-  idTransaction String?            @db.VarChar(100)
-  statut        StatutPaiement     @default(EN_ATTENTE)
-  creeLe        DateTime           @default(now())
-  modifieLe     DateTime           @updatedAt
-  demande       DemandePortail?    @relation(fields: [idDemande], references: [id_demande])
- // procedure     ProcedurePortail?  @relation(fields: [idProcedure], references: [id_procedure])
-  utilisateur   UtilisateurPortail @relation(fields: [idUtilisateur], references: [id], onDelete: Cascade)
-
-  @@index([statut])
-  @@map("paiements_portail")
-}
-
-model HistoriquePortail {
-  id            Int                @id @default(autoincrement())
-  idUtilisateur Int
-  typeEntite    String             @db.VarChar(100)
-  idDemande     Int?
-  idProcedure   Int?
-  action        String             @db.VarChar(100)
-  description   String?
-  dateAction    DateTime           @default(now())
-  demande       DemandePortail?    @relation("DemandeHistorique", fields: [idDemande], references: [id_demande])
-  procedure     ProcedurePortail?  @relation("ProcedureHistorique", fields: [idProcedure], references: [id_procedure])
-  utilisateur   UtilisateurPortail @relation(fields: [idUtilisateur], references: [id], onDelete: Cascade)
-
-  @@index([idUtilisateur])
-  @@index([typeEntite])
-  @@index([idDemande])
-  @@index([idProcedure])
-  @@map("historiques_portail")
-}
-
 
 model CorrespondanceSynchro {
   id            Int      @id @default(autoincrement())
@@ -1197,10 +1318,10 @@ model ObligationFiscale {
 }
 
 model Paiement {
-  id               Int               @id @default(autoincrement())
+  id               Int                @id @default(autoincrement())
   id_obligation    Int
   montant_paye     Float
-  devise           String            @default("DZD")
+  devise           String             @default("DZD")
   date_paiement    DateTime
   mode_paiement    String
   num_quittance    String?
@@ -1208,11 +1329,29 @@ model Paiement {
   justificatif_url String?
   num_perc         String?
   date_remisOp     DateTime?
-  created_at       DateTime          @default(now())
-  updated_at       DateTime          @updatedAt
-  obligation       ObligationFiscale @relation(fields: [id_obligation], references: [id])
+  created_at       DateTime           @default(now())
+  updated_at       DateTime           @updatedAt
+  idUtilisateur    Int
+  id_facture       Int
+  utilisateur      UtilisateurPortail @relation(fields: [idUtilisateur], references: [id], onDelete: Cascade)
+  facture          Facture            @relation(fields: [id_facture], references: [id_facture])
+  obligation       ObligationFiscale  @relation(fields: [id_obligation], references: [id])
 
   @@map("paiement")
+}
+
+/// ajout de cette table pour la gestion des factures
+model Facture {
+  id_facture     Int            @id @default(autoincrement())
+  numero_facture String         @unique
+  montant_total  Float
+  date_emission  DateTime       @default(now())
+  id_demande     Int            @unique
+  type_facture   FactureType    @default(INVESTISSEUR)
+  devise         DeviseFacture  @default(DZD)
+  statut         StatutFacture  @default(BROUILLON)
+  demande        demandePortail @relation(fields: [id_demande], references: [id_demande], onDelete: Cascade)
+  paiements      Paiement[]
 }
 
 model TsPaiement {
@@ -1283,6 +1422,90 @@ model RapportActivite {
   @@map("rapport_activite")
 }
 
+model SeanceCDPrevue {
+  id_seance     Int                @id @default(autoincrement())
+  num_seance    String
+  date_seance   DateTime
+  exercice      Int
+  remarques     String?
+  statut        EnumStatutSeance
+  comites       ComiteDirection[]  @relation("SeanceComites")
+  seancesMembre MembreSeance[]
+  procedures    ProcedurePortail[] @relation("SeanceProcedures")
+  membres       MembresComite[]    @relation("SeanceMembres")
+}
+
+model ComiteDirection {
+  id_comite       Int            @id @default(autoincrement())
+  id_seance       Int
+  date_comite     DateTime
+  resume_reunion  String
+  fiche_technique String?
+  carte_projettee String?
+  rapport_police  String?
+  seance          SeanceCDPrevue @relation("SeanceComites", fields: [id_seance], references: [id_seance])
+  decisionCDs     DecisionCD[]
+}
+
+model DecisionCD {
+  id_decision     Int                @id @default(autoincrement())
+  id_comite       Int
+  numero_decision String
+  duree_decision  Int?
+  commentaires    String?
+  decision_cd     EnumDecisionComite
+  comite          ComiteDirection    @relation(fields: [id_comite], references: [id_comite])
+}
+
+model MembresComite {
+  id_membre       Int              @id @default(autoincrement())
+  nom_membre      String
+  prenom_membre   String
+  fonction_membre String
+  email_membre    String
+  membreSeance    MembreSeance[]
+  seances         SeanceCDPrevue[] @relation("SeanceMembres")
+}
+
+model MembreSeance {
+  id_seance Int
+  id_membre Int
+  membre    MembresComite  @relation(fields: [id_membre], references: [id_membre])
+  seance    SeanceCDPrevue @relation(fields: [id_seance], references: [id_seance])
+
+  @@id([id_seance, id_membre])
+}
+
+model DroitPreemption {
+  id_droit              Int                   @id @default(autoincrement())
+  demandeId             Int                   @unique
+  statut                StatutDroitPreemption @default(EN_ATTENTE)
+  pieceJustificativeUrl String?
+  nomFichierOriginal    String?
+  dateDepotPiece        DateTime?
+  dateDecisionEtat      DateTime?
+  commentaires          String?
+  demande               demandePortail        @relation(fields: [demandeId], references: [id_demande], onDelete: Cascade)
+
+  @@map("droit_preemption")
+}
+
+enum EnumStatutSeance {
+  programmee
+  terminee
+}
+
+enum EnumDecisionComite {
+  favorable
+  defavorable
+  autre
+}
+
+enum EnumTypeDetenteur {
+  ANCIEN
+  NOUVEAU
+}
+
 enum RoleUtilisateur {
   INVESTISSEUR
   OPERATEUR
@@ -1300,11 +1523,10 @@ enum TypeProcedureEnum {
 }
 
 enum StatutDemande {
+  ACCEPTEE
+  REJETEE
   EN_ATTENTE
   EN_COURS
-  VALIDEE
-  REFUSEE
-  SUSPENDUE
 }
 
 enum StatutPaiement {
@@ -1321,18 +1543,13 @@ enum TypeNotification {
   REPONSE
 }
 
-enum EnumPriorite {
-  PRINCIPALE
-  SECONDAIRE
-}
-
 enum EnumTypeFonction {
-    Representant
-    Actionnaire
-    Representant_Actionnaire
+  Representant
+  Actionnaire
+  Representant_Actionnaire
 }
 
-enum StatutCoordPortail {
+enum StatutCoord {
   DEMANDE_INITIALE
   NOUVEAU
   ANCIENNE
@@ -1345,21 +1562,38 @@ enum MissingAction {
 }
 
 enum EnumTypeInteraction {
-  ENVOI
-  REPONSE
-  RELANCE
+  envoi
+  relance
+  reponse
 }
 
 enum EnumAvisWali {
+  favorable
+  defavorable
   EN_ATTENTE
-  FAVORABLE
-  DEFAVORABLE
 }
 
 enum StatutProcedure {
   EN_COURS
   TERMINEE
   EN_ATTENTE
+}
+
+enum StatutDetenteur {
+  PERSONNE_MORALE_ALGERIENNE
+  PERSONNE_MORALE_ETRANGERE
+  PERSONNE_PHYSIQUE_ALGERIENNE
+}
+
+enum StatutDroitPreemption {
+  EXERCE
+  RENONCE
+  EN_ATTENTE
+}
+
+enum Enumpriorite {
+  principale
+  secondaire
 }
 
 enum EnumStatutPaiement {
@@ -1370,76 +1604,20 @@ enum EnumStatutPaiement {
   Partiellement_paye
 }
 
-
-
-enum EnumDecisionComite {
-    favorable
-    defavorable
-    autre
+enum StatutFacture {
+  BROUILLON
+  EMISE
+  PAYEE
+  ANNULEE
 }
 
-model SeanceCDPrevue {
-    id_seance     Int               @id @default(autoincrement())
-    num_seance    String
-    date_seance   DateTime
-    exercice      Int
-    remarques     String?
-    statut        EnumStatutSeance
-    procedures    ProcedurePortail[]       @relation("SeanceProcedures")
-    membres       MembresComite[]   @relation("SeanceMembres")
-    comites       ComiteDirection[] @relation("SeanceComites")
-    seancesMembre MembreSeance[]
-
-
-
+enum DeviseFacture {
+  DZD
+  EUR
+  USD
 }
 
-enum EnumStatutSeance {
-    programmee
-    terminee
-}
-
-model ComiteDirection {
-    id_comite       Int      @id @default(autoincrement())
-    id_seance       Int
-    date_comite     DateTime
-    resume_reunion  String
-    fiche_technique String?
-    carte_projettee String?
-    rapport_police  String?
-
-    decisionCDs DecisionCD[]
-    seance      SeanceCDPrevue @relation(fields: [id_seance], references: [id_seance], name: "SeanceComites")
-}
-
-model DecisionCD {
-    id_decision     Int                @id @default(autoincrement())
-    id_comite       Int
-    numero_decision String
-    duree_decision  Int?
-    commentaires    String?
-    decision_cd     EnumDecisionComite
-
-    comite ComiteDirection @relation(fields: [id_comite], references: [id_comite])
-}
-
-model MembresComite {
-    id_membre       Int    @id @default(autoincrement())
-    nom_membre      String
-    prenom_membre   String
-    fonction_membre String
-    email_membre    String
-
-    seances      SeanceCDPrevue[] @relation("SeanceMembres")
-    membreSeance MembreSeance[]
-}
-
-model MembreSeance {
-    id_seance Int
-    id_membre Int
-
-    seance SeanceCDPrevue @relation(fields: [id_seance], references: [id_seance])
-    membre MembresComite  @relation(fields: [id_membre], references: [id_membre])
-
-    @@id([id_seance, id_membre])
+enum FactureType {
+  INVESTISSEUR
+  OPERATEUR
 }

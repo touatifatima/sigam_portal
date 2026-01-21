@@ -12,7 +12,7 @@ export class CreateCommuneDto {
   @IsNotEmpty()
   code_commune: string;
 
-  @ApiProperty({ description: 'Commune name', example: 'Sidi M\'Hamed' })
+  @ApiProperty({ description: 'Commune name', example: "Sidi M'Hamed" })
   @IsString()
   @IsNotEmpty()
   nom_communeFR: string;
@@ -29,12 +29,16 @@ export class UpdateCommuneDto {
   @IsNotEmpty()
   id_daira?: number;
 
-  @ApiProperty({ description: 'Commune code', example: '16001', required: false })
+  @ApiProperty({
+    description: 'Commune code',
+    example: '16001',
+    required: false,
+  })
   @IsString()
   @IsNotEmpty()
   code_commune?: string;
 
-  @ApiProperty({ description: 'Commune name', example: 'Sidi M\'Hamed' })
+  @ApiProperty({ description: 'Commune name', example: "Sidi M'Hamed" })
   @IsString()
   @IsNotEmpty()
   nom_communeFR: string;

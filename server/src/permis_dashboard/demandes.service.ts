@@ -9,16 +9,16 @@ export class DemandesDashboardService {
     return this.prisma.demandePortail.findMany({
       where: {
         procedure: {
-          statut_proc: 'EN_COURS'
-        }
+          statut_proc: 'EN_COURS',
+        },
       },
       include: {
-        entreprise: true,
-        procedure: true
+        detenteurdemande: { take: 1, include: { detenteur: true } },
+        procedure: true,
       },
       orderBy: {
-        date_demande: 'desc'
-      }
+        date_demande: 'desc',
+      },
     });
   }
 }

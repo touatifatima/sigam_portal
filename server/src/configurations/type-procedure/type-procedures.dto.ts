@@ -6,10 +6,10 @@ export class CreateTypeProcedureDto {
   @IsString()
   libelle: string;
 
-  @ApiProperty({ 
-    description: 'Procedure type description', 
+  @ApiProperty({
+    description: 'Procedure type description',
     example: 'Initial application for mining title',
-    required: false 
+    required: false,
   })
   @IsString()
   @IsOptional()
@@ -17,19 +17,19 @@ export class CreateTypeProcedureDto {
 }
 
 export class UpdateTypeProcedureDto {
-  @ApiProperty({ 
-    description: 'Procedure type label', 
+  @ApiProperty({
+    description: 'Procedure type label',
     example: 'Demande',
-    required: false 
+    required: false,
   })
   @IsString()
   @IsOptional()
   libelle?: string;
 
-  @ApiProperty({ 
-    description: 'Procedure type description', 
+  @ApiProperty({
+    description: 'Procedure type description',
     example: 'Initial application for mining title',
-    required: false 
+    required: false,
   })
   @IsString()
   @IsOptional()

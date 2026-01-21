@@ -17,7 +17,7 @@ export class InteractionWaliService {
       nom_responsable_reception: data.nom_responsable_reception,
       is_relance: data.is_relance ?? false,
       Procedure: {
-        connect: { id_proc: data.id_procedure }
+        connect: { id_proc: data.id_proc }
       },
       Wilaya: {
         connect: { id_wilaya: data.id_wilaya }
@@ -38,9 +38,9 @@ export class InteractionWaliService {
     });
   }
 
-  findByProcedure(id_procedure: number) {
+  findByProcedure(id_proc: number) {
     return this.prisma.interactionWaliPortail.findMany({
-      where: { id_procedure },
+      where: { id_procedure: id_proc },
       orderBy: { date_envoi: 'asc' },
     });
   }

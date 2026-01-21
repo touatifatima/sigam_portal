@@ -161,6 +161,27 @@
   color: #1f2937;
 }
 
+.filtersBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 16px 0;
+}
+
+.filterLabel {
+  font-weight: 600;
+  color: #374151;
+}
+
+.filterSelect {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  min-width: 220px;
+  color: #111827;
+}
+
 .obligationsTableContainer {
   overflow-x: auto;
 }
@@ -187,6 +208,10 @@
 
 .obligationRow:hover {
   background-color: #f9fafb;
+}
+
+.rowPaid {
+  background-color: #ecfdf3 !important;
 }
 
 .obligationType {

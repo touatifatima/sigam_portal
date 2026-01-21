@@ -22,14 +22,21 @@ export class CreateRedevanceDto {
   @IsNotEmpty()
   devise: string;
 
-  @ApiProperty({ description: 'Description', example: 'Taux pour les métaux précieux' })
+  @ApiProperty({
+    description: 'Description',
+    example: 'Taux pour les métaux précieux',
+  })
   @IsString()
   @IsNotEmpty()
   description: string;
 }
 
 export class UpdateRedevanceDto {
-  @ApiProperty({ description: 'Royalty rate percentage', example: 5.5, required: false })
+  @ApiProperty({
+    description: 'Royalty rate percentage',
+    example: 5.5,
+    required: false,
+  })
   @IsNumber()
   @IsOptional()
   taux_redevance?: number;
@@ -39,7 +46,11 @@ export class UpdateRedevanceDto {
   @IsOptional()
   valeur_marchande?: number;
 
-  @ApiProperty({ description: 'Unit of measurement', example: 'tonne', required: false })
+  @ApiProperty({
+    description: 'Unit of measurement',
+    example: 'tonne',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   unite?: string;
@@ -49,7 +60,11 @@ export class UpdateRedevanceDto {
   @IsOptional()
   devise?: string;
 
-  @ApiProperty({ description: 'Description', example: 'Taux pour les métaux précieux', required: false })
+  @ApiProperty({
+    description: 'Description',
+    example: 'Taux pour les métaux précieux',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   description?: string;

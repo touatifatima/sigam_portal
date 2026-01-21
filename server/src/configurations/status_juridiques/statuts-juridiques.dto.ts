@@ -8,12 +8,18 @@ export class CreateStatutJuridiqueDto {
   @IsNotEmpty()
   code_statut: string;
 
-  @ApiProperty({ description: 'Status in French', example: 'Société à responsabilité limitée' })
+  @ApiProperty({
+    description: 'Status in French',
+    example: 'Société à responsabilité limitée',
+  })
   @IsString()
   @IsNotEmpty()
   statut_fr: string;
 
-  @ApiProperty({ description: 'Status in Arabic', example: 'شركة ذات مسؤولية محدودة' })
+  @ApiProperty({
+    description: 'Status in Arabic',
+    example: 'شركة ذات مسؤولية محدودة',
+  })
   @IsString()
   @IsNotEmpty()
   statut_ar: string;
@@ -25,12 +31,20 @@ export class UpdateStatutJuridiqueDto {
   @IsOptional()
   code_statut?: string;
 
-  @ApiProperty({ description: 'Status in French', example: 'Société à responsabilité limitée', required: false })
+  @ApiProperty({
+    description: 'Status in French',
+    example: 'Société à responsabilité limitée',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   statut_fr?: string;
 
-  @ApiProperty({ description: 'Status in Arabic', example: 'شركة ذات مسؤولية محدودة', required: false })
+  @ApiProperty({
+    description: 'Status in Arabic',
+    example: 'شركة ذات مسؤولية محدودة',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   statut_ar?: string;

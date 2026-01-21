@@ -314,7 +314,7 @@ export const ArcGISMap = forwardRef<ArcGISMapRef, ArcGISMapProps>(({
     });
     existingLayersRef.current = {};
 
-    existingPolygons.forEach(({ num_proc, coordinates }) => {
+    (existingPolygons || []).forEach(({ num_proc, coordinates }) => {
       try {
         if (!coordinates || !Array.isArray(coordinates) || coordinates.length < 3) {
           console.warn('Invalid polygon data for:', num_proc);

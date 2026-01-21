@@ -1,4 +1,4 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
+/**import { IsBoolean, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateDetenteurDto } from './create-detenteur.dto';
 
@@ -13,4 +13,6 @@ export class StartTransfertDto {
   @IsOptional() @ValidateNested() @Type(() => CreateDetenteurDto) newDetenteur?: CreateDetenteurDto;
 
   @IsOptional() @IsBoolean() applyTransferToPermis?: boolean; // if true, update permis.id_detenteur -> new detenteur
+   utilisateurId!: number;
 }
+**/

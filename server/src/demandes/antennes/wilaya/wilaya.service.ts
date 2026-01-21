@@ -8,7 +8,7 @@ export default class WilayaService {
   constructor(private prisma: PrismaService) {}
 
   async findAll() {
-    return this.prisma.wilayaPortail.findMany({
+    return this.prisma.wilaya.findMany({
       include: {
         antenne: true,
       },
@@ -19,7 +19,7 @@ export default class WilayaService {
   }
 
   async findByAntenne(idAntenne: number) {
-    return this.prisma.wilayaPortail.findMany({
+    return this.prisma.wilaya.findMany({
       where: { id_antenne: idAntenne },
       orderBy: {
         code_wilaya: 'asc',
@@ -28,7 +28,7 @@ export default class WilayaService {
   }
 
   async findOne(id: number) {
-    return this.prisma.wilayaPortail.findUnique({
+    return this.prisma.wilaya.findUnique({
       where: { id_wilaya: id },
       include: {
         antenne: true,
@@ -42,13 +42,13 @@ export default class WilayaService {
   }
 
   async findByCode(code: string) {
-    return this.prisma.wilayaPortail.findUnique({
+    return this.prisma.wilaya.findUnique({
       where: { code_wilaya: code },
     });
   }
 
   async findDairasByWilaya(id: number) {
-    return this.prisma.dairaPortail.findMany({
+    return this.prisma.daira.findMany({
       where: { id_wilaya: id },
       orderBy: {
         nom_dairaFR: 'asc',
@@ -57,7 +57,7 @@ export default class WilayaService {
   }
 
   async create(createWilayaDto: CreateWilayaDto) {
-    return this.prisma.wilayaPortail.create({
+    return this.prisma.wilaya.create({
       data: {
         ...createWilayaDto,
       },
@@ -65,14 +65,14 @@ export default class WilayaService {
   }
 
   async update(id: number, updateWilayaDto: UpdateWilayaDto) {
-    return this.prisma.wilayaPortail.update({
+    return this.prisma.wilaya.update({
       where: { id_wilaya: id },
       data: updateWilayaDto,
     });
   }
 
   async remove(id: number) {
-    return this.prisma.wilayaPortail.delete({
+    return this.prisma.wilaya.delete({
       where: { id_wilaya: id },
     });
   }

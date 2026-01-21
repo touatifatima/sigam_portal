@@ -11,7 +11,7 @@ export class CreatePermisDto {
 
   @IsOptional()
   @IsNumber()
-  id_detenteur?: number ;
+  id_detenteur?: number;
 
   @IsOptional()
   @IsNumber()

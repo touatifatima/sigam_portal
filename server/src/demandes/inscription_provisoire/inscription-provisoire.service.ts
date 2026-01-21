@@ -13,7 +13,10 @@ type ProvisionalPoint = {
 
 @Injectable()
 export class InscriptionProvisoireService {
-  constructor(private readonly prisma: PrismaService, private readonly coordService: CoordonneesService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly coordService: CoordonneesService,
+  ) {}
 
   async upsertByProcedure(payload: {
     id_proc: number;
@@ -24,7 +27,15 @@ export class InscriptionProvisoireService {
     hemisphere?: string;
     superficie_declaree?: number;
   }) {
-    const { id_proc, id_demande, points, system, zone, hemisphere, superficie_declaree } = payload;
+    const {
+      id_proc,
+      id_demande,
+      points,
+      system,
+      zone,
+      hemisphere,
+      superficie_declaree,
+    } = payload;
 
     // Resolve demande from procedure if not provided
     let demandeId = id_demande;
@@ -34,7 +45,9 @@ export class InscriptionProvisoireService {
         select: { id_demande: true },
       });
       if (!demande) {
-        throw new NotFoundException(`Aucune demande associée à la procédure ${id_proc}`);
+        throw new NotFoundException(
+          `Aucune demande associée à la procédure ${id_proc}`,
+        );
       }
       demandeId = demande.id_demande;
     }
@@ -56,10 +69,12 @@ export class InscriptionProvisoireService {
     };
 
     const updateData: any = { ...baseData };
-    if (superficieValue !== undefined) updateData.superficie_declaree = superficieValue;
+    if (superficieValue !== undefined)
+      updateData.superficie_declaree = superficieValue;
 
     const createData: any = { id_proc, ...baseData };
-    if (superficieValue !== undefined) createData.superficie_declaree = superficieValue;
+    if (superficieValue !== undefined)
+      createData.superficie_declaree = superficieValue;
 
     const record = await this.prisma.inscriptionProvisoirePortail.upsert({
       where: { id_proc },
@@ -75,25 +90,27 @@ export class InscriptionProvisoireService {
   }
 
   async findByProcedure(id_proc: number) {
-    const rec = await this.prisma.inscriptionProvisoirePortail.findUnique({ where: { id_proc } });
+    const rec = await this.prisma.inscriptionProvisoirePortail.findUnique({
+      where: { id_proc },
+    });
     if (rec) return rec;
 
     // Fallback: if no provisional entry exists (e.g., after promotion),
     // return the definitive coordinates mapped to the expected shape so
     // the frontend can still render points.
-    const links = await this.prisma.procedureCoordPortail.findMany({
+    const links = await this.prisma.procedureCoord.findMany({
       where: { id_proc },
       include: { coordonnee: true },
       orderBy: { id_coordonnees: 'asc' },
     });
 
     const points = links.map((l) => ({
-      x: l.coordonnee.x,
-      y: l.coordonnee.y,
-      z: l.coordonnee.z,
-      system: l.coordonnee.system,
-      zone: l.coordonnee.zone as any,
-      hemisphere: l.coordonnee.hemisphere as any,
+      x: l.coordonnee!.x,
+      y: l.coordonnee!.y,
+      z: l.coordonnee!.z,
+      system: l.coordonnee!.system,
+      zone: l.coordonnee!.zone as any,
+      hemisphere: l.coordonnee!.hemisphere as any,
     }));
 
     return {
@@ -109,16 +126,24 @@ export class InscriptionProvisoireService {
   }
 
   async findByDemande(id_demande: number) {
-    const rec = await this.prisma.inscriptionProvisoirePortail.findUnique({ where: { id_demande } });
+    const rec = await this.prisma.inscriptionProvisoirePortail.findUnique({
+      where: { id_demande },
+    });
     return rec || null;
   }
 
   async promoteToDefinitive(id_proc: number) {
-    const rec = await this.prisma.inscriptionProvisoirePortail.findUnique({ where: { id_proc } });
-    if (!rec) throw new NotFoundException('Aucune inscription provisoire pour cette procédure');
+    const rec = await this.prisma.inscriptionProvisoirePortail.findUnique({
+      where: { id_proc },
+    });
+    if (!rec)
+      throw new NotFoundException(
+        'Aucune inscription provisoire pour cette procédure',
+      );
 
     const points = Array.isArray(rec.points) ? rec.points : [];
-    if (points.length < 3) throw new NotFoundException('Polygone insuffisant pour promotion');
+    if (points.length < 3)
+      throw new NotFoundException('Polygone insuffisant pour promotion');
 
     const payloadPoints = points.map((p: any) => ({
       x: String(p.x),
@@ -139,6 +164,8 @@ export class InscriptionProvisoireService {
     );
 
     // Ne pas supprimer l'inscription provisoire (historisation conservée)
-    return { message: 'Coordonnées promues en définitives (provisoire conservée)' };
+    return {
+      message: 'Coordonnées promues en définitives (provisoire conservée)',
+    };
   }
 }

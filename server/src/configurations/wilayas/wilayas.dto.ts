@@ -39,12 +39,20 @@ export class UpdateWilayaDto {
   @IsNotEmpty()
   code_wilaya?: string;
 
-  @ApiProperty({ description: 'Wilaya name', example: 'Alger', required: false })
+  @ApiProperty({
+    description: 'Wilaya name',
+    example: 'Alger',
+    required: false,
+  })
   @IsString()
   @IsNotEmpty()
   nom_wilayaFR?: string;
 
-  @ApiProperty({ description: 'Wilaya name', example: 'Alger', required: false })
+  @ApiProperty({
+    description: 'Wilaya name',
+    example: 'Alger',
+    required: false,
+  })
   @IsString()
   @IsNotEmpty()
   nom_wilayaAR?: string;

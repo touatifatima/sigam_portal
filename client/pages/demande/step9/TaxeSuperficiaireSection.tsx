@@ -1,5 +1,6 @@
 import React from 'react';
 import styles from '@/pages/DEA/Payments.module.css';
+import { computePermisSuperficie } from '@/utils/permisHelpers';
 
 interface TaxeCalculation {
   droitFixe?: number;
@@ -31,6 +32,7 @@ const TaxeSuperficiaireSection: React.FC<TaxeSuperficiaireSectionProps> = ({
   permis,
   dateAttribution
 }) => {
+  const derivedSuperficie = computePermisSuperficie(permis) ?? 0;
   // Filter surface tax obligations
   const surfaceTaxObligations = obligations.filter(obligation => 
     obligation.typePaiement?.libelle === 'Taxe superficiaire'
@@ -42,7 +44,7 @@ const TaxeSuperficiaireSection: React.FC<TaxeSuperficiaireSectionProps> = ({
         return {
           droitFixe: 0,
           droitProportionnel: 0,
-          superficie: permis.superficie || 0,
+          superficie: derivedSuperficie,
           mois: 0,
           taxeAnnuelle: 0,
           taxeAPayer: obligation.amount || 0,
@@ -57,7 +59,7 @@ const TaxeSuperficiaireSection: React.FC<TaxeSuperficiaireSectionProps> = ({
       return {
         droitFixe: parsed.droitFixe || 0,
         droitProportionnel: parsed.droitProportionnel || 0,
-        superficie: parsed.superficie || permis.superficie || 0,
+        superficie: parsed.superficie || derivedSuperficie,
         mois: parsed.mois || 0,
         taxeAnnuelle: parsed.taxeAnnuelle || 0,
         taxeAPayer: parsed.taxeAPayer || obligation.amount || 0,
@@ -67,7 +69,7 @@ const TaxeSuperficiaireSection: React.FC<TaxeSuperficiaireSectionProps> = ({
       return {
         droitFixe: 0,
         droitProportionnel: 0,
-        superficie: permis.superficie || 0,
+        superficie: derivedSuperficie,
         mois: 0,
         taxeAnnuelle: obligation.amount || 0,
         taxeAPayer: obligation.amount || 0,
@@ -123,7 +125,7 @@ const TaxeSuperficiaireSection: React.FC<TaxeSuperficiaireSectionProps> = ({
         </div>
         <div className={styles.taxeInfo}>
           <span>Superficie:</span>
-          <strong>{permis.superficie || 0} hectares</strong>
+          <strong>{derivedSuperficie} hectares</strong>
         </div>
         <div className={styles.taxeInfo}>
           <span>Date d'attribution:</span>

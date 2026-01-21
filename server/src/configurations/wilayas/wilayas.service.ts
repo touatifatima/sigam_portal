@@ -12,7 +12,7 @@ export class WilayasService {
 
   async create(createWilayaDto: CreateWilayaDto) {
     try {
-      return await this.prisma.wilayaPortail.create({
+      return await this.prisma.wilaya.create({
         data: createWilayaDto,
       });
     } catch (error) {
@@ -22,7 +22,7 @@ export class WilayasService {
 
   async findAll(antenneId?: number) {
     const where = antenneId ? { id_antenne: antenneId } : {};
-    return this.prisma.wilayaPortail.findMany({
+    return this.prisma.wilaya.findMany({
       where,
       orderBy: { nom_wilayaFR: 'asc' },
       include: {
@@ -32,7 +32,7 @@ export class WilayasService {
   }
 
   async findOne(id: number) {
-    const wilaya = await this.prisma.wilayaPortail.findUnique({
+    const wilaya = await this.prisma.wilaya.findUnique({
       where: { id_wilaya: id },
       include: {
         antenne: true,
@@ -49,7 +49,7 @@ export class WilayasService {
 
   async update(id: number, updateWilayaDto: UpdateWilayaDto) {
     try {
-      return await this.prisma.wilayaPortail.update({
+      return await this.prisma.wilaya.update({
         where: { id_wilaya: id },
         data: updateWilayaDto,
       });
@@ -64,7 +64,7 @@ export class WilayasService {
   async remove(id: number) {
     try {
       // Check if there are associated dairas before deleting
-      const associatedDairas = await this.prisma.dairaPortail.count({
+      const associatedDairas = await this.prisma.daira.count({
         where: { id_wilaya: id },
       });
 
@@ -74,7 +74,7 @@ export class WilayasService {
         );
       }
 
-      return await this.prisma.wilayaPortail.delete({
+      return await this.prisma.wilaya.delete({
         where: { id_wilaya: id },
       });
     } catch (error) {

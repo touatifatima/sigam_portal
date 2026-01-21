@@ -15,7 +15,7 @@ export class TypePermisService {
     try {
       // Verify the taxe exists
       const taxeExists = await this.prisma.superficiaireBareme.findUnique({
-        where: { id: createTypePermisDto.id_taxe }
+        where: { id: createTypePermisDto.id_taxe },
       });
 
       if (!taxeExists) {
@@ -35,13 +35,14 @@ export class TypePermisService {
           id_taxe: createTypePermisDto.id_taxe,
         },
         include: {
-          taxe: true
-        }
+          taxe: true,
+        },
       });
-
     } catch (error) {
       if (error.code === 'P2002') {
-        throw new BadRequestException('Type with this code or label already exists');
+        throw new BadRequestException(
+          'Type with this code or label already exists',
+        );
       }
       throw new BadRequestException('Failed to create type permis');
     }
@@ -51,8 +52,8 @@ export class TypePermisService {
     return this.prisma.typePermis.findMany({
       orderBy: { lib_type: 'asc' },
       include: {
-        taxe: true // Include the taxe relation
-      }
+        taxe: true, // Include the taxe relation
+      },
     });
   }
 
@@ -60,8 +61,8 @@ export class TypePermisService {
     const typePermis = await this.prisma.typePermis.findUnique({
       where: { id },
       include: {
-        taxe: true // Include the taxe relation
-      }
+        taxe: true, // Include the taxe relation
+      },
     });
 
     if (!typePermis) {
@@ -76,7 +77,7 @@ export class TypePermisService {
       // If updating taxe, verify it exists
       if (updateTypePermisDto.id_taxe) {
         const taxeExists = await this.prisma.superficiaireBareme.findUnique({
-          where: { id: updateTypePermisDto.id_taxe }
+          where: { id: updateTypePermisDto.id_taxe },
         });
 
         if (!taxeExists) {
@@ -88,8 +89,8 @@ export class TypePermisService {
         where: { id },
         data: updateTypePermisDto,
         include: {
-          taxe: true
-        }
+          taxe: true,
+        },
       });
     } catch (error) {
       if (error.code === 'P2025') {

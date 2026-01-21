@@ -1,0 +1,126 @@
+.section {
+  padding: 6rem 0 5rem;
+  background: radial-gradient(circle at 30% 20%, rgba(31, 176, 114, 0.08), transparent 32%),
+              radial-gradient(circle at 80% 0%, rgba(252, 211, 77, 0.05), transparent 30%),
+              #0f1724;
+  position: relative;
+  overflow: hidden;
+}
+
+.backgroundElements {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.backgroundOrb1 {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 900px;
+  height: 900px;
+  background: radial-gradient(circle, rgba(31, 176, 114, 0.18) 0%, transparent 55%);
+  border-radius: 9999px;
+  filter: blur(80px);
+}
+
+.backgroundOrb2 {
+  position: absolute;
+  bottom: -10%;
+  right: -10%;
+  width: 32rem;
+  height: 32rem;
+  background: radial-gradient(circle, rgba(252, 211, 77, 0.12) 0%, transparent 60%);
+  border-radius: 9999px;
+  filter: blur(80px);
+}
+
+.backgroundPattern {
+  position: absolute;
+  inset: 0;
+  opacity: 0.04;
+}
+
+.dotPattern {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0);
+  background-size: 40px 40px;
+}
+
+.container {
+  position: relative;
+  z-index: 10;
+}
+
+.content {
+  max-width: 56rem;
+  margin: 0 auto;
+  text-align: center;
+  color: #eaf0f8;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.1rem;
+  border-radius: 9999px;
+  background-color: rgba(31, 176, 114, 0.16);
+  color: #a2f0d0;
+  margin-bottom: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.badgeIcon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.badgeText {
+  font-size: 0.9rem;
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #f8fafc;
+  margin-bottom: 1rem;
+  line-height: 1.15;
+}
+
+@media (min-width: 768px) {
+  .title {
+    font-size: 3rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .title {
+    font-size: 3.4rem;
+  }
+}
+
+.titleHighlight {
+  color: #1fb072;
+}
+
+.description {
+  font-size: 1.05rem;
+  color: rgba(234, 240, 248, 0.8);
+  margin-bottom: 2.25rem;
+  max-width: 46rem;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.7;
+}
+
+.ctas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}

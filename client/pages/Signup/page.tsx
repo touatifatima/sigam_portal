@@ -2,28 +2,34 @@
 
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import Image from 'next/image';
+import Link from 'next/link';
+const logo = '/assets/logo.jpg';
 import styles from './register.module.css';
 
 export default function Register() {
   const [form, setForm] = useState({
+    nom: '',
+    prenom: '',
+    username: '',                                    
     email: '',
     password: '',
+    confirmPassword: '',
     role: '',
-    nom: '',
-    Prenom: '',
-    username: '',
   });
-
-  const [message, setMessage] = useState('');
+                         
   const [roles, setRoles] = useState<{ id: number; name: string }[]>([]);
-const apiURL = process.env.NEXT_PUBLIC_API_URL;
+  const [isLoading, setIsLoading] = useState(false);
+  const apiURL = process.env.NEXT_PUBLIC_API_URL;
 
+  // Exactement comme votre ancien code qui fonctionnait
   useEffect(() => {
     const fetchRoles = async () => {
       try {
         const response = await axios.get(`${apiURL}/admin/roles`);
         const fetchedRoles = response.data;
         setRoles(fetchedRoles);
+        // Sélectionner automatiquement le premier rôle
         if (fetchedRoles.length > 0) {
           setForm((prev) => ({ ...prev, role: fetchedRoles[0].name }));
         }
@@ -34,97 +40,178 @@ const apiURL = process.env.NEXT_PUBLIC_API_URL;
     fetchRoles();
   }, []);
 
+  const handleChange = (field: string, value: string) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (form.password !== form.confirmPassword) {
+      alert('Les mots de passe ne correspondent pas.');
+      return;
+    }
+
     try {
-      await axios.post(`${apiURL}/auth/register`, form);
-      setMessage('✅ Inscription réussie !');
-    } catch {
-      setMessage('❌ Échec de l\'inscription.');
+      setIsLoading(true);
+      await axios.post(`${apiURL}/auth/register`, {
+        email: form.email,
+        password: form.password,
+        role: form.role,
+        nom: form.nom,
+        prenom: form.prenom,
+        username: form.username,
+      });
+      alert('✅ Compte créé avec succès !');
+      
+      // Réinitialiser le formulaire
+      setForm({
+        nom: '',
+        prenom: '',
+        username: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        role: roles.length > 0 ? roles[0].name : '',
+      });
+    } catch (error: any) {
+      alert(error?.response?.data?.detail || '❌ Erreur lors de l\'inscription');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <div className={styles.container}>
-      <form onSubmit={handleSubmit} className={styles.card}>
-        <h2 className={styles.title}>Créer un compte</h2>
-
-        {message && <p className={styles.message}>{message}</p>}
-
-        <div className={styles.formGroup}>
-          <label htmlFor="nom">Nom</label>
-          <input
-            type="text"
-            id="nom"
-            required
-            value={form.nom}
-            onChange={(e) => setForm({ ...form, nom: e.target.value })}
-          />
+      {/* SECTION GAUCHE */}
+      <div className={styles.leftSection}>
+        <div className={styles.logoContainer}>
+          <Image src={logo} alt="ANAM Logo" className={styles.logo} width={256} height={256} />
         </div>
+        <h1 className={styles.title}>
+          AGENCE NATIONALE DES <br />
+          ACTIVITÉS MINIÈRES
+        </h1>
+        <p className={styles.subtitle}>Rejoignez la plateforme SIGAM</p>
+      </div>
 
-        <div className={styles.formGroup}>
-          <label htmlFor="Prenom">Prénom</label>
-          <input
-            type="text"
-            id="Prenom"
-            required
-            value={form.Prenom}
-            onChange={(e) => setForm({ ...form, Prenom: e.target.value })}
-          />
+      {/* SECTION DROITE */}
+      <div className={styles.rightSection}>
+        <div className={styles.formCard}>
+          <div className={styles.formHeader}>
+            <h2>Créer un compte</h2>
+            <p>Remplissez le formulaire pour vous inscrire</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className={styles.form}>
+            <div className={styles.grid2}>
+              <div className={styles.inputGroup}>
+                <label htmlFor="prenom">Prénom *</label>
+                <input
+                  id="prenom"
+                  type="text"
+                  value={form.prenom}
+                  onChange={e => handleChange('prenom', e.target.value)}
+                  placeholder="Prénom"
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+              <div className={styles.inputGroup}>
+                <label htmlFor="nom">Nom *</label>
+                <input
+                  id="nom"
+                  type="text"
+                  value={form.nom}
+                  onChange={e => handleChange('nom', e.target.value)}
+                  placeholder="Nom"
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label htmlFor="username">Nom d'utilisateur *</label>
+              <input
+                id="username"
+                type="text"
+                value={form.username}
+                onChange={e => handleChange('username', e.target.value)}
+                placeholder="Nom d'utilisateur"
+                disabled={isLoading}
+                required
+              />
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label htmlFor="email">Email *</label>
+              <input
+                id="email"
+                type="email"
+                value={form.email}
+                onChange={e => handleChange('email', e.target.value)}
+                placeholder="email@exemple.com"
+                disabled={isLoading}
+                required
+              />
+            </div>
+
+            {/* EXACTEMENT COMME VOTRE ANCIEN CODE */}
+            <div className={styles.inputGroup}>
+              <label htmlFor="role">Type de compte *</label>
+              <select
+                id="role"
+                value={form.role}
+                onChange={e => handleChange('role', e.target.value)}
+                disabled={isLoading}
+                required
+              >
+                {roles.map((role) => (
+                  <option key={role.id} value={role.name}>
+                    {role.name.charAt(0).toUpperCase() + role.name.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label htmlFor="password">Mot de passe *</label>
+              <input
+                id="password"
+                type="password"
+                value={form.password}
+                onChange={e => handleChange('password', e.target.value)}
+                placeholder="Au moins 6 caractères"
+                disabled={isLoading}
+                minLength={6}
+                required
+              />
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label htmlFor="confirmPassword">Confirmer le mot de passe *</label>
+              <input
+                id="confirmPassword"
+                type="password"
+                value={form.confirmPassword}
+                onChange={e => handleChange('confirmPassword', e.target.value)}
+                placeholder="Retapez votre mot de passe"
+                disabled={isLoading}
+                required
+              />
+            </div>
+
+            <button type="submit" className={styles.submitBtn} disabled={isLoading}>
+              {isLoading ? 'Inscription...' : 'Créer mon compte'}
+            </button>
+
+            <p className={styles.loginLink}>
+              Déjà un compte ? <Link href="/">Se connecter</Link>
+            </p>
+          </form>
         </div>
-
-        <div className={styles.formGroup}>
-          <label htmlFor="username">Nom d'utilisateur</label>
-          <input
-            type="text"
-            id="username"
-            required
-            value={form.username}
-            onChange={(e) => setForm({ ...form, username: e.target.value })}
-          />
-        </div>
-
-        <div className={styles.formGroup}>
-          <label htmlFor="email">Email</label>
-          <input
-            type="email"
-            id="email"
-            required
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-          />
-        </div>
-
-        <div className={styles.formGroup}>
-          <label htmlFor="password">Mot de passe</label>
-          <input
-            type="password"
-            id="password"
-            required
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-          />
-        </div>
-
-        <div className={styles.formGroup}>
-          <label htmlFor="role">Rôle</label>
-          <select
-            id="role"
-            value={form.role}
-            onChange={(e) => setForm({ ...form, role: e.target.value })}
-          >
-            {roles.map((role) => (
-              <option key={role.id} value={role.name}>
-                {role.name.charAt(0).toUpperCase() + role.name.slice(1)}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <button type="submit" className={styles.button}>
-          S'inscrire
-        </button>
-      </form>
+      </div>
     </div>
   );
 }
