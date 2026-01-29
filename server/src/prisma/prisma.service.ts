@@ -1,10 +1,19 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import { createPrismaClientOptions } from './prisma-factory';
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
+  constructor() {
+    // Initialize PrismaClient with the Postgres adapter (Prisma 7+ style).
+    super(createPrismaClientOptions());
+  }
+
   private _substance: any;
-    private _procedureRenouvellement: any;
+  private _procedureRenouvellement: any;
   public get procedureRenouvellement(): any {
     return this._procedureRenouvellement;
   }

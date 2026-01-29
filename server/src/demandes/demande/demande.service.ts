@@ -15,6 +15,9 @@ export class DemandeService {
         detenteurdemande: {
           include: { detenteur: true },
         },
+        communes: {
+          include: { commune: true },
+        },
         expertMinier: true,
         demInitial: true,
         modification: true,
@@ -129,6 +132,9 @@ if (!data.utilisateurId) {
 if (!createdProc?.id_proc) {
   throw new Error('La procédure n’a pas été créée (id_proc manquant)');
 }
+    const isInitialDemande =
+      (typeProcedure?.libelle || '').toLowerCase() === 'demande';
+
     // Create demande (with id_typeproc now)
     const demande = await this.prisma.demandePortail.create({
       data: {
@@ -141,6 +147,7 @@ if (!createdProc?.id_proc) {
         duree_instruction: 10,
         statut_demande: 'EN_COURS',
         Nom_Prenom_Resp_Enregist: data.nom_responsable ?? null,
+        ...(isInitialDemande ? { demInitial: { create: {} } } : {}),
         ...(data.id_detenteur
           ? {
               detenteurdemande: {
@@ -265,18 +272,97 @@ if (!createdProc?.id_proc) {
 
   // demande.service.ts
   async update(id: number, updateDemandeDto: UpdateDemandeDto) {
-    return this.prisma.demandePortail.update({
-      where: { id_demande: id },
-      data: {
-        id_wilaya: updateDemandeDto.id_wilaya,
-        id_daira: updateDemandeDto.id_daira,
-        id_commune: updateDemandeDto.id_commune,
+    const rawZones = Array.isArray(updateDemandeDto.zones)
+      ? updateDemandeDto.zones
+      : null;
+
+    const parsedZones: { wilayaId: number; dairaId: number; communeId: number }[] | null = rawZones
+      ? rawZones
+          .map((zone) => ({
+            wilayaId: Number(zone.wilayaId),
+            dairaId: Number(zone.dairaId),
+            communeId: Number(zone.communeId),
+          }))
+          .filter(
+            (zone) =>
+              Number.isFinite(zone.wilayaId) &&
+              Number.isFinite(zone.dairaId) &&
+              Number.isFinite(zone.communeId),
+          )
+      : null;
+
+    if (Array.isArray(updateDemandeDto.zones) && (!parsedZones || parsedZones.length === 0)) {
+      throw new BadRequestException('zones ne peut pas etre vide');
+    }
+
+    const uniqueZoneMap = new Map<number, { wilayaId: number; dairaId: number; communeId: number }>();
+    parsedZones?.forEach((zone) => {
+      if (!uniqueZoneMap.has(zone.communeId)) {
+        uniqueZoneMap.set(zone.communeId, zone);
+      }
+    });
+    const zones = parsedZones ? Array.from(uniqueZoneMap.values()) : null;
+
+    const rawCommuneIds = zones?.length
+      ? zones.map((zone) => zone.communeId)
+      : Array.isArray(updateDemandeDto.communeIds)
+      ? updateDemandeDto.communeIds
+      : updateDemandeDto.id_commune != null
+      ? [updateDemandeDto.id_commune]
+      : null;
+
+    const communeIds = rawCommuneIds
+      ? rawCommuneIds
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value))
+      : null;
+
+    if (Array.isArray(updateDemandeDto.communeIds) && (!communeIds || communeIds.length === 0)) {
+      throw new BadRequestException('communeIds ne peut pas etre vide');
+    }
+
+    const firstZone = zones?.[0];
+
+    return this.prisma.$transaction(async (tx) => {
+      if (communeIds) {
+        await tx.demandeCommune.deleteMany({
+          where: { id_demande: id },
+        });
+
+        if (communeIds.length > 0) {
+          await tx.demandeCommune.createMany({
+            data: communeIds.map((id_commune, index) => ({
+              id_demande: id,
+              id_commune,
+              principale: communeIds.length === 1 ? true : index === 0,
+            })),
+          });
+        }
+      }
+
+      const updateData: any = {
+        id_wilaya: firstZone?.wilayaId ?? updateDemandeDto.id_wilaya,
+        id_daira: firstZone?.dairaId ?? updateDemandeDto.id_daira,
+        id_commune: communeIds ? communeIds[0] ?? null : updateDemandeDto.id_commune,
         lieu_ditFR: updateDemandeDto.lieu_ditFR,
         lieu_dit_ar: updateDemandeDto.lieu_ditAR,
         statut_juridique_terrain: updateDemandeDto.statut_juridique_terrain,
         occupant_terrain_legal: updateDemandeDto.occupant_terrain_legal,
         superficie: updateDemandeDto.superficie,
-      },
+      };
+
+      if (updateDemandeDto.perimetre !== undefined) {
+        updateData.perimetre = updateDemandeDto.perimetre;
+      }
+
+      return tx.demandePortail.update({
+        where: { id_demande: id },
+        data: updateData,
+        include: {
+          commune: true,
+          communes: { include: { commune: true } },
+        },
+      });
     });
   }
 }

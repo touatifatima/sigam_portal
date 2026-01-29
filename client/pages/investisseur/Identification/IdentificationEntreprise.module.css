@@ -1,0 +1,158 @@
+.container {
+  min-height: calc(100vh - 80px);
+  background: linear-gradient(135deg, #f8f3f6 0%, #f4ecef 100%);
+  padding: 2rem 1rem;
+}
+
+.wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.iconWrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #8b3a62 0%, #a84968 100%);
+  border-radius: 50%;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 10px 40px -10px rgba(139, 58, 98, 0.4);
+}
+
+.icon {
+  width: 40px;
+  height: 40px;
+  color: white;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #2d1b27;
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: #6b4d5e;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.card {
+  border: 1px solid #e5d5dd;
+  box-shadow: 0 20px 60px -15px rgba(139, 58, 98, 0.15);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.cardHeader {
+  padding: 1.5rem 1.5rem 1rem;
+  border-bottom: 1px solid #e5d5dd;
+  background: linear-gradient(135deg, rgba(139, 58, 98, 0.05) 0%, rgba(139, 58, 98, 0.1) 100%);
+}
+
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.cardDescription {
+  color: #6b4d5e;
+}
+
+.sectionIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #8b3a62;
+}
+
+.actions {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e5d5dd;
+  display: flex;
+  justify-content: center;
+}
+
+.confirmButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 280px;
+  height: 56px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #8b3a62 0%, #a84968 100%);
+  border: none;
+  box-shadow: 0 8px 30px -8px rgba(139, 58, 98, 0.5);
+  transition: all 0.3s ease;
+}
+
+.actionIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-left: 0.5rem;
+}
+
+.confirmButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px -8px rgba(139, 58, 98, 0.6);
+}
+
+.confirmButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 0.75rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .iconWrapper {
+    width: 60px;
+    height: 60px;
+  }
+
+  .icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .confirmButton {
+    width: 100%;
+    min-width: unset;
+  }
+}

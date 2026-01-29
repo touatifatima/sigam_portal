@@ -1,34 +1,29 @@
 "use client";
 //documents page
-import { useEffect, useState, useCallback, useRef } from "react";
-import { useMemo } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import axios from "axios";
-import { useRouter } from "next/router";
 import { useSearchParams } from "@/src/hooks/useSearchParams";
 import {
   FiUpload,
   FiCheck,
   FiChevronLeft,
   FiChevronRight,
-  FiFileText,
   FiAlertCircle,
-  FiCheckCircle,
-  FiAlertTriangle
 } from "react-icons/fi";
 import styles from "./documents1.module.css";
 import Navbar from "../../../navbar/Navbar";
 import Sidebar from "../../../sidebar/Sidebar";
-import { CgFileDocument } from "react-icons/cg";
-import { BsSave } from "react-icons/bs";
-import { useAuthStore } from "../../../../src/store/useAuthStore";
 import ProgressStepper from "../../../../components/ProgressStepper";
-import { STEP_LABELS } from "../../../../src/constants/steps";
 import { useViewNavigator } from "../../../../src/hooks/useViewNavigator";
 import router from 'next/router';
 import { toast } from "react-toastify";
 import { useLoading } from '@/components/globalspinner/LoadingContext';
 import { Phase, Procedure, ProcedureEtape, ProcedurePhase, StatutProcedure } from "@/src/types/procedure";
 import { useActivateEtape } from "@/src/hooks/useActivateEtape";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 
 type Document = {
   id_doc: number;
@@ -75,37 +70,23 @@ type MissingSummary = {
 type DocStatus = "present" | "manquant" | "attente" | "uploading";
 type DocumentWithStatus = Document & { statut: DocStatus };
 
-type DemandeMeta = {
-  id_demande: number;
-  date_demande: string | null;
-  date_instruction: string | null;
-  date_refus: string | null;
-  statut_demande: string | null;
-  dossier_recevable: boolean | null;
-  dossier_complet: boolean | null;
-  duree_instruction: number | null;
-};
-
 export default function Step5_Documents() {
   const { resetLoading } = useLoading();
   const searchParams = useSearchParams();
   const [loadingState, setLoadingState] = useState<string>("Initializing...");
   const [idDemande, setIdDemande] = useState<string | null>(null);
-  const [codeDemande, setCodeDemande] = useState<string | null>(null);
   const [documents, setDocuments] = useState<DocumentWithStatus[]>([]);
   const [statusMap, setStatusMap] = useState<Record<number, DocStatus>>({});
   const [fileUrls, setFileUrls] = useState<Record<number, string>>({});
   const [uploadProgress, setUploadProgress] = useState<Record<number, number>>({});
+  const [dragOverId, setDragOverId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [savingEtape, setSavingEtape] = useState(false);
   const [etapeMessage, setEtapeMessage] = useState<string | null>(null);
-  const [currentDossier, setCurrentDossier] = useState<DossierFournis | null>(null);
   const [remarques, setRemarques] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState("");
-  const { auth, isLoaded, hasPermission } = useAuthStore();
   const [showCahierForm, setShowCahierForm] = useState(false);
   const [selectedCahierDoc, setSelectedCahierDoc] = useState<DocumentWithStatus | null>(null);
   const { currentView, navigateTo } = useViewNavigator("nouvelle-demande");
@@ -123,7 +104,6 @@ export default function Step5_Documents() {
   const [isNavigating, setIsNavigating] = useState(false);
   const [missingSummary, setMissingSummary] = useState<MissingSummary | undefined>(undefined);
   const [deadlines, setDeadlines] = useState<{ miseEnDemeure: string | null; instruction: string | null } | null>(null);
-  const [demandeMeta, setDemandeMeta] = useState<DemandeMeta | null>(null);
   const [letterPreview, setLetterPreview] = useState<{ type: string; content: string; deadline?: string | null; numero_recepisse?: string | null } | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -132,17 +112,14 @@ export default function Step5_Documents() {
     try { resetLoading(); } catch {}
   }, [resetLoading]);
 
-  // Vérifier si des documents obligatoires manquent et bloquent la navigation
-  const hasBlockingMissingDocs = missingSummary && missingSummary.blocking.length > 0;
-  const hasBlockingNextMissingDocs = missingSummary && missingSummary.blockingNext.length > 0;
-
   // Synchronize statuses and URLs from backend payload
   const applyDocPayload = useCallback((docs: DocumentWithStatus[] | undefined | null) => {
     if (!docs) return;
     const nextStatus: Record<number, DocStatus> = {};
     const nextUrls: Record<number, string> = {};
-    docs.forEach((doc) => {
-      const hasFile = !!doc.file_url;
+    docs.forEach((doc: any) => {
+      const incomingUrl = doc.file_url || doc.fileUrl || doc.path || doc.url || "";
+      const hasFile = !!incomingUrl;
       const resolved: DocStatus =
         doc.statut === 'present'
           ? 'present'
@@ -152,117 +129,12 @@ export default function Step5_Documents() {
           ? 'present'
           : 'manquant';
       nextStatus[doc.id_doc] = resolved;
-      nextUrls[doc.id_doc] = hasFile ? doc.file_url! : '';
+      nextUrls[doc.id_doc] = hasFile ? incomingUrl : '';
     });
     setStatusMap(nextStatus);
     setFileUrls(nextUrls);
   }, []);
 
-  const computeBusinessDeadlineInfo = () => {
-    if (!demandeMeta?.duree_instruction) {
-      return null;
-    }
-
-    const total = demandeMeta.duree_instruction;
-
-    // Point de départ = début de procédure, sinon date_demande.
-    const startRaw = demandeMeta.date_demande;
-    if (!startRaw) return null;
-    const start = new Date(startRaw);
-    start.setHours(0, 0, 0, 0);
-
-    const addBusinessDays = (base: Date, businessDays: number) => {
-      const result = new Date(base);
-      let added = 0;
-      while (added < businessDays) {
-        result.setDate(result.getDate() + 1);
-        const day = result.getDay();
-        if (day !== 0 && day !== 6) {
-          added += 1;
-        }
-      }
-      return result;
-    };
-
-    const countBusinessDaysBetween = (from: Date, to: Date) => {
-      const d1 = new Date(from);
-      const d2 = new Date(to);
-      d1.setHours(0, 0, 0, 0);
-      d2.setHours(0, 0, 0, 0);
-      if (d2 < d1) return 0;
-
-      let days = 0;
-      const cursor = new Date(d1);
-      while (cursor <= d2) {
-        const day = cursor.getDay();
-        if (day !== 0 && day !== 6) {
-          days += 1;
-        }
-        cursor.setDate(cursor.getDate() + 1);
-      }
-      return days;
-    };
-
-    const deadline = addBusinessDays(start, total);
-
-    // Si dossier recevable => timer arrêté à date_instruction.
-    if (demandeMeta.dossier_recevable && demandeMeta.date_instruction) {
-      const closure = new Date(demandeMeta.date_instruction);
-      const used = countBusinessDaysBetween(start, closure);
-      const remaining = Math.max(total - used, 0);
-      return {
-        mode: 'recevable' as const,
-        used,
-        remaining,
-        total,
-        deadline,
-        closure,
-      };
-    }
-
-    // Si demande rejetée => timer arrêté à date_refus.
-    if (demandeMeta.statut_demande === 'REJETEE' && demandeMeta.date_refus) {
-      const closure = new Date(demandeMeta.date_refus);
-      const used = countBusinessDaysBetween(start, closure);
-      const remaining = Math.max(total - used, 0);
-      return {
-        mode: 'rejetee' as const,
-        used,
-        remaining,
-        total,
-        deadline,
-        closure,
-      };
-    }
-
-    // Dossier encore en cours d'instruction : on affiche le temps restant dynamique.
-    const now = new Date();
-    const nowFloor = new Date(now);
-    nowFloor.setHours(0, 0, 0, 0);
-
-    if (nowFloor >= deadline) {
-      return {
-        mode: 'ongoing' as const,
-        used: total,
-        remaining: 0,
-        total,
-        deadline,
-        closure: null,
-      };
-    }
-
-    const remaining = countBusinessDaysBetween(nowFloor, deadline);
-    const used = Math.max(total - remaining, 0);
-
-    return {
-      mode: 'ongoing' as const,
-      used,
-      remaining,
-      total,
-      deadline,
-      closure: null,
-    };
-  };
 
     // Persist the deadline into localStorage payload for cross-step alerts
   useEffect(() => {
@@ -449,7 +321,6 @@ export default function Step5_Documents() {
           signal: abortControllerRef.current.signal,
         });
         setIdDemande(res.data.id_demande.toString());
-        setCodeDemande(res.data.code_demande);
         setStatutProc(res.data.procedure.statut_proc);
         setLoadingState("Données de demande chargées, récupération des documents...");
         setError(null);
@@ -484,14 +355,9 @@ export default function Step5_Documents() {
         setDocuments(res.data.documents);
         setMissingSummary(res.data.missingSummary);
         setDeadlines(res.data.deadlines);
-        if (res.data.demande) {
-          setDemandeMeta(res.data.demande);
-        }
-
         applyDocPayload(res.data.documents);
 
         if (res.data.dossierFournis) {
-          setCurrentDossier(res.data.dossierFournis);
           setRemarques(res.data.dossierFournis.remarques || "");
         }
         
@@ -584,154 +450,6 @@ export default function Step5_Documents() {
       </div>
     </div>
   );
-
-  const MissingDocsModal = () => {
-    if (!missingSummary) return null;
-
-    return (
-      <div className={styles['modal-overlay']}>
-        <div className={styles['modal-content']}>
-          <div className={styles['modal-header']}>
-            <h3>
-              <FiAlertTriangle className={styles['warning-icon']} />
-              Documents obligatoires manquants
-            </h3>
-            {/* <button
-              onClick={() => setShowMissingDocsModal(false)}
-              className={styles['modal-close']}
-            >
-              &times;
-            </button> */}
-          </div>
-          <div className={styles['modal-body']}>
-            <div className={styles['missing-docs-section']}>
-              {hasBlockingMissingDocs && (
-                <div className={styles['blocking-docs']}>
-                  <h4>❌ Documents causant un rejet immédiat:</h4>
-                  <ul>
-                    {missingSummary.blocking.map((doc, index) => (
-                      <li key={index}>
-                        <strong>{doc.nom_doc}</strong>
-                        {doc.reject_message && <span> - {doc.reject_message}</span>}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {hasBlockingNextMissingDocs && (
-                <div className={styles['blocking-next-docs']}>
-                  <h4>⚠️ Documents bloquant la progression:</h4>
-                  <ul>
-                    {missingSummary.blockingNext.map((doc, index) => (
-                      <li key={index}>{doc.nom_doc}</li>
-                    ))}
-                  </ul>
-                  {deadlines?.miseEnDemeure && (
-                    <p className={styles['deadline-info']}>
-                      Délai pour compléter: 30 jours (jusqu'au {new Date(deadlines.miseEnDemeure).toLocaleDateString()})
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {missingSummary.warnings.length > 0 && (
-                <div className={styles['warning-docs']}>
-                  <h4>ℹ️ Documents avec avertissement:</h4>
-                  <ul>
-                    {missingSummary.warnings.map((doc, index) => (
-                      <li key={index}>{doc.nom_doc}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            <div className={styles['modal-actions']}>
-              <button 
-                className={`${styles['btn']} ${styles['btn-primary']}`}
-                onClick={handlecompris}
-              >
-                Compris
-              </button>
-              {hasBlockingNextMissingDocs && idDemande && (
-                <a
-                  href={`${apiURL}/api/demande/${idDemande}/mise-en-demeure.pdf`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`${styles['btn']} ${styles['btn-primary']}`}
-                  style={{ marginLeft: '8px' }}
-                >
-                  Télécharger la mise en demeure (PDF)
-                </a>
-              )}
-              {hasBlockingNextMissingDocs && (
-                <button
-                  className={`${styles['btn']} ${styles['btn-outline']}`}
-                  onClick={async () => {
-                    if (!idDemande) return;
-                    try {
-                      let res;
-                      try {
-                        res = await axios.get(`${apiURL}/api/demande/${idDemande}/letters`);
-                      } catch (err: any) {
-                        if (err?.response?.status === 404) {
-                          res = await axios.get(`${apiURL}/api/procedure/${idDemande}/letters`);
-                        } else {
-                          throw err;
-                        }
-                      }
-                      if (res.data?.letters?.miseEnDemeure) {
-                        setLetterPreview({
-                          type: 'MISE_EN_DEMEURE',
-                          content: res.data.letters.miseEnDemeure.content,
-                          deadline: res.data.letters.miseEnDemeure.deadline || null,
-                        });
-                      }
-                    } catch (e) {
-                      console.error('Erreur génération lettre mise en demeure', e);
-                    }
-                  }}
-                >
-                  Prévisualiser la mise en demeure
-                </button>
-              )}
-              {hasBlockingMissingDocs && (
-                <button
-                  className={`${styles['btn']} ${styles['btn-outline']}`}
-                  onClick={async () => {
-                    if (!idDemande) return;
-                    try {
-                      let res;
-                      try {
-                        res = await axios.get(`${apiURL}/api/demande/${idDemande}/letters`);
-                      } catch (err: any) {
-                        if (err?.response?.status === 404) {
-                          res = await axios.get(`${apiURL}/api/procedure/${idDemande}/letters`);
-                        } else {
-                          throw err;
-                        }
-                      }
-                      if (res.data?.letters?.rejet) {
-                        setLetterPreview({
-                          type: 'REJET',
-                          content: res.data.letters.rejet.content,
-                        });
-                      }
-                    } catch (e) {
-                      console.error('Erreur génération lettre de rejet', e);
-                    }
-                  }}
-                >
-                  Prévisualiser le rejet
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   const LetterPreviewModal = () => {
     if (!letterPreview) return null;
@@ -842,14 +560,14 @@ export default function Step5_Documents() {
       }
       if (Array.isArray(res.data?.documents)) {
         applyDocPayload(res.data.documents as any);
-      } else {
-        setStatusMap(prev => ({ ...prev, [id]: "present" }));
-        setDocuments(prev =>
-          prev.map(d =>
-            d.id_doc === id ? { ...d, statut: "present", file_url: fileUrl || d.file_url } : d,
-          ),
-        );
       }
+
+      setStatusMap(prev => ({ ...prev, [id]: "present" }));
+      setDocuments(prev =>
+        prev.map(d =>
+          d.id_doc === id ? { ...d, statut: "present", file_url: fileUrl || d.file_url } : d,
+        ),
+      );
       setUploadProgress(prev => ({ ...prev, [id]: 100 }));
       return fileUrl;
     } catch (err) {
@@ -864,6 +582,23 @@ export default function Step5_Documents() {
     }
   };
 
+  const handleDragOver = (id: number, event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    setDragOverId(id);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverId(null);
+  };
+
+  const handleDrop = (id: number, event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    setDragOverId(null);
+    const file = event.dataTransfer.files?.[0];
+    if (!file) return;
+    void handleFileUpload(id, file);
+  };
+
   const countByStatus = (status: DocStatus) =>
     documents.filter((d) => (statusMap[d.id_doc] ?? 'manquant') === status).length;
 
@@ -871,6 +606,28 @@ export default function Step5_Documents() {
   const presents = countByStatus("present");
   const manquants = countByStatus("manquant");
   const attente = countByStatus("attente");
+  const progressPercent = total > 0 ? Math.round((presents / total) * 100) : 0;
+  const progressFill =
+    progressPercent >= 100
+      ? "linear-gradient(90deg, #7c3aed, #6d28d9)"
+      : progressPercent >= 70
+      ? "linear-gradient(90deg, #a78bfa, #7c3aed)"
+      : progressPercent >= 40
+      ? "linear-gradient(90deg, #c4b5fd, #8b5cf6)"
+      : "linear-gradient(90deg, #ddd6fe, #c4b5fd)";
+  const progressMessage =
+    progressPercent >= 100
+      ? "Dossier complet !"
+      : progressPercent >= 70
+      ? "Dossier presque complet !"
+      : progressPercent >= 40
+      ? "Bon avancement."
+      : "Commencez par les documents obligatoires.";
+  const requiredTotal = documents.filter((doc) => doc.is_required).length;
+  const requiredPresent = documents.filter((doc) => {
+    if (!doc.is_required) return false;
+    return (statusMap[doc.id_doc] ?? 'manquant') === 'present';
+  }).length;
 
   const hasRequiredMissingClient = documents.some((doc) => {
     if (!doc.is_required) return false;
@@ -894,7 +651,7 @@ export default function Step5_Documents() {
 
   const handleNext = useCallback(
     debounce(async () => {
-      if (isNavigating) return;
+      if (isNavigating || savingEtape) return;
 
       // Bloquer la navigation si au moins un document obligatoire est manquant
       const hasRequiredMissing = documents.some((doc) => {
@@ -910,79 +667,57 @@ export default function Step5_Documents() {
         return;
       }
 
+      if (!idProc) {
+        setEtapeMessage("ID de procédure manquant.");
+        return;
+      }
+
+      if (statutProc === 'TERMINEE') {
+        setEtapeMessage("Procédure déjé terminée.");
+        return;
+      }
+
+      setSavingEtape(true);
+      setEtapeMessage(null);
+      setIsNavigating(true);
+
       try {
-        setIsNavigating(true);
-        await router.push(`/investisseur/nouvelle_demande/step2/page2?id=${idProc}`);
+        const result = await submitDossier();
+        if (!result) {
+          setEtapeMessage("Erreur lors de l'enregistrement de l'étape.");
+          return;
+        }
+        const etapeId = etapeIdForThisPage ?? 1;
+        await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`);
+        await router.push(`/investisseur/nouvelle_demande/step3/page3?id=${idProc}`);
       } catch (err) {
-        console.error('Erreur lors de la navigation vers l’étape suivante', err);
+        console.error('Erreur lors de la navigation vers l\'étape suivante', err);
+        setEtapeMessage("Erreur lors de l'enregistrement de l'étape.");
       } finally {
+        setSavingEtape(false);
         setIsNavigating(false);
       }
     }, 300),
-    [documents, statusMap, router, idProc, isNavigating]
+    [
+      documents,
+      statusMap,
+      router,
+      idProc,
+      isNavigating,
+      savingEtape,
+      submitDossier,
+      etapeIdForThisPage,
+      apiURL,
+      statutProc,
+    ]
   );
 
-  const handlecompris = async () => {
-    router.push(`/investisseur/nouvelle_demande/step2/page2?id=${idProc}`);
-  };
   const handleBack =async () => {
       router.push(`/investisseur/nouvelle_demande/type_permis/page1_type?id=${idProc}`)
   }
 
-  const handleSaveEtape = async () => {
-    if (statutProc === 'TERMINEE') {
-      setEtapeMessage("Procédure déjà terminée.");
-      return;
-    }
-
-    setSavingEtape(true);
-    setEtapeMessage(null);
-
-    try {
-      await submitDossier();
-      const etapeId = etapeIdForThisPage ?? 1;
-      await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`);
-      setEtapeMessage(`Étape ${currentStep} enregistrée avec succès !`);
-      
-    } catch (err) {
-      console.error(err);
-      setEtapeMessage("Erreur lors de l'enregistrement de l'étape.");
-    } finally {
-      setSavingEtape(false);
-    }
-  };
 
   // Afficher les documents manquants obligatoires
-  const MissingDocsAlert = () => {
-    if (!missingSummary || missingSummary.requiredMissing.length === 0) return null;
-
-    // return (
-    //   <div className={styles['missing-docs-alert']}>
-    //     <div className={styles['alert-header']}>
-    //       <FiAlertTriangle className={styles['alert-icon']} />
-    //       <h4>Documents obligatoires manquants</h4>
-    //       <button 
-    //         onClick={() => setShowMissingDocsModal(true)}
-    //         className={styles['details-btn']}
-    //       >
-    //         Voir les détails
-    //       </button>
-    //     </div>
-        
-    //     {hasBlockingMissingDocs && (
-    //       <p className={styles['blocking-alert']}>
-    //         ❌ Des documents causant un rejet immédiat sont manquants
-    //       </p>
-    //     )}
-        
-    //     {hasBlockingNextMissingDocs && (
-    //       <p className={styles['blocking-next-alert']}>
-    //         ⚠️ Des documents bloquant la progression sont manquants
-    //       </p>
-    //     )}
-    //   </div>
-    // );
-  };
 
   // Show loading state until all required data is available
   if (!isPageReady) {
@@ -1024,224 +759,53 @@ export default function Step5_Documents() {
                   />
                 )}
 
-                {demandeMeta && (
-                  <div className={styles['instruction-deadline-banner']}>
-                    <div className={styles['recevabilite-row']}>
-                      <label className={styles['recevabilite-label']}>
-                        <input
-                          type="checkbox"
-                          checked={!!demandeMeta.dossier_recevable}
-                          onChange={async (e) => {
-                            if (!apiURL || !idDemande) return;
-                            const value = e.target.checked;
-                            try {
-                              await axios.put(
-                                `${apiURL}/api/demande/${idDemande}/recevabilite`,
-                                { dossier_recevable: value },
-                                { withCredentials: true }
-                              );
-                              setDemandeMeta((prev) =>
-                                prev
-                                  ? {
-                                      ...prev,
-                                      dossier_recevable: value,
-                                      date_instruction: value ? new Date().toISOString() : null,
-                                    }
-                                  : prev,
-                              );
-                            } catch (err) {
-                              console.error('Erreur lors de la mise à jour de la recevabilité', err);
-                              toast.error("Erreur lors de la mise à jour de la recevabilité du dossier.");
-                            }
-                          }}
-                        />
-                        Dossier recevable
-                      </label>
+                <div className={styles.headerSection}>
+                  <div>
+                    <h1 className={styles.pageTitle}>Documents requis</h1>
+                    <p className={styles.pageSubtitle}>Veuillez fournir les documents suivants</p>
+                  </div>
+                </div>
 
-                      {demandeMeta.dossier_recevable && (
-                        <span className={styles['recevabilite-indicator']}>
-                          <FiCheckCircle className={styles['recevabilite-icon']} />
-                          <span>Dossier marqué recevable</span>
-                        </span>
-                      )}
+                <Card className={styles.progressCard}>
+                  <CardContent className={styles.progressContent}>
+                    <div className={styles.progressHeader}>
+                      <span className={styles.progressLabel}>Documents téléversés</span>
+                      <span className={styles.progressCount}>
+                        {presents}/{total}
+                      </span>
                     </div>
+                    <div className={styles.progressTrack}>
+                      <div
+                        className={styles.progressFill}
+                        style={{
+                          width: `${progressPercent}%`,
+                          background: progressFill,
+                          boxShadow:
+                            progressPercent > 0 ? "0 0 10px rgba(124, 58, 237, 0.25)" : "none",
+                        }}
+                        aria-hidden="true"
+                      />
+                    </div>
+                    <div className={styles.progressMeta}>
+                      <span>Documents obligatoires: {requiredPresent} / {requiredTotal}</span>
+                      <span className={styles.progressMessage}>{progressMessage}</span>
+                    </div>
+                  </CardContent>
+                </Card>
 
-                    <div className={styles['instruction-deadline-text']}>
-                      {(() => {
-                        const info = computeBusinessDeadlineInfo();
-                        if (!info) {
-                          return <p>Délai d'instruction : non défini.</p>;
-                        }
-                        return (
-                          <p>
-                            Délai d'instruction : il reste{' '}
-                            <strong>{info.remaining}</strong> jour(s) ouvrable(s) sur{' '}
-                            <strong>{info.total}</strong> (jusqu'au{' '}
-                            {info.deadline.toLocaleDateString('fr-FR')}).
-                          </p>
-                        );
-                      })()}
-                    </div>
+                {error && (
+                  <div className={styles.errorMessage}>
+                    <FiAlertCircle className={styles.errorIcon} />
+                    <p>{error}</p>
                   </div>
                 )}
 
-                <div className={styles['header-section']}>
-              <h1 className={styles['page-title']}>
-                Étape 1: Documents Requis
-              </h1>
-              <p className={styles['page-subtitle']}>
-                Veuillez fournir les Documents
-              </p>
-            </div>
-
-              {error && (
-                <div className={styles['error-message']}>
-                  <FiAlertCircle className={styles['error-icon']} />
-                  <p>{error}</p>
-                </div>
-              )}
-
-              {success && (
-                <div className={styles['success-message']}>
-                  <FiCheck className={styles['success-icon']} />
-                  <p>{success}</p>
-                </div>
-              )}
-
-              {/* Alert pour documents manquants */}
-              <MissingDocsAlert />
-
-              {codeDemande && idDemande && (
-                <div className={styles['info-card']}>
-                  <div className={styles['info-header']}>
-                    <h4 className={styles['info-title']}>
-                      <FiFileText className={styles['info-icon']} />
-                      Informations Demande
-                    </h4>
+                {success && (
+                  <div className={styles.successMessage}>
+                    <FiCheck className={styles.successIcon} />
+                    <p>{success}</p>
                   </div>
-                  <div className={styles['info-content']}>
-                    <div className={styles['info-row']}>
-                      <span className={styles['info-label']}>Code Demande :</span>
-                      <span className={styles['info-value']}>{codeDemande}</span>
-                    </div>
-                    <div className={styles['info-row']}>
-                      <span className={styles['info-label']}>ID Demande :</span>
-                      <span className={styles['info-value']}>{idDemande}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {!currentDossier && missingSummary && (
-                <div className={styles['dossier-status-section']}>
-                  <div className={styles['dossier-status']}>
-                    <span>Statut du dossier: </span>
-                    <strong className={
-                      missingSummary.requiredMissing.length === 0
-                        ? styles['status-complete']
-                        : styles['status-incomplete']
-                    }>
-                      {missingSummary.requiredMissing.length === 0 ? 'Complet' : 'Incomplet'}
-                    </strong>
-                  </div>
-
-                 {/* <div className={styles['demande-actions']}>
-                    {missingSummary.requiredMissing.length > 0 && missingSummary.blockingNext.length > 0 && (
-                      <button
-                        className={styles['mise-en-demeure-btn']}
-                        onClick={handleMiseEnDemeure}
-                        disabled={statutProc === 'TERMINEE' || !statutProc || isNavigating}
-                      >
-                        Mise en demeure (30 jours pour compléter)
-                      </button>
-                    )}
-                  </div> */}
-
-                  {missingSummary.requiredMissing.length === 0 && (
-                    <div style={{ marginTop: '8px' }}>
-                      <button
-                        className={`${styles['btn']} ${styles['btn-outline']}`}
-                        onClick={async () => {
-                          if (!idDemande) return;
-                          try {
-                            let res;
-                            try {
-                              res = await axios.get(`${apiURL}/api/demande/${idDemande}/letters`);
-                            } catch (err: any) {
-                              if (err?.response?.status === 404) {
-                                res = await axios.get(`${apiURL}/api/procedure/${idDemande}/letters`);
-                              } else {
-                                throw err;
-                              }
-                            }
-                            if (res.data?.letters?.recepisse) {
-                              setLetterPreview({
-                                type: 'RECEPISSE',
-                                content: res.data.letters.recepisse.content,
-                                numero_recepisse: res.data.letters.recepisse.numero_recepisse || null,
-                              });
-                            }
-                          } catch (e) {
-                            console.error('Erreur génération récépissé', e);
-                          }
-                        }}
-                      >
-                        Prévisualiser le récépissé
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              
-<div style={{ marginTop: '8px' }}>
-               
-                    
-                   {/* <a
-                          href={`${apiURL}/api/demande/${idDemande}/recepisse.pdf`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`${styles['btn']} ${styles['btn-primary']}`}
-                          style={{ marginBottom: '8px' }}
-                        >
-                          Télécharger le récépissé (PDF)
-                        </a>*/}
-                      
-                    </div>
-              {missingSummary && missingSummary.requiredMissing.length > 0 && (
-                <div className={styles['missing-summary']}>
-                  <h3>Pièces manquantes du dossier</h3>
-                  <ul className={styles['missing-list']}>
-                    {missingSummary.requiredMissing.map((item, idx) => (
-                      <li key={idx} className={styles['missing-item']}>
-                        <strong>{item.nom_doc}</strong>
-                        {item.missing_action && (
-                          <span className={styles['missing-action']}>
-                            {item.missing_action === 'REJECT' ? ' — Rejet immédiat' : item.missing_action === 'BLOCK_NEXT' ? ' — Bloquant' : ' — Avertissement'}
-                          </span>
-                        )}
-                        {item.reject_message && <em className={styles['missing-reason']}> — {item.reject_message}</em>}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <div className={styles['proc-info']}>
-                    <div>Code demande: <strong>{codeDemande ?? idDemande}</strong></div>
-                    {procedureData?.demandes?.[0]?.typeProcedure?.libelle && (
-                      <div>Type procédure: <strong>{procedureData.demandes[0].typeProcedure.libelle}</strong></div>
-                    )}
-                    {procedureData?.demandes?.[0]?.typePermis?.lib_type && (
-                      <div>Type permis: <strong>{procedureData.demandes[0].typePermis.lib_type}</strong></div>
-                    )}
-                  </div>
-
-                  {deadlines?.miseEnDemeure && (
-                    <div className={styles['deadline-hint']}>
-                      Échéance de mise en demeure: {new Date(deadlines.miseEnDemeure).toLocaleDateString()} (30 jours)
-                    </div>
-                  )}
-                </div>
-              )}
+                )}
 
               {isLoading && documents.length === 0 ? (
                 <div className={styles['loading-state']}>
@@ -1249,15 +813,7 @@ export default function Step5_Documents() {
                   <p>Chargement des documents...</p>
                 </div>
               ) : (
-                <>
-                  <div className={styles['documents-overview']}>
-                    <div className={styles['overview-card']}>
-                      <h3 className={styles['overview-title']}>Documents requis</h3>
-                      <div className={styles['overview-value']}>{total}</div>
-                    </div>
-                  </div>
-
-                  <div className={styles['documents-list']}>
+                  <div className={styles.documentsGrid}>
                     {documents.map((doc) => {
                       const status: DocStatus = statusMap[doc.id_doc] ?? 'manquant';
                       const rawFileUrl = fileUrls[doc.id_doc];
@@ -1268,61 +824,88 @@ export default function Step5_Documents() {
                           ? `${apiURL}${rawFileUrl}`
                           : rawFileUrl || '';
                       const isRequired = doc.is_required;
+                      const isDisabled = statutProc === 'TERMINEE' || !statutProc || isNavigating;
+                      const statusLabel =
+                        status === 'present'
+                          ? 'Présent'
+                          : status === 'uploading'
+                          ? 'Téléversement...'
+                          : 'Manquant';
 
                       return (
-                        <div key={doc.id_doc} className={`${styles['document-card']} ${styles[status]} ${isRequired ? styles['required'] : ''}`}>
-                          <div className={styles['document-header']}>
-                            <h4 className={styles['document-title']}>
-                              {doc.nom_doc}
-                              {isRequired && <span className={styles['required-badge']}>Obligatoire</span>}
-                            </h4>
-                            <span className={styles['document-status']}>
-                              {status === "present"
-                                ? "Présent"
-                                : status === "uploading"
-                                ? "Téléversement..."
-                                : status === "manquant"
-                                ? "Manquant"
-                                : "EN_ATTENTE"}
-                            </span>
-                          </div>
-                          <div className={styles['document-details']}>
-                            <div className={styles['document-description']}>{doc.description}</div>
-                            <div className={styles['document-meta']}>
-                              <span className={styles['document-format']}>{doc.format}</span>
-                              <span className={styles['document-size']}>{doc.taille_doc}</span>
+                        <Card
+                          key={doc.id_doc}
+                          className={`${styles.documentCard} ${isRequired ? styles.required : ''}`}
+                        >
+                          <CardContent className={styles.documentBody}>
+                            <div className={styles.documentHeader}>
+                              <div>
+                                <div className={styles.documentTitleRow}>
+                                  <h3 className={styles.documentTitle}>{doc.nom_doc}</h3>
+                                  {isRequired && (
+                                    <Badge className={styles.requiredBadge} variant="destructive">
+                                      Obligatoire
+                                    </Badge>
+                                  )}
+                                </div>
+                                {doc.description && (
+                                  <p className={styles.documentDescription}>{doc.description}</p>
+                                )}
+                                <div className={styles.documentMeta}>
+                                  <span>{doc.format}</span>
+                                  <span className={styles.metaDivider}>?</span>
+                                  <span>{doc.taille_doc}</span>
+                                </div>
+                              </div>
+                              <Badge
+                                className={`${styles.statusBadge} ${
+                                  status === 'present'
+                                    ? styles.statusPresent
+                                    : status === 'uploading'
+                                    ? styles.statusUploading
+                                    : styles.statusMissing
+                                }`}
+                              >
+                                {statusLabel}
+                              </Badge>
                             </div>
+
                             {resolvedFileUrl ? (
-                              <div className={styles['document-file']}>
-                                <a
-                                  href={resolvedFileUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className={styles['file-link']}
-                                >
-                                  Voir le fichier joint
-                                </a>
-                              </div>
+                              <a
+                                href={resolvedFileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={styles.fileLink}
+                              >
+                                Voir le fichier joint
+                              </a>
                             ) : (
-                              <div className={styles['document-file']}>
-                                <span className={styles['missing-file']}>Aucun fichier téléversé</span>
-                              </div>
+                              <span className={styles.noFile}>Aucun fichier téléversé</span>
                             )}
-                          </div>
-                          <div className={styles['document-actions']}>
-                            <div className={styles['upload-section']}>
+
+                            <div className={styles.uploadArea}>
                               <label
                                 htmlFor={`file-upload-${doc.id_doc}`}
-                                className={`${styles['upload-btn']} ${styles['btn-outline']} ${statutProc === 'TERMINEE' || !statutProc || isNavigating ? styles['disabled'] : ''}`}
+                                className={`${styles.uploadZone} ${
+                                  dragOverId === doc.id_doc ? styles.uploadZoneActive : ''
+                                } ${isDisabled ? styles.uploadZoneDisabled : ''}`}
+                                onDragOver={(event) => handleDragOver(doc.id_doc, event)}
+                                onDragLeave={handleDragLeave}
+                                onDrop={(event) => handleDrop(doc.id_doc, event)}
                               >
-                                <FiUpload className={styles['btn-icon']} />
-                                {resolvedFileUrl ? "Modifier" : "Upload"}
+                                <FiUpload className={styles.uploadIcon} />
+                                <div className={styles.uploadText}>
+                                  <span>Glisser-d?poser ou</span>
+                                  <Button asChild variant="outline" size="sm" className={styles.uploadButton}>
+                                    <span>{resolvedFileUrl ? 'Modifier' : 'Téléverser'}</span>
+                                  </Button>
+                                </div>
                               </label>
                               <input
                                 id={`file-upload-${doc.id_doc}`}
                                 type="file"
-                                style={{ display: 'none' }}
-                                disabled={statutProc === 'TERMINEE' || !statutProc || isNavigating}
+                                className={styles.fileInput}
+                                disabled={isDisabled}
                                 onChange={(e) => {
                                   const file = e.target.files?.[0];
                                   if (!file) return;
@@ -1332,90 +915,22 @@ export default function Step5_Documents() {
                             </div>
 
                             {status === 'uploading' && (
-                              <div className={styles['doc-upload-progress']}>
-                                <div className={styles['doc-upload-track']}>
-                                  <div
-                                    className={styles['doc-upload-bar']}
-                                    style={{ width: `${uploadProgress[doc.id_doc] ?? 0}%` }}
-                                  />
-                                </div>
-                                <span className={styles['doc-upload-text']}>
+                              <div className={styles.uploadProgress}>
+                                <Progress
+                                  value={uploadProgress[doc.id_doc] ?? 0}
+                                  className={styles.uploadProgressBar}
+                                />
+                                <span className={styles.uploadProgressText}>
                                   {(uploadProgress[doc.id_doc] ?? 0)}%
                                 </span>
                               </div>
                             )}
-
-                            {doc.nom_doc === "Cahier des charges renseigne" && (
-                              <button
-                                className={styles['cahier-btn']}
-                                onClick={() => handleOpenCahierForm(doc)}
-                                disabled={isNavigating}
-                              >
-                                Remplir cahier de charge
-                              </button>
-                            )}
-                          </div>
-                        </div>
+                          </CardContent>
+                        </Card>
                       );
                     })}
                   </div>
-
-                  <div className={styles['progress-section']}>
-                    <h3 className={styles['section-title']}>État d'avancement</h3>
-
-                    <div className={styles['stats-grid']}>
-                      <div className={styles['stat-card']}>
-                        <div className={styles['stat-value']}>{total}</div>
-                        <div className={styles['stat-label']}>Total</div>
-                      </div>
-                      <div className={`${styles['stat-card']} ${styles['present']}`}>
-                        <div className={styles['stat-value']}>{presents}</div>
-                        <div className={styles['stat-label']}>Présents</div>
-                      </div>
-                      <div className={`${styles['stat-card']} ${styles['missing']}`}>
-                        <div className={styles['stat-value']}>{manquants}</div>
-                        <div className={styles['stat-label']}>Manquants</div>
-                      </div>
-                    </div>
-
-                    <div className={styles['completion-bar']}>
-                      <div className={styles['completion-track']}>
-                        <div
-                          className={styles['completion-progress']}
-                          style={{ width: `${((presents / total) * 100)}%` }}
-                        ></div>
-                      </div>
-                      <div className={styles['completion-text']}>
-                        {presents === total ? (
-                          <span className={styles['complete']}>Tous les documents sont présents!</span>
-                        ) : (
-                          <span className={styles['incomplete']}>
-                            {attente > 0 ? "Veuillez vérifier tous les documents" : "Documents en cours de vérification"}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {currentDossier && (
-                <div className={styles['dossier-status-section']}>
-                  <div className={styles['dossier-status']}>
-                    <span>Statut du dossier: </span>
-                    <strong className={
-                      currentDossier.statut_dossier === 'complet'
-                        ? styles['status-complete']
-                        : styles['status-incomplete']
-                    }>
-                      {currentDossier.statut_dossier === 'complet' ? 'Complet' : 'Incomplet'}
-                    </strong>
-                  </div>
-
-
-                </div>
-                
               )}
-                </>
-              )}
-
               <div className={styles['navigation-buttons']}>
                 <button
                   className={`${styles['btn']} ${styles['btn-outline']}`}
@@ -1427,18 +942,9 @@ export default function Step5_Documents() {
                 </button>
 
                 <button
-                  className={styles['btnSave']}
-                  onClick={handleSaveEtape}
-                  disabled={savingEtape || isSubmitting || statutProc === 'TERMINEE' }
-                >
-                  <BsSave className={styles['btnIcon']} />
-                  {savingEtape ? "Sauvegarde en cours..." : "Sauvegarder l'étape"}
-                </button>
-
-                <button
                   className={`${styles['btn']} ${styles['btn-primary']}`}
                   onClick={handleNext}
-                  disabled={isLoading || isSubmitting || isNavigating || hasRequiredMissingClient}
+                  disabled={isLoading || isSubmitting || isNavigating || savingEtape || hasRequiredMissingClient}
                 >
                   {isSubmitting ? (
                     <span className={styles['btn-loading']}>

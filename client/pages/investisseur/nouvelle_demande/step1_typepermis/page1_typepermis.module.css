@@ -65,18 +65,18 @@
   font-size: 15px;
 }
 
-.cancelButton {
+.cancelLink {
   margin-left: auto;
-  border: 1px solid var(--border);
-  background: #fff;
-  color: var(--text-main);
-  padding: 10px 18px;
-  border-radius: 12px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
   transition: var(--transition);
 }
-.cancelButton:hover {
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+.cancelLink:hover {
+  color: var(--accent);
 }
 
 .progressBar {
@@ -226,32 +226,26 @@
 /* Buttons */
 .buttonGroup {
   display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 20px;
+  margin-top: 24px;
 }
-.button {
+.nextButton {
+  width: 100%;
   border: none;
-  border-radius: 12px;
-  padding: 12px 18px;
+  border-radius: 14px;
+  padding: 14px 18px;
   font-weight: 700;
+  font-size: 16px;
   cursor: pointer;
   transition: var(--transition);
-}
-.start {
   background: var(--accent);
   color: #fff;
 }
-.start:hover {
+.nextButton:hover:not(:disabled) {
   box-shadow: 0 12px 20px rgba(155, 44, 88, 0.25);
 }
-.secondary {
-  background: #fff;
-  color: var(--text-main);
-  border: 1px solid var(--border);
-}
-.secondary:hover {
-  box-shadow: 0 8px 14px rgba(0, 0, 0, 0.05);
+.nextButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* Loading */

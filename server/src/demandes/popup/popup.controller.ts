@@ -54,6 +54,9 @@ export class DemandeSummaryController {
         wilaya: true,
         daira: true,
         commune: true,
+        communes: {
+          include: { commune: true },
+        },
         dossiersFournis: {
           include: {
             documents: {
@@ -125,6 +128,9 @@ export class DemandeSummaryController {
         wilaya: true,
         daira: true,
         commune: true,
+        communes: {
+          include: { commune: true },
+        },
         dossiersFournis: {
           include: {
             documents: {

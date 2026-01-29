@@ -6,7 +6,6 @@ import axios from 'axios';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { Step2TypePermis } from '@/components/wizard/steps/Step2TypePermis';
 import { Step5Documents } from '@/components/wizard/steps/Step5Documents';
-import { StepIdentification } from '@/components/wizard/steps/StepIdentification';
 import { StepCapacites } from '@/components/wizard/steps/StepCapacites';
 import { Step4LocalisationSubstances } from '@/components/wizard/steps/Step4LocalisationSubstances';
 import { Step3Localisation } from '@/components/wizard/steps/Step3Localisation';
@@ -26,9 +25,8 @@ const phases = [
     description: 'Informations',
     steps: [
       { id: 1, title: 'Documents' },
-      { id: 2, title: 'Identification' },
-      { id: 3, title: 'Capacités' },
-      { id: 4, title: 'Localisation & Substances' }
+      { id: 2, title: 'Capacités' },
+      { id: 3, title: 'Localisation & Substances' }
     ]
   },
   { 
@@ -48,7 +46,6 @@ const phases = [
 export interface DemandeFormData {
   typePermis?: any;
   documents?: any[];
-  identification?: any;
   capacites?: any;
   localisationSubstances?: any;
   localisation?: any;
@@ -183,10 +180,8 @@ const NouvelleDemande = () => {
         case 1:
           return <Step5Documents data={formData.documents} onUpdate={updateFormData} />;
         case 2:
-          return <StepIdentification data={formData.identification} onUpdate={updateFormData} />;
-        case 3:
           return <StepCapacites data={formData.capacites} onUpdate={updateFormData} />;
-        case 4:
+        case 3:
           return <Step4LocalisationSubstances data={formData.localisationSubstances} onUpdate={updateFormData} />;
         default:
           return null;

@@ -9,7 +9,7 @@ import { useSearchParams } from "@/src/hooks/useSearchParams";
 import styles from  "./aviswali6.module.css";
 import Navbar from "../../../navbar/Navbar";
 import Sidebar from "../../../sidebar/Sidebar";
-import { BsFilePerson, BsSave } from "react-icons/bs";
+import { BsFilePerson } from "react-icons/bs";
 import { useViewNavigator } from "../../../../src/hooks/useViewNavigator";
 import ProgressStepper from "../../../../components/ProgressStepper";
 import { STEP_LABELS } from "../../../../src/constants/steps";
@@ -404,25 +404,6 @@ projectFields.forEach(({ label, value }) => {
     fetchDemandeAndWilaya();
   }, [fetchDemandeAndWilaya]);
 
-  const handleSaveEtape = async () => {
-    if (!idProc) {
-      setEtapeMessage("ID procedure introuvable !");
-      return;
-    }
-
-    setSavingEtape(true);
-    setEtapeMessage(null);
-
-    try {
-      await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/6`);
-      setEtapeMessage("Ã©tape 6 enregistrÃ©e avec succÃ©s !");
-    } catch (err) {
-      console.error(err);
-      setEtapeMessage("Erreur lors de l'enregistrement de l'Ã©tape.");
-    } finally {
-      setSavingEtape(false);
-    }
-  };
 
   const fetchInteractions = async (procId: number) => {
     setIsLoading(true);
@@ -456,8 +437,30 @@ projectFields.forEach(({ label, value }) => {
     }
   };
 
-  const handleNext = () => {
-    router.push(`/demande/step7/page7?id=${idProc}`);
+  const handleNext = async () => {
+    if (!idProc) {
+      setError("ID proc?dure manquant");
+      return;
+    }
+
+    if (isReadOnly) {
+      setEtapeMessage("Proc?dure d?j? termin?e.");
+      return;
+    }
+
+    setSavingEtape(true);
+    setEtapeMessage(null);
+
+    try {
+      await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/6`);
+      setEtapeMessage("?tape 6 enregistr?e avec succ?s !");
+      router.push(`/demande/step7/page7?id=${idProc}`);
+    } catch (err) {
+      console.error(err);
+      setEtapeMessage("Erreur lors de l'enregistrement de l'?tape.");
+    } finally {
+      setSavingEtape(false);
+    }
   };
 
   const handleBack = () => {
@@ -895,19 +898,10 @@ const latestEnvoi = interactions
                   PrÃ©cÃ©dent
                 </button>
                 
-                <button
-                  className={styles.saveButton}
-                  onClick={handleSaveEtape}
-                  disabled={savingEtape || isReadOnly}
-                >
-                  <BsSave className={styles.btnIcon} />
-                  {savingEtape ? "Sauvegarde..." : "Sauvegarder l'Ã©tape"}
-                </button>
-                
                 <button 
                   className={styles.primaryButton}
                   onClick={handleNext}
-                  disabled={isLoading}
+                  disabled={isLoading || savingEtape || isReadOnly}
                 >
                   Suivant
                   <FiChevronRight className={styles.btnIcon} />

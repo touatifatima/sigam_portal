@@ -8,28 +8,31 @@ datasource db {
 }
 
 model UtilisateurPortail {
-  id                    Int               @id @default(autoincrement())
-  idInterne             Int?              @unique
+  id                    Int                     @id @default(autoincrement())
+  idInterne             Int?                    @unique
   roleId                Int?
-  email                 String            @unique
-  telephone             String?           @db.VarChar(20)
-  modifieLe             DateTime          @updatedAt
+  email                 String                  @unique
+  telephone             String?                 @db.VarChar(20)
+  modifieLe             DateTime                @updatedAt
   deletedAt             DateTime?
   Prenom                String
-  createdAt             DateTime          @default(now())
+  createdAt             DateTime                @default(now())
   nom                   String
   password              String
-  username              String            @unique
+  username              String                  @unique
+  detenteurId           Int?
+  entreprise_verified   Boolean                 @default(false)
   auditLogs             AuditLogPortail[]
-  conversationsInitiees Conversation[]    @relation("ConversationUser1")
-  conversationsRecues   Conversation[]    @relation("ConversationUser2")
+  conversationsInitiees Conversation[]          @relation("ConversationUser1")
+  conversationsRecues   Conversation[]          @relation("ConversationUser2")
   demandes              demandePortail[]
-  messagesRecus         MessagePortail[]  @relation("ReceivedMessages")
-  messagesEnvoyes       MessagePortail[]  @relation("SentMessages")
+  messagesRecus         MessagePortail[]        @relation("ReceivedMessages")
+  messagesEnvoyes       MessagePortail[]        @relation("SentMessages")
   paiements             Paiement[]
   sessions              SessionPortail[]
   userGroups            UserGroup[]
-  role                  Role?             @relation(fields: [roleId], references: [id])
+  detenteur             DetenteurMoralePortail? @relation(fields: [detenteurId], references: [id_detenteur])
+  role                  Role?                   @relation(fields: [roleId], references: [id])
 
   @@map("utilisateurs_portail")
 }
@@ -227,6 +230,19 @@ model Commune {
   nature        String?
   daira         Daira?           @relation(fields: [id_daira], references: [id_daira])
   Demande       demandePortail[]
+  // (la relation inverse vers la table pivot)
+  demandesCommunes DemandeCommune[]
+}
+// Table pivot many-to-many
+model DemandeCommune {
+  id_demande Int
+  id_commune Int
+  principale Boolean? @default(false)  // optionnel : commune principale
+
+  demande  demandePortail @relation(fields: [id_demande], references: [id_demande])
+  commune  Commune       @relation(fields: [id_commune], references: [id_commune])
+
+  @@id([id_demande, id_commune])
 }
 
 model Pays {
@@ -287,7 +303,7 @@ model ExpertMinier {
 }
 
 model PersonnePhysiquePortail {
-  id_personne          Int                     @id @default(autoincrement())
+  id_personne          Int                      @id @default(autoincrement())
   id_pays              Int?
   id_nationalite       Int?
   nomFR                String
@@ -302,14 +318,15 @@ model PersonnePhysiquePortail {
   email                String?
   qualification        String?
   siteWeb              String?
-  num_carte_identite   String?                 @unique
+  num_carte_identite   String?                  @unique
   lieu_juridique_soc   String?
   ref_professionnelles String?
-  cessionsAncien       demCession[]            @relation("AncienCessionnaire")
-  cessionsNouveau      demCession[]            @relation("NouveauCessionnaire")
+  pouvoirs             PouvoirPersonnePhysique?
+  cessionsAncien       demCession[]             @relation("AncienCessionnaire")
+  cessionsNouveau      demCession[]             @relation("NouveauCessionnaire")
   fonctions            FonctionPersonneMoral[]
-  nationaliteRef       Nationalite?            @relation(fields: [id_nationalite], references: [id_nationalite])
-  pays                 Pays?                   @relation(fields: [id_pays], references: [id_pays])
+  nationaliteRef       Nationalite?             @relation(fields: [id_nationalite], references: [id_nationalite])
+  pays                 Pays?                    @relation(fields: [id_pays], references: [id_pays])
 
   @@map("personnephysique")
 }
@@ -340,6 +357,7 @@ model DetenteurMoralePortail {
   Permis                  PermisPortail[]
   registreCommerce        RegistreCommercePortail[]
   transfertDetenteur      TransfertDetenteur[]
+  utilisateurs            UtilisateurPortail[]
 
   @@map("detenteurmorale")
 }
@@ -481,6 +499,8 @@ model demandePortail {
   PP                       Boolean?
   id_sourceProc            Int?
   utilisateurId            Int
+  communes                 DemandeCommune[]
+  perimetre                Json?  // ← pour stocker le vrai polygon GeoJSON
   facture                  Facture?
   CahierCharge             CahierChargePortail[]
   cession                  demCession?
@@ -1547,6 +1567,11 @@ enum EnumTypeFonction {
   Representant
   Actionnaire
   Representant_Actionnaire
+}
+
+enum PouvoirPersonnePhysique {
+  MANDAT
+  PROCURATION
 }
 
 enum StatutCoord {

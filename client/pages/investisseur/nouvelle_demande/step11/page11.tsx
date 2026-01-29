@@ -10,7 +10,6 @@ import {
   CreditCard,
 } from "lucide-react";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
-import { BsSave } from "react-icons/bs";
 import axios from "axios";
 import styles from "./facture.module.css";
 import Navbar from "../../../navbar/Navbar";
@@ -52,7 +51,6 @@ const Facture = () => {
   const [isFactureLoading, setIsFactureLoading] = useState(false);
   const [isPageReady, setIsPageReady] = useState(false);
   const [refetchTrigger, setRefetchTrigger] = useState(0);
-  const [savingEtape, setSavingEtape] = useState(false);
   const [etapeMessage, setEtapeMessage] = useState<string | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
@@ -278,12 +276,6 @@ const Facture = () => {
     console.log("[Facture] etapeIdForThisPage =", etapeIdForThisPage);
   }, [etapeIdForThisPage]);
 
-  const isStepSaved = useMemo(() => {
-    if (!procedureData || !etapeIdForThisPage) return false;
-    return (procedureData.ProcedureEtape || []).some(
-      (pe) => pe.id_etape === etapeIdForThisPage && pe.statut === "TERMINEE",
-    );
-  }, [procedureData, etapeIdForThisPage]);
 
   const checkRequiredData = useCallback(() => {
     return (
@@ -411,6 +403,14 @@ const Facture = () => {
       return;
     }
 
+    const etapeId = etapeIdForThisPage ?? currentStep;
+    if (!etapeId) {
+      setConfirmMessage(
+        "?tape introuvable. V?rifiez le page_route en base (step11/page11).",
+      );
+      return;
+    }
+
     setIsConfirming(true);
     setConfirmMessage(null);
     try {
@@ -441,6 +441,13 @@ const Facture = () => {
         }
       }
 
+      await axios.post(
+        `${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`,
+        undefined,
+        { withCredentials: true },
+      );
+      setRefetchTrigger((prev) => prev + 1);
+
       router.push(`/investisseur/nouvelle_demande/step12/page12?id=${idProc}`);
     } catch (error) {
       console.error("[Facture] erreur confirmation facture", error);
@@ -450,33 +457,6 @@ const Facture = () => {
     }
   };
 
-  const handleSaveEtape = async () => {
-    if (!idProc) {
-      setEtapeMessage("ID de procédure manquant");
-      return;
-    }
-    const etapeId = etapeIdForThisPage ?? currentStep;
-    if (!etapeId) {
-      setEtapeMessage(
-        "Étape introuvable. Vérifiez le page_route en base (step11/page11).",
-      );
-      return;
-    }
-    setSavingEtape(true);
-    setEtapeMessage(null);
-    try {
-      await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`, undefined, {
-        withCredentials: true,
-      });
-      setEtapeMessage("Étape enregistrée avec succès");
-      setRefetchTrigger((prev) => prev + 1);
-    } catch (err) {
-      console.error("Erreur sauvegarde étape", err);
-      setEtapeMessage("Erreur lors de l'enregistrement de l'étape");
-    } finally {
-      setSavingEtape(false);
-    }
-  };
 
   if (!isPageReady) {
     return (
@@ -636,19 +616,10 @@ const Facture = () => {
                     Précédent
                   </button>
                   <button
-                    className={styles.btnSave}
-                    onClick={handleSaveEtape}
-                    type="button"
-                    disabled={savingEtape || isLoading || !idProc || !isPageReady || isStepSaved}
-                  >
-                    <BsSave className={styles.btnIcon} />
-                    {savingEtape ? "Sauvegarde en cours..." : "Sauvegarder l'étape"}
-                  </button>
-                  <button
                     className={`${styles.btn} ${styles['btn-primary']}`}
                     onClick={handleConfirm}
                     type="button"
-                    disabled={isLoading || !idProc || isConfirming || !isStepSaved}
+                    disabled={isLoading || !idProc || isConfirming || !isPageReady || !etapeIdForThisPage}
                   >
                     {isConfirming ? "Confirmation..." : "Confirmer et passer au paiement"}
                     <FiChevronRight className={styles['btn-icon']} />

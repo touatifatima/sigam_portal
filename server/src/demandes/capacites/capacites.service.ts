@@ -22,14 +22,66 @@ export class CapacitesService {
       throw new Error(`Demande with id ${id_demande} not found`);
     }
 
-    if (data.id_expert) {
+    let expertId = Number(data.id_expert);
+    if (Number.isNaN(expertId)) {
+      expertId = 0;
+    }
+
+    const expertMode = (data.expert_mode ?? '').toString();
+    const expertAutre = (data.expert_autre ?? '').toString().trim();
+    const expertNom = (data.nom_expert ?? '').toString().trim();
+
+    const parsedAgrement = data.date_agrement ? new Date(data.date_agrement) : null;
+    const agrementDate =
+      parsedAgrement && !Number.isNaN(parsedAgrement.valueOf()) ? parsedAgrement : null;
+
+    const expertPayload = {
+      nom_expert: expertMode === 'autre' ? expertAutre : expertNom,
+      num_agrement: data.num_agrement ? data.num_agrement.toString().trim() : null,
+      date_agrement: agrementDate,
+      etat_agrement: data.etat_agrement ? data.etat_agrement.toString().trim() : null,
+      adresse: data.adresse ? data.adresse.toString().trim() : null,
+      email: data.email ? data.email.toString().trim() : null,
+      tel_expert: data.tel_expert ? data.tel_expert.toString().trim() : null,
+      fax_expert: data.fax_expert ? data.fax_expert.toString().trim() : null,
+      specialisation: data.specialisation ? data.specialisation.toString().trim() : null,
+    };
+
+    const hasExpertPayload = Boolean(expertPayload.nom_expert);
+
+    if (hasExpertPayload) {
+      if (expertId) {
+        const expertExists = await this.prisma.expertMinier.findUnique({
+          where: { id_expert: expertId },
+        });
+
+        if (expertExists) {
+          await this.prisma.expertMinier.update({
+            where: { id_expert: expertId },
+            data: expertPayload,
+          });
+        } else {
+          const createdExpert = await this.prisma.expertMinier.create({
+            data: expertPayload,
+          });
+          expertId = createdExpert.id_expert;
+        }
+      } else {
+        const createdExpert = await this.prisma.expertMinier.create({
+          data: expertPayload,
+        });
+        expertId = createdExpert.id_expert;
+      }
+    } else if (expertId) {
       const expertExists = await this.prisma.expertMinier.findUnique({
-        where: { id_expert: data.id_expert },
+        where: { id_expert: expertId },
       });
 
       if (!expertExists) {
-        throw new Error(`Expert with id ${data.id_expert} does not exist`);
+        throw new Error(`Expert with id ${expertId} does not exist`);
       }
+    } else {
+      expertId = 0;
     }
 
     const typeLabel = demande.typeProcedure?.libelle?.toLowerCase() ?? '';
@@ -75,7 +127,7 @@ export class CapacitesService {
       data: {
         description_travaux: data.description,
         sources_financement: data.financement,
-        id_expert: data.id_expert || null,
+        id_expert: expertId || null,
       },
       include: {
         expertMinier: true,

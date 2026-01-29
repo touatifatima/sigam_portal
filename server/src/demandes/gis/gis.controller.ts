@@ -1,6 +1,6 @@
-import { BadRequestException, Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Headers, Param, Post } from '@nestjs/common';
 import { GisPointInput, GisService } from './gis.service';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('gis')
 export class GisController {
@@ -63,7 +63,7 @@ export class GisController {
       code_demande: string | null;
       typeProcedure: { libelle: string | null } | null;
     }> = procIds.length
-      ? await this.prisma.demandePortail.findMany({
+      ? await this.prisma.demande.findMany({
           where: { id_proc: { in: procIds } },
           select: {
             id_proc: true,
@@ -259,5 +259,19 @@ export class GisController {
       targetLayer: body?.targetLayer,
     });
     return { ok: true };
+  }
+
+  @Post('arcgis-token')
+  async getArcgisToken(
+    @Body('referer') referer?: string,
+    @Headers('origin') origin?: string,
+  ) {
+    const token = await this.gisService.getArcgisToken({
+      referer: referer || origin || null,
+    });
+    if (!token) {
+      throw new BadRequestException('ArcGIS token unavailable');
+    }
+    return token;
   }
 }

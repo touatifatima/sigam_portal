@@ -12,8 +12,8 @@ try {
   // Now run custom seeders if not handled automatically by migrate reset
   run('npx ts-node prisma/seed_paiment.ts');
   run('npx ts-node prisma/seed.ts');
-  run('npx ts-node prisma/TableRef/statutTitre_seed.ts');
-  run('npx ts-node prisma/TableRef/superficiaireBareme_seed.ts');
+  //run('npx ts-node prisma/TableRef/statutTitre_seed.ts');
+  //run('npx ts-node prisma/TableRef/superficiaireBareme_seed.ts');
   run('npx ts-node prisma/TableRef/typeProcedure_seed.ts');
   run('npx ts-node prisma/TableRef/pays_seed.ts');
   run('npx ts-node prisma/TableRef/nationalite_seed.ts');
@@ -33,31 +33,31 @@ try {
   // run('npx ts-node prisma/etap_proc_seed.ts');
   run('npx ts-node prisma/Procedure/phases_seed.ts');
   run('npx ts-node prisma/Procedure/EtapeProc_seed.ts');
-  run('npx ts-node prisma/Procedure/procedure_seed.ts');
-  run('npx ts-node prisma/Procedure/coordonnees_seed.ts');
-  run('npx ts-node prisma/Procedure/procCoord_seed.ts');
-  run('npx ts-node prisma/Procedure/substanceAssocieDemande_seed.ts');
+ // run('npx ts-node prisma/Procedure/procedure_seed.ts');
+ // run('npx ts-node prisma/Procedure/coordonnees_seed.ts');
+ // run('npx ts-node prisma/Procedure/procCoord_seed.ts');
+  //run('npx ts-node prisma/Procedure/substanceAssocieDemande_seed.ts');
   run('npx ts-node prisma/Procedure/procedurePhaseEtapes_seed.ts');
-  run('npx ts-node prisma/Procedure/interactionWali_seed.ts');
+  //run('npx ts-node prisma/Procedure/interactionWali_seed.ts');
   run('npx ts-node prisma/seed_documents.ts');
-  run('npx ts-node prisma/Demande/demandeGeneral_seed.ts');
-  run('npx ts-node prisma/Demande/demAnnulation_seed.ts');
-  run('npx ts-node prisma/Demande/demInitial_seed.ts');
-  run('npx ts-node prisma/Demande/demModification_seed.ts');
-  run('npx ts-node prisma/Demande/demRenonciation_seed.ts');
-  run('npx ts-node prisma/Demande/demRenouvellement_seed.ts');
-  run('npx ts-node prisma/Demande/demTransfer_seed.ts');
-  run('npx ts-node prisma/Demande/demandeMin_seed.ts');
+  //run('npx ts-node prisma/Demande/demandeGeneral_seed.ts');
+ // run('npx ts-node prisma/Demande/demAnnulation_seed.ts');
+ // run('npx ts-node prisma/Demande/demInitial_seed.ts');
+ // run('npx ts-node prisma/Demande/demModification_seed.ts');
+  //run('npx ts-node prisma/Demande/demRenonciation_seed.ts');
+ // run('npx ts-node prisma/Demande/demRenouvellement_seed.ts');
+ // run('npx ts-node prisma/Demande/demTransfer_seed.ts');
+ // run('npx ts-node prisma/Demande/demandeMin_seed.ts');
   // run('npx ts-node prisma/Demande/demandeVerificationGeo_seed.ts');
   run('npx ts-node prisma/detenteur/detenteur_seed.ts');
-  run('npx ts-node prisma/detenteur/detenteurDemande_seed.ts');
-  run('npx ts-node prisma/detenteur/personnePhysique_seed.ts');//
-  run('npx ts-node prisma/detenteur/fonctionPersonnePhysique_seed.ts');//
-  run('npx ts-node prisma/detenteur/FormeJuridiqueDetenteur_seed.ts');
-  run('npx ts-node prisma/detenteur/registreCommerce_seed.ts');
-  run('npx ts-node prisma/Titre/titre_seed.ts');
-  run('npx ts-node prisma/Procedure/procedurePermis_seed.ts');
-  run('npx ts-node prisma/paiement/typePaiement_seed.ts');
+ // run('npx ts-node prisma/detenteur/detenteurDemande_seed.ts');
+ // run('npx ts-node prisma/detenteur/personnePhysique_seed.ts');//
+  //run('npx ts-node prisma/detenteur/fonctionPersonnePhysique_seed.ts');//
+  //run('npx ts-node prisma/detenteur/FormeJuridiqueDetenteur_seed.ts');
+  //run('npx ts-node prisma/detenteur/registreCommerce_seed.ts');
+  //run('npx ts-node prisma/Titre/titre_seed.ts');
+ // run('npx ts-node prisma/Procedure/procedurePermis_seed.ts');
+  //run('npx ts-node prisma/paiement/typePaiement_seed.ts');
   run('npx ts-node prisma/paiement/obligation_seed.ts');
   run('npx ts-node prisma/paiement/paiement_seed.ts');
   run('npx ts-node prisma/paiement/tsPaiement_seed.ts');

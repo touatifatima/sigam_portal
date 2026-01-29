@@ -10,4 +10,7 @@ export class UpdateDemandeDto {
   id_wilaya?: number | null;
   id_daira?: number | null;
   id_commune?: number | null;
+  communeIds?: number[];
+  zones?: { wilayaId: number; dairaId: number; communeId: number }[];
+  perimetre?: any;
 }

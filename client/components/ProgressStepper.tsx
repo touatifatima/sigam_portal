@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { FiCheck, FiPlay, FiArrowRight, FiX, FiRefreshCw } from 'react-icons/fi';
+import { FiCheck, FiX, FiRefreshCw } from 'react-icons/fi';
 import { useRouter } from 'next/router';
 import styles from './ProgressStepper.module.css';
 import { Phase, ProcedurePhase, EtapeProc, ProcedureEtape } from '../src/types/procedure';
@@ -40,7 +40,6 @@ const ProgressStepper: React.FC<Props> = ({
   const router = useRouter();
   const [expandedPhase, setExpandedPhase] = useState<number | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const [hoveredStep, setHoveredStep] = useState<number | null>(null);
   const [isNavigating, setIsNavigating] = useState<boolean>(false);
   const [missingDocsPayload, setMissingDocsPayload] = useState<MissingDocsPayload | null>(null);
   const [manualExpandedPhase, setManualExpandedPhase] = useState<number | null>(null);
@@ -422,6 +421,42 @@ const ProgressStepper: React.FC<Props> = ({
     }
   }, [filteredPhases, currentProcedureId, isNavigating, getPhaseStatus, getEtapeStatus, handleNextPhase]);
 
+  if (hasSimpleSteps) {
+    return (
+      <div className={styles.progressContainer}>
+        <div className={styles.horizontalPhases}>
+          {steps!.map((label, index) => {
+            const isCompleted = index + 1 < currentStep;
+            const isInProgress = index + 1 === currentStep;
+            return (
+              <React.Fragment key={label}>
+                <div
+                  className={`${styles.phaseItem} ${
+                    isCompleted ? styles.phaseCompleted : ''
+                  } ${isInProgress ? styles.phaseInProgress : ''}`}
+                  aria-label={label}
+                >
+                  <div
+                    className={`${styles.phaseCircle} ${isCompleted ? styles.completed : ''} ${
+                      isInProgress ? styles.inProgress : ''
+                    }`}
+                  >
+                    {isCompleted ? (
+                      <FiCheck className={styles.phaseIcon} />
+                    ) : (
+                      <span className={styles.phaseNumber}>{index + 1}</span>
+                    )}
+                  </div>
+                  <span className={styles.phaseTitle}>{label}</span>
+                </div>
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   if (isLoadingData) {
     return (
       <div className={styles.dataLoadingContainer}>
@@ -446,57 +481,6 @@ const ProgressStepper: React.FC<Props> = ({
     );
   }
 
-  if (hasSimpleSteps) {
-    return (
-      <div className={styles.progressContainer}>
-        <div className={styles.horizontalPhases}>
-          {steps!.map((label, index) => {
-            const isCompleted = index + 1 < currentStep;
-            const isInProgress = index + 1 === currentStep;
-            return (
-              <React.Fragment key={label}>
-                {index > 0 && (
-                  <div
-                    className={`${styles.phaseConnector} ${
-                      isCompleted || isInProgress ? styles.connectorActive : ''
-                    }`}
-                  >
-                    <FiArrowRight className={styles.connectorIcon} />
-                  </div>
-                )}
-                <div
-                  className={`${styles.phaseItem} ${
-                    isCompleted ? styles.phaseCompleted : ''
-                  } ${isInProgress ? styles.phaseInProgress : ''}`}
-                >
-                  <div className={styles.phaseContent}>
-                    <div
-                      className={`${styles.phaseCircle} ${isCompleted ? styles.completed : ''} ${
-                        isInProgress ? styles.inProgress : ''
-                      }`}
-                    >
-                      {isCompleted ? (
-                        <FiCheck className={styles.phaseIcon} />
-                      ) : (
-                        <span className={styles.phaseNumber}>{index + 1}</span>
-                      )}
-                    </div>
-                    <div className={styles.phaseInfo}>
-                      <span className={styles.phaseTitle}>{label}</span>
-                      <span className={`${styles.phaseStatus} ${isInProgress ? styles['en_cours'] : ''}`}>
-                        {isCompleted ? 'TERMINEE' : isInProgress ? 'EN_COURS' : 'EN_ATTENTE'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </React.Fragment>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
   if (filteredPhases.length === 0) {
     return (
       <div className={styles.noDataContainer}>
@@ -515,129 +499,41 @@ const ProgressStepper: React.FC<Props> = ({
       {/* Horizontal Phases */}
       <div className={styles.horizontalPhases}>
         {filteredPhases.map((phase, phaseIndex) => {
-      const phaseStatus = getPhaseStatus(phase.id_phase);
       const isCompleted = isPhaseCompleted(phase);
-      const isInProgress = isPhaseInProgress(phase);
+      const isInProgress = isPhaseInProgress(phase) || currentEtapePhase?.id_phase === phase.id_phase;
           const isExpanded = activePhaseId === phase.id_phase;
           const isNavigable = canNavigateToPhase(phase);
-          const phaseStatusClass = styles[phaseStatus.toLowerCase?.() ?? ''] ?? '';
 
           return (
             <React.Fragment key={phase.id_phase}>
-              {phaseIndex > 0 && (
-                <div
-                  className={`${styles.phaseConnector} ${
-                    isCompleted || isInProgress ? styles.connectorActive : ''
-                  }`}
-                >
-                  <FiArrowRight className={styles.connectorIcon} />
-                </div>
-              )}
-                <div
-                  className={`${styles.phaseItem} ${
-                    isCompleted ? styles.phaseCompleted : ''
-                  } ${isInProgress ? styles.phaseInProgress : ''} ${
+              <button
+                type="button"
+                className={`${styles.phaseItem} ${
+                  isCompleted ? styles.phaseCompleted : ''
+                } ${isInProgress ? styles.phaseInProgress : ''} ${
                   isExpanded ? styles.phaseExpanded : ''
                 } ${!isNavigable ? styles.phaseLocked : ''}`}
-                >
+                onClick={() => handlePhaseClick(phase)}
+                aria-label={phase.libelle}
+                disabled={!isNavigable}
+              >
                 <div
-                  className={styles.phaseContent}
-                  onClick={() => handlePhaseClick(phase)}
+                  className={`${styles.phaseCircle} ${isCompleted ? styles.completed : ''} ${
+                    isInProgress ? styles.inProgress : ''
+                  } ${!isNavigable ? styles.locked : ''}`}
                 >
-                  <div
-                    className={`${styles.phaseCircle} ${isCompleted ? styles.completed : ''} ${
-                      isInProgress ? styles.inProgress : ''
-                    } ${!isNavigable ? styles.locked : ''}`}
-                  >
-                    {isCompleted ? (
-                      <FiCheck className={styles.phaseIcon} />
-                    ) : isInProgress ? (
-                      <FiPlay className={styles.phaseIcon} />
-                    ) : (
-                      <span className={styles.phaseNumber}>{phaseIndex + 1}</span>
-                    )}
-                  </div>
-                  <div className={styles.phaseInfo}>
-                    <span className={styles.phaseTitle}>{phase.libelle}</span>
-                    <span className={`${styles.phaseStatus} ${phaseStatusClass}`}>
-                      {phaseStatus}
-                    </span>
-                  </div>
+                  {isCompleted ? (
+                    <FiCheck className={styles.phaseIcon} />
+                  ) : (
+                    <span className={styles.phaseNumber}>{phaseIndex + 1}</span>
+                  )}
                 </div>
-              </div>
+                <span className={styles.phaseTitle}>{phase.libelle}</span>
+              </button>
             </React.Fragment>
           );
         })}
       </div>
-
-      {/* Steps for Expanded Phase */}
-      {expandedPhase !== null && (
-        <div className={styles.stepsSection}>
-          <div className={styles.horizontalSteps}>
-            {(filteredPhases.find(p => p.id_phase === activePhaseId) ?? filteredPhases[0])
-              ?.etapes.map((etape, etapeIndex) => {
-                const phase = filteredPhases.find(p => p.id_phase === activePhaseId)!;
-                const etapeStatus = getEtapeStatus(etape);
-                const isEtapeCompleted = etapeStatus === 'TERMINEE';
-                const isEtapeActive = etape.id_etape === currentEtapeId;
-                const isEtapeNavigable = canNavigateToEtape(etape, phase);
-                const etapeStatusClass = styles[etapeStatus.toLowerCase?.() ?? ''] ?? '';
-
-                return (
-                  <React.Fragment key={etape.id_etape}>
-                    {etapeIndex > 0 && (
-                      <div
-                        className={`${styles.stepConnector} ${
-                          isEtapeCompleted || isEtapeActive ? styles.connectorActive : ''
-                        }`}
-                      />
-                    )}
-                    <div
-                      className={`${styles.stepItem} ${
-                        isEtapeCompleted ? styles.stepCompleted : ''
-                      } ${isEtapeActive ? styles.stepActive : ''} ${
-                        !isEtapeNavigable ? styles.stepLocked : ''
-                      }`}
-                      onMouseEnter={() => isEtapeNavigable && setHoveredStep(etape.id_etape)}
-                      onMouseLeave={() => setHoveredStep(null)}
-                      onClick={() => isEtapeNavigable && handleEtapeClick(etape, phase)}
-                    >
-                      <div
-                        className={`${styles.stepCircle} ${isEtapeCompleted ? styles.completed : ''} ${
-                          isEtapeActive ? styles.active : ''
-                        }`}
-                      >
-                        {isEtapeCompleted ? (
-                          <FiCheck className={styles.stepIcon} />
-                        ) : (
-                          <span className={styles.stepNumber}>{etapeIndex + 1}</span>
-                        )}
-                      </div>
-                      {(hoveredStep === etape.id_etape || isEtapeActive) && (
-                        <div className={styles.stepTooltip}>
-                          <span className={styles.stepName}>{etape.lib_etape}</span>
-                          <span className={`${styles.stepStatus} ${etapeStatusClass}`}>
-                            {etapeStatus}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </React.Fragment>
-                );
-              })}
-          </div>
-          {filteredPhases.find(p => p.id_phase === expandedPhase) &&
-            canAdvanceToNextPhase(filteredPhases.find(p => p.id_phase === expandedPhase)!) && (
-              <button
-                className={styles.nextPhaseButton}
-                onClick={() => handleNextPhase(expandedPhase)}
-                disabled={loading || isNavigating}
-              >
-                {loading ? 'Chargement...' : 'Phase suivante ?'}
-              </button>
-            )}
-        </div>
-      )}
     </div>
   );
 };

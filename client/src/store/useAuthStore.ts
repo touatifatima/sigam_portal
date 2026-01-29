@@ -12,6 +12,7 @@ interface AuthData {
   email: string | null;
   role: string | null;
   permissions: string[];
+  isEntrepriseVerified: boolean;
 }
 
 const emptyAuthState: AuthData = {
@@ -21,6 +22,7 @@ const emptyAuthState: AuthData = {
   email: null,
   role: null,
   permissions: [],
+  isEntrepriseVerified: false,
 };
 
 interface AuthStore {
@@ -30,6 +32,7 @@ interface AuthStore {
   logout: () => Promise<void>;
   initialize: () => Promise<void>;
   hasPermission: (perm: string) => boolean;
+  setEntrepriseVerified: (value: boolean) => void;
 }
 
 const apiURL = process.env.NEXT_PUBLIC_API_URL;
@@ -51,6 +54,7 @@ function readAuthFromStorage(): AuthData | null {
         email: parsed.email ?? null,
         role: parsed.role ?? null,
         permissions: Array.isArray(parsed.permissions) ? parsed.permissions : [],
+        isEntrepriseVerified: Boolean(parsed.isEntrepriseVerified),
       };
     }
 
@@ -66,6 +70,7 @@ function readAuthFromStorage(): AuthData | null {
         email: s.email ?? null,
         role: s.role ?? null,
         permissions: Array.isArray(s.permissions) ? s.permissions : [],
+        isEntrepriseVerified: Boolean(s.isEntrepriseVerified),
       };
     }
 
@@ -87,6 +92,7 @@ function createAuthStore(): BoundStore {
     isLoaded: false,
 
     login: (data) => {
+      const storedVerified = get().auth.isEntrepriseVerified;
       const newAuth = {
         token: data.token,
         id: data.user.id,
@@ -94,6 +100,12 @@ function createAuthStore(): BoundStore {
         email: data.user.email,
         role: data.user.role,
         permissions: data.user.permissions,
+        isEntrepriseVerified:
+          (data.user as any).isEntrepriseVerified ??
+          (data.user as any).entrepriseVerified ??
+          (data.user as any).entreprise_verified ??
+          storedVerified ??
+          false,
       };
 
       if (typeof window !== 'undefined') {
@@ -158,6 +170,11 @@ function createAuthStore(): BoundStore {
             email: response.data.user.email,
             role: response.data.user.role,
             permissions: response.data.user.permissions,
+            isEntrepriseVerified:
+              (response.data.user as any).isEntrepriseVerified ??
+              (response.data.user as any).entrepriseVerified ??
+              (response.data.user as any).entreprise_verified ??
+              authState.isEntrepriseVerified,
           };
 
           if (typeof window !== 'undefined') {
@@ -185,6 +202,15 @@ function createAuthStore(): BoundStore {
     hasPermission: (perm) => {
       const { permissions } = get().auth;
       return Array.isArray(permissions) && permissions.includes(perm);
+    },
+
+    setEntrepriseVerified: (value) => {
+      const current = get().auth;
+      const nextAuth = { ...current, isEntrepriseVerified: value };
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('auth', JSON.stringify(nextAuth));
+      }
+      set({ auth: nextAuth });
     },
   }));
 }

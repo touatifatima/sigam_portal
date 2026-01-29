@@ -1,6 +1,7 @@
 // components/Navbar.tsx
 'use client';
-import { FiSearch, FiBell, FiUser, FiChevronDown, FiLogOut, FiSettings, FiHelpCircle } from 'react-icons/fi';
+import { FiSearch, FiChevronDown } from 'react-icons/fi';
+import { User, Settings, LogOut } from 'lucide-react';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
@@ -179,9 +180,10 @@ export default function Navbar() {
   };
 
   const initials = auth.role ? getInitials(auth.role) : '';
-  const displayRole = auth.role ?? '';
-  const displayUsername = auth.username ?? '';
+  const displayUsername = auth.username ?? auth.email ?? '';
   const displayEmail = auth.email ?? '';
+  const isInvestisseur = (auth.role ?? '').toLowerCase() === 'investisseur';
+  const canCreateDemande = isInvestisseur && auth.isEntrepriseVerified;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
@@ -193,12 +195,17 @@ export default function Navbar() {
     });
   };
 
+  const handleLogout = async () => {
+    setIsDropdownOpen(false);
+    await logout();
+  };
+
   return (
     <nav className={styles['navbar']}>
       <div className={styles['navbar-header']}>
         <div className={styles['app-logo']}>
-          <span>GUNAM</span>
-          <span className={styles['app-version']}>v1.0</span>
+          <span>SIGAM</span>
+          <span className={styles['app-version']}>Portail</span>
         </div>
       </div>
 
@@ -212,6 +219,30 @@ export default function Navbar() {
           />
         </div>
       </div>
+
+      {isInvestisseur && (
+        <div className={styles['navbar-actions']}>
+          <Link
+            href="/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis"
+            className={`${styles['nav-cta']} ${
+              canCreateDemande ? '' : styles['nav-cta-disabled']
+            }`}
+            onClick={(event) => {
+              if (!canCreateDemande) {
+                event.preventDefault();
+              }
+            }}
+            aria-disabled={!canCreateDemande}
+            title={
+              canCreateDemande
+                ? 'Nouvelle demande'
+                : "Completez l'identification pour continuer"
+            }
+          >
+            Nouvelle Demande
+          </Link>
+        </div>
+      )}
 
       <div className={styles['navbar-user']}>
         <div className={styles['notification-container']} ref={notificationsRef}>
@@ -286,6 +317,8 @@ export default function Navbar() {
           <button
             className={styles['profile-button']}
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            aria-expanded={isDropdownOpen}
+            aria-haspopup="menu"
           >
             <div className={styles['user-avatar']}>
               <span className={styles['avatar-initials']}>{initials}</span>
@@ -298,40 +331,31 @@ export default function Navbar() {
           </button>
 
           {isDropdownOpen && (
-            <div className={styles['dropdown-menu']}>
-              <div className={styles['dropdown-header']}>
-                <div className={styles['dropdown-avatar']}>
-                  <span className={styles['avatar-initials']}>{initials}</span>
-                </div>
-                <div>
-                  <p className={styles['dropdown-name']}>Role : {displayRole}</p>
-                  <p className={styles['dropdown-name']}>{displayUsername}</p>
-                  <p className={styles['dropdown-email']}>{displayEmail}</p>
-                </div>
-              </div>
-
-              <div className={styles['dropdown-divider']}></div>
-
-              <Link href="/profile" className={styles['dropdown-item']}>
-                <FiUser className={styles['dropdown-icon']} />
+            <div className={styles['dropdown-menu']} role="menu">
+              <Link
+                href="/investisseur/profil"
+                className={styles['dropdown-item']}
+                onClick={() => setIsDropdownOpen(false)}
+              >
+                <User className={styles['dropdown-icon']} size={18} />
                 <span>Mon profil</span>
               </Link>
 
-              <Link href="/settings" className={styles['dropdown-item']}>
-                <FiSettings className={styles['dropdown-icon']} />
-                <span>Paramètres</span>
+              <Link
+                href="/investisseur/parametres"
+                className={styles['dropdown-item']}
+                onClick={() => setIsDropdownOpen(false)}
+              >
+                <Settings className={styles['dropdown-icon']} size={18} />
+                <span>Parametres</span>
               </Link>
 
-              <Link href="/help" className={styles['dropdown-item']}>
-                <FiHelpCircle className={styles['dropdown-icon']} />
-                <span>Aide & Support</span>
-              </Link>
-
-              <div className={styles['dropdown-divider']}></div>
-
-              <button onClick={logout} className={`${styles['dropdown-item']} ${styles['logout']}`}>
-                <FiLogOut className={styles['dropdown-icon']} />
-                <span>Déconnexion</span>
+              <button
+                onClick={handleLogout}
+                className={`${styles['dropdown-item']} ${styles['logout']}`}
+              >
+                <LogOut className={styles['dropdown-icon']} size={18} />
+                <span>Deconnexion</span>
               </button>
             </div>
           )}

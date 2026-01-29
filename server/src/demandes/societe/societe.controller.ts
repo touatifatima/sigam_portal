@@ -10,17 +10,21 @@ import {
   HttpException,
   HttpStatus,
   Query,
+  Req,
 } from '@nestjs/common';
 import { SocieteService } from './societe.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateActionnaireDto } from '../dto/create-actionnaire.dto';
 import { EnumTypeFonction } from '@prisma/client';
+import { SessionService } from 'src/session/session.service';
+import { Request } from 'express';
 
 @Controller('api')
 export class SocieteController {
   constructor(
     private readonly societeService: SocieteService,
     private readonly prisma: PrismaService,
+    private readonly sessionService: SessionService,
   ) {}
 
   @Get('statuts-juridiques')
@@ -28,6 +32,30 @@ export class SocieteController {
     return this.prisma.statutJuridiquePortail.findMany({
       orderBy: { code_statut: 'asc' },
     });
+  }
+
+  @Post('investisseur/identification')
+  async saveInvestisseurIdentification(@Body() data: any, @Req() req: Request) {
+    const token = req.cookies?.auth_token;
+    const session = token ? await this.sessionService.validateSession(token) : null;
+    const userId = session?.userId ?? null;
+    return this.societeService.saveInvestisseurIdentification(data, userId);
+  }
+
+  @Get('profil/entreprise')
+  async getProfilEntreprise(@Req() req: Request) {
+    const token = req.cookies?.auth_token;
+    if (!token) {
+      throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
+    }
+
+    const session = await this.sessionService.validateSession(token);
+    const userId = session?.userId ?? null;
+    if (!userId) {
+      throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
+    }
+
+    return this.societeService.getEntrepriseProfile(userId);
   }
 
   // Detenteur Morale Endpoints
@@ -56,6 +84,7 @@ export class SocieteController {
       tel: data.tel || '',
       email: data.email || '',
       fax: data.fax || '',
+      site_web: data.site_web || '',
       adresse: data.adresse || '',
       id_pays: data.id_pays ? parseInt(data.id_pays, 10) : undefined,
       id_nationalite: data.id_nationalite

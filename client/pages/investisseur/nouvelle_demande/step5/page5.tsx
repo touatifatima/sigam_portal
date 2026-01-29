@@ -1,6 +1,6 @@
 'use client';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { FiPlus, FiTrash2, FiCheckCircle, FiAlertTriangle, FiMapPin, FiEdit2, FiRefreshCw, FiChevronLeft, FiSave, FiDownload, FiUpload, FiChevronRight, FiLayers, FiArrowUp, FiArrowDown } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiCheckCircle, FiAlertTriangle, FiMapPin, FiEdit2, FiRefreshCw, FiChevronLeft, FiDownload, FiUpload, FiChevronRight, FiLayers, FiArrowUp, FiArrowDown } from 'react-icons/fi';
 import * as turf from '@turf/turf';
 import styles from './cadastre5.module.css';
 import { useRouter } from 'next/router';
@@ -9,7 +9,6 @@ import axios from 'axios';
 import Navbar from '@/pages/navbar/Navbar';
 import Sidebar from '@/pages/sidebar/Sidebar';
 import { useAuthStore } from '../../../../src/store/useAuthStore';
-import { BsSave } from 'react-icons/bs';
 import { useViewNavigator } from '../../../../src/hooks/useViewNavigator';
 import ProgressStepper from '../../../../components/ProgressStepper';
 import { useStepperPhases } from '@/src/hooks/useStepperPhases';
@@ -1135,65 +1134,7 @@ export default function CadastrePage() {
     setIsCheckingOverlaps(false);
   };
 
-  const handleSaveEtapeFixed = async () => {
-    if (!idProc) {
-      setError("ID procedure manquant !");
-      setTimeout(() => setError(null), 4000);
-      return;
-    }
-    setSavingEtape(true);
-    try {
-      let etapeId = 5;
 
-      try {
-        if (procedureData?.ProcedurePhase) {
-          const pathname = window.location.pathname.replace(/^\/+/, '');
-          const phasesList = (procedureData.ProcedurePhase || []) as ProcedurePhase[];
-          const allEtapes = phasesList.flatMap(pp => pp.phase?.etapes ?? []);
-          const match = allEtapes.find((e: any) => e.page_route === pathname);
-          if (match?.id_etape != null) {
-            etapeId = match.id_etape;
-          }
-        }
-      } catch {
-        // fallback to default etapeId
-      }
-
-      etapeId = etapeIdForThisPage ?? etapeId;
-      await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`);
-      setRefetchTrigger((prev) => prev + 1);
-      setSuccess("étape 5 enregistrée avec succés !");
-      setTimeout(() => setSuccess(null), 3000);
-      
-    } catch (err) {
-      console.error("Erreur étape", err);
-      setError("Erreur lors de l'enregistrement de l'étape");
-      setTimeout(() => setError(null), 4000);
-    } finally {
-      setSavingEtape(false);
-    }
-  };
-
-  const handleSaveEtape = async () => {
-    if (!idProc) {
-      setError("ID procedure manquant !");
-      setTimeout(() => setError(null), 4000);
-      return;
-    }
-    setSavingEtape(true);
-    try {
-      await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/5`);
-      setRefetchTrigger((prev) => prev + 1);
-      setSuccess("Étape 5 enregistrée avec succès !");
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      console.error("Erreur étape", err);
-      setError("Erreur lors de l'enregistrement de l'étape");
-      setTimeout(() => setError(null), 4000);
-    } finally {
-      setSavingEtape(false);
-    }
-  };
 
   const removePoint = (id: number) => {
     if (points.length <= 3) return;
@@ -1439,8 +1380,51 @@ export default function CadastrePage() {
   const hasValidatedPerimeter = validatedPoints.length >= 3;
   const isFormComplete = hasValidatedPerimeter;
 
- const handleNext = () => {
-    router.push(`/investisseur/nouvelle_demande/step11/page11?id=${idProc}`);
+ const handleNext = async () => {
+    if (!idProc) {
+      setError("ID procedure manquant");
+      setTimeout(() => setError(null), 4000);
+      return;
+    }
+
+    if (!isFormComplete && !isStepSaved) {
+      setError("Veuillez valider le p?rim?tre avant de continuer");
+      setTimeout(() => setError(null), 4000);
+      return;
+    }
+
+    setSavingEtape(true);
+
+    try {
+      let etapeId = 5;
+
+      try {
+        if (procedureData?.ProcedurePhase) {
+          const pathname = window.location.pathname.replace(/^\/+/, '');
+          const phasesList = (procedureData.ProcedurePhase || []) as ProcedurePhase[];
+          const allEtapes = phasesList.flatMap(pp => pp.phase?.etapes ?? []);
+          const match = allEtapes.find((e: any) => e.page_route === pathname);
+          if (match?.id_etape != null) {
+            etapeId = match.id_etape;
+          }
+        }
+      } catch {
+        // fallback to default etapeId
+      }
+
+      etapeId = etapeIdForThisPage ?? etapeId;
+      await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`);
+      setRefetchTrigger((prev) => prev + 1);
+      setSuccess("?tape 5 enregistr?e avec succ?s !");
+      setTimeout(() => setSuccess(null), 3000);
+      router.push(`/investisseur/nouvelle_demande/step4/page4?id=${idProc}`);
+    } catch (err) {
+      console.error("Erreur ?tape", err);
+      setError("Erreur lors de l'enregistrement de l'?tape");
+      setTimeout(() => setError(null), 4000);
+    } finally {
+      setSavingEtape(false);
+    }
   };
 
   const handleBack = () => {
@@ -1449,7 +1433,7 @@ export default function CadastrePage() {
       setTimeout(() => setError(null), 4000);
       return;
     }
-    router.push(`/investisseur/nouvelle_demande/step4/page4?id=${idProc}`);
+    router.push(`/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis?id=${idProc}`);
   };
 
   const exportData = () => {
@@ -2309,22 +2293,9 @@ export default function CadastrePage() {
                       Précédent
                     </button>
                     <button
-                      className={styles['btnSave']}
-                      onClick={handleSaveEtapeFixed}
-                      disabled={
-                        savingEtape ||
-                        statutProc === 'TERMINEE' ||
-                        !statutProc ||
-                        !isFormComplete ||
-                        isStepSaved
-                      }
-                    >
-                      <BsSave className={styles['btnIcon']} /> {savingEtape ? "Sauvegarde en cours..." : "Sauvegarder l'étape"}
-                    </button>
-                    <button
                       className={`${styles['btn']} ${styles['btn-primary']}`}
                       onClick={handleNext}
-                      disabled={isLoading || !isStepSaved}
+                      disabled={isLoading || savingEtape || (!isFormComplete && !isStepSaved)}
                     >
                       Suivant
                       <FiChevronRight className={styles['btn-icon']} />

@@ -723,6 +723,98 @@
   box-shadow: 0 0 0 1px #3182ce;
 }
 
+.zone-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.zone-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.75rem;
+  align-items: end;
+  padding: 0.5rem 0;
+}
+
+.zone-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.zone-actions {
+  display: flex;
+  align-items: center;
+  padding-bottom: 0.5rem;
+}
+
+.secondary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.secondary-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.multi-select {
+  min-height: 7rem;
+  background-image: none;
+  padding-right: 0.5rem;
+}
+
+.selected-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.selected-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: #fdf2f6;
+  border: 1px solid #f3d7e2;
+  color: #7a2f48;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Substances selection grid */
+.substances-options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.75rem 1rem;
+}
+
+.substance-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #fff;
+  cursor: pointer;
+}
+
+.substance-option-input {
+  accent-color: #a84968;
+}
+
+.substance-option-label {
+  font-size: 0.9rem;
+  color: #2d3748;
+}
+
 /* Each substance item (acts as a row) */
 .substance-item {
   display: flex;

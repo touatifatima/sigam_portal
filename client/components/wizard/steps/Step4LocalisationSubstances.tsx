@@ -385,7 +385,7 @@ export const Step4LocalisationSubstances = ({ data, onUpdate }: Step4Localisatio
             <Label>Substance Principale *</Label>
             <RadioGroup
               value={formData.substancePrincipale}
-              onValueChange={(value: string) => handleChange("substancePrincipale", value)}
+              onValueChange={(value) => handleChange("substancePrincipale", value)}
               className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"
             >
               {substancesDisponibles.map((substance) => (

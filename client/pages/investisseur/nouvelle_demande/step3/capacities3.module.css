@@ -250,8 +250,96 @@
   gap: 1.5rem;
 }
 
+.expertOptions {
+  margin-bottom: 1.5rem;
+}
+
+.expertRadioGroup {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.expertOption {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid #ead7df;
+  border-radius: 12px;
+  background: #fff7fb;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.expertOption:hover {
+  border-color: #c98aa8;
+  box-shadow: 0 6px 16px rgba(139, 58, 98, 0.08);
+}
+
+.expertRadioItem {
+  margin-top: 0.2rem;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #c98aa8;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  position: relative;
+  appearance: none;
+}
+
+.expertRadioItem::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #8b3a62;
+  transform: scale(0);
+  transition: transform 0.2s ease;
+}
+
+.expertRadioItem[data-state="checked"] {
+  border-color: #8b3a62;
+  box-shadow: 0 0 0 4px rgba(139, 58, 98, 0.18);
+}
+
+.expertRadioItem[data-state="checked"]::after {
+  transform: scale(1);
+}
+
+.expertRadioItem:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(139, 58, 98, 0.22);
+}
+
+.expertRadioItem:hover {
+  transform: scale(1.05);
+  border-color: #8b3a62;
+}
+
+.expertRadioItem > span {
+  display: none;
+}
+
+.expertOptionLabel {
+  font-weight: 600;
+  color: #2d1b27;
+  line-height: 1.4;
+}
+
+.expertFields {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed #e5d5dd;
+}
+
 .formGroup {
   margin-bottom: 1.5rem;
+}
+
+.required {
 }
 
 .formGroup.fullWidth {

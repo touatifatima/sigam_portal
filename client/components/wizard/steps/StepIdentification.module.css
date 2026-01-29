@@ -1,0 +1,493 @@
+/* StepIdentification - Module CSS uuutilisablee*/
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Cards */
+.card {
+  background: #ffffff;
+  border: 1px solid #e5d5dd;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(74, 44, 62, 0.08);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.card:hover {
+  box-shadow: 0 14px 34px rgba(74, 44, 62, 0.12);
+  transform: translateY(-2px);
+}
+
+.cardHeader {
+  padding: 1.5rem 1.5rem 1rem;
+  border-bottom: 1px solid #e5d5dd;
+  background: linear-gradient(135deg, rgba(139, 58, 98, 0.05) 0%, rgba(139, 58, 98, 0.1) 100%);
+}
+
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2d1b27;
+  margin-bottom: 0.25rem;
+}
+
+.cardIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #8b3a62;
+}
+
+.cardDescription {
+  font-size: 0.875rem;
+  color: #6b4d5e;
+}
+
+.cardContent {
+  padding: 1.5rem;
+}
+
+/* Form Grid */
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .formGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+/* Input Group */
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #2d1b27;
+}
+
+.required {}
+
+.label.required::after {
+  content: ' *';
+  color: hsl(var(--destructive));
+}
+
+.input {
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  border: 1px solid #e5d5dd;
+  border-radius: 10px;
+  background: #fff7f9;
+  color: #2d1b27;
+  transition: all 0.3s ease;
+  font-family: inherit;
+  accent-color: #8b3a62;
+}
+
+.input::placeholder {
+  color: rgba(139, 58, 98, 0.65);
+}
+
+.input:focus {
+  outline: none;
+  border-color: #8b3a62;
+  box-shadow: 0 0 0 3px rgba(139, 58, 98, 0.15);
+  background: #ffffff;
+}
+
+.input:hover:not(:focus) {
+  border-color: rgba(139, 58, 98, 0.6);
+}
+
+.inputRtl {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Select Styles */
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding: 0.75rem 1rem;
+  padding-right: 2.75rem;
+  font-size: 0.95rem;
+  border: 1px solid rgba(139, 58, 98, 0.25);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255, 247, 249, 0.75) 0%, rgba(255, 255, 255, 0.6) 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #2d1b27;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  box-shadow:
+    0 8px 24px rgba(139, 58, 98, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  background-image:
+    linear-gradient(45deg, transparent 50%, #8b3a62 50%),
+    linear-gradient(135deg, #8b3a62 50%, transparent 50%),
+    linear-gradient(to right, rgba(139, 58, 98, 0.25), rgba(139, 58, 98, 0.25));
+  background-position:
+    calc(100% - 18px) 50%,
+    calc(100% - 12px) 50%,
+    calc(100% - 2.25rem) 50%;
+  background-size: 6px 6px, 6px 6px, 1px 60%;
+  background-repeat: no-repeat;
+  accent-color: #8b3a62;
+}
+
+.select:focus,
+.select:focus-visible {
+  outline: none;
+  border-color: rgba(139, 58, 98, 0.6);
+  box-shadow:
+    0 0 0 3px rgba(168, 73, 104, 0.25),
+    0 10px 26px rgba(139, 58, 98, 0.18);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 247, 249, 0.7) 100%);
+}
+
+.select:hover:not(:focus) {
+  border-color: rgba(139, 58, 98, 0.5);
+  box-shadow: 0 10px 28px rgba(139, 58, 98, 0.18);
+}
+
+.select:disabled {
+  background: rgba(245, 240, 243, 0.8);
+  color: #9a8590;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.select option {
+  color: #2d1b27;
+  background: #fff7f9;
+}
+
+.select option:checked {
+  background: #8b3a62;
+  color: #ffffff;
+}
+
+.select option:hover {
+  background: rgba(139, 58, 98, 0.12);
+}
+
+/* Date input - keep chrome calendar in theme */
+input[type='date'].input {
+  color-scheme: light;
+}
+
+input[type='date'].input::-webkit-calendar-picker-indicator {
+  filter: invert(24%) sepia(10%) saturate(2100%) hue-rotate(300deg) brightness(92%) contrast(88%);
+  opacity: 0.85;
+  cursor: pointer;
+}
+
+input[type='date'].input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Actionnaires Section */
+.actionnairesSection {
+  margin-top: 1.5rem;
+}
+
+.actionnairesHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.actionnairesTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.actionnairesIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: hsl(var(--primary));
+}
+
+.btnAddActionnaire {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #ffffff;
+  background: linear-gradient(135deg, #8b3a62 0%, #a84968 100%);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(139, 58, 98, 0.3);
+}
+
+.btnAddActionnaire:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(139, 58, 98, 0.4);
+}
+
+.btnAddActionnaire:active {
+  transform: translateY(0);
+}
+
+.btnAddIcon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Actionnaire Card */
+.actionnaireCard {
+  background: #fff7f9;
+  border: 1px solid #e5d5dd;
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.actionnaireCard:hover {
+  background: #ffffff;
+  border-color: rgba(139, 58, 98, 0.3);
+}
+
+.actionnaireHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+}
+
+.actionnaireNumber {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #8b3a62;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.actionnaireNumber::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: #8b3a62;
+  border-radius: 50%;
+}
+
+.btnRemoveActionnaire {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(220, 53, 69, 0.1);
+  border: 1px solid rgba(220, 53, 69, 0.35);
+  border-radius: 8px;
+  color: #dc3545;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btnRemoveActionnaire:hover {
+  background: #dc3545;
+  color: #ffffff;
+  transform: scale(1.05);
+}
+
+.btnRemoveIcon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Participation Alert */
+.participationAlert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-radius: 10px;
+  margin-top: 1.5rem;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.participationAlert.success {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #0f766e;
+}
+
+.participationAlert.warning {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #b45309;
+}
+
+.success {}
+.warning {}
+
+.participationAlert.error {
+  background: rgba(220, 53, 69, 0.1);
+  border: 1px solid rgba(220, 53, 69, 0.3);
+  color: #dc3545;
+}
+
+.alertIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.alertContent {
+  flex: 1;
+}
+
+.alertTitle {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.alertDescription {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+/* Participation Summary */
+.participationSummary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background: rgba(139, 58, 98, 0.06);
+  border-radius: 10px;
+  margin-top: 1rem;
+  border: 1px solid rgba(139, 58, 98, 0.2);
+}
+
+.participationLabel {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #2d1b27;
+}
+
+.participationValue {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #8b3a62;
+}
+
+.participationValue.valid {
+  color: #10b981;
+}
+
+.participationValue.invalid {
+  color: #dc3545;
+}
+
+/* Empty State */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  background: #fff7f9;
+  border: 2px dashed #e5d5dd;
+  border-radius: 10px;
+  color: #6b4d5e;
+}
+
+.emptyIcon {
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.5;
+}
+
+.emptyText {
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.emptyHint {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .cardHeader {
+    padding: 1rem;
+  }
+
+  .cardContent {
+    padding: 1rem;
+  }
+
+  .cardTitle {
+    font-size: 1.1rem;
+  }
+
+  .actionnairesHeader {
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: flex-start;
+  }
+
+  .btnAddActionnaire {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .actionnaireCard {
+    padding: 1rem;
+  }
+
+  .participationSummary {
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
+  }
+}

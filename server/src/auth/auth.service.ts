@@ -61,6 +61,7 @@ export class AuthService {
           email: user.email,
           nom: user.nom,
           Prenom: user.Prenom,
+          entreprise_verified: user.entreprise_verified ?? false,
           role: user.role?.name,
           permissions: user.role?.rolePermissions.map(
             (rp: any) => rp.permission.name,
@@ -83,6 +84,7 @@ export class AuthService {
         email: session.user.email,
         nom: session.user.nom,
         Prenom: session.user.Prenom,
+        entreprise_verified: session.user.entreprise_verified ?? false,
         role: session.user.role?.name,
         permissions: session.user.role?.rolePermissions.map(
           (rp: any) => rp.permission.name,

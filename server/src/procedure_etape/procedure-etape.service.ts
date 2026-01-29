@@ -379,6 +379,9 @@ export class ProcedureEtapeService {
           include: {
             typeProcedure: true,
             typePermis: true, // This should include typePermis
+            communes: {
+              include: { commune: true },
+            },
           },
         },
       },

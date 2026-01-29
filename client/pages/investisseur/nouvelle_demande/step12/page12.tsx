@@ -12,7 +12,6 @@ import {
   CheckCircle
 } from "lucide-react";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
-import { BsSave } from "react-icons/bs";
 import axios from "axios";
 import styles from "./Paiement.module.css";
 import Navbar from "../../../navbar/Navbar";
@@ -177,12 +176,6 @@ const Paiement = () => {
     return byLabel?.id_etape ?? null;
   }, [procedureData]);
 
-  const isStepSaved = useMemo(() => {
-    if (!procedureData || !etapeIdForThisPage) return false;
-    return (procedureData.ProcedureEtape || []).some(
-      (pe) => pe.id_etape === etapeIdForThisPage && pe.statut === "TERMINEE",
-    );
-  }, [procedureData, etapeIdForThisPage]);
 
   const checkRequiredData = useCallback(() => {
     return (
@@ -232,15 +225,15 @@ const Paiement = () => {
 
   const handleSaveEtape = async () => {
     if (!idProc) {
-      setEtapeMessage("ID de procédure manquant");
-      return;
+      setEtapeMessage("ID de proc?dure manquant");
+      return false;
     }
     const etapeId = etapeIdForThisPage ?? currentStep;
     if (!etapeId) {
       setEtapeMessage(
-        "Étape introuvable. Vérifiez le page_route en base (step12/page12).",
+        "?tape introuvable. V?rifiez le page_route en base (step12/page12).",
       );
-      return;
+      return false;
     }
     setSavingEtape(true);
     setEtapeMessage(null);
@@ -248,18 +241,22 @@ const Paiement = () => {
       await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`, undefined, {
         withCredentials: true,
       });
-      setEtapeMessage("Étape enregistrée avec succès");
+      setEtapeMessage("?tape enregistr?e avec succ?s");
       setRefetchTrigger((prev) => prev + 1);
+      return true;
     } catch (err) {
-      console.error("Erreur sauvegarde étape", err);
-      setEtapeMessage("Erreur lors de l'enregistrement de l'étape");
+      console.error("Erreur sauvegarde ?tape", err);
+      setEtapeMessage("Erreur lors de l'enregistrement de l'?tape");
+      return false;
     } finally {
       setSavingEtape(false);
     }
   };
 
-  const handlePayment = () => {
+  const handlePayment = async () => {
     if (!isPayable || !selectedMethod) return;
+    const saved = await handleSaveEtape();
+    if (!saved) return;
     setDemandeInfo((prev) =>
       prev ? { ...prev, statutPaiement: "PAYE" } : prev,
     );
@@ -268,7 +265,10 @@ const Paiement = () => {
     }
   };
 
-  const handleCardRedirect = () => {
+  const handleCardRedirect = async () => {
+    if (!isPayable) return;
+    const saved = await handleSaveEtape();
+    if (!saved) return;
     if (idProc) {
       router.push(`/investisseur/nouvelle_demande/step12/paiementadahabia?id=${idProc}`);
       return;
@@ -507,24 +507,8 @@ const Paiement = () => {
                 </button>
 
                 <button
-                  className={styles.btnSave}
-                  onClick={handleSaveEtape}
-                  type="button"
-                  disabled={
-                    savingEtape ||
-                    isLoading ||
-                    !idProc ||
-                    !isPaymentFormComplete ||
-                    isStepSaved
-                  }
-                >
-                  <BsSave className={styles.btnIcon} />
-                  {savingEtape ? "Sauvegarde en cours..." : "Sauvegarder l'étape"}
-                </button>
-
-                <button
                   className={`${styles.btn} ${styles['btn-primary']}`}
-                  disabled={isPaymentDisabled || !isStepSaved}
+                  disabled={isPaymentDisabled || savingEtape}
                   onClick={handlePayment}
                   type="button"
                 >

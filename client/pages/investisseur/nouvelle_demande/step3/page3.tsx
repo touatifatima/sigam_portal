@@ -8,28 +8,15 @@ import styles from './capacities3.module.css';
 import { useSearchParams } from '@/src/hooks/useSearchParams';
 import Navbar from '../../../navbar/Navbar';
 import Sidebar from '../../../sidebar/Sidebar';
-import { BsSave } from 'react-icons/bs';
 import { useViewNavigator } from '../../../../src/hooks/useViewNavigator';
 import ProgressStepper from '../../../../components/ProgressStepper';
-import { STEP_LABELS } from '../../../../src/constants/steps';
 import { useActivateEtape } from '@/src/hooks/useActivateEtape';
-import ExpertDropdown from '@/components/ExpertDropdown';
 import { toast } from 'react-toastify';
-import { Phase, Procedure, ProcedureEtape, ProcedurePhase, StatutProcedure } from '@/src/types/procedure';
+import { Phase, Procedure, ProcedureEtape, ProcedurePhase } from '@/src/types/procedure';
 import router from 'next/router';
-
-type ExpertMinier = {
-  id_expert: number;
-  nom_expert: string;
-  num_agrement: string;
-  date_agrement: string;
-  etat_agrement: string;
-  adresse: string | null;
-  email: string | null;
-  tel_expert: string | null;
-  fax_expert: string | null;
-  specialisation: string | null;
-};
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 // Data status interface
 interface DataStatus {
@@ -42,6 +29,8 @@ interface DataStatus {
 export default function Capacites() {
   const [form, setForm] = useState({
     id_expert: 0,
+    expert_mode: '',
+    expert_autre: '',
     duree_travaux: '',
     description: '',
     financement: '',
@@ -49,6 +38,11 @@ export default function Capacites() {
     specialisation: '',
     num_agrement: '',
     etat_agrement: '',
+    date_agrement: '',
+    adresse: '',
+    email: '',
+    tel_expert: '',
+    fax_expert: '',
     date_demarrage_prevue: ''
   });
   
@@ -66,7 +60,6 @@ export default function Capacites() {
   const [currentStep, setCurrentStep] = useState(3);
   const [activatedSteps, setActivatedSteps] = useState<Set<number>>(new Set());
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
-  const [selectedExpert, setSelectedExpert] = useState<ExpertMinier | null>(null);
   const [procedureData, setProcedureData] = useState<Procedure | null>(null);
   const [currentEtape, setCurrentEtape] = useState<{ id_etape: number } | null>(null);
   const [procedureTypeId, setProcedureTypeId] = useState<number | undefined>();
@@ -228,15 +221,23 @@ export default function Capacites() {
         setCodeDemande(demande.code_demande);
         setStatutProc(demande.procedure.statut_proc);
         
+        const expert = demande.expertMinier;
         setForm({
-          id_expert: demande.expertMinier?.id_expert || 0,
+          id_expert: expert?.id_expert || 0,
+          expert_mode: expert ? 'expert_agree' : '',
+          expert_autre: '',
           duree_travaux: demande.duree_travaux_estimee || '',
           description: demande.description_travaux || '',
           financement: demande.sources_financement || '',
-          nom_expert: demande.expertMinier?.nom_expert || '',
-          specialisation: demande.expertMinier?.specialisation || '',
-          num_agrement: demande.expertMinier?.num_agrement || '',
-          etat_agrement: demande.expertMinier?.etat_agrement || '',
+          nom_expert: expert?.nom_expert || '',
+          specialisation: expert?.specialisation || '',
+          num_agrement: expert?.num_agrement || '',
+          etat_agrement: expert?.etat_agrement || '',
+          date_agrement: expert?.date_agrement ? expert.date_agrement.split('T')[0] : '',
+          adresse: expert?.adresse || '',
+          email: expert?.email || '',
+          tel_expert: expert?.tel_expert || '',
+          fax_expert: expert?.fax_expert || '',
           date_demarrage_prevue: demande.date_demarrage_prevue?.split('T')[0] || ''
         });
         
@@ -313,36 +314,52 @@ export default function Capacites() {
   }, [procedureData, etapeIdForThisPage]);
 
   const isFormComplete = useMemo(() => {
-    const hasExpert = Boolean(form.id_expert) || Boolean(selectedExpert?.id_expert);
+    const usesExpertDetails =
+      form.expert_mode === 'bureau_etudes' || form.expert_mode === 'expert_agree';
+    const expertOk = usesExpertDetails
+      ? form.nom_expert.trim() !== '' &&
+        form.adresse.trim() !== '' &&
+        form.tel_expert.trim() !== ''
+      : form.expert_mode === 'autre'
+      ? form.expert_autre.trim() !== ''
+      : false;
+
     return (
       form.duree_travaux.trim() !== '' &&
       form.description.trim() !== '' &&
       form.financement.trim() !== '' &&
       form.date_demarrage_prevue.trim() !== '' &&
-      hasExpert
+      expertOk
     );
-  }, [form, selectedExpert]);
-
-  useEffect(() => {
-    if (!isPageReady || !selectedExpert) return;
-
-    setForm(prev => ({
-      ...prev,
-      nom_expert: selectedExpert.nom_expert,
-      specialisation: selectedExpert.specialisation || '',
-      num_agrement: selectedExpert.num_agrement || '',
-      etat_agrement: selectedExpert.etat_agrement,
-      id_expert: selectedExpert.id_expert, 
-    }));
-  }, [isPageReady, selectedExpert]);
+  }, [form]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSaveEtapeFixed = async () => {
+  const handleExpertModeChange = (value: string) => {
+    setForm((prev) => ({
+      ...prev,
+      expert_mode: value,
+      id_expert: 0,
+    }));
+  };
+
+
+
+  const handleNext = async () => {
+    if (!idDemande) {
+      toast.error("ID de demande non disponible");
+      return;
+    }
+
     if (!idProc) {
-      setEtapeMessage("ID procedure introuvable !");
+      toast.error("ID de proc?dure manquant");
+      return;
+    }
+
+    if (!isFormComplete && !isStepSaved) {
+      toast.warning("Veuillez remplir tous les champs obligatoires avant de continuer.");
       return;
     }
 
@@ -350,6 +367,29 @@ export default function Capacites() {
     setEtapeMessage(null);
 
     try {
+      const usesExpertDetails =
+        form.expert_mode === 'bureau_etudes' || form.expert_mode === 'expert_agree';
+      const expertNom = usesExpertDetails ? form.nom_expert.trim() : form.expert_autre.trim();
+      await axios.put(`${apiURL}/api/capacites`, {
+        id_demande: idDemande,
+        duree_travaux: form.duree_travaux,
+        description: form.description,
+        financement: form.financement,
+        date_demarrage_prevue: form.date_demarrage_prevue,
+        id_expert: form.id_expert || null,
+        expert_mode: form.expert_mode,
+        expert_autre: form.expert_autre.trim(),
+        nom_expert: expertNom,
+        num_agrement: usesExpertDetails ? form.num_agrement.trim() : '',
+        date_agrement: usesExpertDetails ? form.date_agrement : '',
+        etat_agrement: usesExpertDetails ? form.etat_agrement.trim() : '',
+        adresse: usesExpertDetails ? form.adresse.trim() : '',
+        email: usesExpertDetails ? form.email.trim() : '',
+        tel_expert: usesExpertDetails ? form.tel_expert.trim() : '',
+        fax_expert: usesExpertDetails ? form.fax_expert.trim() : '',
+        specialisation: usesExpertDetails ? form.specialisation.trim() : '',
+      });
+
       let etapeId = 3;
 
       try {
@@ -369,58 +409,14 @@ export default function Capacites() {
       etapeId = etapeIdForThisPage ?? etapeId;
       await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`);
       setRefetchTrigger((prev) => prev + 1);
-      setEtapeMessage("étape 3 enregistrée avec succés !");
-      
-    } catch (err) {
-      console.error(err);
-      setEtapeMessage("Erreur lors de l'enregistrement de l'étape.");
-    } finally {
-      setSavingEtape(false);
-    }
-  };
-
-  const handleSaveEtape = async () => {
-    if (!idProc) {
-      setEtapeMessage("ID procedure introuvable !");
-      return;
-    }
-
-    setSavingEtape(true);
-    setEtapeMessage(null);
-
-    try {
-      await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/3`);
-      setRefetchTrigger((prev) => prev + 1);
-      setEtapeMessage("étape 3 enregistrée avec succés !");
-    } catch (err) {
-      console.error(err);
-      setEtapeMessage("Erreur lors de l'enregistrement de l'étape.");
-    } finally {
-      setSavingEtape(false);
-    }
-  };
-
-  const handleNext = async () => {
-    if (!idDemande) {
-      toast.error("ID de demande non disponible");
-      return;
-    }
-
-    try {
-      await axios.put(`${apiURL}/api/capacites`, {
-        id_demande: idDemande,
-        duree_travaux: form.duree_travaux,
-        description: form.description,
-        financement: form.financement,
-        date_demarrage_prevue: form.date_demarrage_prevue,
-        id_expert: form.id_expert,
-      });
-
-      toast.success("✅ Capacités enregistrées avec succés");
+      toast.success("Capacit?s enregistr?es avec succ?s");
       router.push(`/investisseur/nouvelle_demande/step4/page4?id=${idProc}`);
     } catch (err) {
       console.error(err);
-      toast.error("❌ Erreur lors de l'enregistrement");
+      toast.error("Erreur lors de l'enregistrement");
+      setEtapeMessage("Erreur lors de l'enregistrement de l'?tape.");
+    } finally {
+      setSavingEtape(false);
     }
   };
 
@@ -509,27 +505,6 @@ export default function Capacites() {
                 
 
 
-              {codeDemande && idDemande && (
-                <div className={styles.infoCard}>
-                  <div className={styles.infoHeader}>
-                    <h4 className={styles.infoTitle}>
-                      <FiFileText className={styles.infoIcon} />
-                      Informations Demande
-                    </h4>
-                  </div>
-                  <div className={styles.infoContent}>
-                    <div className={styles.infoRow}>
-                      <span className={styles.infoLabel}>Code Demande :</span>
-                      <span className={styles.infoValue}>{codeDemande}</span>
-                    </div>
-                    <div className={styles.infoRow}>
-                      <span className={styles.infoLabel}>ID Demande :</span>
-                      <span className={styles.infoValue}>{idDemande}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               <div className={styles.formSections}>
                 {/* Capacités Techniques Section */}
                 <section className={styles.formSection}>
@@ -604,70 +579,212 @@ export default function Capacites() {
                 <section className={styles.formSection}>
                   <div className={styles.sectionHeader}>
                     <FiUser className={styles.sectionIcon} />
-                    <h3 className={styles.sectionTitle}>Expert minier</h3>
-                  </div>
-                  
-                  <div className={styles.expertSelector}>
-                    <ExpertDropdown 
-                      onSelect={setSelectedExpert}
-                      disabled={statutProc === 'TERMINEE'}
-                      initialExpert={form.id_expert ? selectedExpert : null}
-                    />
+                    <h3 className={styles.sectionTitle}>Expert minier / Référent technique</h3>
                   </div>
 
-                  <div className={styles.formGrid}>
-                    <div className={styles.formGroup}>
-                      <label className={styles.formLabel}>Nom complet*</label>
-                      <input
-                        type="text"
-                        name="nom_expert"
-                        className={styles.formInput}
-                        onChange={handleChange}
-                        value={form.nom_expert}
-                        placeholder="Nom et prénom de l'expert"
-                        required
-                        disabled
-                      />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label className={styles.formLabel}>Specialisation*</label>
-                      <input
-                        type="text"
-                        name="specialisation"
-                        className={styles.formInput}
-                        onChange={handleChange}
-                        value={form.specialisation}
-                        placeholder="Ex: Géologue senior"
-                        required
-                        disabled
-                      />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label className={styles.formLabel}>Numéro d'aggrement</label>
-                      <input
-                        type="text"
-                        name="numero d'aggrement"
-                        className={styles.formInput}
-                        onChange={handleChange}
-                        value={form.num_agrement}
-                        placeholder="Numéro d'enregistrement"
-                        disabled
-                      />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label className={styles.formLabel}>Etat D'aggrement*</label>
-                      <input
-                        type="text"
-                        name="etat d'aggrement"
-                        className={styles.formInput}
-                        onChange={handleChange}
-                        value={form.etat_agrement}
-                        placeholder="Organisme d'affiliation"
-                        required
-                        disabled
-                      />
-                    </div>
+                  <div className={styles.expertOptions}>
+                    <RadioGroup
+                      value={form.expert_mode}
+                      onValueChange={handleExpertModeChange}
+                      className={styles.expertRadioGroup}
+                    >
+                      <div className={styles.expertOption}>
+                        <RadioGroupItem
+                          value="bureau_etudes"
+                          id="expert-bureau"
+                          className={styles.expertRadioItem}
+                          disabled={statutProc === 'TERMINEE'}
+                        />
+                        <Label htmlFor="expert-bureau" className={styles.expertOptionLabel}>
+                          Un bureau d&apos;études / un bureau d&apos;expertises agréé
+                        </Label>
+                      </div>
+                      <div className={styles.expertOption}>
+                        <RadioGroupItem
+                          value="expert_agree"
+                          id="expert-agree"
+                          className={styles.expertRadioItem}
+                          disabled={statutProc === 'TERMINEE'}
+                        />
+                        <Label htmlFor="expert-agree" className={styles.expertOptionLabel}>
+                          Un expert en études géologiques et minières agréé
+                        </Label>
+                      </div>
+                      <div className={styles.expertOption}>
+                        <RadioGroupItem
+                          value="autre"
+                          id="expert-autre"
+                          className={styles.expertRadioItem}
+                          disabled={statutProc === 'TERMINEE'}
+                        />
+                        <Label htmlFor="expert-autre" className={styles.expertOptionLabel}>
+                          Autre (préciser)
+                        </Label>
+                      </div>
+                    </RadioGroup>
                   </div>
+
+                  {form.expert_mode === 'autre' && (
+                    <div className={`${styles.formGroup} ${styles.required}`}>
+                      <Label htmlFor="expert_autre" className={styles.formLabel}>
+                        Autre (préciser)
+                      </Label>
+                      <Input
+                        id="expert_autre"
+                        name="expert_autre"
+                        className={styles.formInput}
+                        value={form.expert_autre}
+                        onChange={handleChange}
+                        placeholder="Précisez le type d'expert ou bureau"
+                        disabled={statutProc === 'TERMINEE'}
+                        required
+                      />
+                    </div>
+                  )}
+
+                  {(form.expert_mode === 'bureau_etudes' || form.expert_mode === 'expert_agree') && (
+                    <div className={styles.expertFields}>
+                      <div className={styles.formGrid}>
+                        <div className={`${styles.formGroup} ${styles.required}`}>
+                          <Label htmlFor="nom_expert" className={styles.formLabel}>
+                            Nom / Raison sociale
+                          </Label>
+                          <Input
+                            id="nom_expert"
+                            type="text"
+                            name="nom_expert"
+                            className={styles.formInput}
+                            onChange={handleChange}
+                            value={form.nom_expert}
+                            placeholder="Nom de l'expert ou raison sociale"
+                            required
+                            disabled={statutProc === 'TERMINEE'}
+                          />
+                        </div>
+                        <div className={styles.formGroup}>
+                          <Label htmlFor="num_agrement" className={styles.formLabel}>
+                            Numéro d&apos;agrément
+                          </Label>
+                          <Input
+                            id="num_agrement"
+                            type="text"
+                            name="num_agrement"
+                            className={styles.formInput}
+                            onChange={handleChange}
+                            value={form.num_agrement}
+                            placeholder="Numéro d'agrément"
+                            disabled={statutProc === 'TERMINEE'}
+                          />
+                        </div>
+                        <div className={styles.formGroup}>
+                          <Label htmlFor="specialisation" className={styles.formLabel}>
+                            Domaine d&apos;agrément / Spécialisation
+                          </Label>
+                          <Input
+                            id="specialisation"
+                            type="text"
+                            name="specialisation"
+                            className={styles.formInput}
+                            onChange={handleChange}
+                            value={form.specialisation}
+                            placeholder="Domaine ou spécialisation"
+                            disabled={statutProc === 'TERMINEE'}
+                          />
+                        </div>
+                        <div className={`${styles.formGroup} ${styles.required}`}>
+                          <Label htmlFor="adresse" className={styles.formLabel}>
+                            Adresse
+                          </Label>
+                          <Input
+                            id="adresse"
+                            type="text"
+                            name="adresse"
+                            className={styles.formInput}
+                            onChange={handleChange}
+                            value={form.adresse}
+                            placeholder="Adresse complète"
+                            required
+                            disabled={statutProc === 'TERMINEE'}
+                          />
+                        </div>
+                        <div className={`${styles.formGroup} ${styles.required}`}>
+                          <Label htmlFor="tel_expert" className={styles.formLabel}>
+                            Téléphone
+                          </Label>
+                          <Input
+                            id="tel_expert"
+                            type="tel"
+                            name="tel_expert"
+                            className={styles.formInput}
+                            onChange={handleChange}
+                            value={form.tel_expert}
+                            placeholder="+213..."
+                            required
+                            disabled={statutProc === 'TERMINEE'}
+                          />
+                        </div>
+                        <div className={styles.formGroup}>
+                          <Label htmlFor="email" className={styles.formLabel}>
+                            E-mail
+                          </Label>
+                          <Input
+                            id="email"
+                            type="email"
+                            name="email"
+                            className={styles.formInput}
+                            onChange={handleChange}
+                            value={form.email}
+                            placeholder="contact@expert.com"
+                            disabled={statutProc === 'TERMINEE'}
+                          />
+                        </div>
+                        <div className={styles.formGroup}>
+                          <Label htmlFor="fax_expert" className={styles.formLabel}>
+                            Fax
+                          </Label>
+                          <Input
+                            id="fax_expert"
+                            type="text"
+                            name="fax_expert"
+                            className={styles.formInput}
+                            onChange={handleChange}
+                            value={form.fax_expert}
+                            placeholder="Fax"
+                            disabled={statutProc === 'TERMINEE'}
+                          />
+                        </div>
+                        <div className={styles.formGroup}>
+                          <Label htmlFor="etat_agrement" className={styles.formLabel}>
+                            État d&apos;agrément
+                          </Label>
+                          <Input
+                            id="etat_agrement"
+                            type="text"
+                            name="etat_agrement"
+                            className={styles.formInput}
+                            onChange={handleChange}
+                            value={form.etat_agrement}
+                            placeholder="État ou organisme"
+                            disabled={statutProc === 'TERMINEE'}
+                          />
+                        </div>
+                        <div className={styles.formGroup}>
+                          <Label htmlFor="date_agrement" className={styles.formLabel}>
+                            Date d&apos;agrément
+                          </Label>
+                          <Input
+                            id="date_agrement"
+                            type="date"
+                            name="date_agrement"
+                            className={styles.formInput}
+                            onChange={handleChange}
+                            value={form.date_agrement}
+                            disabled={statutProc === 'TERMINEE'}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </section>
               </div>
 
@@ -675,29 +792,15 @@ export default function Capacites() {
                 <button
                   onClick={handleBack}
                   className={styles.btnPrevious}
-                  disabled={isLoading || !isStepSaved}
+                  disabled={isLoading || savingEtape}
                 >
                   <FiChevronLeft className={styles.btnIcon} />
                   Précédent
                 </button>
-                
-                <button
-                  className={styles.btnSave}
-                  onClick={handleSaveEtapeFixed}
-                  disabled={
-                    savingEtape ||
-                    statutProc === 'TERMINEE' ||
-                    !statutProc ||
-                    !isFormComplete ||
-                    isStepSaved
-                  }
-                >
-                  <BsSave className={styles.btnIcon} /> {savingEtape ? "Sauvegarde en cours..." : "Sauvegarder l'étape"}
-                </button>
                 <button
                   onClick={handleNext}
                   className={styles.btnNext}
-                  disabled={isLoading}
+                  disabled={isLoading || savingEtape || (!isFormComplete && !isStepSaved)}
                 >
                   Suivant
                   <FiChevronRight className={styles.btnIcon} />

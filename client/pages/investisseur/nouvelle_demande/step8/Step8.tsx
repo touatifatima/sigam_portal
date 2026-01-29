@@ -6,14 +6,13 @@ import axios from 'axios';
 import dynamic from 'next/dynamic';
 import Sidebar from '@/pages/sidebar/Sidebar';
 import Navbar from '@/pages/navbar/Navbar';
-import { FiChevronLeft, FiChevronRight, FiSave } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { useViewNavigator } from '@/src/hooks/useViewNavigator';
 import styles from './permis8.module.css'
 import { useActivateEtape } from '@/src/hooks/useActivateEtape';
 import ProgressStepper from '@/components/ProgressStepper';
 import { STEP_LABELS } from '@/src/constants/steps';
 import router from 'next/router';
-import { BsSave } from 'react-icons/bs';
 import { Phase, Procedure, ProcedureEtape, ProcedurePhase, StatutProcedure } from '@/src/types/procedure';
 const PermisDesigner = dynamic(() => import('../../../../components/PermisDesigner'), {
   ssr: false,
@@ -52,47 +51,6 @@ const [hasActivatedStep8, setHasActivatedStep8] = useState(false);
 const [activatedSteps, setActivatedSteps] = useState<Set<number>>(new Set());
   const [isPageReady, setIsPageReady] = useState(false);
 
-  const handleSaveEtapeFixed = async () => {
-    if (!idProc) {
-      setEtapeMessage("ID procedure introuvable !");
-      return;
-    }
-
-    if (statutProc === 'TERMINEE') {
-      setEtapeMessage("Procédure deja terminée.");
-      return;
-    }
-
-    setSavingEtape(true);
-    setEtapeMessage(null);
-
-    try {
-      let etapeId = 8;
-
-      try {
-        if (procedureData?.ProcedurePhase) {
-          const pathname = window.location.pathname.replace(/^\/+/, '');
-          const phasesList = (procedureData.ProcedurePhase || []) as ProcedurePhase[];
-          const allEtapes = phasesList.flatMap(pp => pp.phase?.etapes ?? []);
-          const match = allEtapes.find((e: any) => e.page_route === pathname);
-          if (match?.id_etape != null) {
-            etapeId = match.id_etape;
-          }
-        }
-      } catch {
-        // fallback to default etapeId
-      }
-
-      await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`);
-      setEtapeMessage("étape 8 enregistrée avec succés !");
-      
-    } catch (err) {
-      console.error(err);
-      setEtapeMessage("Erreur lors de l'enregistrement de l'étape.");
-    } finally {
-      setSavingEtape(false);
-    }
-  };
 
   // If no idProc is provided, stop loading and show an error instead of spinning forever
   useEffect(() => {
@@ -179,30 +137,6 @@ const phases: Phase[] = procedureData?.ProcedurePhase
       });
   }, [idProc]);
 
-  const handleSaveEtape = async () => {
-    if (!idProc) {
-      setEtapeMessage("ID procedure introuvable !");
-      return;
-    }
-
-    if (statutProc === 'TERMINEE') {
-      setEtapeMessage("Procédure déjà terminée.");
-      return;
-    }
-
-    setSavingEtape(true);
-    setEtapeMessage(null);
-
-    try {
-      await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/8`);
-      setEtapeMessage("étape 8 enregistrée avec succés !");
-    } catch (err) {
-      console.error(err);
-      setEtapeMessage("Erreur lors de l'enregistrement de l'étape.");
-    } finally {
-      setSavingEtape(false);
-    }
-  };
   
   useEffect(() => {
     const fetchData = async () => {
@@ -233,8 +167,46 @@ const phases: Phase[] = procedureData?.ProcedurePhase
     }
   };*/
 
-  const handleNext = () => {
-    router.push(`/investisseur/nouvelle_demande/step9/page9?id=${idProc}`)
+  const handleNext = async () => {
+    if (!idProc) {
+      setEtapeMessage("ID de proc?dure introuvable");
+      return;
+    }
+
+    if (statutProc === 'TERMINEE' || !statutProc) {
+      setEtapeMessage("Proc?dure d?j? termin?e.");
+      return;
+    }
+
+    setSavingEtape(true);
+    setEtapeMessage(null);
+
+    try {
+      let etapeId = 8;
+
+      try {
+        if (procedureData?.ProcedurePhase) {
+          const pathname = window.location.pathname.replace(/^\/+/, '');
+          const phasesList = (procedureData.ProcedurePhase || []) as ProcedurePhase[];
+          const allEtapes = phasesList.flatMap(pp => pp.phase?.etapes ?? []);
+          const match = allEtapes.find((e: any) => e.page_route === pathname);
+          if (match?.id_etape != null) {
+            etapeId = match.id_etape;
+          }
+        }
+      } catch {
+        // fallback to default etapeId
+      }
+
+      await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`);
+      setEtapeMessage("?tape 8 enregistr?e avec succ?s !");
+      router.push(`/investisseur/nouvelle_demande/step9/page9?id=${idProc}`);
+    } catch (err) {
+      console.error(err);
+      setEtapeMessage("Erreur lors de l'enregistrement de l'?tape.");
+    } finally {
+      setSavingEtape(false);
+    }
   };
 
   const handlePrevious = () => {
@@ -382,18 +354,9 @@ const handleSaveTemplate = async (templateData: any): Promise<void> => {
                 </button>
 
                 <button
-                  className={styles['btnSave']}
-                  onClick={handleSaveEtapeFixed}
-                  disabled={savingEtape || isSubmitting || statutProc === 'TERMINEE' || !statutProc}
-                >
-                  <BsSave className={styles['btnIcon']} />
-                  {savingEtape ? "Sauvegarde en cours..." : "Sauvegarder l'étape"}
-                </button>
-
-                <button
                   className={`${styles['btn']} ${styles['btn-primary']}`}
                   onClick={handleNext}
-                  disabled={isLoading || isSubmitting}
+                  disabled={isLoading || isSubmitting || savingEtape || statutProc === 'TERMINEE' || !statutProc}
                 >
                   {isLoading || isSubmitting ? (
                     <span className={styles['btn-loading']}>

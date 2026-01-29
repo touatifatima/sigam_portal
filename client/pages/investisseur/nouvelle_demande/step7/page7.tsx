@@ -4,7 +4,7 @@ import axios from 'axios';
 import styles from './cd7.module.css';
 import { useSearchParams } from '@/src/hooks/useSearchParams';
 import router from 'next/router';
-import { FiChevronLeft, FiChevronRight, FiSave, FiDownload } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiDownload } from 'react-icons/fi';
 import { STEP_LABELS } from '@/src/constants/steps';
 import Navbar from '@/pages/navbar/Navbar';
 import Sidebar from '@/pages/sidebar/Sidebar';
@@ -373,30 +373,27 @@ console.log('Procedure fetched:', detenteur?.data);
       setLoading(false);
     }
   };
+  const handleNext = async () => {
+    if (!idProc) {
+      setEtapeMessage("ID procedure introuvable !");
+      return;
+    }
 
-  const handleSaveEtape = async () => {
-  if (!idProc) {
-    setEtapeMessage("ID procedure introuvable !");
-    return;
-  }
+    setSavingEtape(true);
+    setEtapeMessage(null);
 
-  setSavingEtape(true);
-  setEtapeMessage(null);
-
-  try {
-    await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/7`);
-    setEtapeMessage("étape 7 enregistrée avec succés !");
-  } catch (err) {
-    console.error(err);
-    setEtapeMessage("Erreur lors de l'enregistrement de l'étape.");
-  } finally {
-    setSavingEtape(false);
-  }
-};
-
-  const handleNext = () => {
-    router.push(`/investisseur/nouvelle_demande/step8/page8?id=${idProc}`)
+    try {
+      await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/7`);
+      setEtapeMessage("?tape 7 enregistr?e avec succ?s !");
+      router.push(`/investisseur/nouvelle_demande/step8/page8?id=${idProc}`);
+    } catch (err) {
+      console.error(err);
+      setEtapeMessage("Erreur lors de l'enregistrement de l'?tape.");
+    } finally {
+      setSavingEtape(false);
+    }
   };
+
 
   const handlePrevious = () => {
     router.push(`/investisseur/nouvelle_demande/step6/page6?id=${idProc}`)
@@ -676,18 +673,10 @@ console.log('Procedure fetched:', detenteur?.data);
                 Précédent
               </button>
               
-              <button
-                onClick={handleSaveEtape}
-                className={`${styles.button} ${styles.saveButton}`}
-                disabled={saving}
-              >
-                <FiSave className={styles.buttonIcon} />
-                {saving ? 'Enregistrement...' : 'Sauvegarder'}
-              </button>
-              
               <button 
                 onClick={handleNext}
                 className={`${styles.button} ${styles.primaryButton}`}
+                disabled={savingEtape}
               >
                 Suivant
                 <FiChevronRight className={styles.buttonIcon} />

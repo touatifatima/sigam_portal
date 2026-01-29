@@ -91,6 +91,7 @@ export class SocieteService {
         telephone: data.tel,
         email: data.email,
         fax: data.fax,
+        site_web: data.site_web ?? '',
         adresse_siege: data.adresse,
         date_constitution: parsedDateConstitution,
         // Link to StatutJuridique via join table (many-to-many)
@@ -133,6 +134,9 @@ export class SocieteService {
       if (nat) nationalite = nat.libelle;
     }
 
+    const pouvoirsValue =
+      data.pouvoirs === undefined ? undefined : data.pouvoirs || null;
+
     const updatedPersonne = await this.prisma.personnePhysiquePortail.update({
       where: { id_personne: personne.id_personne },
       data: {
@@ -144,6 +148,7 @@ export class SocieteService {
         email: data.email,
         fax: data.fax,
         qualification: data.qualite,
+        pouvoirs: pouvoirsValue,
         lieu_naissance: data.lieu_naissance,
         ...(data.id_pays && {
           pays: { connect: { id_pays: parseInt(data.id_pays, 10) } },
@@ -177,6 +182,9 @@ export class SocieteService {
       throw new HttpException('Personne non trouvée', HttpStatus.NOT_FOUND);
     }
 
+    const pouvoirsValue =
+      data.pouvoirs === undefined ? undefined : data.pouvoirs || null;
+
     const updatedPersonne = await this.prisma.personnePhysiquePortail.update({
       where: { id_personne },
       data: {
@@ -188,6 +196,7 @@ export class SocieteService {
         email: data.email,
         fax: data.fax,
         qualification: data.qualite,
+        pouvoirs: pouvoirsValue,
         lieu_naissance: data.lieu_naissance,
         num_carte_identite: data.nin ?? personne.num_carte_identite,
         ...(data.id_pays && {
@@ -328,23 +337,58 @@ export class SocieteService {
   async createPersonne(data: any): Promise<PersonnePhysiquePortail> {
     let existing: PersonnePhysiquePortail | null = null;
     if (data.nin) {
-      existing = await this.prisma.personnePhysiquePortail.findFirst({
-        where: {
-          nomFR: data.nom,
-          prenomFR: data.prenom,
-          num_carte_identite: data.nin,
-        },
+      existing = await this.prisma.personnePhysiquePortail.findUnique({
+        where: { num_carte_identite: data.nin },
       });
     }
 
     if (existing) {
-      throw new HttpException(
-        'Cette Personne Physique existe déjà.',
-        HttpStatus.CONFLICT,
-      );
+      const updateData: any = {};
+      const setIfString = (key: string, value?: string) => {
+        if (typeof value === 'string' && value.trim() !== '') {
+          updateData[key] = value;
+        }
+      };
+
+      setIfString('nomFR', data.nom);
+      setIfString('prenomFR', data.prenom);
+      setIfString('nomAR', data.nom_ar);
+      setIfString('prenomAR', data.prenom_ar);
+      setIfString('telephone', data.tel);
+      setIfString('email', data.email);
+      setIfString('fax', data.fax);
+      setIfString('qualification', data.qualite);
+      setIfString('adresse_domicile', data.adresse_domicile);
+      setIfString('lieu_naissance', data.lieu_naissance);
+      setIfString('lieu_juridique_soc', data.lieu_juridique_soc);
+      setIfString('ref_professionnelles', data.ref_professionnelles);
+
+      if (data.pouvoirs !== undefined) {
+        updateData.pouvoirs = data.pouvoirs || null;
+      }
+      if (data.date_naissance) {
+        updateData.date_naissance = new Date(data.date_naissance);
+      }
+      if (data.id_pays) {
+        updateData.pays = { connect: { id_pays: parseInt(data.id_pays, 10) } };
+      }
+      if (data.id_nationalite) {
+        updateData.nationaliteRef = {
+          connect: { id_nationalite: parseInt(data.id_nationalite, 10) },
+        };
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        return existing;
+      }
+
+      return this.prisma.personnePhysiquePortail.update({
+        where: { id_personne: existing.id_personne },
+        data: updateData,
+      });
     }
 
-    // Determine nationality label from selected nationalité
+    // Determine nationality label from selected nationalit?
     let nationalite = '';
     if (data.id_nationalite) {
       const nat = await this.prisma.nationalite.findUnique({
@@ -362,6 +406,7 @@ export class SocieteService {
       email: data.email ?? '',
       fax: data.fax ?? '',
       qualification: data.qualite,
+      pouvoirs: data.pouvoirs || null,
       ...(data.nin && { num_carte_identite: data.nin }),
       adresse_domicile: data.adresse_domicile ?? '',
       date_naissance: data.date_naissance
@@ -586,6 +631,7 @@ export class SocieteService {
       telephone: data.tel,
       email: data.email,
       fax: data.fax,
+      site_web: data.site_web,
       adresse_siege: data.adresse,
       ...(data.id_pays && {
         pays: { connect: { id_pays: parseInt(data.id_pays, 10) } },
@@ -1122,6 +1168,266 @@ export class SocieteService {
       ...row,
       id_actionnaire: row.id_fonctionDetent,
     }));
+  }
+
+  private normalizeLabel(value?: string | null): string {
+    return (value ?? '').toString().trim();
+  }
+
+  private async resolvePaysId(label?: string | null): Promise<number | null> {
+    const value = this.normalizeLabel(label);
+    if (!value) return null;
+    const pays = await this.prisma.pays.findFirst({
+      where: { nom_pays: { equals: value, mode: 'insensitive' } },
+    });
+    return pays?.id_pays ?? null;
+  }
+
+  private async resolveNationaliteId(label?: string | null): Promise<number | null> {
+    const value = this.normalizeLabel(label);
+    if (!value) return null;
+    const nat = await this.prisma.nationalite.findFirst({
+      where: { libelle: { equals: value, mode: 'insensitive' } },
+    });
+    return nat?.id_nationalite ?? null;
+  }
+
+  private async resolveStatutId(label?: string | null): Promise<number | null> {
+    const value = this.normalizeLabel(label);
+    if (!value) return null;
+    const statut = await this.prisma.statutJuridiquePortail.findFirst({
+      where: {
+        OR: [
+          { code_statut: { equals: value, mode: 'insensitive' } },
+          { statut_fr: { equals: value, mode: 'insensitive' } },
+          { statut_ar: { equals: value, mode: 'insensitive' } },
+        ],
+      },
+    });
+    return statut?.id_statutJuridique ?? null;
+  }
+
+  async saveInvestisseurIdentification(payload: any, userId?: number | null) {
+    const data = payload?.identification ?? payload;
+    if (!data) {
+      throw new HttpException('Missing identification payload', HttpStatus.BAD_REQUEST);
+    }
+
+    const nomSocieteFr = this.normalizeLabel(data.nomSocieteFr);
+    const nomSocieteAr = this.normalizeLabel(data.nomSocieteAr);
+    if (!nomSocieteFr) {
+      throw new HttpException('nomSocieteFr is required', HttpStatus.BAD_REQUEST);
+    }
+
+    const statutId = await this.resolveStatutId(data.statutJuridique);
+    if (!statutId) {
+      throw new HttpException('statutJuridique not found', HttpStatus.BAD_REQUEST);
+    }
+
+    const paysId = await this.resolvePaysId(data.pays);
+    const nationaliteId = await this.resolveNationaliteId(data.nationalite);
+
+    const rawDateConst =
+      data.dateConstitution || data.date_constitution || data.dateEnregistrement;
+    const dateConstitution = rawDateConst ? new Date(rawDateConst) : null;
+    if (dateConstitution && Number.isNaN(dateConstitution.getTime())) {
+      throw new HttpException('Invalid dateConstitution', HttpStatus.BAD_REQUEST);
+    }
+
+    const numeroRC = this.normalizeLabel(data.numeroRC);
+    const numeroNIF = this.normalizeLabel(data.numeroNIF);
+    const numeroNIS = this.normalizeLabel(data.numeroNIS);
+
+    let detenteur: DetenteurMoralePortail | null = null;
+
+    const registreFilters: Prisma.RegistreCommercePortailWhereInput[] = [
+      ...(numeroRC ? [{ numero_rc: numeroRC }] : []),
+      ...(numeroNIF ? [{ nif: numeroNIF }] : []),
+      ...(numeroNIS ? [{ nis: numeroNIS }] : []),
+    ];
+
+    if (registreFilters.length > 0) {
+      const registreMatch = await this.prisma.registreCommercePortail.findFirst({
+        where: { OR: registreFilters },
+        include: { detenteur: true },
+      });
+      detenteur = registreMatch?.detenteur ?? null;
+    }
+
+    if (!detenteur) {
+      detenteur = await this.prisma.detenteurMoralePortail.findFirst({
+        where: {
+          OR: [
+            ...(nomSocieteFr ? [{ nom_societeFR: nomSocieteFr }] : []),
+            ...(nomSocieteAr ? [{ nom_societeAR: nomSocieteAr }] : []),
+          ],
+        },
+      });
+    }
+
+    const detenteurPayload: any = {
+      nom_fr: nomSocieteFr,
+      nom_ar: nomSocieteAr || detenteur?.nom_societeAR || '',
+      statut_id: String(statutId),
+      tel: data.telephone ?? '',
+      email: data.email ?? '',
+      fax: data.numeroFax ?? '',
+      site_web: data.siteWeb ?? '',
+      adresse: data.adresseComplete ?? '',
+    };
+
+    if (paysId) detenteurPayload.id_pays = String(paysId);
+    if (nationaliteId) detenteurPayload.id_nationalite = String(nationaliteId);
+    if (dateConstitution) {
+      detenteurPayload.date_constitution = dateConstitution.toISOString();
+    }
+
+    if (detenteur) {
+      detenteur = await this.updateDetenteur(detenteur.id_detenteur, detenteurPayload);
+    } else {
+      const createPayload = {
+        ...detenteurPayload,
+        date_constitution: (dateConstitution ?? new Date()).toISOString(),
+      };
+      detenteur = await this.createDetenteur(createPayload);
+    }
+
+    if (userId && detenteur?.id_detenteur) {
+      await this.prisma.utilisateurPortail.update({
+        where: { id: userId },
+        data: {
+          entreprise_verified: true,
+          detenteurId: detenteur.id_detenteur,
+        },
+      });
+    }
+
+    let representant: PersonnePhysiquePortail | null = null;
+    if (data.representantNomFr || data.representantPrenomFr) {
+      const repPaysId = await this.resolvePaysId(data.representantPays);
+      const repNationaliteId = await this.resolveNationaliteId(data.representantNationalite);
+      const repTaux = parseFloat(data.representantTauxParticipation || '0') || 0;
+
+      representant = await this.createPersonne({
+        nom: data.representantNomFr ?? '',
+        prenom: data.representantPrenomFr ?? '',
+        nom_ar: data.representantNomAr ?? '',
+        prenom_ar: data.representantPrenomAr ?? '',
+        tel: data.representantTelephone ?? '',
+        email: data.representantEmail ?? '',
+        fax: data.representantFax ?? '',
+        qualite: data.representantQualite ?? '',
+        nin: data.representantNIN ?? undefined,
+        id_pays: repPaysId ? String(repPaysId) : undefined,
+        id_nationalite: repNationaliteId ? String(repNationaliteId) : undefined,
+        taux_participation: data.representantTauxParticipation ?? '0',
+      });
+
+      await this.linkFonction(
+        representant.id_personne,
+        detenteur.id_detenteur,
+        EnumTypeFonction.Representant,
+        'Actif',
+        repTaux,
+      );
+    }
+
+    let registre: RegistreCommercePortail | null = null;
+    const hasRegistre =
+      data.numeroRC &&
+      data.dateEnregistrement &&
+      data.capitalSocial &&
+      data.numeroNIS &&
+      data.numeroNIF;
+    if (hasRegistre) {
+      const registrePayload = {
+        numero_rc: data.numeroRC,
+        date_enregistrement: data.dateEnregistrement,
+        capital_social: data.capitalSocial,
+        nis: data.numeroNIS,
+        nif: data.numeroNIF,
+        adresse_legale: data.adresseSiege ?? '',
+      };
+      const existingRegistre = await this.prisma.registreCommercePortail.findFirst({
+        where: { id_detenteur: detenteur.id_detenteur },
+      });
+
+      if (existingRegistre) {
+        registre = await this.updateRegistre(detenteur.id_detenteur, registrePayload);
+      } else {
+        registre = await this.createRegistre(detenteur.id_detenteur, registrePayload);
+      }
+    }
+
+    const actionnairesInput = Array.isArray(data.actionnaires) ? data.actionnaires : [];
+    const mappedActionnaires: CreateActionnaireDto[] = [];
+
+    for (const actionnaire of actionnairesInput) {
+      const nom = this.normalizeLabel(actionnaire?.nom);
+      const prenom = this.normalizeLabel(actionnaire?.prenom);
+      const numeroIdentite = this.normalizeLabel(actionnaire?.numeroIdentite);
+      if (!nom || !prenom || !numeroIdentite) {
+        continue;
+      }
+
+      const actionPaysId = await this.resolvePaysId(actionnaire?.pays);
+      const actionNatId = await this.resolveNationaliteId(actionnaire?.nationalite);
+      if (!actionPaysId || !actionNatId) {
+        continue;
+      }
+
+      mappedActionnaires.push({
+        nom,
+        prenom,
+        id_pays: actionPaysId,
+        id_nationalite: actionNatId,
+        qualification: actionnaire?.qualification ?? '',
+        numero_carte: numeroIdentite,
+        taux_participation: String(actionnaire?.tauxParticipation ?? ''),
+        lieu_naissance: actionnaire?.lieuNaissance ?? '',
+      });
+    }
+
+    let actionnaires: ActionnaireResult[] = [];
+    if (mappedActionnaires.length > 0) {
+      actionnaires = await this.updateActionnaires(detenteur.id_detenteur, mappedActionnaires);
+    }
+
+    return {
+      detenteur,
+      representant,
+      registre,
+      actionnaires,
+      isEntrepriseVerified: true,
+    };
+  }
+
+  async getEntrepriseProfile(userId: number) {
+    const user = await this.prisma.utilisateurPortail.findUnique({
+      where: { id: userId },
+      select: {
+        entreprise_verified: true,
+        detenteurId: true,
+      },
+    });
+
+    if (!user?.detenteurId) {
+      throw new HttpException('Entreprise non trouvee', HttpStatus.NOT_FOUND);
+    }
+
+    const detenteurId = user.detenteurId;
+    const detenteur = await this.getDetenteurById(detenteurId);
+    const representant = await this.getRepresentantLegal(detenteurId);
+    const registres = await this.getRegistreCommerce(detenteurId);
+    const actionnaires = await this.getActionnaires(detenteurId);
+
+    return {
+      entreprise_verified: user.entreprise_verified,
+      detenteur,
+      representant,
+      registre: registres?.[0] ?? null,
+      actionnaires,
+    };
   }
 
   async associateDetenteurWithDemande(

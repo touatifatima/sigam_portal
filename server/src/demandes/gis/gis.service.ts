@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Pool, PoolClient } from 'pg';
+import * as http from 'http';
+import * as https from 'https';
 import proj4 = require('proj4');
 
 export type GisPointInput = {
@@ -21,6 +23,7 @@ export type GisOverlapLayersSelection = Partial<Record<GisOverlapLayerKey, boole
 
 export type GisPerimeterMeta = {
   sigam_permis_id?: number | null;
+  sigam_demande_id?: number | null;
   code_demande?: string | null;
   detenteur?: string | null;
   permis_code?: string | null;
@@ -37,20 +40,20 @@ export class GisService {
 
   // Nord Sahara -> WGS84 7-parameter transformation (JO 30/11/2022).
   // Published parameters are WGS84 -> Nord Sahara; signs inverted for +towgs84.
- private static readonly NORD_SAHARA_TOWGS84 = {
-    dx: 0,
-    dy: 0,
-    dz: 0,
-    rx: 0,
-    ry: 0,
-    rz: 0,
-    ds: 0,
-  }; 
+  private static readonly NORD_SAHARA_TOWGS84 = {
+    dx: -267.407,
+    dy: -47.068,
+    dz: 446.357,
+    rx: -0.179423,
+    ry: 5.577661,
+    rz: -1.277620,
+    ds: 1.204866,
+  };
 
   constructor() {
     const connectionString =
       process.env.GIS_DATABASE_URL ||
-      'postgresql://postgres:dev12345@localhost:5433/sig_gis';
+      'postgresql://postgres:ANAM2025@localhost:5433/sig_gis';
 
     const wantsSsl =
       /[?&]sslmode=require/i.test(connectionString) ||
@@ -115,6 +118,132 @@ export class GisService {
   private getUtmOffset(zone: number): { x: number; y: number } {
     // Optional empirical offsets to align with client display (meters), per fuseau.
     return { x: 0, y: 0 };
+  }
+
+  private async postFormUrlEncoded(
+    urlString: string,
+    body: string,
+    allowInsecure: boolean,
+  ): Promise<{ status: number; ok: boolean; data: any }> {
+    const url = new URL(urlString);
+    const isHttps = url.protocol === 'https:';
+    const transport = isHttps ? https : http;
+    const headers = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Length': Buffer.byteLength(body),
+    };
+    const agent = isHttps
+      ? new https.Agent({ rejectUnauthorized: !allowInsecure })
+      : undefined;
+    const options: any = {
+      method: 'POST',
+      hostname: url.hostname,
+      port: url.port ? Number(url.port) : isHttps ? 443 : 80,
+      path: `${url.pathname}${url.search}`,
+      headers,
+      agent,
+    };
+
+    return new Promise((resolve, reject) => {
+      const req = transport.request(options, (res) => {
+        let raw = '';
+        res.on('data', (chunk) => {
+          raw += chunk;
+        });
+        res.on('end', () => {
+          let data: any = null;
+          try {
+            data = raw ? JSON.parse(raw) : null;
+          } catch {
+            data = raw;
+          }
+          const status = res.statusCode || 0;
+          resolve({
+            status,
+            ok: status >= 200 && status < 300,
+            data,
+          });
+        });
+      });
+      req.on('error', reject);
+      req.write(body);
+      req.end();
+    });
+  }
+
+  async getArcgisToken(params?: { referer?: string | null }) {
+    const portalBase = String(
+      process.env.ARCGIS_PORTAL_URL || 'https://sig.anam.dz/portal',
+    ).replace(/\/+$/, '');
+    const username =
+      process.env.ARCGIS_USERNAME ||
+      process.env.ARCGIS_USER ||
+      process.env.ARCGIS_LOGIN;
+    const password =
+      process.env.ARCGIS_PASSWORD ||
+      process.env.ARCGIS_PASS ||
+      process.env.ARCGIS_SECRET;
+
+    if (!username || !password) {
+      this.logger.warn('ArcGIS token request skipped: credentials missing');
+      return null;
+    }
+
+    const clientMode = String(process.env.ARCGIS_TOKEN_CLIENT || 'requestip')
+      .trim()
+      .toLowerCase();
+    const referer = String(
+      params?.referer || process.env.ARCGIS_TOKEN_REFERER || '',
+    ).trim();
+    const expirationMinutes = (() => {
+      const raw = process.env.ARCGIS_TOKEN_EXP_MINUTES || '120';
+      const n = Number(raw);
+      return Number.isFinite(n) && n > 0 ? Math.floor(n) : 120;
+    })();
+
+    const body = new URLSearchParams();
+    body.set('username', String(username));
+    body.set('password', String(password));
+    body.set('f', 'json');
+    body.set('expiration', String(expirationMinutes));
+    if (clientMode === 'referer' && referer) {
+      body.set('client', 'referer');
+      body.set('referer', referer);
+    } else {
+      body.set('client', 'requestip');
+    }
+
+    const tokenUrl = `${portalBase}/sharing/rest/generateToken`;
+    const allowInsecure =
+      String(process.env.ARCGIS_TOKEN_INSECURE || '').trim().toLowerCase() ===
+      'true';
+    try {
+      const result = await this.postFormUrlEncoded(
+        tokenUrl,
+        body.toString(),
+        allowInsecure,
+      );
+      const data = result.data;
+      if (!result.ok || !data?.token) {
+        this.logger.warn(
+          `ArcGIS token request failed (${result.status})`,
+          data?.error || data,
+        );
+        return null;
+      }
+      const expires = Number(data.expires || 0);
+      return {
+        token: data.token,
+        expires: Number.isFinite(expires) && expires > 0
+          ? expires
+          : Date.now() + expirationMinutes * 60 * 1000,
+        server: `${portalBase}/sharing/rest`,
+        portalUrl: portalBase,
+      };
+    } catch (err) {
+      this.logger.warn('ArcGIS token request failed', err as Error);
+      return null;
+    }
   }
 
   private toWgs84(point: GisPointInput): [number, number] {
@@ -209,6 +338,8 @@ export class GisService {
         [idProc, source],
       );
       const nextId = await this.getNextPerimeterId(client);
+      const permisCode = meta.permis_code ?? meta.code_demande ?? null;
+      const permisTitulaire = meta.permis_titulaire ?? meta.detenteur ?? null;
       await client.query(
         `
         INSERT INTO gis_perimeters (
@@ -217,7 +348,6 @@ export class GisService {
           sigam_permis_id,
           source,
           type_code,
-          detenteur,
           permis_code,
           permis_type_code,
           permis_type_label,
@@ -225,10 +355,8 @@ export class GisService {
           permis_area_ha,
           geom
         )
-        // VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-        //   ST_Multi(ST_SetSRID(ST_GeomFromText($12), 4326))
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
-          ST_Multi(ST_SetSRID(ST_GeomFromText($13), 4326))
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+          ST_Multi(ST_SetSRID(ST_GeomFromText($11), 4326))
         )
       `,
         [
@@ -237,12 +365,10 @@ export class GisService {
           meta.sigam_permis_id ?? null,
           source,
           typeCode,
-          meta.code_demande ?? null,
-          meta.detenteur ?? null,
-          meta.permis_code ?? null,
+          permisCode,
           meta.permis_type_code ?? null,
           meta.permis_type_label ?? null,
-          meta.permis_titulaire ?? null,
+          permisTitulaire,
           meta.permis_area_ha ?? null,
           wkt,
         ],
@@ -291,6 +417,8 @@ export class GisService {
     const idPermis = params.id_permis ?? null;
     const typeCode = params.typeCode ?? null;
     const status = params.status ?? null;
+    const permisCode = params.permisCode ?? params.codeDemande ?? null;
+    const permisTitulaire = params.permisTitulaire ?? params.detenteur ?? null;
 
     const client = await this.pool.connect();
     try {
@@ -311,8 +439,6 @@ export class GisService {
           source,
           type_code,
           status,
-          code_demande,
-          detenteur,
           geom,
           permis_code,
           permis_type_code,
@@ -321,12 +447,9 @@ export class GisService {
           permis_area_ha
         )
         VALUES (
-          // $1, $2, $3, $4, $5, $6, $7,
-          // ST_Multi(ST_SetSRID(ST_GeomFromText($8), 4326)),
-          // $9, $10, $11, $12, $13
-          $1, $2, $3, $4, $5, $6, $7, $8,
-          ST_Multi(ST_SetSRID(ST_GeomFromText($9), 4326)),
-          $10, $11, $12, $13, $14
+          $1, $2, $3, $4, $5, $6,
+          ST_Multi(ST_SetSRID(ST_GeomFromText($7), 4326)),
+          $8, $9, $10, $11, $12
         )
       `,
         [
@@ -336,13 +459,11 @@ export class GisService {
           source,
           typeCode,
           status,
-          params.codeDemande ?? null,
-          params.detenteur ?? null,
           params.geomWkt,
-          params.permisCode ?? null,
+          permisCode,
           params.permisTypeCode ?? null,
           params.permisTypeLabel ?? null,
-          params.permisTitulaire ?? null,
+          permisTitulaire,
           params.areaHa ?? null,
         ],
       );
@@ -359,10 +480,6 @@ export class GisService {
     }
   }
 
-  /**
-   * Effectue l'union de deux polygones (WKT, SRID 4326) et retourne
-   * distance, union et surface.
-   */
   async unionPolygons(params: {
     wktA: string;
     wktB: string;
@@ -658,7 +775,7 @@ export class GisService {
     }
   }
 
-  /**
+/**
    * Return one "current" perimeter per mining title (permis), derived from gis_perimeters.
    *
    * Logic:
@@ -750,6 +867,249 @@ export class GisService {
     }));
   }
 
+  private looksLikeHex(value: string): boolean {
+    const trimmed = value.trim();
+    if (!trimmed) return false;
+    if (trimmed.length % 2 !== 0) return false;
+    return /^[0-9a-fA-F]+$/.test(trimmed);
+  }
+
+  private buildPolygonWkt(points: GisPointInput[]): string | null {
+    if (!points || points.length < 3) return null;
+    const ring: [number, number][] = points.map((p) => this.toWgs84(p));
+    if (ring.length < 3) return null;
+    const first = ring[0];
+    const last = ring[ring.length - 1];
+    if (first[0] !== last[0] || first[1] !== last[1]) {
+      ring.push([first[0], first[1]]);
+    }
+    const coordStrings = ring.map(([lng, lat]) => `${lng} ${lat}`);
+    return `POLYGON((${coordStrings.join(', ')}))`;
+  }
+
+  async upsertAxwPerimeter(params: {
+    id_proc: number;
+    points: GisPointInput[];
+    meta?: GisPerimeterMeta;
+  }): Promise<void> {
+    const idProc = params.id_proc;
+    if (!Number.isFinite(idProc)) return;
+
+    const wkt = this.buildPolygonWkt(params.points);
+    if (!wkt) {
+      this.logger.warn(`AXW perimeter skipped (not enough points) proc=${idProc}`);
+      return;
+    }
+
+    const client = await this.pool.connect();
+    try {
+      const tableName = 'public.cmasig_axw';
+      const exists = await client.query('SELECT to_regclass($1) AS tbl', [tableName]);
+      if (!exists.rows?.[0]?.tbl) {
+        this.logger.warn('AXW layer table not found in sig_gis (cmasig_axw)');
+        return;
+      }
+
+      const colsRes = await client.query(
+        `
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'cmasig_axw'
+        `,
+      );
+      const columnMap = new Map<string, string>();
+      for (const row of colsRes.rows || []) {
+        if (!row?.column_name) continue;
+        columnMap.set(String(row.column_name).toLowerCase(), row.column_name);
+      }
+
+      const hasGeom = columnMap.has('geom');
+      if (!hasGeom) {
+        this.logger.warn('AXW layer missing geom column; insert skipped');
+        return;
+      }
+
+      const getColumn = (name: string) => columnMap.get(name.toLowerCase());
+      const usedColumns = new Set<string>();
+      const insertCols: string[] = [];
+      const selectExprs: string[] = [];
+      const values: any[] = [wkt];
+      let paramIndex = 2;
+
+      const addColumn = (name: string, expr?: string, value?: any) => {
+        const col = getColumn(name);
+        if (!col || usedColumns.has(col)) return;
+        usedColumns.add(col);
+        insertCols.push(col);
+        if (expr) {
+          selectExprs.push(expr);
+          return;
+        }
+        selectExprs.push(`$${paramIndex++}`);
+        values.push(value ?? null);
+      };
+
+      const keyColumn =
+        getColumn('sigam_proc_id') ||
+        getColumn('id_proc') ||
+        getColumn('proc_id');
+
+      await client.query('BEGIN');
+
+      if (keyColumn) {
+        await client.query(`DELETE FROM public.cmasig_axw WHERE ${keyColumn} = $1`, [idProc]);
+      }
+
+      addColumn('geom', 'g.geom');
+      addColumn('shape_length', 'ST_Perimeter(g.geom)');
+      addColumn('shape_area', 'ST_Area(g.geom)');
+      addColumn('sig_area', 'ST_Area(g.geom::geography) / 10000');
+      if (keyColumn === getColumn('sigam_proc_id')) addColumn('sigam_proc_id', undefined, idProc);
+      if (keyColumn === getColumn('id_proc')) addColumn('id_proc', undefined, idProc);
+      if (keyColumn === getColumn('proc_id')) addColumn('proc_id', undefined, idProc);
+
+      const meta = params.meta || {};
+      if (meta.sigam_demande_id != null) {
+        addColumn('sigam_demande_id', undefined, meta.sigam_demande_id);
+        addColumn('id_demande', undefined, meta.sigam_demande_id);
+      }
+      const rawCode = meta.code_demande ? String(meta.code_demande).trim() : '';
+      if (rawCode) {
+        addColumn('code_demande', undefined, rawCode);
+        const numericSuffix = rawCode.match(/(\d+)$/)?.[1];
+        if (numericSuffix) {
+          const parsed = Number(numericSuffix);
+          addColumn('code', undefined, Number.isFinite(parsed) ? parsed : numericSuffix);
+        }
+      }
+      if (meta.detenteur) {
+        addColumn('detenteur', undefined, meta.detenteur);
+        addColumn('titulaire', undefined, meta.detenteur);
+        addColumn('tnom', undefined, meta.detenteur);
+      }
+      addColumn('type_code', undefined, 'AXW');
+      addColumn('codetype', undefined, 'AXW');
+      addColumn('source', undefined, 'AXW');
+
+      if (!insertCols.length) {
+        await client.query('ROLLBACK');
+        this.logger.warn('AXW insert skipped (no matching columns)');
+        return;
+      }
+
+      await client.query(
+        `
+        WITH g AS (
+          SELECT ST_Multi(ST_SetSRID(ST_GeomFromText($1), 4326)) AS geom
+        )
+        INSERT INTO public.cmasig_axw (${insertCols.join(', ')})
+        SELECT ${selectExprs.join(', ')} FROM g
+        `,
+        values,
+      );
+
+      await client.query('COMMIT');
+    } catch (err) {
+      try {
+        await client.query('ROLLBACK');
+      } catch {}
+      this.logger.error(`Failed to upsert AXW perimeter for proc=${idProc}`, err as Error);
+    } finally {
+      client.release();
+    }
+  }
+
+  async insertPromotionZone(params: {
+    geom?: string | null;
+    geomFormat?: 'wkt' | 'ewkt' | 'wkb' | null;
+    points?: GisPointInput[] | null;
+    idZone: number;
+    nom: string;
+    sigArea?: number | null;
+    shapeLength?: number | null;
+    shapeArea?: number | null;
+  }): Promise<{ objectid: number }> {
+    const points = params.points ?? [];
+    let geomValue = params.geom ? params.geom.trim() : '';
+    let format = params.geomFormat ? params.geomFormat.toLowerCase() : null;
+
+    if (points.length) {
+      const wkt = this.buildPolygonWkt(points);
+      if (!wkt) {
+        throw new Error('Not enough points to build polygon geometry');
+      }
+      geomValue = wkt;
+      format = 'wkt';
+    }
+
+    if (!geomValue) {
+      throw new Error('Geometry or points are required');
+    }
+
+    const usesEwkt = geomValue.toUpperCase().startsWith('SRID=') || format === 'ewkt';
+    const isHex = format === 'wkb' || this.looksLikeHex(geomValue);
+
+    const geomExpr = isHex
+      ? "ST_GeomFromEWKB(decode($1, 'hex'))"
+      : usesEwkt
+        ? 'ST_GeomFromEWKT($1)'
+        : 'ST_SetSRID(ST_GeomFromText($1), 4326)';
+
+    const client = await this.pool.connect();
+    try {
+      const res = await client.query(
+        `
+        WITH g AS (
+          SELECT ST_Multi(
+            ST_CollectionExtract(
+              ST_MakeValid(
+                ST_Force2D(${geomExpr})
+              ),
+              3
+            )
+          ) AS geom
+        ),
+        ins AS (
+          INSERT INTO public.cmasig_promotion (
+            geom,
+            idzone,
+            nom,
+            sig_area,
+            shape_length,
+            shape_area
+          )
+          SELECT
+            g.geom,
+            $2,
+            $3,
+            COALESCE($4, ST_Area(g.geom::geography) / 10000),
+            COALESCE($5, ST_Perimeter(g.geom)),
+            COALESCE($6, ST_Area(g.geom))
+          FROM g
+          RETURNING objectid
+        )
+        SELECT objectid FROM ins
+        `,
+        [
+          geomValue,
+          params.idZone,
+          params.nom,
+          params.sigArea ?? null,
+          params.shapeLength ?? null,
+          params.shapeArea ?? null,
+        ],
+      );
+
+      const objectid = res.rows?.[0]?.objectid;
+      if (!objectid) {
+        throw new Error('Failed to insert promotion geometry');
+      }
+      return { objectid };
+    } finally {
+      client.release();
+    }
+  }
+
   /**
    * Move a promotion polygon to a target table (default: corbeille_promotion) and remove it from cmasig_promotion.
    * Keeps original attributes and adds deletion metadata.
@@ -760,6 +1120,7 @@ export class GisService {
     commentaire?: string | null;
     targetLayer?: string | null;
   }) {
+    const targetSchema = 'promotion_layers';
     const targetMap: Record<string, string> = {
       corbeille: 'corbeille_promotion',
       // Historic buckets
@@ -786,9 +1147,10 @@ export class GisService {
       modification: 'promotion_modification',
       renonce: 'promotion_renonce',
     };
-    const requestedTable =
+    const requestedTableName =
       (params.targetLayer && targetMap[params.targetLayer]) ||
       targetMap.corbeille;
+    const requestedTable = `${targetSchema}.${requestedTableName}`;
 
     const client = await this.pool.connect();
     try {
@@ -796,7 +1158,12 @@ export class GisService {
 
       // Validate destination table; if it does not exist, fallback to another known table
       const candidates = Array.from(
-        new Set([requestedTable, targetMap.corbeille, 'corbielle_promotion']),
+        new Set([
+          requestedTable,
+          `${targetSchema}.${targetMap.corbeille}`,
+          `${targetSchema}.corbielle_promotion`,
+          `${targetSchema}.promotion_autres`,
+        ]),
       );
       let targetTable: string | null = null;
       for (const candidate of candidates) {
@@ -835,25 +1202,79 @@ export class GisService {
       }
       const row = src.rows[0];
 
-      // Insert into trash
+      const [tableSchema, tableName] = targetTable.split('.');
+      if (!tableSchema || !tableName) {
+        throw new Error('Invalid target table name');
+      }
+      const columnsRes = await client.query(
+        `
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = $1 AND table_name = $2
+      `,
+        [tableSchema, tableName],
+      );
+      const columnSet = new Set(
+        columnsRes.rows.map((col) => String(col.column_name)),
+      );
+      const requiredColumns = [
+        'objectid',
+        'idzone',
+        'nom',
+        'sig_area',
+        'shape_length',
+        'shape_area',
+        'geom',
+      ];
+      const missingColumns = requiredColumns.filter(
+        (col) => !columnSet.has(col),
+      );
+      if (missingColumns.length) {
+        throw new Error(
+          `Target table missing columns: ${missingColumns.join(', ')}`,
+        );
+      }
+
+      await client.query(`DELETE FROM ${targetTable} WHERE objectid = $1`, [
+        row.objectid,
+      ]);
+
+      const insertColumns = [...requiredColumns];
+      const insertValues: any[] = [
+        row.objectid,
+        row.idzone,
+        row.nom,
+        row.sig_area,
+        row.shape_length,
+        row.shape_area,
+        row.geom,
+      ];
+
+      if (columnSet.has('deleted_by')) {
+        insertColumns.push('deleted_by');
+        insertValues.push(params.deletedBy ?? null);
+      }
+      if (columnSet.has('commentaire')) {
+        insertColumns.push('commentaire');
+        insertValues.push(params.commentaire ?? null);
+      }
+      if (columnSet.has('deleted_at')) {
+        insertColumns.push('deleted_at');
+        insertValues.push(new Date());
+      }
+
+      const placeholders = insertValues
+        .map((_, idx) => `$${idx + 1}`)
+        .join(', ');
+
+      // Insert into destination
       await client.query(
         `
         INSERT INTO ${targetTable}
-          (objectid, idzone, nom, sig_area, shape_length, shape_area, geom, deleted_by, commentaire, deleted_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7,
-          $8, $9, NOW())
+          (${insertColumns.join(', ')})
+        VALUES (${placeholders})
       `,
-        [
-          row.objectid,
-          row.idzone,
-          row.nom,
-          row.sig_area,
-          row.shape_length,
-          row.shape_area,
-          row.geom,
-          params.deletedBy ?? null,
-          params.commentaire ?? null,
-        ],
+        insertValues,
       );
 
       // Delete from source
@@ -1099,9 +1520,9 @@ export class GisService {
               gp.permis_titulaire,
               gp.permis_area_ha,
               ST_Intersection(
-                ST_Transform(ST_MakeValid(gp.geom), 3857),
-                (SELECT geom3857 FROM poly)
-              ) AS inter_geom
+              ST_Transform(ST_MakeValid(gp.geom), 3857),
+              (SELECT geom3857 FROM poly)
+            ) AS inter_geom
             FROM gis_perimeters gp, poly
             WHERE gp.geom IS NOT NULL
               AND NOT ST_IsEmpty(gp.geom)
@@ -1351,7 +1772,7 @@ export class GisService {
       const res = await client.query(
         `
         SELECT ST_Area(geom::geography) / 10000 AS area_ha
-        FROM public.gis_perimeters
+        FROM public.gis_perimeters        FROM public.gis_perimeters
         WHERE sigam_proc_id = $1
         ORDER BY id DESC
         LIMIT 1
@@ -1654,7 +2075,7 @@ export class GisService {
       }
 
       // Once the titre is created, the "reserved perimeter" is no longer needed.
-      await client.query(`DELETE FROM public.gis_perimeters WHERE sigam_proc_id = $1`, [
+      await client.query(`DELETE FROM public.gis_perimeters WHERE sigam_proc_id = $1`, [ 
         procId,
       ]);
 
@@ -1689,7 +2110,7 @@ export class GisService {
     try {
       const result = await client.query(
         `
-        UPDATE gis_perimeters
+        UPDATE gis_perimeters        UPDATE gis_perimeters
         SET sigam_permis_id = $2,
             permis_code = COALESCE($3, permis_code),
             permis_type_code = COALESCE($4, permis_type_code),
@@ -1736,6 +2157,197 @@ export class GisService {
         `Failed to delete legacy cmasig_titres row for titre ${titreId}`,
         err as Error,
       );
+    } finally {
+      client.release();
+    }
+  }
+
+  async archiveLegacyTitre(params: {
+    idtitre?: number | null;
+    codePermis?: string | null;
+    keepId?: number | null;
+    procedureType?: string | null;
+    detenteur?: string | null;
+    performedAt?: string | Date | null;
+    comment?: string | null;
+    commentaire?: string | null;
+  }): Promise<void> {
+    const idtitre = params.idtitre ?? null;
+    const codePermis = params.codePermis ?? null;
+    const keepId = params.keepId ?? null;
+    if (idtitre == null && !codePermis) return;
+
+    const client = await this.pool.connect();
+    try {
+      const histExists = await client.query('SELECT to_regclass($1) AS tbl', [
+        'public.cmasig_titres_historique',
+      ]);
+      if (!histExists.rows?.[0]?.tbl) {
+        this.logger.warn('cmasig_titres_historique table not found; archive skipped');
+        return;
+      }
+
+      const histColsRes = await client.query(
+        `
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'cmasig_titres_historique'
+        `,
+      );
+      const histCols = new Set<string>(
+        (histColsRes.rows || []).map((r) => String(r.column_name)),
+      );
+
+      const srcColsRes = await client.query(
+        `
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'cmasig_titres'
+        `,
+      );
+      const srcCols = new Set<string>(
+        (srcColsRes.rows || []).map((r) => String(r.column_name)),
+      );
+
+      const allowedCols = [
+        'geom',
+        'shape_length',
+        'shape_area',
+        'idtitre',
+        'code',
+        'typetitre',
+        'substance1',
+        'substances',
+        'pp',
+        'tprenom',
+        'tnom',
+        'dateoctroi',
+        'dateexpiration',
+        'carte',
+        'lieudit',
+        'commune',
+        'daira',
+        'wilaya',
+        'idtypetitre',
+        'idsubstance',
+        'idtitulair',
+        'idstatustitre',
+        'sig_area',
+        'codetype',
+        'geom_legacy',
+      ];
+
+      const conditions: string[] = [];
+      const values: any[] = [];
+      if (idtitre != null) {
+        values.push(idtitre);
+        conditions.push(`idtitre = $${values.length}`);
+      } else if (codePermis) {
+        const digits = String(codePermis).replace(/\D/g, '');
+        const normalized = digits || String(codePermis).trim();
+        if (normalized) {
+          values.push(normalized);
+          conditions.push(`code::text = $${values.length}`);
+        }
+      }
+      if (keepId != null) {
+        values.push(keepId);
+        conditions.push(`idtitre <> $${values.length}`);
+      }
+      if (!conditions.length) return;
+
+      const formatDate = (value?: string | Date | null): string | null => {
+        if (!value) return null;
+        const d = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(d.getTime())) return null;
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dd}`;
+      };
+
+      const buildComment = (): string | null => {
+        const explicit = String(params.commentaire ?? params.comment ?? '').trim();
+        if (explicit) return explicit;
+        const typeLabel = String(params.procedureType ?? '').trim();
+        const detLabel = String(params.detenteur ?? '').trim();
+        const dateLabel = formatDate(params.performedAt ?? new Date());
+        let msg = 'Titre issu de la procedure';
+        if (typeLabel) msg += ` ${typeLabel}`;
+        if (detLabel) msg += ` par ${detLabel}`;
+        if (dateLabel) msg += ` le ${dateLabel}`;
+        return msg;
+      };
+
+      const insertCols: string[] = [];
+      const selectExprs: string[] = [];
+      allowedCols.forEach((col) => {
+        if (!histCols.has(col)) return;
+        if (!srcCols.has(col) && col !== 'geom_legacy') return;
+        insertCols.push(col);
+        if (col === 'geom_legacy') {
+          selectExprs.push(
+            srcCols.has('geom_legacy') ? 'moved.geom_legacy' : 'moved.geom',
+          );
+        } else {
+          selectExprs.push(`moved.${col}`);
+        }
+      });
+
+      const commentText = buildComment();
+      const commentColumn = histCols.has('commentaire')
+        ? 'commentaire'
+        : histCols.has('comment')
+          ? 'comment'
+          : null;
+
+      if (commentText && commentColumn) {
+        values.push(commentText);
+        insertCols.push(commentColumn);
+        selectExprs.push(`$${values.length}`);
+      }
+
+      if (!insertCols.length) {
+        this.logger.warn('No compatible columns found for cmasig_titres_historique archive');
+        return;
+      }
+
+      if (commentText && commentColumn) {
+        const commentParam = `$${values.length}`;
+        await client.query(
+          `
+          WITH moved AS (
+            DELETE FROM public.cmasig_titres
+            WHERE ${conditions.join(' AND ')}
+            RETURNING *
+          ),
+          ins AS (
+            INSERT INTO public.cmasig_titres_historique (${insertCols.join(', ')})
+            SELECT ${selectExprs.join(', ')} FROM moved
+            RETURNING objectid
+          )
+          UPDATE public.cmasig_titres_historique h
+          SET ${commentColumn} = COALESCE(h.${commentColumn}, ${commentParam})
+          WHERE h.objectid IN (SELECT objectid FROM ins)
+          `,
+          values,
+        );
+      } else {
+        await client.query(
+          `
+          WITH moved AS (
+            DELETE FROM public.cmasig_titres
+            WHERE ${conditions.join(' AND ')}
+            RETURNING *
+          )
+          INSERT INTO public.cmasig_titres_historique (${insertCols.join(', ')})
+          SELECT ${selectExprs.join(', ')} FROM moved
+          `,
+          values,
+        );
+      }
+    } catch (err) {
+      this.logger.warn('Failed to archive legacy cmasig_titres rows', err as Error);
     } finally {
       client.release();
     }

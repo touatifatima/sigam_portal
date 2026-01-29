@@ -1,11 +1,28 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";  //uuutilisablee
+import axios from "axios";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Building2, User, Phone, Mail, FileText, Users, Plus, X, AlertCircle } from "lucide-react";
+import { Building2, User, FileText, Users, Plus, X, AlertCircle } from "lucide-react";
+import styles from "./StepIdentification.module.css";
+
+type StatutJuridique = {
+  id_statutJuridique: number;
+  code_statut: string;
+  statut_fr: string;
+  statut_ar: string;
+};
+
+type Pays = {
+  id_pays: number;
+  nom_pays: string;
+  nationalite: string;
+};
+
+type Nationalite = {
+  id_nationalite: number;
+  libelle: string;
+};
 
 interface Actionnaire {
   id: string;
@@ -25,6 +42,7 @@ interface StepIdentificationProps {
 }
 
 export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) => {
+  const apiURL = process.env.NEXT_PUBLIC_API_URL;
   const [identification, setIdentification] = useState({
     // Informations entreprise
     nomSocieteFr: data?.nomSocieteFr || "",
@@ -33,11 +51,13 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
     pays: data?.pays || "",
     telephone: data?.telephone || "",
     email: data?.email || "",
+    siteWeb: data?.siteWeb || data?.site_web || "",
     numeroFax: data?.numeroFax || "",
     adresseComplete: data?.adresseComplete || "",
     nationalite: data?.nationalite || "",
-    
-    // Représentant légal
+    dateConstitution: data?.dateConstitution || data?.date_constitution || "",
+
+    // Representant legal
     representantNomFr: data?.representantNomFr || "",
     representantPrenomFr: data?.representantPrenomFr || "",
     representantNomAr: data?.representantNomAr || "",
@@ -50,7 +70,7 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
     representantPays: data?.representantPays || "",
     representantNIN: data?.representantNIN || "",
     representantTauxParticipation: data?.representantTauxParticipation || "",
-    
+
     // Registre de Commerce
     numeroRC: data?.numeroRC || "",
     dateEnregistrement: data?.dateEnregistrement || "",
@@ -61,13 +81,43 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
   });
 
   const [actionnaires, setActionnaires] = useState<Actionnaire[]>(data?.actionnaires || []);
+  const [statutsJuridiques, setStatutsJuridiques] = useState<StatutJuridique[]>([]);
+  const [paysOptions, setPaysOptions] = useState<Pays[]>([]);
+  const [nationalitesOptions, setNationalitesOptions] = useState<Nationalite[]>([]);
 
   useEffect(() => {
     onUpdate({ identification: { ...identification, actionnaires } });
-  }, [identification, actionnaires]);
+  }, [identification, actionnaires, onUpdate]);
+
+  useEffect(() => {
+    if (!apiURL) return;
+    let mounted = true;
+
+    const fetchOptions = async () => {
+      try {
+        const [paysRes, statutsRes, natRes] = await Promise.all([
+          axios.get<Pays[]>(`${apiURL}/statuts-juridiques/pays`),
+          axios.get<StatutJuridique[]>(`${apiURL}/api/statuts-juridiques`),
+          axios.get<Nationalite[]>(`${apiURL}/statuts-juridiques/nationalites`),
+        ]);
+
+        if (!mounted) return;
+        setPaysOptions(paysRes.data || []);
+        setStatutsJuridiques(statutsRes.data || []);
+        setNationalitesOptions(natRes.data || []);
+      } catch (error) {
+        console.error("Erreur chargement options identification:", error);
+      }
+    };
+
+    fetchOptions();
+    return () => {
+      mounted = false;
+    };
+  }, [apiURL]);
 
   const handleChange = (field: string, value: string) => {
-    setIdentification(prev => ({ ...prev, [field]: value }));
+    setIdentification((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleAddActionnaire = () => {
@@ -86,21 +136,15 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
   };
 
   const handleRemoveActionnaire = (id: string) => {
-    setActionnaires(actionnaires.filter(a => a.id !== id));
+    setActionnaires(actionnaires.filter((a) => a.id !== id));
   };
 
   const handleActionnaireChange = (id: string, field: keyof Actionnaire, value: string) => {
-    setActionnaires(actionnaires.map(a => 
-      a.id === id ? { ...a, [field]: value } : a
-    ));
+    setActionnaires(actionnaires.map((a) => (a.id === id ? { ...a, [field]: value } : a)));
   };
 
-  const pays = ["Algérie", "France", "Maroc", "Tunisie", "Égypte", "Arabie Saoudite", "Canada", "États-Unis"];
-  const nationalites = ["Algérienne", "Française", "Marocaine", "Tunisienne", "Égyptienne", "Saoudienne", "Canadienne", "Américaine"];
-  const statutsJuridiques = ["SPA", "SARL", "EURL", "SNC", "SCS"];
-  const qualitesRepresentant = ["Gérant", "Directeur Général", "Président Directeur Général", "Directeur"];
+  const qualitesRepresentant = ["Gerant", "Directeur General", "President Directeur General", "Directeur"];
 
-  // Calcul du total des taux de participation
   const calculateTotalParticipation = () => {
     const representantTaux = parseFloat(identification.representantTauxParticipation) || 0;
     const actionnairesTaux = actionnaires.reduce((sum, actionnaire) => {
@@ -113,270 +157,329 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
   const isParticipationValid = totalParticipation === 100;
 
   return (
-    <div className="space-y-6">
-      {/* Informations Entreprise */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-primary" />
+    <div className={styles.container}>
+      <Card className={styles.card}>
+        <CardHeader className={styles.cardHeader}>
+          <CardTitle className={styles.cardTitle}>
+            <Building2 className={styles.cardIcon} />
             Informations sur l'Entreprise
           </CardTitle>
-          <CardDescription>
-            Renseignements généraux de la société
+          <CardDescription className={styles.cardDescription}>
+            Renseignements generaux de la societe
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="nomSocieteFr">Nom société (FR) *</Label>
+        <CardContent className={styles.cardContent}>
+          <div className={styles.formGrid}>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="nomSocieteFr" className={styles.label}>Nom societe (FR) *</Label>
               <Input
                 id="nomSocieteFr"
                 value={identification.nomSocieteFr}
                 onChange={(e) => handleChange("nomSocieteFr", e.target.value)}
-                placeholder="Nom de la société en français"
+                placeholder="Nom de la societe en francais"
+                className={styles.input}
                 required
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="nomSocieteAr">Nom société (AR)</Label>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="nomSocieteAr" className={styles.label}>Nom societe (AR)</Label>
               <Input
                 id="nomSocieteAr"
                 value={identification.nomSocieteAr}
                 onChange={(e) => handleChange("nomSocieteAr", e.target.value)}
-                placeholder="اسم الشركة بالعربية"
+                placeholder="Nom societe en arabe"
                 dir="rtl"
+                className={`${styles.input} ${styles.inputRtl}`}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="statutJuridique">Statut juridique *</Label>
-              <Select value={identification.statutJuridique} onValueChange={(value) => handleChange("statutJuridique", value)}>
-                <SelectTrigger id="statutJuridique">
-                  <SelectValue placeholder="Sélectionner" />
-                </SelectTrigger>
-                <SelectContent>
-                  {statutsJuridiques.map(statut => (
-                    <SelectItem key={statut} value={statut}>{statut}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="statutJuridique" className={styles.label}>Statut juridique *</Label>
+              <select
+                id="statutJuridique"
+                className={styles.select}
+                value={identification.statutJuridique}
+                onChange={(e) => handleChange("statutJuridique", e.target.value)}
+              >
+                <option value="">Selectionner</option>
+                {statutsJuridiques.map((statut) => {
+                  const value = statut.code_statut || statut.statut_fr;
+                  const label = statut.code_statut
+                    ? `${statut.code_statut} - ${statut.statut_fr}`
+                    : statut.statut_fr;
+                  return (
+                    <option key={statut.id_statutJuridique} value={value}>
+                      {label}
+                    </option>
+                  );
+                })}
+              </select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="pays">Pays *</Label>
-              <Select value={identification.pays} onValueChange={(value) => handleChange("pays", value)}>
-                <SelectTrigger id="pays">
-                  <SelectValue placeholder="Sélectionner" />
-                </SelectTrigger>
-                <SelectContent>
-                  {pays.map(p => (
-                    <SelectItem key={p} value={p}>{p}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="pays" className={styles.label}>Pays *</Label>
+              <select
+                id="pays"
+                className={styles.select}
+                value={identification.pays}
+                onChange={(e) => handleChange("pays", e.target.value)}
+              >
+                <option value="">Selectionner</option>
+                {paysOptions.map((p) => (
+                  <option key={p.id_pays} value={p.nom_pays}>
+                    {p.nom_pays}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="telephone">Téléphone *</Label>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="telephone" className={styles.label}>Telephone *</Label>
               <Input
                 id="telephone"
                 type="tel"
                 value={identification.telephone}
                 onChange={(e) => handleChange("telephone", e.target.value)}
                 placeholder="+213 XXX XX XX XX"
+                className={styles.input}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email *</Label>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="email" className={styles.label}>Email *</Label>
               <Input
                 id="email"
                 type="email"
                 value={identification.email}
                 onChange={(e) => handleChange("email", e.target.value)}
                 placeholder="contact@entreprise.com"
+                className={styles.input}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="numeroFax">Numéro de fax</Label>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="siteWeb" className={styles.label}>Site web</Label>
+              <Input
+                id="siteWeb"
+                type="url"
+                value={identification.siteWeb}
+                onChange={(e) => handleChange("siteWeb", e.target.value)}
+                placeholder="www.entreprise.com"
+                className={styles.input}
+              />
+            </div>
+
+            <div className={styles.inputGroup}>
+              <Label htmlFor="numeroFax" className={styles.label}>Numero de fax</Label>
               <Input
                 id="numeroFax"
                 value={identification.numeroFax}
                 onChange={(e) => handleChange("numeroFax", e.target.value)}
                 placeholder="+213 XXX XX XX XX"
+                className={styles.input}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="nationalite">Nationalité *</Label>
-              <Select value={identification.nationalite} onValueChange={(value) => handleChange("nationalite", value)}>
-                <SelectTrigger id="nationalite">
-                  <SelectValue placeholder="Sélectionner" />
-                </SelectTrigger>
-                <SelectContent>
-                  {nationalites.map(nat => (
-                    <SelectItem key={nat} value={nat}>{nat}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="nationalite" className={styles.label}>Nationalite *</Label>
+              <select
+                id="nationalite"
+                className={styles.select}
+                value={identification.nationalite}
+                onChange={(e) => handleChange("nationalite", e.target.value)}
+              >
+                <option value="">Selectionner</option>
+                {nationalitesOptions.map((nat) => (
+                  <option key={nat.id_nationalite} value={nat.libelle}>
+                    {nat.libelle}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="adresseComplete">Adresse complète *</Label>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="dateConstitution" className={styles.label}>Date de constitution</Label>
+              <Input
+                id="dateConstitution"
+                type="date"
+                value={identification.dateConstitution}
+                onChange={(e) => handleChange("dateConstitution", e.target.value)}
+                className={styles.input}
+              />
+            </div>
+
+            <div className={`${styles.inputGroup} ${styles.fullWidth}`}>
+              <Label htmlFor="adresseComplete" className={styles.label}>Adresse complete *</Label>
               <Input
                 id="adresseComplete"
                 value={identification.adresseComplete}
                 onChange={(e) => handleChange("adresseComplete", e.target.value)}
-                placeholder="Adresse complète de l'entreprise"
+                placeholder="Adresse complete de l'entreprise"
+                className={styles.input}
               />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Représentant Légal */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="w-5 h-5 text-primary" />
-            Représentant Légal
+      <Card className={styles.card}>
+        <CardHeader className={styles.cardHeader}>
+          <CardTitle className={styles.cardTitle}>
+            <User className={styles.cardIcon} />
+            Representant Legal
           </CardTitle>
-          <CardDescription>
-            Personne habilitée à représenter l'entreprise
+          <CardDescription className={styles.cardDescription}>
+            Personne habilitee a representer l'entreprise
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="representantNomFr">Nom (FR) *</Label>
+        <CardContent className={styles.cardContent}>
+          <div className={styles.formGrid}>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="representantNomFr" className={styles.label}>Nom (FR) *</Label>
               <Input
                 id="representantNomFr"
                 value={identification.representantNomFr}
                 onChange={(e) => handleChange("representantNomFr", e.target.value)}
-                placeholder="Nom en français"
+                placeholder="Nom en francais"
+                className={styles.input}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="representantPrenomFr">Prénom (FR) *</Label>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="representantPrenomFr" className={styles.label}>Prenom (FR) *</Label>
               <Input
                 id="representantPrenomFr"
                 value={identification.representantPrenomFr}
                 onChange={(e) => handleChange("representantPrenomFr", e.target.value)}
-                placeholder="Prénom en français"
+                placeholder="Prenom en francais"
+                className={styles.input}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="representantNomAr">Nom (AR)</Label>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="representantNomAr" className={styles.label}>Nom (AR)</Label>
               <Input
                 id="representantNomAr"
                 value={identification.representantNomAr}
                 onChange={(e) => handleChange("representantNomAr", e.target.value)}
-                placeholder="الاسم بالعربية"
+                placeholder="Nom en arabe"
                 dir="rtl"
+                className={`${styles.input} ${styles.inputRtl}`}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="representantPrenomAr">Prénom (AR)</Label>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="representantPrenomAr" className={styles.label}>Prenom (AR)</Label>
               <Input
                 id="representantPrenomAr"
                 value={identification.representantPrenomAr}
                 onChange={(e) => handleChange("representantPrenomAr", e.target.value)}
-                placeholder="اللقب بالعربية"
+                placeholder="Prenom en arabe"
                 dir="rtl"
+                className={`${styles.input} ${styles.inputRtl}`}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="representantTelephone">Téléphone *</Label>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="representantTelephone" className={styles.label}>Telephone *</Label>
               <Input
                 id="representantTelephone"
                 type="tel"
                 value={identification.representantTelephone}
                 onChange={(e) => handleChange("representantTelephone", e.target.value)}
                 placeholder="+213 XXX XX XX XX"
+                className={styles.input}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="representantEmail">Email *</Label>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="representantEmail" className={styles.label}>Email *</Label>
               <Input
                 id="representantEmail"
                 type="email"
                 value={identification.representantEmail}
                 onChange={(e) => handleChange("representantEmail", e.target.value)}
                 placeholder="representant@email.com"
+                className={styles.input}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="representantFax">Numéro de fax</Label>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="representantFax" className={styles.label}>Numero de fax</Label>
               <Input
                 id="representantFax"
                 value={identification.representantFax}
                 onChange={(e) => handleChange("representantFax", e.target.value)}
                 placeholder="+213 XXX XX XX XX"
+                className={styles.input}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="representantQualite">Qualité de représentant *</Label>
-              <Select value={identification.representantQualite} onValueChange={(value) => handleChange("representantQualite", value)}>
-                <SelectTrigger id="representantQualite">
-                  <SelectValue placeholder="Sélectionner" />
-                </SelectTrigger>
-                <SelectContent>
-                  {qualitesRepresentant.map(q => (
-                    <SelectItem key={q} value={q}>{q}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="representantQualite" className={styles.label}>Qualite de representant *</Label>
+              <select
+                id="representantQualite"
+                className={styles.select}
+                value={identification.representantQualite}
+                onChange={(e) => handleChange("representantQualite", e.target.value)}
+              >
+                <option value="">Selectionner</option>
+                {qualitesRepresentant.map((qualite) => (
+                  <option key={qualite} value={qualite}>
+                    {qualite}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="representantNationalite">Nationalité *</Label>
-              <Select value={identification.representantNationalite} onValueChange={(value) => handleChange("representantNationalite", value)}>
-                <SelectTrigger id="representantNationalite">
-                  <SelectValue placeholder="Sélectionner" />
-                </SelectTrigger>
-                <SelectContent>
-                  {nationalites.map(nat => (
-                    <SelectItem key={nat} value={nat}>{nat}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="representantNationalite" className={styles.label}>Nationalite *</Label>
+              <select
+                id="representantNationalite"
+                className={styles.select}
+                value={identification.representantNationalite}
+                onChange={(e) => handleChange("representantNationalite", e.target.value)}
+              >
+                <option value="">Selectionner</option>
+                {nationalitesOptions.map((nat) => (
+                  <option key={nat.id_nationalite} value={nat.libelle}>
+                    {nat.libelle}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="representantPays">Pays *</Label>
-              <Select value={identification.representantPays} onValueChange={(value) => handleChange("representantPays", value)}>
-                <SelectTrigger id="representantPays">
-                  <SelectValue placeholder="Sélectionner" />
-                </SelectTrigger>
-                <SelectContent>
-                  {pays.map(p => (
-                    <SelectItem key={p} value={p}>{p}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="representantPays" className={styles.label}>Pays *</Label>
+              <select
+                id="representantPays"
+                className={styles.select}
+                value={identification.representantPays}
+                onChange={(e) => handleChange("representantPays", e.target.value)}
+              >
+                <option value="">Selectionner</option>
+                {paysOptions.map((p) => (
+                  <option key={p.id_pays} value={p.nom_pays}>
+                    {p.nom_pays}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="representantNIN">Numéro NIN *</Label>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="representantNIN" className={styles.label}>Numero NIN *</Label>
               <Input
                 id="representantNIN"
                 value={identification.representantNIN}
                 onChange={(e) => handleChange("representantNIN", e.target.value)}
-                placeholder="Numéro d'identification nationale"
+                placeholder="Numero d'identification nationale"
+                className={styles.input}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="representantTauxParticipation">Taux de participation (%)</Label>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="representantTauxParticipation" className={styles.label}>Taux de participation (%)</Label>
               <Input
                 id="representantTauxParticipation"
                 type="number"
@@ -385,193 +488,205 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
                 value={identification.representantTauxParticipation}
                 onChange={(e) => handleChange("representantTauxParticipation", e.target.value)}
                 placeholder="0"
+                className={styles.input}
               />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Détails du Registre de Commerce */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-primary" />
-            Détails du Registre de Commerce
+      <Card className={styles.card}>
+        <CardHeader className={styles.cardHeader}>
+          <CardTitle className={styles.cardTitle}>
+            <FileText className={styles.cardIcon} />
+            Details du Registre de Commerce
           </CardTitle>
-          <CardDescription>
-            Informations légales et fiscales
+          <CardDescription className={styles.cardDescription}>
+            Informations legales et fiscales
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="numeroRC">Numéro RC *</Label>
+        <CardContent className={styles.cardContent}>
+          <div className={styles.formGrid}>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="numeroRC" className={styles.label}>Numero RC *</Label>
               <Input
                 id="numeroRC"
                 value={identification.numeroRC}
                 onChange={(e) => handleChange("numeroRC", e.target.value)}
                 placeholder="Ex: 00B123456789"
+                className={styles.input}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="dateEnregistrement">Date d'enregistrement *</Label>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="dateEnregistrement" className={styles.label}>Date d'enregistrement *</Label>
               <Input
                 id="dateEnregistrement"
                 type="date"
                 value={identification.dateEnregistrement}
                 onChange={(e) => handleChange("dateEnregistrement", e.target.value)}
+                className={styles.input}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="capitalSocial">Capital social (DA) *</Label>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="capitalSocial" className={styles.label}>Capital social (DA) *</Label>
               <Input
                 id="capitalSocial"
                 type="number"
                 value={identification.capitalSocial}
                 onChange={(e) => handleChange("capitalSocial", e.target.value)}
                 placeholder="Ex: 1000000"
+                className={styles.input}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="numeroNIS">Numéro NIS *</Label>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="numeroNIS" className={styles.label}>Numero NIS *</Label>
               <Input
                 id="numeroNIS"
                 value={identification.numeroNIS}
                 onChange={(e) => handleChange("numeroNIS", e.target.value)}
-                placeholder="Numéro d'identification statistique"
+                placeholder="Numero d'identification statistique"
+                className={styles.input}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="numeroNIF">Numéro NIF *</Label>
+            <div className={styles.inputGroup}>
+              <Label htmlFor="numeroNIF" className={styles.label}>Numero NIF *</Label>
               <Input
                 id="numeroNIF"
                 value={identification.numeroNIF}
                 onChange={(e) => handleChange("numeroNIF", e.target.value)}
-                placeholder="Numéro d'identification fiscale"
+                placeholder="Numero d'identification fiscale"
+                className={styles.input}
               />
             </div>
 
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="adresseSiege">Adresse du siège *</Label>
+            <div className={`${styles.inputGroup} ${styles.fullWidth}`}>
+              <Label htmlFor="adresseSiege" className={styles.label}>Adresse du siege *</Label>
               <Input
                 id="adresseSiege"
                 value={identification.adresseSiege}
                 onChange={(e) => handleChange("adresseSiege", e.target.value)}
-                placeholder="Adresse complète du siège social"
+                placeholder="Adresse complete du siege social"
+                className={styles.input}
               />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Actionnaires */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+      <Card className={styles.card}>
+        <CardHeader className={styles.cardHeader}>
+          <div className={styles.actionnairesHeader}>
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-primary" />
+              <CardTitle className={styles.cardTitle}>
+                <Users className={styles.cardIcon} />
                 Actionnaires
               </CardTitle>
-              <CardDescription>
-                Liste des actionnaires de la société
+              <CardDescription className={styles.cardDescription}>
+                Liste des actionnaires de la societe
               </CardDescription>
             </div>
-            <Button onClick={handleAddActionnaire} size="sm" className="gap-2">
-              <Plus className="w-4 h-4" />
+            <button type="button" className={styles.btnAddActionnaire} onClick={handleAddActionnaire}>
+              <Plus className={styles.btnAddIcon} />
               Ajouter
-            </Button>
+            </button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className={styles.cardContent}>
           {actionnaires.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              Aucun actionnaire ajouté. Cliquez sur "Ajouter" pour en ajouter un.
-            </p>
+            <div className={styles.emptyState}>
+              <Users className={styles.emptyIcon} />
+              <p className={styles.emptyText}>Aucun actionnaire ajoute.</p>
+              <p className={styles.emptyHint}>Cliquez sur "Ajouter" pour en ajouter un.</p>
+            </div>
           ) : (
             actionnaires.map((actionnaire, index) => (
-              <div key={actionnaire.id} className="p-4 border rounded-lg space-y-4 relative">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-medium">Actionnaire {index + 1}</h4>
-                  <Button
+              <div key={actionnaire.id} className={styles.actionnaireCard}>
+                <div className={styles.actionnaireHeader}>
+                  <h4 className={styles.actionnaireNumber}>Actionnaire {index + 1}</h4>
+                  <button
+                    type="button"
                     onClick={() => handleRemoveActionnaire(actionnaire.id)}
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
+                    className={styles.btnRemoveActionnaire}
                   >
-                    <X className="w-4 h-4" />
-                  </Button>
+                    <X className={styles.btnRemoveIcon} />
+                  </button>
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Nom *</Label>
+
+                <div className={styles.formGrid}>
+                  <div className={styles.inputGroup}>
+                    <Label className={styles.label}>Nom *</Label>
                     <Input
                       value={actionnaire.nom}
                       onChange={(e) => handleActionnaireChange(actionnaire.id, "nom", e.target.value)}
                       placeholder="Nom"
+                      className={styles.input}
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Prénom *</Label>
+                  <div className={styles.inputGroup}>
+                    <Label className={styles.label}>Prenom *</Label>
                     <Input
                       value={actionnaire.prenom}
                       onChange={(e) => handleActionnaireChange(actionnaire.id, "prenom", e.target.value)}
-                      placeholder="Prénom"
+                      placeholder="Prenom"
+                      className={styles.input}
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Lieu de naissance *</Label>
+                  <div className={styles.inputGroup}>
+                    <Label className={styles.label}>Lieu de naissance *</Label>
                     <Input
                       value={actionnaire.lieuNaissance}
                       onChange={(e) => handleActionnaireChange(actionnaire.id, "lieuNaissance", e.target.value)}
                       placeholder="Lieu de naissance"
+                      className={styles.input}
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Nationalité *</Label>
-                    <Select 
-                      value={actionnaire.nationalite} 
-                      onValueChange={(value) => handleActionnaireChange(actionnaire.id, "nationalite", value)}
+                  <div className={styles.inputGroup}>
+                    <Label className={styles.label}>Nationalite *</Label>
+                    <select
+                      className={styles.select}
+                      value={actionnaire.nationalite}
+                      onChange={(e) =>
+                        handleActionnaireChange(actionnaire.id, "nationalite", e.target.value)
+                      }
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {nationalites.map(nat => (
-                          <SelectItem key={nat} value={nat}>{nat}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      <option value="">Selectionner</option>
+                      {nationalitesOptions.map((nat) => (
+                        <option key={nat.id_nationalite} value={nat.libelle}>
+                          {nat.libelle}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Qualification</Label>
+                  <div className={styles.inputGroup}>
+                    <Label className={styles.label}>Qualification</Label>
                     <Input
                       value={actionnaire.qualification}
                       onChange={(e) => handleActionnaireChange(actionnaire.id, "qualification", e.target.value)}
                       placeholder="Qualification"
+                      className={styles.input}
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Numéro d'identité *</Label>
+                  <div className={styles.inputGroup}>
+                    <Label className={styles.label}>Numero d'identite *</Label>
                     <Input
                       value={actionnaire.numeroIdentite}
                       onChange={(e) => handleActionnaireChange(actionnaire.id, "numeroIdentite", e.target.value)}
-                      placeholder="Numéro d'identité"
+                      placeholder="Numero d'identite"
+                      className={styles.input}
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Taux de participation (%) *</Label>
+                  <div className={styles.inputGroup}>
+                    <Label className={styles.label}>Taux de participation (%) *</Label>
                     <Input
                       type="number"
                       min="0"
@@ -579,24 +694,24 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
                       value={actionnaire.tauxParticipation}
                       onChange={(e) => handleActionnaireChange(actionnaire.id, "tauxParticipation", e.target.value)}
                       placeholder="0"
+                      className={styles.input}
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Pays *</Label>
-                    <Select 
-                      value={actionnaire.pays} 
-                      onValueChange={(value) => handleActionnaireChange(actionnaire.id, "pays", value)}
+                  <div className={styles.inputGroup}>
+                    <Label className={styles.label}>Pays *</Label>
+                    <select
+                      className={styles.select}
+                      value={actionnaire.pays}
+                      onChange={(e) => handleActionnaireChange(actionnaire.id, "pays", e.target.value)}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {pays.map(p => (
-                          <SelectItem key={p} value={p}>{p}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      <option value="">Selectionner</option>
+                      {paysOptions.map((p) => (
+                        <option key={p.id_pays} value={p.nom_pays}>
+                          {p.nom_pays}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
@@ -605,24 +720,33 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
         </CardContent>
       </Card>
 
-      {/* Validation des taux de participation */}
       {(identification.representantTauxParticipation || actionnaires.length > 0) && (
-        <Alert variant={isParticipationValid ? "default" : "destructive"}>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
+        <div
+          className={`${styles.participationAlert} ${
+            isParticipationValid ? styles.success : styles.warning
+          }`}
+        >
+          <AlertCircle className={styles.alertIcon} />
+          <div className={styles.alertContent}>
             {isParticipationValid ? (
-              <span className="text-green-600 dark:text-green-400">
-                ✓ Le total des taux de participation est correct (100%)
-              </span>
+              <>
+                <div className={styles.alertTitle}>
+                  Le total des taux de participation est correct (100%).
+                </div>
+                <div className={styles.alertDescription}>Total actuel : {totalParticipation.toFixed(2)}%</div>
+              </>
             ) : (
-              <span>
-                <strong>Attention !</strong> Le total des taux de participation du représentant + les taux de participations des actionnaires doit être exactement 100%.
-                <br />
-                <span className="text-sm">Total actuel : {totalParticipation.toFixed(2)}%</span>
-              </span>
+              <>
+                <div className={styles.alertTitle}>Attention !</div>
+                <div className={styles.alertDescription}>
+                  Le total des taux de participation du representant et des actionnaires doit etre
+                  exactement 100%.
+                </div>
+                <div className={styles.alertDescription}>Total actuel : {totalParticipation.toFixed(2)}%</div>
+              </>
             )}
-          </AlertDescription>
-        </Alert>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import axios from 'axios';
-import DatePicker from 'react-datepicker';
-import { FiChevronRight } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 
 import styles from './page1_typepermis.module.css';
@@ -14,6 +12,7 @@ import { cleanLocalStorageForNewDemande } from '../../../../utils/cleanLocalStor
 import { useViewNavigator } from '../../../../src/hooks/useViewNavigator';
 import { useAuthReady } from '../../../../src/hooks/useAuthReady';
 import { useLoading } from '@/components/globalspinner/LoadingContext';
+import ProgressStepper from '../../../../components/ProgressStepper';
 
 import 'react-datepicker/dist/react-datepicker.css';
 import { useAuthStore } from '@/src/store/useAuthStore';
@@ -31,6 +30,7 @@ interface TypePermis {
 }
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL ?? '';
+const SIMPLE_STEPS = ['Type & Cadastre', 'Localisation', 'Documents', 'Facture', 'Paiement'];
 
 export default function DemandeStart() {
   const router = useRouter();
@@ -47,8 +47,6 @@ export default function DemandeStart() {
   const [selectedPermisId, setSelectedPermisId] = useState<number | ''>('');
   const [selectedPermis, setSelectedPermis] = useState<TypePermis | null>(null);
 
-  const [codeDemande, setCodeDemande] = useState('');
-  const [heureDemarrage, setHeureDemarrage] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   // Ensure global route spinner is cleared when landing on this page
@@ -108,9 +106,6 @@ export default function DemandeStart() {
   }, [permisOptions, selectedPermis, selectedPermisId]);
 
   const handlePermisChange = async (value: string) => {
-    setCodeDemande('');
-    setHeureDemarrage('');
-
     if (!value) {
       setSelectedPermisId('');
       setSelectedPermis(null);
@@ -185,9 +180,6 @@ console.log('auth in start procedure', auth);
       const { procedure, code_demande: demandeCode, id_demande } = response.data ?? {};
       const idProc = procedure?.id_proc ?? procedure?.id_proc;
 
-      setCodeDemande(demandeCode ?? '');
-      setHeureDemarrage(new Date().toLocaleString('fr-FR'));
-
       if (id_demande) {
         localStorage.setItem('id_demande', String(id_demande));
       }
@@ -207,7 +199,7 @@ console.log('auth in start procedure', auth);
       );
 // Navigate to step 1 page document
       if (idProc) {
-        await router.push(`/investisseur/nouvelle_demande/step1/page1?id=${idProc}`);
+        await router.push(`/investisseur/nouvelle_demande/step5/page5?id=${idProc}`);
       } else {
         toast.info('Demande creee, mais identifiant de procedure indisponible.');
       }
@@ -225,17 +217,24 @@ console.log('auth in start procedure', auth);
       <div className={styles.appContent}>
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles.mainContent}>
-          <div className={styles.breadcrumb}>
-            <span>GUNAM</span>
-            <FiChevronRight className={styles.breadcrumbArrow} />
-            <span>Type de permis</span>
+          <div className={styles.headerRow}>
+            <h1 className={styles.pageTitle}>Choisissez votre type de permis</h1>
+            <button
+              type="button"
+              className={styles.cancelLink}
+              onClick={() => router.push('/investisseur/InvestorDashboard')}
+            >
+              Annuler
+            </button>
           </div>
 
-          <div className={styles.demandeContainer}>
+          <ProgressStepper steps={SIMPLE_STEPS} currentStep={1} />
+
+          <div className={`${styles.card} ${styles.stepCard}`}>
             {pageError && <div className={styles.errorBox}>{pageError}</div>}
 
             <label className={styles.label}>
-              Categorie de permis <span className={styles.requiredMark}>*</span>
+              Type de permis <span className={styles.requiredMark}>*</span>
             </label>
             <select
               className={styles.select}
@@ -268,28 +267,13 @@ console.log('auth in start procedure', auth);
               </div>
             )}
 
-            {codeDemande && (
-              <div className={styles.infoBox}>
-                <div className={styles.infoTitle}>Informations systeme</div>
-                <p className={styles.infoText}>
-                  <strong>Code demande genere:</strong> <span>{codeDemande}</span>
-                </p>
-                <p className={styles.infoText}>
-                  <strong>Heure de demarrage:</strong> {heureDemarrage}
-                </p>
-                <p className={styles.infoNote}>
-                  Un dossier administratif a ete initialise. Vous pouvez poursuivre l'instruction.
-                </p>
-              </div>
-            )}
-
             <div className={styles.buttonGroup}>
               <button
-                className={`${styles.button} ${styles.start}`}
+                className={styles.nextButton}
                 disabled={submitting || !effectivePermis}
                 onClick={handleStartProcedure}
               >
-                {submitting ? 'Creation...' : 'Demarrer la procedure'}
+                {submitting ? 'Creation...' : 'Suivant'}
               </button>
             </div>
           </div>

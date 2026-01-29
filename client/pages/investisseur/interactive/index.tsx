@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ClipboardEvent } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
@@ -19,6 +19,7 @@ import {
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import proj4 from 'proj4';
+
 import styles from './interactive.module.css';
 import Navbar from '../../navbar/Navbar';
 import Sidebar from '../../sidebar/Sidebar';
@@ -106,6 +107,27 @@ const apiBase = process.env.NEXT_PUBLIC_API_URL ?? '';
 const DRAFT_KEY = 'interactive_demande_draft_v1';
 const ALLOWED_PERMIS_CODES = new Set(['APM', 'TEM', 'TEC', 'AAM', 'AAC', 'TXM', 'TXC', 'AXW', 'AXH', 'ARO']);
 
+type SearchLayerKey = 'perimetresSig' | 'titres';
+
+const SEARCH_LAYERS: Array<{ key: SearchLayerKey; label: string }> = [
+  { key: 'perimetresSig', label: 'Demandes' },
+  { key: 'titres', label: 'Titres miniers' },
+];
+
+const SEARCH_FIELDS: Record<SearchLayerKey, string[]> = {
+  perimetresSig: ['permis_code', 'permis_type_code', 'permis_type_label', 'permis_titulaire'],
+  titres: ['code', 'idtitre', 'typetitre', 'codetype', 'tnom', 'tprenom'],
+};
+
+const SEARCH_FIELD_LABELS: Partial<Record<SearchLayerKey, Record<string, string>>> = {
+  perimetresSig: {
+    permis_code: 'demande_code',
+    permis_type_code: 'demande_type_code',
+    permis_type_label: 'demande_type_label',
+    permis_titulaire: 'demande_titulaire',
+  },
+};
+
 const buildDefaultPoints = (): DraftPointInput[] => [
   { id: 1, x: '', y: '' },
   { id: 2, x: '', y: '' },
@@ -141,6 +163,26 @@ const normalizeRing = (coords: [number, number][]) => {
   return coords;
 };
 
+const closeRing = (coords: [number, number][]) => {
+  if (!coords.length) return coords;
+  const first = coords[0];
+  const last = coords[coords.length - 1];
+  if (first[0] === last[0] && first[1] === last[1]) {
+    return coords;
+  }
+  return [...coords, first];
+};
+
+const formatKmlCoord = (value: number) => (Number.isFinite(value) ? value.toFixed(8) : '0');
+
+const escapeKmlText = (value: string) =>
+  (value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+
 const coerceUtmZone = (value: unknown, fallback: number) => {
   const zone = Number(value);
   if (Number.isFinite(zone) && zone >= 29 && zone <= 32) {
@@ -164,16 +206,35 @@ const areLikelyWgs84Points = (points: { x: number; y: number }[]) =>
 const areLikelyWgs84Coords = (coords: [number, number][]) =>
   coords.length > 0 && coords.every(([x, y]) => isLikelyWgs84Coord(x, y));
 
+const normalizeDateTime = (value: Date | null) => {
+  if (!value) return null;
+  const normalized = new Date(value);
+  normalized.setSeconds(0, 0);
+  return normalized;
+};
+
+const formatDateTime = (value: Date) => {
+  const normalized = normalizeDateTime(value) ?? value;
+  return normalized.toISOString();
+};
+
 const convertWgs84ToUtm = (coords: [number, number][], zone: number) =>
   coords.map(([lon, lat]) => {
     const [x, y] = proj4('EPSG:4326', buildUtmProj(zone), [lon, lat]);
     return [x, y] as [number, number];
   });
 
+const convertUtmToWgs84 = (coords: [number, number][], zone: number) =>
+  coords.map(([x, y]) => {
+    const [lon, lat] = proj4(buildUtmProj(zone), 'EPSG:4326', [x, y]);
+    return [lon, lat] as [number, number];
+  });
+
 export default function InteractiveDemandePage() {
   const router = useRouter();
   const { currentView, navigateTo } = useViewNavigator('demande-interactive');
-  const { auth } = useAuthStore();
+  const { auth, hasPermission } = useAuthStore();
+  const canCreateAxw = hasPermission('create_axw');
   const mapRef = useRef<ArcGISMapRef | null>(null);
   const csvInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -185,7 +246,9 @@ export default function InteractiveDemandePage() {
   const [selectedPermisId, setSelectedPermisId] = useState<number | ''>('');
   const [selectedPermis, setSelectedPermis] = useState<TypePermis | null>(null);
 
-  const [dateSoumission, setDateSoumission] = useState<Date | null>(new Date());
+  const [dateSoumission, setDateSoumission] = useState<Date | null>(
+    normalizeDateTime(new Date()),
+  );
   const [submitting, setSubmitting] = useState(false);
 
   const [priorModalOpen, setPriorModalOpen] = useState(false);
@@ -199,6 +262,46 @@ export default function InteractiveDemandePage() {
   const [temFromApm, setTemFromApm] = useState<'yes' | 'no' | null>(null);
 
   const [searchPermisCode, setSearchPermisCode] = useState('');
+  const [searchLayer, setSearchLayer] = useState<SearchLayerKey>('perimetresSig');
+  const [searchField, setSearchField] = useState(
+    SEARCH_FIELDS.perimetresSig?.[0] ?? 'permis_code',
+  );
+  const searchFields = SEARCH_FIELDS[searchLayer] || [];
+  const searchFieldOptions = searchFields.map((field) => ({
+    value: field,
+    label: SEARCH_FIELD_LABELS[searchLayer]?.[field] ?? field,
+  }));
+  const searchLayerLabel =
+    SEARCH_LAYERS.find((layer) => layer.key === searchLayer)?.label ?? searchLayer;
+
+  useEffect(() => {
+    if (!searchFieldOptions.length) {
+      setSearchField('');
+      return;
+    }
+    setSearchField((prev) =>
+      prev && searchFields.includes(prev) ? prev : searchFields[0],
+    );
+  }, [searchLayer, searchFields, searchFieldOptions.length]);
+
+  const handleMapSearch = useCallback(async () => {
+    const code = searchPermisCode.trim();
+    if (!code) return;
+    if (!mapRef.current?.searchLayerFeature) {
+      toast.error('Carte indisponible pour la recherche.');
+      return;
+    }
+    const field =
+      searchField && searchFields.includes(searchField) ? searchField : searchFields[0];
+    if (!field) {
+      toast.error('Aucun attribut disponible pour cette couche.');
+      return;
+    }
+    const ok = await mapRef.current.searchLayerFeature(searchLayer, field, code);
+    if (!ok) {
+      toast.warning(`Aucun resultat dans ${searchLayerLabel}.`);
+    }
+  }, [searchPermisCode, searchField, searchFields, searchLayer, searchLayerLabel]);
 
   const [coordModalOpen, setCoordModalOpen] = useState(false);
   const [coordSource, setCoordSource] = useState<'manual' | 'prior' | null>(null);
@@ -228,6 +331,89 @@ export default function InteractiveDemandePage() {
   const isTX = currentPermisCode.startsWith('TX');
   const isTXM = currentPermisCode === 'TXM';
   const isTXC = currentPermisCode === 'TXC';
+  const isAXW = currentPermisCode === 'AXW';
+
+  const resolveOverlapLayerType = (o: any) =>
+    String(o?.layer_type ?? o?.layerType ?? o?.__layerType ?? '').trim();
+
+  const overlapSelections = useMemo(
+    () =>
+      overlapTitles.map((item) => ({
+        ...(item as any),
+        __layerType: resolveOverlapLayerType(item),
+      })),
+    [overlapTitles],
+  );
+
+  const blockingOverlapDetected = useMemo(() => {
+    if (!overlapTitles.length) return false;
+
+    const sourceInfo = (() => {
+      if ((isTXC || isTXM) && selectedPrior) {
+        return {
+          id: selectedPrior.id,
+          code: selectedPrior.code_permis ?? null,
+          typeCode: selectedPrior.type_code ?? null,
+        };
+      }
+      if (isTEM && temFromApm === 'yes' && selectedApm) {
+        return {
+          id: selectedApm.id,
+          code: selectedApm.code_permis ?? null,
+          typeCode: selectedApm.type_code ?? null,
+        };
+      }
+      return null;
+    })();
+
+    const shouldIgnoreSource = (() => {
+      if (!sourceInfo) return false;
+      const sourceType = String(sourceInfo.typeCode || '').toUpperCase();
+      if (isTXC) return sourceType === 'TEC';
+      if (isTXM) return sourceType === 'TEM';
+      if (isTEM) return sourceType === 'APM';
+      return false;
+    })();
+
+    const isSourceOverlap = (item: any) => {
+      if (!sourceInfo) return false;
+      const ignoreId = sourceInfo.id;
+      const ignoreCode = sourceInfo.code ? String(sourceInfo.code).trim() : '';
+      const rawId = item?.idtitre ?? item?.sigam_permis_id ?? item?.permisId ?? null;
+      if (ignoreId != null && rawId != null) {
+        const idNum = Number(rawId);
+        if (Number.isFinite(idNum) && idNum === Number(ignoreId)) return true;
+      }
+      if (ignoreCode) {
+        const candidates = [
+          item?.code,
+          item?.permis_code,
+          item?.permisCode,
+          item?.code_permis,
+        ].filter((v: any) => v != null);
+        for (const candidate of candidates) {
+          const cand = String(candidate).trim();
+          if (!cand) continue;
+          if (cand === ignoreCode) return true;
+          const candNum = Number(cand);
+          const ignoreNum = Number(ignoreCode);
+          if (Number.isFinite(candNum) && Number.isFinite(ignoreNum) && candNum === ignoreNum) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+
+    const filtered = (shouldIgnoreSource
+      ? overlapTitles.filter((o) => !isSourceOverlap(o))
+      : overlapTitles).filter((o) => {
+      const layerType = String(resolveOverlapLayerType(o) || '').trim().toLowerCase();
+      return layerType !== 'promotion';
+    });
+    if (!filtered.length) return false;
+    return true;
+  }, [isAXW, isTEM, isTXC, isTXM, overlapTitles, selectedApm, selectedPrior, temFromApm]);
 
   const loadDraft = (): DraftState | null => {
     if (typeof window === 'undefined') return null;
@@ -299,9 +485,13 @@ export default function InteractiveDemandePage() {
       })
       .then((res) => {
         const list = res.data ?? [];
-        setPermisOptions(
-          list.filter((permis) => ALLOWED_PERMIS_CODES.has((permis.code_type || '').trim().toUpperCase())),
+        const filtered = list.filter((permis) =>
+          ALLOWED_PERMIS_CODES.has((permis.code_type || '').trim().toUpperCase()),
         );
+        const withPermissions = canCreateAxw
+          ? filtered
+          : filtered.filter((permis) => (permis.code_type || '').trim().toUpperCase() !== 'AXW');
+        setPermisOptions(withPermissions);
       })
       .catch((err) => {
         if (axios.isCancel(err)) return;
@@ -312,7 +502,7 @@ export default function InteractiveDemandePage() {
         setOptionsLoading(false);
       });
     return () => controller.abort();
-  }, []);
+  }, [canCreateAxw]);
 
   const resetDraftState = () => {
     setSelectedPermisId('');
@@ -358,12 +548,27 @@ export default function InteractiveDemandePage() {
       return;
     }
 
+    const selectedOption = permisOptions.find((option) => option.id === permisId);
+    const selectedCode = (selectedOption?.code_type || '').trim().toUpperCase();
+    if (selectedCode === 'AXW' && !canCreateAxw) {
+      setSelectedPermisId('');
+      setSelectedPermis(null);
+      toast.error("Vous n'avez pas la permission de creer une demande AXW.");
+      return;
+    }
+
     setSelectedPermisId(permisId);
     setDetailsLoading(true);
     try {
       const res = await axios.get<TypePermis>(`${apiBase}/type-permis/${permisId}`, { withCredentials: true });
-      setSelectedPermis(res.data ?? null);
       const code = (res.data?.code_type || '').toUpperCase();
+      if (code === 'AXW' && !canCreateAxw) {
+        setSelectedPermisId('');
+        setSelectedPermis(null);
+        toast.error("Vous n'avez pas la permission de creer une demande AXW.");
+        return;
+      }
+      setSelectedPermis(res.data ?? null);
       if (code === 'APM' || code === 'TEC' || (!code.startsWith('TX') && code !== 'TEM')) {
         openManualEntry(true);
       } else {
@@ -667,14 +872,12 @@ export default function InteractiveDemandePage() {
       return;
     }
     const selectedLayers = getSelectedOverlapLayers();
-    const anyLayerActive = Object.values(selectedLayers).some(Boolean);
-    if (!anyLayerActive) {
-      toast.warning('Veuillez selectionner au moins une couche.');
-      setOverlapDetected(false);
-      setOverlapTitles([]);
-      setHasOverlapCheck(false);
-      return;
-    }
+    const layersToCheck = {
+      ...selectedLayers,
+      titres: true,
+      promotion: true,
+      perimetresSig: true,
+    };
 
     setIsCheckingOverlaps(true);
     try {
@@ -687,7 +890,7 @@ export default function InteractiveDemandePage() {
       }));
       const res = await axios.post(
         `${apiBase}/gis/analyze-perimeter`,
-        { points: payloadPoints, layers: selectedLayers },
+        { points: payloadPoints, layers: layersToCheck },
         { withCredentials: true },
       );
       const areaHa = res.data?.areaHa;
@@ -750,8 +953,7 @@ export default function InteractiveDemandePage() {
     });
   };
 
-  const getOverlapLayerType = (o: any) =>
-    String(o?.layer_type ?? o?.layerType ?? o?.__layerType ?? '').trim();
+  const getOverlapLayerType = (o: any) => resolveOverlapLayerType(o);
 
   const getOverlapZoomTarget = (o: any): { layerKey: OverlapLayerKey; fieldName: string; value: string } | null => {
     const layerType = getOverlapLayerType(o);
@@ -886,7 +1088,7 @@ export default function InteractiveDemandePage() {
       toast.warning('Veuillez valider un perimetre avant de demarrer.');
       return;
     }
-    if (!hasOverlapCheck || overlapDetected) {
+    if (!hasOverlapCheck || blockingOverlapDetected) {
       toast.warning('Veuillez verifier les chevauchements avant de demarrer.');
       return;
     }
@@ -896,6 +1098,10 @@ export default function InteractiveDemandePage() {
     }
 
     const codeSel = (effectivePermis.code_type || '').toUpperCase();
+    if (codeSel === 'AXW' && !canCreateAxw) {
+      toast.error("Vous n'avez pas la permission de creer une demande AXW.");
+      return;
+    }
     if (codeSel.startsWith('TX') && !selectedPrior) {
       toast.warning('Veuillez selectionner le titre precedent TEM/TEC.');
       return;
@@ -932,12 +1138,19 @@ export default function InteractiveDemandePage() {
         } catch {}
       }
 
+      const submissionDate = normalizeDateTime(dateSoumission);
+      if (!submissionDate) {
+        toast.warning('Selectionnez une date de soumission valide.');
+        setSubmitting(false);
+        return;
+      }
+
       const response = await axios.post(
         `${apiBase}/demandes`,
         {
           id_typepermis: effectivePermis.id,
           objet_demande: 'Instruction initialisee',
-          date_demande: dateSoumission.toISOString(),
+          date_demande: formatDateTime(submissionDate),
           nom_responsable: auth.username || undefined,
           ...(id_detenteur ? { id_detenteur } : {}),
           ...(id_sourceProc ? { id_sourceProc } : {}),
@@ -1056,9 +1269,45 @@ export default function InteractiveDemandePage() {
     URL.revokeObjectURL(url);
   };
 
+  const exportKml = () => {
+    if (!mapPoints.length) {
+      toast.warning('Aucun perimetre a exporter.');
+      return;
+    }
+    const zone = mapPoints[0]?.zone ?? draftZone;
+    const utmCoords = mapPoints.map((p) => [p.x, p.y] as [number, number]);
+    const wgsCoords = normalizeRing(convertUtmToWgs84(utmCoords, zone));
+    if (wgsCoords.length < 3) {
+      toast.warning('Le polygone doit contenir au moins 3 points.');
+      return;
+    }
+    const coordsText = closeRing(wgsCoords)
+      .map(([lon, lat]) => `${formatKmlCoord(lon)},${formatKmlCoord(lat)},0`)
+      .join(' ');
+    const name = effectivePermis?.code_type ? `Perimetre ${effectivePermis.code_type}` : 'Perimetre';
+    const kml =
+      `<?xml version="1.0" encoding="UTF-8"?>` +
+      `<kml xmlns="http://www.opengis.net/kml/2.2"><Document>` +
+      `<Placemark><name>${escapeKmlText(name)}</name>` +
+      `<Polygon><outerBoundaryIs><LinearRing><coordinates>${coordsText}</coordinates></LinearRing></outerBoundaryIs></Polygon>` +
+      `</Placemark></Document></kml>`;
+    const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    a.href = url;
+    a.download = `perimetre-wgs84-${ts}.kml`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const detectCsvDelimiter = (line: string) => {
+    const tab = (line.match(/\t/g) || []).length;
     const comma = (line.match(/,/g) || []).length;
     const semi = (line.match(/;/g) || []).length;
+    if (tab > 0) return '\t';
     return semi > comma ? ';' : ',';
   };
 
@@ -1305,43 +1554,52 @@ export default function InteractiveDemandePage() {
               </p>
             </div>
             <div className={styles.headerSearch}>
+              <div className={styles.headerSearchSelectGroup}>
+                <select
+                  value={searchLayer}
+                  onChange={(e) => setSearchLayer(e.target.value as SearchLayerKey)}
+                  className={styles.headerSearchSelect}
+                  title="Couche de recherche"
+                >
+                  {SEARCH_LAYERS.map((layer) => (
+                    <option key={layer.key} value={layer.key}>
+                      {layer.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={searchField}
+                  onChange={(e) => setSearchField(e.target.value)}
+                  className={styles.headerSearchSelect}
+                  title="Attribut de recherche"
+                  disabled={!searchFieldOptions.length}
+                >
+                  {searchFieldOptions.length ? (
+                    searchFieldOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="">Aucun attribut</option>
+                  )}
+                </select>
+              </div>
               <input
                 value={searchPermisCode}
                 onChange={(e) => setSearchPermisCode(e.target.value)}
-                onKeyDown={async (e) => {
+                onKeyDown={(e) => {
                   if (e.key !== 'Enter') return;
                   e.preventDefault();
-                  const code = searchPermisCode.trim();
-                  if (!code) return;
-                  if (!mapRef.current?.searchPerimetreByPermisCode || !mapRef.current?.searchTitreByCode) {
-                    toast.error('Carte indisponible pour la recherche.');
-                    return;
-                  }
-                  const ok = await mapRef.current.searchPerimetreByPermisCode(code);
-                  if (!ok) {
-                    const fallbackOk = await mapRef.current.searchTitreByCode(code);
-                    if (!fallbackOk) toast.warning('Aucun permis trouve.');
-                  }
+                  handleMapSearch();
                 }}
-                placeholder="Rechercher un code permis..."
+                placeholder={`Rechercher sur ${searchLayerLabel.toLowerCase()}...`}
                 className={styles.headerSearchInput}
               />
               <button
                 type="button"
                 className={styles.headerSearchButton}
-                onClick={async () => {
-                  const code = searchPermisCode.trim();
-                  if (!code) return;
-                  if (!mapRef.current?.searchPerimetreByPermisCode || !mapRef.current?.searchTitreByCode) {
-                    toast.error('Carte indisponible pour la recherche.');
-                    return;
-                  }
-                  const ok = await mapRef.current.searchPerimetreByPermisCode(code);
-                  if (!ok) {
-                    const fallbackOk = await mapRef.current.searchTitreByCode(code);
-                    if (!fallbackOk) toast.warning('Aucun permis trouve.');
-                  }
-                }}
+                onClick={handleMapSearch}
               >
                 Rechercher
               </button>
@@ -1399,13 +1657,19 @@ export default function InteractiveDemandePage() {
                   )}
 
                   <label className={styles.label}>
-                    Date de soumission <span className={styles.required}>*</span>
+                    Date et heure de soumission de la demande <span className={styles.required}>*</span>
                   </label>
                   <div className={styles.datepickerWrapper}>
                     <DatePicker
                       selected={dateSoumission}
-                      onChange={(date: Date | null) => setDateSoumission(date)}
-                      dateFormat="dd/MM/yyyy"
+                      onChange={(date: Date | null) =>
+                        setDateSoumission(normalizeDateTime(date))
+                      }
+                      showTimeSelect
+                      timeFormat="HH:mm"
+                      timeIntervals={5}
+                      timeCaption="Heure"
+                      dateFormat="dd/MM/yyyy HH:mm"
                       className={styles.select}
                     />
                   </div>
@@ -1447,6 +1711,14 @@ export default function InteractiveDemandePage() {
                   >
                     Exporter CSV
                   </button>
+                  <button
+                    type="button"
+                    className={styles.secondaryBtn}
+                    onClick={exportKml}
+                    disabled={!mapPoints.length}
+                  >
+                    Exporter KML
+                  </button>
                   {hasValidatedPerimeter && (
                     <div className={styles.statusBadge}>
                       <FiCheckCircle /> Perimetre valide
@@ -1476,6 +1748,11 @@ export default function InteractiveDemandePage() {
                   {overlapDetected && (
                     <div className={styles.warningBadge}>
                       <FiAlertTriangle /> Empietements detectes ({overlapTitles.length})
+                    </div>
+                  )}
+                  {overlapDetected && isAXW && !blockingOverlapDetected && (
+                    <div className={styles.statusBadge}>
+                      Chevauchement sur zone de promotion: autorise pour AXW.
                     </div>
                   )}
                   {overlapTitles.length > 0 && (
@@ -1537,7 +1814,7 @@ export default function InteractiveDemandePage() {
                   <button
                     type="button"
                     className={styles.startBtn}
-                    disabled={submitting || !hasValidatedPerimeter || !hasOverlapCheck || overlapDetected}
+                    disabled={submitting || !hasValidatedPerimeter || !hasOverlapCheck || blockingOverlapDetected}
                     onClick={startProcedure}
                   >
                     <FiPlay /> {submitting ? 'Creation...' : 'Demarrer la procedure'}
@@ -1556,6 +1833,8 @@ export default function InteractiveDemandePage() {
                 utmZone={draftZone}
                 utmHemisphere={draftHemisphere}
                 showFuseaux
+                overlapDetails={overlapTitles}
+                overlapSelections={overlapSelections}
                 enableSelectionTools
               />
             </section>

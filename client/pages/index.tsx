@@ -39,7 +39,19 @@ export default function LoginPage() {
       );
 
       login(response.data);
-      router.push('/investisseur/investorDashboard');
+
+      const user = response.data?.user;
+      const isVerified = Boolean(
+        user?.isEntrepriseVerified ??
+        user?.entrepriseVerified ??
+        user?.entreprise_verified
+      );
+
+      if (isVerified) {
+        router.push('/investisseur/InvestorDashboard');
+      } else {
+        router.push('/investisseur/Identification/identification-entreprise');
+      }
       
     } catch (err: any) {
       console.error('Login error:', err);

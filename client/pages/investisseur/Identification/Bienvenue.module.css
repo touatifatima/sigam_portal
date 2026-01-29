@@ -1,0 +1,253 @@
+.container {
+  min-height: calc(100vh - 80px);
+  background: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--muted)) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.wrapper {
+  max-width: 900px;
+  width: 100%;
+  text-align: center;
+}
+
+/* Success Animation */
+.successIcon {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 2rem;
+}
+
+.successCircle {
+  width: 120px;
+  height: 120px;
+  background: linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(142 71% 45%) 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: scaleIn 0.5s ease-out forwards;
+  box-shadow: 0 20px 60px -15px hsl(142 76% 36% / 0.5);
+}
+
+.checkIcon {
+  width: 60px;
+  height: 60px;
+  color: white;
+  animation: checkmark 0.4s ease-out 0.3s forwards;
+  opacity: 0;
+  transform: scale(0);
+}
+
+.ripple,
+.ripple2 {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 120px;
+  height: 120px;
+  border: 2px solid hsl(142 76% 36% / 0.4);
+  border-radius: 50%;
+  animation: ripple 1.5s ease-out infinite;
+}
+
+.ripple2 {
+  animation-delay: 0.5s;
+}
+
+@keyframes scaleIn {
+  0% {
+    transform: scale(0);
+  }
+  70% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes checkmark {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes ripple {
+  0% {
+    width: 120px;
+    height: 120px;
+    opacity: 1;
+  }
+  100% {
+    width: 200px;
+    height: 200px;
+    opacity: 0;
+  }
+}
+
+/* Welcome Content */
+.welcomeContent {
+  margin-bottom: 3rem;
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  margin-bottom: 1rem;
+  animation: fadeInUp 0.5s ease-out 0.2s forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.subtitle {
+  font-size: 1.25rem;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.8;
+  animation: fadeInUp 0.5s ease-out 0.3s forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Features Grid */
+.featuresGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+}
+
+.featureCard {
+  background: hsl(var(--card));
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 10px 40px -15px hsl(var(--primary) / 0.15);
+  animation: fadeInUp 0.5s ease-out forwards;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.3s ease;
+}
+
+.featureCard:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 50px -15px hsl(var(--primary) / 0.25);
+}
+
+.featureIconWrapper {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.1) 0%, hsl(var(--secondary) / 0.1) 100%);
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+}
+
+.featureIcon {
+  width: 28px;
+  height: 28px;
+  color: hsl(var(--primary));
+}
+
+.featureTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.5rem;
+}
+
+.featureDescription {
+  font-size: 0.9rem;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.5;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  animation: fadeInUp 0.5s ease-out 0.6s forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.primaryButton {
+  min-width: 320px;
+  height: 56px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%);
+  border: none;
+  box-shadow: 0 8px 30px -8px hsl(var(--primary) / 0.5);
+  transition: all 0.3s ease;
+}
+
+.primaryButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px -8px hsl(var(--primary) / 0.6);
+}
+
+.secondaryButton {
+  min-width: 280px;
+  height: 48px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.secondaryButton:hover {
+  background: hsl(var(--muted));
+}
+
+@media (max-width: 768px) {
+  .featuresGrid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .title {
+    font-size: 1.75rem;
+  }
+
+  .subtitle {
+    font-size: 1rem;
+  }
+
+  .successCircle {
+    width: 100px;
+    height: 100px;
+  }
+
+  .checkIcon {
+    width: 50px;
+    height: 50px;
+  }
+
+  .primaryButton,
+  .secondaryButton {
+    width: 100%;
+    min-width: unset;
+  }
+}
