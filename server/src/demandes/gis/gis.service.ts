@@ -678,22 +678,25 @@ export class GisService {
    * Point can be in any supported CRS; we convert to WGS84 then test contains.
    */
   async detectAdminByPoint(
-    payload:
-      | GisPointInput
-      | { points?: GisPointInput[]; x?: number; y?: number },
-  ) {
-    let lng: number | null = null;
-    let lat: number | null = null;
+      payload:
+        | GisPointInput
+        | { points?: GisPointInput[]; x?: number; y?: number },
+    ) {
+      let lng: number | null = null;
+      let lat: number | null = null;
 
-    // If a polygon is provided, take its centroid in WGS84
-    const pts = (payload as any)?.points as GisPointInput[] | undefined;
-    if (pts && pts.length >= 3) {
-      const ring = pts.map((p) => this.toWgs84(p));
-      const first = ring[0];
-      const last = ring[ring.length - 1];
-      if (first[0] !== last[0] || first[1] !== last[1]) {
-        ring.push(first);
-      }
+      // If a polygon is provided, take its centroid in WGS84
+      const ptsRaw = (payload as any)?.points as GisPointInput[] | undefined;
+      const pts = Array.isArray(ptsRaw)
+        ? ptsRaw.filter((p) => Number.isFinite(p?.x) && Number.isFinite(p?.y))
+        : [];
+      if (pts.length >= 3) {
+        const ring = pts.map((p) => this.toWgs84(p));
+        const first = ring[0];
+        const last = ring[ring.length - 1];
+        if (first[0] !== last[0] || first[1] !== last[1]) {
+          ring.push(first);
+        }
       // simple centroid of polygon
       let area = 0;
       let cx = 0;
@@ -716,16 +719,19 @@ export class GisService {
     }
 
     // Fallback to single point if provided
-    if (lng === null || lat === null) {
-      const point = payload as GisPointInput;
-      const res = this.toWgs84(point);
-      lng = res[0];
-      lat = res[1];
-    }
+      if (lng === null || lat === null) {
+        const point = payload as GisPointInput;
+        if (!Number.isFinite(point?.x) || !Number.isFinite(point?.y)) {
+          return { wilaya: null, commune: null, ville: null };
+        }
+        const res = this.toWgs84(point);
+        lng = res[0];
+        lat = res[1];
+      }
 
-    if (lng === null || lat === null) {
-      return { wilaya: null, commune: null, ville: null };
-    }
+      if (lng === null || lat === null || !Number.isFinite(lng) || !Number.isFinite(lat)) {
+        return { wilaya: null, commune: null, ville: null };
+      }
     const client = await this.pool.connect();
     try {
       const sqlWilaya = `
@@ -1452,15 +1458,15 @@ export class GisService {
               t.idstatustitre,
               t.sig_area,
               ST_Intersection(
-                ST_Transform(ST_MakeValid(t.geom), 3857),
+                ST_Transform(ST_MakeValid(CASE WHEN ST_SRID(t.geom)=0 THEN ST_SetSRID(t.geom, 4326) WHEN ST_SRID(t.geom)=4326 THEN t.geom ELSE ST_Transform(t.geom, 4326) END), 3857),
                 (SELECT geom3857 FROM poly)
               ) AS inter_geom
             FROM cmasig_titres t, poly
             WHERE t.geom IS NOT NULL
               AND NOT ST_IsEmpty(t.geom)
-              AND t.geom && (SELECT geom4326 FROM poly)
-              AND ST_Intersects(t.geom, (SELECT geom4326 FROM poly))
-              AND NOT ST_Touches(t.geom, (SELECT geom4326 FROM poly))
+              AND CASE WHEN ST_SRID(t.geom)=0 THEN ST_SetSRID(t.geom, 4326) WHEN ST_SRID(t.geom)=4326 THEN t.geom ELSE ST_Transform(t.geom, 4326) END && (SELECT geom4326 FROM poly)
+              AND ST_Intersects(CASE WHEN ST_SRID(t.geom)=0 THEN ST_SetSRID(t.geom, 4326) WHEN ST_SRID(t.geom)=4326 THEN t.geom ELSE ST_Transform(t.geom, 4326) END, (SELECT geom4326 FROM poly))
+              AND NOT ST_Touches(CASE WHEN ST_SRID(t.geom)=0 THEN ST_SetSRID(t.geom, 4326) WHEN ST_SRID(t.geom)=4326 THEN t.geom ELSE ST_Transform(t.geom, 4326) END, (SELECT geom4326 FROM poly))
           )
           SELECT
             'titres' AS layer_type,
@@ -1520,15 +1526,15 @@ export class GisService {
               gp.permis_titulaire,
               gp.permis_area_ha,
               ST_Intersection(
-              ST_Transform(ST_MakeValid(gp.geom), 3857),
+              ST_Transform(ST_MakeValid(CASE WHEN ST_SRID(gp.geom)=0 THEN ST_SetSRID(gp.geom, 4326) WHEN ST_SRID(gp.geom)=4326 THEN gp.geom ELSE ST_Transform(gp.geom, 4326) END), 3857),
               (SELECT geom3857 FROM poly)
             ) AS inter_geom
             FROM gis_perimeters gp, poly
             WHERE gp.geom IS NOT NULL
               AND NOT ST_IsEmpty(gp.geom)
-              AND gp.geom && (SELECT geom4326 FROM poly)
-              AND ST_Intersects(gp.geom, (SELECT geom4326 FROM poly))
-              AND NOT ST_Touches(gp.geom, (SELECT geom4326 FROM poly))
+              AND CASE WHEN ST_SRID(gp.geom)=0 THEN ST_SetSRID(gp.geom, 4326) WHEN ST_SRID(gp.geom)=4326 THEN gp.geom ELSE ST_Transform(gp.geom, 4326) END && (SELECT geom4326 FROM poly)
+              AND ST_Intersects(CASE WHEN ST_SRID(gp.geom)=0 THEN ST_SetSRID(gp.geom, 4326) WHEN ST_SRID(gp.geom)=4326 THEN gp.geom ELSE ST_Transform(gp.geom, 4326) END, (SELECT geom4326 FROM poly))
+              AND NOT ST_Touches(CASE WHEN ST_SRID(gp.geom)=0 THEN ST_SetSRID(gp.geom, 4326) WHEN ST_SRID(gp.geom)=4326 THEN gp.geom ELSE ST_Transform(gp.geom, 4326) END, (SELECT geom4326 FROM poly))
           )
           SELECT
             'perimetresSig' AS layer_type,
@@ -1570,15 +1576,15 @@ export class GisService {
               p.nom,
               p.sig_area,
               ST_Intersection(
-                ST_Transform(ST_MakeValid(p.geom), 3857),
+                ST_Transform(ST_MakeValid(CASE WHEN ST_SRID(p.geom)=0 THEN ST_SetSRID(p.geom, 4326) WHEN ST_SRID(p.geom)=4326 THEN p.geom ELSE ST_Transform(p.geom, 4326) END), 3857),
                 (SELECT geom3857 FROM poly)
               ) AS inter_geom
             FROM cmasig_promotion p, poly
             WHERE p.geom IS NOT NULL
               AND NOT ST_IsEmpty(p.geom)
-              AND p.geom && (SELECT geom4326 FROM poly)
-              AND ST_Intersects(p.geom, (SELECT geom4326 FROM poly))
-              AND NOT ST_Touches(p.geom, (SELECT geom4326 FROM poly))
+              AND CASE WHEN ST_SRID(p.geom)=0 THEN ST_SetSRID(p.geom, 4326) WHEN ST_SRID(p.geom)=4326 THEN p.geom ELSE ST_Transform(p.geom, 4326) END && (SELECT geom4326 FROM poly)
+              AND ST_Intersects(CASE WHEN ST_SRID(p.geom)=0 THEN ST_SetSRID(p.geom, 4326) WHEN ST_SRID(p.geom)=4326 THEN p.geom ELSE ST_Transform(p.geom, 4326) END, (SELECT geom4326 FROM poly))
+              AND NOT ST_Touches(CASE WHEN ST_SRID(p.geom)=0 THEN ST_SetSRID(p.geom, 4326) WHEN ST_SRID(p.geom)=4326 THEN p.geom ELSE ST_Transform(p.geom, 4326) END, (SELECT geom4326 FROM poly))
           )
           SELECT
             'promotion' AS layer_type,
@@ -1620,15 +1626,15 @@ export class GisService {
               m.tnom,
               m.sig_area,
               ST_Intersection(
-                ST_Transform(ST_MakeValid(m.geom), 3857),
+                ST_Transform(ST_MakeValid(CASE WHEN ST_SRID(m.geom)=0 THEN ST_SetSRID(m.geom, 4326) WHEN ST_SRID(m.geom)=4326 THEN m.geom ELSE ST_Transform(m.geom, 4326) END), 3857),
                 (SELECT geom3857 FROM poly)
               ) AS inter_geom
             FROM cmasig_modifications m, poly
             WHERE m.geom IS NOT NULL
               AND NOT ST_IsEmpty(m.geom)
-              AND m.geom && (SELECT geom4326 FROM poly)
-              AND ST_Intersects(m.geom, (SELECT geom4326 FROM poly))
-              AND NOT ST_Touches(m.geom, (SELECT geom4326 FROM poly))
+              AND CASE WHEN ST_SRID(m.geom)=0 THEN ST_SetSRID(m.geom, 4326) WHEN ST_SRID(m.geom)=4326 THEN m.geom ELSE ST_Transform(m.geom, 4326) END && (SELECT geom4326 FROM poly)
+              AND ST_Intersects(CASE WHEN ST_SRID(m.geom)=0 THEN ST_SetSRID(m.geom, 4326) WHEN ST_SRID(m.geom)=4326 THEN m.geom ELSE ST_Transform(m.geom, 4326) END, (SELECT geom4326 FROM poly))
+              AND NOT ST_Touches(CASE WHEN ST_SRID(m.geom)=0 THEN ST_SetSRID(m.geom, 4326) WHEN ST_SRID(m.geom)=4326 THEN m.geom ELSE ST_Transform(m.geom, 4326) END, (SELECT geom4326 FROM poly))
           )
           SELECT
             'modifications' AS layer_type,
@@ -1669,15 +1675,15 @@ export class GisService {
               e.idzone,
               e.nom,
               ST_Intersection(
-                ST_Transform(ST_MakeValid(e.geom), 3857),
+                ST_Transform(ST_MakeValid(CASE WHEN ST_SRID(e.geom)=0 THEN ST_SetSRID(e.geom, 4326) WHEN ST_SRID(e.geom)=4326 THEN e.geom ELSE ST_Transform(e.geom, 4326) END), 3857),
                 (SELECT geom3857 FROM poly)
               ) AS inter_geom
             FROM cmasig_exclusion e, poly
             WHERE e.geom IS NOT NULL
               AND NOT ST_IsEmpty(e.geom)
-              AND e.geom && (SELECT geom4326 FROM poly)
-              AND ST_Intersects(e.geom, (SELECT geom4326 FROM poly))
-              AND NOT ST_Touches(e.geom, (SELECT geom4326 FROM poly))
+              AND CASE WHEN ST_SRID(e.geom)=0 THEN ST_SetSRID(e.geom, 4326) WHEN ST_SRID(e.geom)=4326 THEN e.geom ELSE ST_Transform(e.geom, 4326) END && (SELECT geom4326 FROM poly)
+              AND ST_Intersects(CASE WHEN ST_SRID(e.geom)=0 THEN ST_SetSRID(e.geom, 4326) WHEN ST_SRID(e.geom)=4326 THEN e.geom ELSE ST_Transform(e.geom, 4326) END, (SELECT geom4326 FROM poly))
+              AND NOT ST_Touches(CASE WHEN ST_SRID(e.geom)=0 THEN ST_SetSRID(e.geom, 4326) WHEN ST_SRID(e.geom)=4326 THEN e.geom ELSE ST_Transform(e.geom, 4326) END, (SELECT geom4326 FROM poly))
           )
           SELECT
             'exclusions' AS layer_type,
@@ -1715,14 +1721,14 @@ export class GisService {
             FROM cmasig_titres t, poly
             WHERE t.geom IS NOT NULL
               AND NOT ST_IsEmpty(t.geom)
-              AND NOT ST_Intersects(t.geom, (SELECT geom FROM poly))
+              AND NOT ST_Intersects(CASE WHEN ST_SRID(t.geom)=0 THEN ST_SetSRID(t.geom, 4326) WHEN ST_SRID(t.geom)=4326 THEN t.geom ELSE ST_Transform(t.geom, 4326) END, (SELECT geom FROM poly))
           )
           SELECT
             ni.code,
             ni.typetitre,
             ni.idtitre,
             ST_Distance(
-              ST_Transform(ni.geom, 3857),
+              ST_Transform(CASE WHEN ST_SRID(ni.geom)=0 THEN ST_SetSRID(ni.geom, 4326) WHEN ST_SRID(ni.geom)=4326 THEN ni.geom ELSE ST_Transform(ni.geom, 4326) END, 3857),
               ST_Transform((SELECT geom FROM poly), 3857)
             ) AS min_dist_m
           FROM non_intersect ni

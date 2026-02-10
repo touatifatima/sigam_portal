@@ -11,6 +11,10 @@ export class DemandeService {
       where: { id_demande },
       include: {
         procedure: true, // keep procedure (without typeProcedure)
+        typePermis: true,
+        wilaya: true,
+        daira: true,
+        commune: true,
         typeProcedure: true, // now directly from Demande
         detenteurdemande: {
           include: { detenteur: true },
@@ -363,6 +367,34 @@ if (!createdProc?.id_proc) {
           communes: { include: { commune: true } },
         },
       });
+    });
+  }
+////////////////////////////// Get demandes for the currently authenticated user
+  async findByUserId(userId: number) {
+    const demandes = await this.prisma.demandePortail.findMany({
+      where: { utilisateurId: userId },
+      include: {
+        procedure: true,
+        typeProcedure: true,
+        typePermis: true,
+        wilaya: true,
+        daira: true,
+        commune: true,
+        detenteurdemande: {
+          include: { detenteur: true },
+        },
+      },
+      orderBy: { date_demande: 'desc' },
+    });
+
+    return demandes.map((demande) => {
+      const enriched = mergeTypeSpecificFields(demande as any);
+      const primaryDetenteur = enriched.detenteurdemande?.[0]?.detenteur ?? null;
+      const { detenteurdemande, ...rest } = enriched as any;
+      return {
+        ...rest,
+        detenteur: primaryDetenteur,
+      };
     });
   }
 }

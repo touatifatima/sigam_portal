@@ -35,8 +35,12 @@ const Paiement = () => {
   const { currentView, navigateTo } = useViewNavigator("nouvelle-demande");
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(null);
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [demandeInfo, setDemandeInfo] = useState<DemandePaiement | null>(null);
-  const [isLoadingDemande, setIsLoadingDemande] = useState(false);
+  const [demandeInfo, setDemandeInfo] = useState<DemandePaiement>({
+    codeDemande: "--",
+    typeProcedure: "--",
+    montant: 0,
+    statutPaiement: "EN_ATTENTE",
+  });
   const [idProc, setIdProc] = useState<string | null>(null);
   const [idDemande, setIdDemande] = useState<string | null>(null);
   const [procedureData, setProcedureData] = useState<Procedure | null>(null);
@@ -58,19 +62,125 @@ const Paiement = () => {
     setIdProc(raw);
   }, []);
 
-  // Simulated fetch
+  const coerceNumber = (value: any): number | null => {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+      const cleaned = value.replace(/[\s\u00A0\u202F]/g, "").replace(",", ".");
+      const num = Number(cleaned);
+      if (Number.isFinite(num)) return num;
+    }
+    return null;
+  };
+
+  const resolveTypeProcedure = (payload: any): string | null => {
+    return (
+      payload?.typeProcedure?.libelle ||
+      payload?.typeProcedure?.label ||
+      payload?.typeProcedure?.lib_type ||
+      payload?.type_procedure ||
+      payload?.demande?.typeProcedure?.libelle ||
+      payload?.demande?.typeProcedure?.label ||
+      payload?.demande?.typeProcedure?.lib_type ||
+      payload?.demande?.type_procedure ||
+      payload?.typePermis?.lib_type ||
+      payload?.typePermis?.libelle ||
+      payload?.typePermis?.code_type ||
+      null
+    );
+  };
+
+  const normalizeStatus = (value: any): PaymentStatus => {
+    const raw = String(value ?? "").toUpperCase();
+    if (raw.includes("PAY")) return "PAYE";
+    if (raw.includes("ANNUL") || raw.includes("ERREUR")) return "EN_ERREUR";
+    return "EN_ATTENTE";
+  };
+
   useEffect(() => {
-    if (!idProc) return;
-    setIsLoadingDemande(true);
-    const mock: DemandePaiement = {
-      codeDemande: `DEM-${idProc}`,
-      typeProcedure: "Permis d'exploration minière",
-      montant: 125000,
-      statutPaiement: "EN_ATTENTE",
+    if (!idProc || !apiURL) return;
+    let active = true;
+    const controller = new AbortController();
+
+    const loadFacture = async (demandeId: number) => {
+      try {
+        const res = await axios.get(`${apiURL}/api/facture/demande/${demandeId}`, {
+          signal: controller.signal,
+        });
+        return res.data?.facture ?? res.data ?? null;
+      } catch (error) {
+        if (axios.isCancel(error)) throw error;
+        try {
+          const generated = await axios.post(
+            `${apiURL}/api/facture/investisseur/generer`,
+            { id_demande: demandeId },
+            { withCredentials: true, signal: controller.signal },
+          );
+          return generated.data?.facture ?? generated.data ?? null;
+        } catch (err) {
+          if (axios.isCancel(err)) throw err;
+        }
+      }
+      return null;
     };
-    setDemandeInfo(mock);
-    setIsLoadingDemande(false);
-  }, [idProc]);
+
+    const load = async () => {
+      try {
+        const res = await axios.get(`${apiURL}/api/procedures/${idProc}/demande`, {
+          signal: controller.signal,
+        });
+        if (!active) return;
+        const payload = res.data ?? {};
+        const demandeId =
+          payload?.id_demande ?? payload?.idDemande ?? payload?.demande?.id_demande;
+        if (demandeId != null) {
+          setIdDemande(String(demandeId));
+        }
+        const codeDemande =
+          payload?.code_demande ??
+          payload?.codeDemande ??
+          payload?.demande?.code_demande ??
+          payload?.demande?.codeDemande ??
+          (idProc ? `DEM-${idProc}` : "--");
+        const typeProcedure = resolveTypeProcedure(payload);
+
+        setDemandeInfo((prev) => ({
+          codeDemande: codeDemande ?? prev.codeDemande,
+          typeProcedure: typeProcedure ?? prev.typeProcedure,
+          montant: prev.montant ?? 0,
+          statutPaiement: prev.statutPaiement ?? "EN_ATTENTE",
+        }));
+
+        if (demandeId != null) {
+          const facture = await loadFacture(Number(demandeId));
+          if (!active || !facture) return;
+          const montant =
+            coerceNumber(facture?.montant_total) ??
+            coerceNumber(facture?.montantTotal) ??
+            coerceNumber(facture?.montant);
+          const statut = normalizeStatus(
+            facture?.statut ?? facture?.statut_facture ?? facture?.statutFacture,
+          );
+          setDemandeInfo((prev) => ({
+            codeDemande: prev.codeDemande ?? codeDemande ?? "--",
+            typeProcedure: prev.typeProcedure ?? typeProcedure ?? "--",
+            montant: montant ?? prev.montant ?? 0,
+            statutPaiement: statut,
+          }));
+        }
+      } catch (error) {
+        if (axios.isCancel(error)) return;
+      } finally {
+        if (!active) return;
+      }
+    };
+
+    load();
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [idProc, apiURL]);
 
   useEffect(() => {
     if (!idProc || !apiURL) return;
@@ -111,31 +221,7 @@ const Paiement = () => {
     };
   }, [idProc, apiURL, refetchTrigger]);
 
-  useEffect(() => {
-    if (!idProc || !procedureData || !apiURL) return;
-
-    const fetchDemandeData = async () => {
-      abortControllerRef.current = new AbortController();
-      try {
-        const res = await axios.get(`${apiURL}/api/procedures/${idProc}/demande`, {
-          signal: abortControllerRef.current.signal,
-        });
-        if (res.data?.id_demande != null) {
-          setIdDemande(res.data.id_demande.toString());
-        }
-      } catch (error) {
-        if (axios.isCancel(error)) return;
-      }
-    };
-
-    fetchDemandeData();
-
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, [idProc, procedureData, apiURL, refetchTrigger]);
+  // Demande data is loaded separately for paiement details.
 
   // Align with page4: show phases as returned by backend, sorted by ordre
   const phases: Phase[] = useMemo(() => {
@@ -279,7 +365,7 @@ const Paiement = () => {
   const isPaymentDisabled = !isPaymentFormComplete;
 
   const formatMontant = (val?: number) =>
-    typeof val === "number"
+    typeof val === "number" && Number.isFinite(val) && val > 0
       ? val.toLocaleString("fr-DZ", { minimumFractionDigits: 0 })
       : "--";
 

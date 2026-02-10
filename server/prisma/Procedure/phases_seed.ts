@@ -23,7 +23,7 @@ type phasesCSV = {
 
 export async function main() {
   const phasesData: any[] = [];
-  const csvFilePath = path.join('T:', 'Amina', 'BaseSicma_Urgence', 'df_phases.csv');
+  const csvFilePath = path.join('T:', 'cleaned_df', 'df_phases.csv');
 
   fs.createReadStream(csvFilePath)
     .pipe(

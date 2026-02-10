@@ -1,4 +1,4 @@
-import {
+﻿import {
   BadRequestException,
   Body,
   Controller,
@@ -6,6 +6,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
   ValidationPipe,
 } from '@nestjs/common';
 import { ProcedureRenouvellementService } from './procedure_renouvellemnt.service';
@@ -25,6 +26,41 @@ export class ProcedureRenouvellementController {
   @Get(':id/renouvellement')
   async getRenewalData(@Param('id') id: string) {
     return this.proceduresService.getRenewalData(+id);
+  }
+
+  // Dernier périmètre accepté pour le permis lié
+  @Get('renouvellement/perimetre/latest')
+  async getLatestPerimeter(@Query('permisId') permisId?: string) {
+    if (!permisId) {
+      throw new BadRequestException('permisId requis');
+    }
+    return this.proceduresService.getLatestAcceptedPerimeter(Number(permisId));
+  }
+
+  // Liste des perimetres (toutes procedures du permis)
+  @Get('renouvellement/perimetre/list')
+  async listPerimeters(@Query('permisId') permisId?: string) {
+    if (!permisId) {
+      throw new BadRequestException('permisId requis');
+    }
+    return this.proceduresService.listPerimetersByPermis(Number(permisId));
+  }
+
+  // Enregistrer un nouveau périmètre pour la procédure de renouvellement
+  @Post('renouvellement/:id/perimetres')
+  async saveRenewalPerimeter(
+    @Param('id') id: string,
+    @Body() body: { points: any[]; commentaires?: string },
+  ) {
+    if (!body?.points || !Array.isArray(body.points) || body.points.length < 3) {
+      throw new BadRequestException('Au moins trois points sont requis');
+    }
+    return this.proceduresService.saveRenewalPerimeter(Number(id), body);
+  }
+
+  @Post('renouvellement/:id/finalize-permis')
+  async finalizeRenewalPermis(@Param('id') id: string) {
+    return this.proceduresService.finalizeRenewalPermis(Number(id));
   }
 
   @Post(':id/renouvellement')
@@ -111,9 +147,9 @@ export class ProcedureRenouvellementController {
 
     if (!isPaid) {
       const message = missing
-        .map((m) => `- ${m.libelle}: ${m.montantRestant.toLocaleString()} DZD`)
+        .map((m) => `- Obligation ${m}`)
         .join('\n');
-      throw new BadRequestException(`Renouvellement bloqué :\n${message}`);
+      throw new BadRequestException({ message: `Renouvellement bloque :\n${message}`, unpaid: missing, });
     }
 
     return {
@@ -128,3 +164,5 @@ export class ProcedureRenouvellementController {
     return this.proceduresService.getPermisForProcedure(+id);
   }
 }
+
+

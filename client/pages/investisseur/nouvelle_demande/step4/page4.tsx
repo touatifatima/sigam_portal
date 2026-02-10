@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { ChangeEvent } from 'react';
 import { useSearchParams } from '@/src/hooks/useSearchParams';
 import axios from 'axios';
 import {
@@ -24,6 +23,13 @@ import { useActivateEtape } from '@/src/hooks/useActivateEtape';
 import router from 'next/router';
 import { Phase, Procedure, ProcedureEtape, ProcedurePhase, StatutProcedure } from '@/src/types/procedure';
 import { CoordinateConverter } from '../../../../utils/coordinateConverter';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import proj4 from 'proj4';
 import * as XLSX from 'xlsx';
 import * as turf from '@turf/turf';
@@ -1564,8 +1570,8 @@ const checkButtonConditions = () => {
     }
   };
 
-  const handlePrincipalChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    const nextId = Number(event.target.value);
+  const handlePrincipalChange = (value: string) => {
+    const nextId = Number(value);
     if (!Number.isFinite(nextId)) return;
     handlePrincipalSelect(nextId);
   };
@@ -1847,7 +1853,7 @@ const checkButtonConditions = () => {
       setRefetchTrigger((prev) => prev + 1);
       setSuccess('Donn?es enregistr?es avec succ?s !');
       setTimeout(() => setSuccess(null), 3000);
-      router.push(`/investisseur/nouvelle_demande/step5/page5?id=${idProc}`);
+      router.push(`/investisseur/nouvelle_demande/step3/page3?id=${idProc}`);
     } catch (err) {
       toast.error("Erreur lors de la sauvegarde de l'?tape");
       setEtapeMessage("Erreur lors de l'enregistrement de l'?tape.");
@@ -1862,7 +1868,7 @@ const checkButtonConditions = () => {
       toast.error('ID de procédure introuvable');
       return;
     }
-    router.push(`/investisseur/nouvelle_demande/step3/page3?id=${idProc}`)
+    router.push(`/investisseur/nouvelle_demande/step5/page5?id=${idProc}`)
   };
 
   const applyUtmToAllPoints = useCallback(() => {
@@ -1883,16 +1889,26 @@ const checkButtonConditions = () => {
     <div className={styles['utm-settings']}>
       <div className={styles['form-group']}>
         <label className={styles['form-label']}>Zone UTM</label>
-        <select
-          value={utmZone}
-          onChange={(e) => setUtmZone(parseInt(e.target.value))}
-          className={styles['form-select']}
+        <Select
+          value={String(utmZone)}
+          onValueChange={(value) => setUtmZone(parseInt(value, 10))}
           disabled={statutProc === 'TERMINEE'}
         >
-          {Array.from({ length: 4 }, (_, i) => i + 29).map((zone) => (
-            <option key={zone} value={zone}>{zone}</option>
-          ))}
-        </select>
+          <SelectTrigger className={styles['form-select']}>
+            <SelectValue className={styles.selectValue} placeholder="Zone UTM" />
+          </SelectTrigger>
+          <SelectContent className={styles.selectContent}>
+            {Array.from({ length: 4 }, (_, i) => i + 29).map((zone) => (
+              <SelectItem
+                key={zone}
+                value={String(zone)}
+                className={styles.selectItem}
+              >
+                {zone}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className={styles['form-group']}>
         <label className={styles['form-label']}>Appliquer</label>
@@ -1966,30 +1982,66 @@ const checkButtonConditions = () => {
           <div className={styles['modal-body']}>
             <div className={styles['form-group']}>
               <label className={styles['form-label']}>Systéme cible</label>
-              <select
+              
+              <Select
                 value={conversionSettings.system}
-                onChange={(e) => setConversionSettings((prev) => ({ ...prev, system: e.target.value as CoordinateSystem }))}
-                className={styles['form-select']}
+                onValueChange={(value) =>
+                  setConversionSettings((prev) => ({
+                    ...prev,
+                    system: value as CoordinateSystem,
+                  }))
+                }
               >
-                <option value="WGS84">WGS84 (Lat/Lon)</option>
-                <option value="UTM">UTM</option>
-                <option value="LAMBERT">Lambert</option>
-                <option value="MERCATOR">Mercator</option>
-              </select>
+                <SelectTrigger className={styles['form-select']}>
+                  <SelectValue className={styles.selectValue} placeholder="Systeme cible" />
+                </SelectTrigger>
+                <SelectContent className={styles.selectContent}>
+                  <SelectItem className={styles.selectItem} value="WGS84">
+                    WGS84 (Lat/Lon)
+                  </SelectItem>
+                  <SelectItem className={styles.selectItem} value="UTM">
+                    UTM
+                  </SelectItem>
+                  <SelectItem className={styles.selectItem} value="LAMBERT">
+                    Lambert
+                  </SelectItem>
+                  <SelectItem className={styles.selectItem} value="MERCATOR">
+                    Mercator
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
             </div>
             {conversionSettings.system === 'UTM' && (
               <>
                 <div className={styles['form-group']}>
                   <label className={styles['form-label']}>Zone UTM</label>
-                  <select
-                    value={conversionSettings.zone}
-                    onChange={(e) => setConversionSettings((prev) => ({ ...prev, zone: parseInt(e.target.value) }))}
-                    className={styles['form-select']}
+                  
+                  <Select
+                    value={String(conversionSettings.zone)}
+                    onValueChange={(value) =>
+                      setConversionSettings((prev) => ({
+                        ...prev,
+                        zone: parseInt(value, 10),
+                      }))
+                    }
                   >
-                    {Array.from({ length: 4 }, (_, i) => i + 29).map((zone) => (
-                      <option key={zone} value={zone}>{zone}</option>
-                    ))}
-                  </select>
+                    <SelectTrigger className={styles['form-select']}>
+                      <SelectValue className={styles.selectValue} placeholder="Zone UTM" />
+                    </SelectTrigger>
+                    <SelectContent className={styles.selectContent}>
+                      {Array.from({ length: 4 }, (_, i) => i + 29).map((zone) => (
+                        <SelectItem
+                          key={zone}
+                          value={String(zone)}
+                          className={styles.selectItem}
+                        >
+                          {zone}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
                 </div>
                 <div className={styles['form-group']}>
                   <label className={styles['checkbox-label']}>
@@ -2029,26 +2081,8 @@ const checkButtonConditions = () => {
       <div className={styles['app-content']}>
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles['main-content']}>
-          {missingDocsAlert && (
-            <div style={{
-              background: 'rgba(220,38,38,0.1)',
-              border: '1px solid rgba(220,38,38,0.4)',
-              padding: '10px 12px',
-              borderRadius: 6,
-              marginBottom: 12,
-              color: '#991b1b',
-              fontWeight: 600,
-            }}>
-              Documents obligatoires manquants: {missingDocsAlert.missing.join(', ')}
-              {missingDocsAlert.deadline && (
-                <span style={{ marginLeft: 8, fontWeight: 500 }}>
-                  ? {computeRemaining(missingDocsAlert.deadline)}
-                </span>
-              )}
-            </div>
-          )}
           <div className={styles['breadcrumb']}>
-            <span>SIGAM</span>
+            <span>POM</span>
             <FiChevronRight className={styles['breadcrumb-arrow']} />
             <span>Localisation & Substances</span>
           </div>
@@ -2066,7 +2100,7 @@ const checkButtonConditions = () => {
             <div className={styles['header-section']}>
               <h1 className={styles['page-title']}>
                 <FiMapPin className={styles['title-icon']} />
-                Étape 4: Localisation & Substances
+                 Localisation & Substances
               </h1>
               <p className={styles['page-subtitle']}>
                 Veuillez fournir les informations sur la localisation et les substances visées
@@ -2092,63 +2126,93 @@ const checkButtonConditions = () => {
                                     <FiMapPin className={styles['input-icon']} />
                                     Wilaya
                                   </label>
-                                  <select
-                                    disabled={statutProc === 'TERMINEE'}
-                                    className={styles['form-select']}
-                                    value={zone.wilayaId}
-                                    onChange={(e) =>
-                                      handleZoneChange(zone.id, 'wilayaId', e.target.value)
+                                  <Select
+                                    value={zone.wilayaId || undefined}
+                                    onValueChange={(value) =>
+                                      handleZoneChange(zone.id, 'wilayaId', value)
                                     }
+                                    disabled={statutProc === 'TERMINEE'}
                                   >
-                                    <option value="">S?lectionner une wilaya</option>
-                                    {wilayas.map((w) => (
-                                      <option key={w.id_wilaya} value={w.id_wilaya}>
-                                        {w.code_wilaya} - {w.nom_wilayaFR}
-                                      </option>
-                                    ))}
-                                  </select>
+                                    <SelectTrigger className={styles['form-select']}>
+                                      <SelectValue
+                                        className={styles.selectValue}
+                                        placeholder="Selectionner une wilaya"
+                                      />
+                                    </SelectTrigger>
+                                    <SelectContent className={styles.selectContent}>
+                                      {wilayas.map((w) => (
+                                        <SelectItem
+                                          key={w.id_wilaya}
+                                          value={String(w.id_wilaya)}
+                                          className={styles.selectItem}
+                                        >
+                                          {w.code_wilaya} - {w.nom_wilayaFR}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
                                 </div>
                                 <div className={styles['form-group']}>
                                   <label className={styles['form-label']}>
                                     <FiMapPin className={styles['input-icon']} />
                                     Daira
                                   </label>
-                                  <select
-                                    className={styles['form-select']}
-                                    value={zone.dairaId}
-                                    onChange={(e) =>
-                                      handleZoneChange(zone.id, 'dairaId', e.target.value)
+                                  <Select
+                                    value={zone.dairaId || undefined}
+                                    onValueChange={(value) =>
+                                      handleZoneChange(zone.id, 'dairaId', value)
                                     }
                                     disabled={!zone.wilayaId || statutProc === 'TERMINEE'}
                                   >
-                                    <option value="">S?lectionner une Da?ra</option>
-                                    {dairas.map((d) => (
-                                      <option key={d.id_daira} value={d.id_daira}>
-                                        {d.code_daira} - {d.nom_dairaFR}
-                                      </option>
-                                    ))}
-                                  </select>
+                                    <SelectTrigger className={styles['form-select']}>
+                                      <SelectValue
+                                        className={styles.selectValue}
+                                        placeholder="Selectionner une Daira"
+                                      />
+                                    </SelectTrigger>
+                                    <SelectContent className={styles.selectContent}>
+                                      {dairas.map((d) => (
+                                        <SelectItem
+                                          key={d.id_daira}
+                                          value={String(d.id_daira)}
+                                          className={styles.selectItem}
+                                        >
+                                          {d.code_daira} - {d.nom_dairaFR}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
                                 </div>
                                 <div className={styles['form-group']}>
                                   <label className={styles['form-label']}>
                                     <FiMapPin className={styles['input-icon']} />
                                     Commune
                                   </label>
-                                  <select
-                                    className={styles['form-select']}
-                                    value={zone.communeId}
-                                    onChange={(e) =>
-                                      handleZoneChange(zone.id, 'communeId', e.target.value)
+                                  <Select
+                                    value={zone.communeId || undefined}
+                                    onValueChange={(value) =>
+                                      handleZoneChange(zone.id, 'communeId', value)
                                     }
                                     disabled={!zone.dairaId || statutProc === 'TERMINEE'}
                                   >
-                                    <option value="">S?lectionner une commune</option>
-                                    {communes.map((c) => (
-                                      <option key={c.id_commune} value={c.id_commune}>
-                                        {c.code_commune} - {c.nom_communeFR}
-                                      </option>
-                                    ))}
-                                  </select>
+                                    <SelectTrigger className={styles['form-select']}>
+                                      <SelectValue
+                                        className={styles.selectValue}
+                                        placeholder="Selectionner une commune"
+                                      />
+                                    </SelectTrigger>
+                                    <SelectContent className={styles.selectContent}>
+                                      {communes.map((c) => (
+                                        <SelectItem
+                                          key={c.id_commune}
+                                          value={String(c.id_commune)}
+                                          className={styles.selectItem}
+                                        >
+                                          {c.code_commune} - {c.nom_communeFR}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
                                 </div>
                               </div>
                               <div className={styles['zone-actions']}>
@@ -2214,17 +2278,34 @@ const checkButtonConditions = () => {
                         <FiFileText className={styles['input-icon']} />
                         Statut Juridique
                       </label>
-                      <select
+                      
+                      <Select
+                        value={statutJuridique || undefined}
+                        onValueChange={(value) => setStatutJuridique(value)}
                         disabled={statutProc === 'TERMINEE'}
-                        className={styles['form-select']}
-                        value={statutJuridique}
-                        onChange={(e) => setStatutJuridique(e.target.value)}
                       >
-                        <option value="">Sélectionner un statut</option>
-                        <option value="Domaine public">Domaine public</option>
-                        <option value="Domaine privé de l'état">Domaine privé de l'état</option>
-                        <option value="Propriété privée">Propriété privée</option>
-                      </select>
+                        <SelectTrigger className={styles['form-select']}>
+                          <SelectValue
+                            className={styles.selectValue}
+                            placeholder="Selectionner un statut"
+                          />
+                        </SelectTrigger>
+                        <SelectContent className={styles.selectContent}>
+                          <SelectItem className={styles.selectItem} value="Domaine public">
+                            Domaine public
+                          </SelectItem>
+                          <SelectItem
+                            className={styles.selectItem}
+                            value="Domaine privé de l'état"
+                          >
+                            Domaine privé de l'état
+                          </SelectItem>
+                          <SelectItem className={styles.selectItem} value="Propriété privée">
+                            Propriété privée
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+
                     </div>
                     <div className={styles['form-group']}>
                       <label className={styles['form-label']}>
@@ -2264,22 +2345,31 @@ const checkButtonConditions = () => {
                   <div className={styles['form-card-body']}>
                     <div className={styles['form-group']}>
                       <label className={styles['form-label']}>Substance Principale *</label>
-                      <select
-                        className={styles['form-select']}
-                        value={principalSubstanceId ?? ''}
-                        onChange={handlePrincipalChange}
+                      
+                      <Select
+                        value={principalSubstanceId != null ? String(principalSubstanceId) : undefined}
+                        onValueChange={handlePrincipalChange}
                         disabled={statutProc === 'TERMINEE' || !statutProc}
-                        required
                       >
-                        <option value="" disabled>
-                          Sélectionner une substance principale
-                        </option>
-                        {allSubstances.map((sub) => (
-                          <option key={sub.id_sub} value={sub.id_sub}>
-                            {formatSubstanceLabel(sub)}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger className={styles['form-select']}>
+                          <SelectValue
+                            className={styles.selectValue}
+                            placeholder="Selectionner une substance principale"
+                          />
+                        </SelectTrigger>
+                        <SelectContent className={styles.selectContent}>
+                          {allSubstances.map((sub) => (
+                            <SelectItem
+                              key={sub.id_sub}
+                              value={String(sub.id_sub)}
+                              className={styles.selectItem}
+                            >
+                              {formatSubstanceLabel(sub)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
                     </div>
 
                     <div className={styles['form-group']}>
@@ -2296,21 +2386,33 @@ const checkButtonConditions = () => {
                           );
                           return (
                             <div key={row.id} className={styles['secondary-row']}>
-                              <select
-                                className={styles['form-select']}
-                                value={row.substanceId ?? ''}
-                                onChange={(e) =>
-                                  handleSecondaryRowChange(row.id, e.target.value)
+                              
+                              <Select
+                                value={row.substanceId != null ? String(row.substanceId) : undefined}
+                                onValueChange={(value) =>
+                                  handleSecondaryRowChange(row.id, value)
                                 }
                                 disabled={statutProc === 'TERMINEE' || !statutProc}
                               >
-                                <option value="">S?lectionner une substance</option>
-                                {options.map((sub) => (
-                                  <option key={sub.id_sub} value={sub.id_sub}>
-                                    {formatSubstanceLabel(sub)}
-                                  </option>
-                                ))}
-                              </select>
+                                <SelectTrigger className={styles['form-select']}>
+                                  <SelectValue
+                                    className={styles.selectValue}
+                                    placeholder="Selectionner une substance"
+                                  />
+                                </SelectTrigger>
+                                <SelectContent className={styles.selectContent}>
+                                  {options.map((sub) => (
+                                    <SelectItem
+                                      key={sub.id_sub}
+                                      value={String(sub.id_sub)}
+                                      className={styles.selectItem}
+                                    >
+                                      {formatSubstanceLabel(sub)}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+
                               <button
                                 type="button"
                                 className={styles['btn-remove-row']}

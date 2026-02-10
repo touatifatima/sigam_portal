@@ -18,6 +18,7 @@ import Point from '@arcgis/core/geometry/Point';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
 import SimpleMarkerSymbol from '@arcgis/core/symbols/SimpleMarkerSymbol';
 import SimpleFillSymbol from '@arcgis/core/symbols/SimpleFillSymbol';
+import SimpleRenderer from '@arcgis/core/renderers/SimpleRenderer';
 import TextSymbol from '@arcgis/core/symbols/TextSymbol';
 import Sketch from '@arcgis/core/widgets/Sketch';
 import DistanceMeasurement2D from '@arcgis/core/widgets/DistanceMeasurement2D';
@@ -33,6 +34,8 @@ import PrintTemplate from '@arcgis/core/rest/support/PrintTemplate';
 import esriId from '@arcgis/core/identity/IdentityManager';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { useAuthStore } from '../../src/store/useAuthStore';
+import { FiMousePointer, FiLayers, FiDownload, FiFileText, FiTool } from 'react-icons/fi';
 
 // Configure ArcGIS Enterprise portal
 try { esriConfig.portalUrl = "https://sig.anam.dz/portal"; } catch {}
@@ -61,9 +64,60 @@ const persistCredentials = () => {
 };
 loadPersistedCredentials();
 try {
+  const anyEsriId = esriId as any;
+  if (anyEsriId?.signIn && !anyEsriId.__sigamSignInPatched) {
+    const originalSignIn = anyEsriId.signIn.bind(esriId);
+    anyEsriId.signIn = (url: string, options?: any) => {
+      const safeOptions = options && typeof options === 'object' ? options : {};
+      return originalSignIn(url, safeOptions);
+    };
+    anyEsriId.__sigamSignInPatched = true;
+  }
   // Keep stored credentials updated when a new token is issued
   (esriId as any).on?.('credential-create', persistCredentials);
 } catch {}
+
+let autoLoginPromise: Promise<void> | null = null;
+const ensureArcgisCredential = async (apiBase?: string): Promise<void> => {
+  if (typeof window === 'undefined') return;
+  if (autoLoginPromise) return autoLoginPromise;
+  autoLoginPromise = (async () => {
+    const portalRoot = String(esriConfig.portalUrl || 'https://sig.anam.dz/portal').replace(/\/+$/, '');
+    const sharingUrl = `${portalRoot}/sharing`;
+    try {
+      await esriId.checkSignInStatus(sharingUrl);
+      return;
+    } catch {}
+    try {
+      const base = String(apiBase || '').replace(/\/+$/, '');
+      const endpoint = base ? `${base}/gis/arcgis-token` : '/gis/arcgis-token';
+      const resp = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ referer: window.location.origin })
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok || !data?.token) {
+        console.warn('ArcGIS auto login failed:', data?.error || data);
+        return;
+      }
+      const expires = Number(data.expires || 0);
+      esriId.registerToken({
+        server: data.server || `${portalRoot}/sharing/rest`,
+        token: data.token,
+        expires: Number.isFinite(expires) && expires > 0
+          ? expires
+          : Date.now() + 60 * 60 * 1000
+      });
+      persistCredentials();
+    } catch (err) {
+      console.warn('ArcGIS auto login failed:', err);
+    }
+  })().finally(() => {
+    autoLoginPromise = null;
+  });
+  return autoLoginPromise;
+};
 
 // Strip app-level custom headers from ArcGIS/ANAM/CDN requests to avoid CORS issues
 if (typeof window !== 'undefined') {
@@ -162,6 +216,20 @@ type SelectedPolygon = {
   wgs84Rings: number[][][];
 };
 
+type ReportV2Row = {
+  name: string;
+  observation: string;
+  color?: [number, number, number] | null;
+};
+
+type ReportV2Options = {
+  title?: string;
+  preparedBy?: string;
+  note?: string;
+  shot?: any;
+  rows?: ReportV2Row[];
+};
+
 // Nord Sahara -> WGS84 7-parameter transformation (JO 30/11/2022).
 // Published parameters are WGS84 -> Nord Sahara; signs inverted for +towgs84.
 const NORD_SAHARA_TOWGS84 = {
@@ -180,6 +248,21 @@ const NORD_SAHARA_TOWGS84 = {
 const getUtmShift = (zone: number) => {
   return { x: 0, y: 0 };
 };
+
+const COLOR_PERIMETRE = [96, 165, 250] as const; // bleu clair
+const COLOR_TITRES = [34, 197, 94] as const; // vert
+const COLOR_EXCLUSION = [139, 92, 246] as const; // violet
+const COLOR_DEMANDES = [239, 68, 68] as const; // red
+
+const withAlpha = (rgb: readonly [number, number, number], alpha: number) =>
+  [rgb[0], rgb[1], rgb[2], alpha] as [number, number, number, number];
+
+const OVERLAP_HIGHLIGHT_PALETTE = [
+  { fill: withAlpha(COLOR_PERIMETRE, 0.08), outline: [59, 130, 246] },
+  { fill: withAlpha(COLOR_TITRES, 0.08), outline: [22, 163, 74] },
+  { fill: withAlpha(COLOR_EXCLUSION, 0.08), outline: [124, 58, 237] },
+  { fill: withAlpha(COLOR_DEMANDES, 0.08), outline: [220, 38, 38] },
+] as const;
 
 export interface ArcGISMapProps {
   points: Coordinate[];
@@ -228,7 +311,15 @@ export interface ArcGISMapProps {
   // Optional: precomputed overlaps (titles) to include in PDF export.
   // When provided, PDF generation will not query remote layers again.
   overlapTitles?: any[];
+  // Optional: precomputed overlaps for all layers to include in PDF export.
+  // When provided, it takes precedence over overlapTitles.
+  overlapDetails?: any[];
+  // Optional: selected overlap features to highlight on the map (typically titres).
+  overlapSelections?: any[];
   enableSelectionTools?: boolean;
+  selectionRequiresModifier?: boolean;
+  enableBoxSelection?: boolean;
+  disableEnterpriseLayers?: boolean;
 }
 
 export interface ArcGISMapRef {
@@ -236,12 +327,16 @@ export interface ArcGISMapRef {
   resetMap: () => void;
   calculateArea: () => number;
   getActiveLayers: () => {[key: string]: boolean};
+  setLayerActive: (layerKey: SigamLayerKey, active: boolean) => void;
+  toggleLayerActive: (layerKey: SigamLayerKey) => void;
   toggleLayerPanel: () => void;
   setLayerPanelOpen: (open: boolean) => void;
   searchTitreByCode: (code: string) => Promise<boolean>;
   searchPerimetreByPermisCode: (code: string) => Promise<boolean>;
   searchLayerFeature: (layerKey: SigamLayerKey, fieldName: string, value: string) => Promise<boolean>;
   detectAdminForCurrent: () => Promise<void>;
+  zoomToCurrentPolygon: () => void;
+  zoomToWgs84Polygon: (coords: [number, number][]) => void;
   // Returns null if service unreachable or query fails
   queryMiningTitles: (geometry?: any) => Promise<any[] | null>;
 }
@@ -267,8 +362,13 @@ export interface ArcGISMapRef {
     declaredAreaHa,
     validationSummary,
     overlapTitles,
+    overlapDetails,
+    overlapSelections,
     onAdminDetected,
-    enableSelectionTools = false
+    enableSelectionTools = false,
+    selectionRequiresModifier = true,
+    enableBoxSelection = false,
+    disableEnterpriseLayers = false
   }, ref) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<MapView | null>(null);
@@ -279,14 +379,24 @@ export interface ArcGISMapRef {
   const fuseauxLayerRef = useRef<GraphicsLayer | null>(null);
   const titresLayerRef = useRef<FeatureLayer | null>(null);
   const perimetresSigLayerRef = useRef<FeatureLayer | null>(null);
+  const promotionLayerRef = useRef<FeatureLayer | null>(null);
   const searchHighlightLayerRef = useRef<GraphicsLayer | null>(null);
   const selectionLayerRef = useRef<GraphicsLayer | null>(null);
+  const boxSelectionLayerRef = useRef<GraphicsLayer | null>(null);
+  const overlapHighlightLayerRef = useRef<GraphicsLayer | null>(null);
   const wilayasLayerRef = useRef<FeatureLayer | null>(null);
   const communesLayerRef = useRef<FeatureLayer | null>(null);
   const villesLayerRef = useRef<FeatureLayer | null>(null);
   const currentPolygonRef = useRef<Polygon | null>(null);
+  const overlapHighlightRequestRef = useRef(0);
+  const auth = useAuthStore((state) => state.auth);
   const [isMapReady, setIsMapReady] = useState(false);
+  const [boxSelectionEnabled, setBoxSelectionEnabled] = useState(false);
   const searchCacheRef = useRef<Record<string, { features: any[]; index: number; value: string }>>({});
+  const boxSelectionStartRef = useRef<{ x: number; y: number } | null>(null);
+  const boxSelectionGraphicRef = useRef<Graphic | null>(null);
+  const boxSelectionActiveRef = useRef(false);
+  const boxSelectionRequestRef = useRef(0);
   const [detectedAdmin, setDetectedAdmin] = useState<{wilaya?: string; commune?: string; ville?: string}>({});
   // Build a popup template listing all fields of a layer
   const buildAllFieldsPopup = (layer: any, title?: string) => {
@@ -306,14 +416,47 @@ export interface ArcGISMapRef {
   const ACTIVE_LAYERS_KEY = 'sigam_arcgis_active_layers';
   const defaultActiveLayers: { [key: string]: boolean } = {
     titres: true,          // layer 1
-    perimetresSig: false,  // layer 0
-    promotion: false,      // layer 2
-    exclusions: false,     // layer 3
+    perimetresSig: true,   // layer 0
+    promotion: true,       // layer 2
+    exclusions: true,      // layer 3
     wilayas: false,        // layer 4
     communes: false,       // layer 5
     villes: false,         // layer 6
     pays: false            // layer 7
   };
+  const TITRE_TYPES_KEY = 'sigam_arcgis_titre_types';
+  const TITRE_TYPE_OPTIONS: Array<{ code: string; label: string; color: [number, number, number] }> = [
+    { code: 'TXC', label: 'TXC', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] },
+    { code: 'TXM', label: 'TXM', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] },
+    { code: 'TEC', label: 'TEC', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] },
+    { code: 'TEM', label: 'TEM', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] },
+    { code: 'PM', label: 'PM', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] },
+    { code: 'ARM', label: 'ARM', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] },
+    { code: 'CS', label: 'CS', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] },
+    { code: 'PE', label: 'PE', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] },
+    { code: 'PRA', label: 'PRA', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] },
+    { code: 'ARC', label: 'ARC', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] },
+    { code: 'PPM', label: 'PPM', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] },
+    { code: 'SANS_TYPE', label: 'Sans type', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] }
+  ];
+  const TITRE_TYPE_ALIASES: Record<string, string[]> = {
+    TXC: ['TXC', 'PXC'],
+    TXM: ['TXM', 'PXM'],
+    TEC: ['TEC', 'PEC'],
+    TEM: ['TEM', 'PEM'],
+    PM: ['PM'],
+    ARM: ['ARM'],
+    CS: ['CS'],
+    PE: ['PE'],
+    PRA: ['PRA'],
+    ARC: ['ARC'],
+    PPM: ['PPM'],
+    SANS_TYPE: []
+  };
+  const defaultActiveTitreTypes = TITRE_TYPE_OPTIONS.reduce((acc, item) => {
+    acc[item.code] = true;
+    return acc;
+  }, {} as Record<string, boolean>);
 
   const [activeLayers, setActiveLayers] = useState<{[key: string]: boolean}>(() => {
     if (typeof window === 'undefined') return { ...defaultActiveLayers };
@@ -329,6 +472,34 @@ export interface ArcGISMapRef {
       return { ...defaultActiveLayers, ...migrated };
     } catch {
       return { ...defaultActiveLayers };
+    }
+  });
+  const [activeTitreTypes, setActiveTitreTypes] = useState<Record<string, boolean>>(() => {
+    if (typeof window === 'undefined') return { ...defaultActiveTitreTypes };
+    try {
+      const raw = window.localStorage.getItem(TITRE_TYPES_KEY);
+      if (!raw) return { ...defaultActiveTitreTypes };
+      const parsed = JSON.parse(raw) as Record<string, any>;
+      return { ...defaultActiveTitreTypes, ...(parsed || {}) };
+    } catch {
+      return { ...defaultActiveTitreTypes };
+    }
+  });
+  const [titresTypesOpen, setTitresTypesOpen] = useState(false);
+  const activeTitreTypeCodes = TITRE_TYPE_OPTIONS.filter((item) => activeTitreTypes[item.code]).map((item) => item.code);
+  const activeTitreTypesCount = activeTitreTypeCodes.length;
+  const totalTitreTypes = TITRE_TYPE_OPTIONS.length;
+  const titreTypesSignature = activeTitreTypeCodes.join('|');
+
+  const OVERLAP_STYLE_KEY = 'sigam_arcgis_overlap_clarity';
+  const [overlapClarityEnabled, setOverlapClarityEnabled] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      const raw = window.localStorage.getItem(OVERLAP_STYLE_KEY);
+      if (raw == null) return true;
+      return raw === 'true';
+    } catch {
+      return true;
     }
   });
 
@@ -355,9 +526,56 @@ export interface ArcGISMapRef {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
+      window.localStorage.setItem(TITRE_TYPES_KEY, JSON.stringify(activeTitreTypes));
+    } catch {}
+  }, [activeTitreTypes]);
+
+  useEffect(() => {
+    const layer = titresLayerRef.current;
+    if (!layer) return;
+    const fields = resolveTitreFilterFields(layer);
+    layer.definitionExpression = buildTitresDefinitionExpression(activeTitreTypeCodes, fields);
+    layer.renderer = buildTitresRenderer(resolveTitreFilterFields(layer));
+    try {
+      layer.refresh?.();
+    } catch {}
+  }, [titreTypesSignature]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(OVERLAP_STYLE_KEY, String(overlapClarityEnabled));
+    } catch {}
+  }, [overlapClarityEnabled]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
       window.localStorage.setItem(BASEMAP_MODE_KEY, basemapMode);
     } catch {}
   }, [basemapMode]);
+
+  const [isLayerPanelOpen, setIsLayerPanelOpen] = useState(false);
+  const [isToolsOpen, setIsToolsOpen] = useState(false);
+  const [activeMeasureTool, setActiveMeasureTool] = useState<'none' | 'distance' | 'area'>('none');
+  const [rotationToolsEnabled, setRotationToolsEnabled] = useState(false);
+  const [selectedTitreAttributes, setSelectedTitreAttributes] = useState<any | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [reportV2Open, setReportV2Open] = useState(false);
+  const [reportV2Loading, setReportV2Loading] = useState(false);
+  const [reportV2PreviewUrl, setReportV2PreviewUrl] = useState<string | null>(null);
+  const [reportV2Title, setReportV2Title] = useState('PROJECTION SIGAM');
+  const [reportV2PreparedBy, setReportV2PreparedBy] = useState('');
+  const [reportV2Note, setReportV2Note] = useState('');
+  const [reportV2FileName, setReportV2FileName] = useState('');
+  const [reportV2Rows, setReportV2Rows] = useState<ReportV2Row[]>([]);
+  const reportV2ShotRef = useRef<any | null>(null);
+  const [selectedPolygons, setSelectedPolygons] = useState<SelectedPolygon[]>([]);
+  const [showSelectedCoords, setShowSelectedCoords] = useState(false);
+  const [coordsCopied, setCoordsCopied] = useState(false);
+  const [selectionCollapsed, setSelectionCollapsed] = useState(false);
+  // Guard to avoid duplicate MapView initialization in React StrictMode (dev)
+
   const layerToggleOptions = [
     { key: 'titres', label: 'Titres miniers' },
     { key: 'perimetresSig', label: 'Demandes' },
@@ -373,17 +591,7 @@ export interface ArcGISMapRef {
     { key: 'standard', label: 'Carte' },
     { key: 'satellite', label: 'Satellite' }
   ];
-  const [isLayerPanelOpen, setIsLayerPanelOpen] = useState(false);
-  const [isToolsOpen, setIsToolsOpen] = useState(false);
-  const [activeMeasureTool, setActiveMeasureTool] = useState<'none' | 'distance' | 'area'>('none');
-  const [rotationToolsEnabled, setRotationToolsEnabled] = useState(false);
-  const [selectedTitreAttributes, setSelectedTitreAttributes] = useState<any | null>(null);
-  const [isExporting, setIsExporting] = useState(false);
-  const [selectedPolygons, setSelectedPolygons] = useState<SelectedPolygon[]>([]);
-  const [showSelectedCoords, setShowSelectedCoords] = useState(false);
-  const [coordsCopied, setCoordsCopied] = useState(false);
-  const [selectionCollapsed, setSelectionCollapsed] = useState(false);
-  // Guard to avoid duplicate MapView initialization in React StrictMode (dev)
+  
   const initializedRef = useRef<boolean>(false);
   const polygonGraphicRef = useRef<Graphic | null>(null);
   const sketchRef = useRef<Sketch | null>(null);
@@ -392,8 +600,17 @@ export interface ArcGISMapRef {
   const navigationToggleRef = useRef<NavigationToggle | null>(null);
   const compassRef = useRef<Compass | null>(null);
   const hasZoomedToPolygonRef = useRef<boolean>(false);
+  const lastZoomKeyRef = useRef<string>('');
   const [editingEnabled, setEditingEnabled] = useState(false);
 
+  useEffect(() => {
+    return () => {
+      if (reportV2PreviewUrl) {
+        URL.revokeObjectURL(reportV2PreviewUrl);
+      }
+    };
+  }, [reportV2PreviewUrl]);
+  
   // ANAM Enterprise utility services (geometry / printing)
   const enterpriseServices = {
     geometryService: "https://sig.anam.dz/server/rest/services/Utilities/Geometry/GeometryServer",
@@ -481,23 +698,48 @@ export interface ArcGISMapRef {
   }, [buildSatelliteBasemap]);
 
   // Coordinate conversion functions (same as before)
+  const parseCoordValue = (value: any): number | null => {
+    if (value == null) return null;
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? value : null;
+    }
+    const raw = String(value).trim();
+    if (!raw) return null;
+    const stripped = raw
+      .replace(/[\s\u00A0\u202F]/g, '')
+      .replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '');
+    if (!stripped) return null;
+    const hasComma = stripped.includes(',');
+    const hasDot = stripped.includes('.');
+    const normalized = hasComma && hasDot
+      ? stripped.replace(/\./g, '').replace(/,/g, '.')
+      : stripped.replace(/,/g, '.');
+    const num = Number(normalized);
+    return Number.isFinite(num) ? num : null;
+  };
+
   const convertToWGS84 = (point: Coordinate): [number, number] => {
+    const xVal = parseCoordValue(point.x);
+    const yVal = parseCoordValue(point.y);
     // Guard against invalid coordinates early
-    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) {
+    if (xVal == null || yVal == null) {
       return [0, 0];
     }
     try {
-    const isUTM = point.system === 'UTM' || point.system === 'WGS84' || !point.system;
-    if (isUTM) {
-      // Always use the fuseau selected in the UI/props
-      const zone = utmZone;
+      const system = String(point.system || 'UTM').toUpperCase();
+      if (system === 'WGS84') {
+        return [xVal, yVal];
+      }
+      if (system === 'UTM') {
+      // Prefer the point's stored fuseau when present, fallback to UI/props
+      const zone = (point.zone as number | undefined) ?? utmZone;
       const hemisphere = point.hemisphere ?? utmHemisphere;
       if (!zone || !hemisphere) {
         console.warn(`UTM coordinate missing zone or hemisphere for point ${point.id}, using defaults: zone=${utmZone}, hemisphere=${utmHemisphere}`);
       }
       const shift = getUtmShift(zone);
-      const xCorr = point.x + shift.x;
-      const yCorr = point.y + shift.y;
+      const xCorr = xVal + shift.x;
+      const yCorr = yVal + shift.y;
       // Use Clarke 1880 UTM (k=0.9996) with JO 2022 Bursa-Wolf params
       const sourceProj =
         // `+proj=utm +zone=${zone} +a=6378249.138 +b=6356514.9999 +units=m ` +
@@ -510,7 +752,7 @@ export interface ArcGISMapRef {
       const convertedUTM = proj4.default(sourceProj, 'EPSG:4326', [xCorr, yCorr]);
       return [convertedUTM[0], convertedUTM[1]];
     }
-    return [point.x, point.y];
+    return [xVal, yVal];
   } catch (error) {
     console.error(`Coordinate conversion error for point ${point.id}:`, error);
     return [0, 0];
@@ -630,6 +872,123 @@ export interface ArcGISMapRef {
     return false;
   };
 
+  const buildBoxPolygonFromScreen = (view: MapView, start: { x: number; y: number }, end: { x: number; y: number }) => {
+    const p1 = view.toMap({ x: start.x, y: start.y });
+    const p2 = view.toMap({ x: end.x, y: end.y });
+    if (!p1 || !p2) return null;
+    const xmin = Math.min(p1.x, p2.x);
+    const xmax = Math.max(p1.x, p2.x);
+    const ymin = Math.min(p1.y, p2.y);
+    const ymax = Math.max(p1.y, p2.y);
+    if (!Number.isFinite(xmin) || !Number.isFinite(ymin) || !Number.isFinite(xmax) || !Number.isFinite(ymax)) {
+      return null;
+    }
+    return new Polygon({
+      rings: [[[xmin, ymin], [xmin, ymax], [xmax, ymax], [xmax, ymin], [xmin, ymin]]],
+      spatialReference: view.spatialReference
+    });
+  };
+
+  const updateBoxSelectionGraphic = (polygon: Polygon) => {
+    const layer = boxSelectionLayerRef.current;
+    if (!layer) return;
+    if (!boxSelectionGraphicRef.current) {
+      const symbol = new SimpleFillSymbol({
+        color: withAlpha(COLOR_PERIMETRE, 0.08),
+        outline: { color: [59, 130, 246, 0.9], width: 1.4 },
+        style: 'solid'
+      });
+      const graphic = new Graphic({ geometry: polygon, symbol });
+      layer.add(graphic);
+      boxSelectionGraphicRef.current = graphic;
+      return;
+    }
+    boxSelectionGraphicRef.current.geometry = polygon;
+  };
+
+  const clearBoxSelectionGraphic = () => {
+    const layer = boxSelectionLayerRef.current;
+    if (layer) {
+      layer.removeAll();
+    }
+    boxSelectionGraphicRef.current = null;
+  };
+
+  const runBoxSelection = async (selectionPolygon: Polygon) => {
+    if (!selectionPolygon) return;
+    const requestId = ++boxSelectionRequestRef.current;
+    const view = viewRef.current;
+    const selectionPolygonWgs84 = toWgs84Polygon(selectionPolygon);
+    const featureLayers = (enterpriseLayersRef.current || [])
+      .filter((layer) => layer && layer.type === 'feature' && layer.visible !== false) as FeatureLayer[];
+    const queryTasks = featureLayers.map(async (layer) => {
+      try {
+        const query = layer.createQuery();
+        query.geometry = selectionPolygon;
+        query.spatialRelationship = 'intersects';
+        query.returnGeometry = true;
+        query.outFields = ['*'];
+        if (view?.spatialReference) {
+          query.outSpatialReference = view.spatialReference;
+        }
+        const res = await layer.queryFeatures(query);
+        return res.features || [];
+      } catch {
+        return [];
+      }
+    });
+    const graphicsLayers = [graphicsLayerRef.current, existingPolygonsLayerRef.current].filter(Boolean) as GraphicsLayer[];
+    const graphicMatches = graphicsLayers.flatMap((layer) =>
+      layer.graphics
+        .toArray()
+        .filter((graphic) => {
+          if (graphic?.geometry?.type !== 'polygon') return false;
+          const geom = graphic.geometry as Polygon;
+          const wkid = geom?.spatialReference?.wkid;
+          const selectionGeom =
+            wkid === 4326 || wkid === 4283 ? selectionPolygonWgs84 : selectionPolygon;
+          return geometryEngine.intersects(geom as any, selectionGeom as any);
+        })
+    );
+
+    const featureResults = await Promise.all(queryTasks);
+    if (requestId !== boxSelectionRequestRef.current) return;
+
+    const selections: SelectedPolygon[] = [];
+    const pushSelection = (graphic: Graphic) => {
+      if (!graphic?.geometry || graphic.geometry.type !== 'polygon') return;
+      const polygon = graphic.geometry as Polygon;
+      const wgs84Rings = extractWgs84Rings(polygon);
+      if (!wgs84Rings.length) return;
+      const layer = graphic.layer as any;
+      const key = getGraphicKey(graphic);
+      selections.push({
+        key,
+        layerId: layer?.id,
+        layerTitle: layer?.title,
+        attributes: graphic.attributes,
+        geometry: polygon,
+        wgs84Rings
+      });
+    };
+
+    featureResults.flat().forEach((graphic) => pushSelection(graphic));
+    graphicMatches.forEach((graphic) => pushSelection(graphic));
+
+    if (!selections.length) return;
+    setSelectedPolygons((prev) => {
+      const existingKeys = new Set(prev.map((sel) => sel.key));
+      const merged = [...prev];
+      selections.forEach((sel) => {
+        if (!existingKeys.has(sel.key)) {
+          existingKeys.add(sel.key);
+          merged.push(sel);
+        }
+      });
+      return merged;
+    });
+  };
+
   const getSelectionLabel = (selection: SelectedPolygon, index: number) => {
     const attrs = selection.attributes || {};
     const code =
@@ -736,7 +1095,7 @@ export interface ArcGISMapRef {
         queryGeometry = currentPolygonRef.current;
       }
       if (!queryGeometry && points.length >= 3) {
-        const validPoints = points.filter(p => !isNaN(p.x) && !isNaN(p.y));
+        const validPoints = points.filter(p => parseCoordValue(p.x) != null && parseCoordValue(p.y) != null);
         const wgs84Points = validPoints.map(point => convertToWGS84(point));
         queryGeometry = new Polygon({
           rings: [wgs84Points.map(coord => [coord[0], coord[1]])],
@@ -750,17 +1109,25 @@ export interface ArcGISMapRef {
         f: 'json',
         geometry: JSON.stringify(geomJson),
         geometryType: 'esriGeometryPolygon',
-        spatialRel: 'esriSpatialRelIntersects',
+        spatialRelationship: 'intersects',
         outFields: '*',
         returnGeometry: 'false',
         inSR: '4326',
         outSR: '4326'
       });
+      const titreParams = new URLSearchParams(params.toString());
+      titreParams.set(
+        'where',
+        buildTitresDefinitionExpression(
+          activeTitreTypeCodes,
+          resolveTitreFilterFields(titresLayerRef.current),
+        ),
+      );
 
       const results: any[] = [];
 
       if (layersToQuery.titres) {
-        const respTitres = await fetch(`${SIGAM_LAYERS.titres}/query?${params.toString()}`, { credentials: 'include' });
+        const respTitres = await fetch(`${SIGAM_LAYERS.titres}/query?${titreParams.toString()}`, { credentials: 'include' });
         const jsonTitres = await respTitres.json();
         const attrsTitres = Array.isArray(jsonTitres?.features)
           ? jsonTitres.features.map((f: any) => ({ ...(f?.attributes || {}), __layerType: 'titres' })).filter(Boolean)
@@ -823,6 +1190,7 @@ export interface ArcGISMapRef {
     if (!view) return false;
     const trimmed = (value || '').trim();
     if (!trimmed) return false;
+    const numericValue = /^\d+$/.test(trimmed) ? Number(trimmed) : null;
 
     const layerUrl = SIGAM_LAYERS[layerKey];
     if (!layerUrl) return false;
@@ -896,8 +1264,6 @@ export interface ArcGISMapRef {
 
     const fetchFeatures = async () => {
       const safeVal = trimmed.replace(/'/g, "''");
-      const numericValue = /^\d+$/.test(trimmed) ? Number(trimmed) : null;
-      const suffix = trimmed.match(/(\d+)$/)?.[1] || null;
       const fl = layerRef ?? new FeatureLayer({ url: layerUrl, outFields: ['*'] });
       let fieldDefs: any[] = [];
 
@@ -992,22 +1358,6 @@ export interface ArcGISMapRef {
         }
       }
 
-      if (!feats.length) {
-        const strFields = stringDefs.length ? stringDefs.map((d: any) => d.name) : candidateFields.names;
-        const whereContains = strFields.map((name) => `${name} LIKE '%${safeVal}%'`).join(' OR ');
-        if (whereContains) {
-          feats = await queryWithWhere(whereContains);
-        }
-      }
-
-      if (!feats.length && suffix) {
-        const strFields = stringDefs.length ? stringDefs.map((d: any) => d.name) : candidateFields.names;
-        const whereSuffix = strFields.map((name) => `${name} LIKE '%${suffix}%'`).join(' OR ');
-        if (whereSuffix) {
-          feats = await queryWithWhere(whereSuffix);
-        }
-      }
-
       searchCacheRef.current[cacheKey] = { features: feats as any, index: 0, value: trimmed };
       return feats as any;
     };
@@ -1028,7 +1378,7 @@ export interface ArcGISMapRef {
         } catch {}
         try {
           const res = await titresLayer.queryFeatures({
-            where: `code = '${safeVal}' OR code LIKE '%${safeVal}%'`,
+            where: numericValue !== null ? `code = ${numericValue}` : `code = '${safeVal}'`,
             outFields: ['*'],
             returnGeometry: true,
             outSpatialReference: view?.spatialReference,
@@ -1180,11 +1530,29 @@ export interface ArcGISMapRef {
       return;
     }
 
-    const validPoints = points.filter((p) => !isNaN(p.x) && !isNaN(p.y));
+    const validPoints = points.filter((p) => parseCoordValue(p.x) != null && parseCoordValue(p.y) != null);
     if (validPoints.length < 3) return;
     const wgs84Points = validPoints.map((point) => convertToWGS84(point));
     const polygon = new Polygon({
       rings: [wgs84Points.map((coord) => [coord[0], coord[1]])],
+      spatialReference: { wkid: 4326 },
+    });
+    viewRef.current.goTo(polygon).catch(() => {});
+  };
+
+  const zoomToWgs84Polygon = (coords: [number, number][]) => {
+    if (!viewRef.current) return;
+    if (!coords || coords.length < 3) return;
+    const ring = coords.filter(
+      (coord) => Number.isFinite(coord[0]) && Number.isFinite(coord[1]),
+    );
+    if (ring.length < 3) return;
+    const first = ring[0];
+    const last = ring[ring.length - 1];
+    const closedRing =
+      first[0] === last[0] && first[1] === last[1] ? ring : [...ring, first];
+    const polygon = new Polygon({
+      rings: [closedRing],
       spatialReference: { wkid: 4326 },
     });
     viewRef.current.goTo(polygon).catch(() => {});
@@ -1200,7 +1568,7 @@ export interface ArcGISMapRef {
     calculateArea: () => {
       if (points.length < 3) return 0;
       
-      const validPoints = points.filter(p => !isNaN(p.x) && !isNaN(p.y));
+      const validPoints = points.filter(p => parseCoordValue(p.x) != null && parseCoordValue(p.y) != null);
       if (validPoints.length < 3) return 0;
 
       try {
@@ -1235,6 +1603,16 @@ export interface ArcGISMapRef {
       }
     },
     getActiveLayers: () => ({ ...activeLayers }),
+    setLayerActive: (layerKey: SigamLayerKey, active: boolean) => {
+      setActiveLayers((prev) =>
+        layerKey in prev ? { ...prev, [layerKey]: !!active } : prev,
+      );
+    },
+    toggleLayerActive: (layerKey: SigamLayerKey) => {
+      setActiveLayers((prev) =>
+        layerKey in prev ? { ...prev, [layerKey]: !prev[layerKey] } : prev,
+      );
+    },
     toggleLayerPanel: () => setIsLayerPanelOpen((v) => !v),
     setLayerPanelOpen: (open: boolean) => setIsLayerPanelOpen(!!open),
     searchTitreByCode: (code: string) => searchAndZoom('titres', 'code', code),
@@ -1243,6 +1621,7 @@ export interface ArcGISMapRef {
       searchAndZoom(layerKey, fieldName, value),
     detectAdminForCurrent,
     zoomToCurrentPolygon,
+    zoomToWgs84Polygon,
     queryMiningTitles
   }));
 
@@ -1344,6 +1723,164 @@ export interface ArcGISMapRef {
     view.rotation = 0;
   };
 
+  const buildPerimetresSigRenderer = (useClarity: boolean) =>
+    new SimpleRenderer({
+      symbol: new SimpleFillSymbol({
+        color: useClarity ? withAlpha(COLOR_DEMANDES, 0.5) : withAlpha(COLOR_DEMANDES, 0.5),
+        outline: { color: [220, 38, 38, useClarity ? 0.7 : 0.95], width: 1.2 },
+        style: useClarity ? 'diagonal-cross' : 'solid',
+      }),
+    });
+
+  const buildPromotionRenderer = (useClarity: boolean) =>
+    new SimpleRenderer({
+      symbol: new SimpleFillSymbol({
+        color: useClarity ? withAlpha(COLOR_DEMANDES, 0.12) : withAlpha(COLOR_DEMANDES, 0.25),
+        outline: {
+          color: useClarity ? [220, 38, 38, 0.8] : [220, 38, 38, 0.95],
+          width: 1.2
+        },
+        style: useClarity ? 'diagonal-cross' : 'solid',
+      }),
+    });
+
+  const escapeWhereValue = (value: string) => String(value).replace(/'/g, "''");
+
+  const resolveTitreFilterTokens = (codes: string[]) => {
+    const tokens = new Set<string>();
+    (codes || []).forEach((code) => {
+      const cleaned = String(code || '').trim().toUpperCase();
+      if (!cleaned || cleaned === 'SANS_TYPE') return;
+      const aliases = TITRE_TYPE_ALIASES[cleaned] || [cleaned];
+      aliases.forEach((alias) => {
+        const entry = String(alias || '').trim().toUpperCase();
+        if (entry) tokens.add(entry);
+      });
+    });
+    return Array.from(tokens);
+  };
+
+  const buildTitresDefinitionExpression = (
+    codes: string[],
+    fields?: { codetype?: string | null; typetitre?: string | null },
+  ) => {
+    if (codes.length >= TITRE_TYPE_OPTIONS.length) return '1=1';
+    const wantsNulls = (codes || []).some(
+      (code) => String(code || '').trim().toUpperCase() === 'SANS_TYPE',
+    );
+    const tokens = resolveTitreFilterTokens(codes);
+    if (!tokens.length && !wantsNulls) return '1=0';
+    const values = tokens.map((code) => `'${escapeWhereValue(code)}'`).join(', ');
+    const clauses: string[] = [];
+    if (fields?.codetype) {
+      if (values) {
+        clauses.push(`UPPER(${fields.codetype}) IN (${values})`);
+      }
+      if (wantsNulls) {
+        clauses.push(`(${fields.codetype} IS NULL OR ${fields.codetype} = '')`);
+      }
+    }
+    if (fields?.typetitre) {
+      if (tokens.length) {
+        const likeClauses = tokens.map(
+          (code) => `UPPER(${fields.typetitre}) LIKE '%${escapeWhereValue(code)}%'`,
+        );
+        clauses.push(`(${likeClauses.join(' OR ')})`);
+      }
+      if (wantsNulls) {
+        clauses.push(`(${fields.typetitre} IS NULL OR ${fields.typetitre} = '')`);
+      }
+    }
+    if (!clauses.length) return '1=1';
+    return clauses.join(' OR ');
+  };
+
+  const buildTitresRenderer = (
+    fields?: { codetype?: string | null; typetitre?: string | null },
+  ) => {
+    const aliasChecks = TITRE_TYPE_OPTIONS.filter((item) => item.code !== 'SANS_TYPE')
+      .map((item) => {
+        const aliases = TITRE_TYPE_ALIASES[item.code] || [item.code];
+        if (!aliases.length) return '';
+        const conditions = aliases
+          .map((alias) => `Find('${String(alias).toUpperCase()}', label) > -1`)
+          .join(' || ');
+        return conditions ? `if (${conditions}) { return '${item.code}'; }` : '';
+      })
+      .filter(Boolean)
+      .join('');
+
+    const rawMapChecks = [
+      "if (raw == 'PXC') { return 'TXC'; }",
+      "if (raw == 'PXM') { return 'TXM'; }",
+      "if (raw == 'PEC') { return 'TEC'; }",
+      "if (raw == 'PEM') { return 'TEM'; }",
+      "if (raw == 'PM') { return 'APM'; }"
+    ].join('');
+
+    const rawField = fields?.codetype || 'codetype';
+    const labelField = fields?.typetitre || 'typetitre';
+    const rawLine = rawField
+      ? `var raw = Upper(Trim($feature.${rawField}));`
+      : "var raw = '';";
+    const labelLine = labelField
+      ? `var label = Upper(Trim($feature.${labelField}));`
+      : "var label = '';";
+    const valueExpression =
+      rawLine +
+      "if (!IsEmpty(raw)) {" +
+      rawMapChecks +
+      "return raw;" +
+      "}" +
+      labelLine +
+      aliasChecks +
+      "if (IsEmpty(label)) { return 'SANS_TYPE'; }" +
+      "return '';";
+
+    return {
+      type: 'unique-value',
+      valueExpression,
+      valueExpressionTitle: 'Type titre',
+      defaultLabel: 'Autres',
+      defaultSymbol: {
+        type: 'simple-fill',
+        color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2], 0.14],
+        outline: { color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2], 0.9], width: 1.2 }
+      },
+      uniqueValueInfos: TITRE_TYPE_OPTIONS.map((item) => ({
+        value: item.code.toUpperCase(),
+        label: item.label || item.code,
+        symbol: {
+          type: 'simple-fill',
+          color: [item.color[0], item.color[1], item.color[2], 0.14],
+          outline: { color: item.color, width: 1.6 }
+        }
+      }))
+    } as any;
+  };
+
+  const resolveTitreFilterFields = (layer?: FeatureLayer | null) => {
+    if (!layer?.fields?.length) return { codetype: null, typetitre: null };
+    const names = new Set(
+      layer.fields.map((field: any) => String(field?.name || '').toLowerCase()),
+    );
+    const codetype =
+      names.has('codetype')
+        ? 'codetype'
+        : names.has('type_code')
+          ? 'type_code'
+          : names.has('permis_type_code')
+            ? 'permis_type_code'
+            : null;
+    const typetitre =
+      names.has('typetitre')
+        ? 'typetitre'
+        : names.has('type_titre')
+          ? 'type_titre'
+          : null;
+    return { codetype, typetitre };
+  };
+
   // Function to add Enterprise layers to the map
   const addEnterpriseLayers = async (map: Map) => {
     const layers = [];
@@ -1367,6 +1904,7 @@ export interface ArcGISMapRef {
         title: "Titres Miniers ANAM",
         outFields: ["*"],
         opacity: activeLayers.titres ? 0.7 : 0,
+        definitionExpression: '1=1',
         popupTemplate: {
           title: "{typetitre} — {tnom}",
           content: [
@@ -1393,17 +1931,7 @@ export interface ArcGISMapRef {
             }
           ] as any
         },
-        renderer: {
-          type: "simple",
-          symbol: {
-            type: "simple-fill",
-            color: [255, 0, 0, 0.3],
-            outline: {
-              color: [255, 0, 0],
-              width: 2
-            }
-          }
-        } as any
+        renderer: buildTitresRenderer() as any
       });
       const titresOpacity = 0.7;
       (titresLayer as any).__sigamKey = 'titres';
@@ -1412,6 +1940,7 @@ export interface ArcGISMapRef {
       titresLayer.visible = !!activeLayers.titres;
       try {
         await titresLayer.load();
+        titresLayer.renderer = buildTitresRenderer(resolveTitreFilterFields(titresLayer)) as any;
         try {
           titresLayer.labelingInfo = [
             {
@@ -1465,6 +1994,7 @@ export interface ArcGISMapRef {
       }
 
       // Demandes (layer 0)
+      const perimetresSigRenderer = buildPerimetresSigRenderer(overlapClarityEnabled);
       const perimetresSigLayer = new FeatureLayer({
         url: SIGAM_LAYERS.perimetresSig,
         title: "Demandes",
@@ -1477,10 +2007,10 @@ export interface ArcGISMapRef {
               fieldInfos: [
                 { fieldName: 'sigam_proc_id', label: 'Procédure' },
                 { fieldName: 'sigam_permis_id', label: 'Permis ID' },
-                { fieldName: 'permis_code', label: 'Code Permis' },
-                { fieldName: 'permis_type_code', label: 'Type Code' },
-                { fieldName: 'permis_type_label', label: 'Type Libellé' },
-                { fieldName: 'permis_titulaire', label: 'Titulaire' },
+                { fieldName: 'permis_code', label: 'demande_code' },
+                { fieldName: 'permis_type_code', label: 'demande_type_code' },
+                { fieldName: 'permis_type_label', label: 'demande_type_label' },
+                { fieldName: 'permis_titulaire', label: 'demande_titulaire' },
                 { fieldName: 'permis_area_ha', label: 'Superficie (ha)' },
                 { fieldName: 'source', label: 'Source' },
                 { fieldName: 'type_code', label: 'Type' },
@@ -1492,26 +2022,16 @@ export interface ArcGISMapRef {
             }
           ] as any
         },
-        renderer: {
-          type: "simple",
-          symbol: {
-            type: "simple-fill",
-            color: [0, 0, 255, 0.25],
-            outline: {
-              color: [0, 90, 200],
-              width: 1.5
-            }
-          }
-        } as any
+        renderer: perimetresSigRenderer
       });
-      const perimetresSigOpacity = 0.5;
+      const perimetresSigOpacity = 0.4;
       (perimetresSigLayer as any).__sigamKey = 'perimetresSig';
       (perimetresSigLayer as any).__defaultOpacity = perimetresSigOpacity;
       perimetresSigLayer.opacity = activeLayers.perimetresSig ? perimetresSigOpacity : 0;
       perimetresSigLayer.visible = !!activeLayers.perimetresSig;
       try {
         await perimetresSigLayer.load();
-        try { perimetresSigLayer.popupTemplate = buildAllFieldsPopup(perimetresSigLayer, "Périmètres SIG"); } catch {}
+        // Keep the custom "Demandes" popup labels defined above.
         map.add(perimetresSigLayer);
         layers.push(perimetresSigLayer);
         perimetresSigLayerRef.current = perimetresSigLayer;
@@ -1520,20 +2040,14 @@ export interface ArcGISMapRef {
       }
 
       // Promotion (layer 2)
+      const promotionRenderer = buildPromotionRenderer(overlapClarityEnabled);
       const promotionLayer = new FeatureLayer({
         url: SIGAM_LAYERS.promotion,
         title: "Promotion",
         outFields: ["*"],
-        renderer: {
-          type: "simple",
-          symbol: {
-            type: "simple-fill",
-            color: [0, 0, 255, 0.2],
-            outline: { color: [0, 0, 180], width: 1 }
-          }
-        } as any
+        renderer: promotionRenderer
       });
-      const promotionOpacity = 0.5;
+      const promotionOpacity = 0.4;
       (promotionLayer as any).__sigamKey = 'promotion';
       (promotionLayer as any).__defaultOpacity = promotionOpacity;
       promotionLayer.opacity = activeLayers.promotion ? promotionOpacity : 0;
@@ -1543,6 +2057,7 @@ export interface ArcGISMapRef {
         try { promotionLayer.popupTemplate = buildAllFieldsPopup(promotionLayer, "Promotion"); } catch {}
         map.add(promotionLayer);
         layers.push(promotionLayer);
+        promotionLayerRef.current = promotionLayer;
       } catch (e) {
         console.warn("Skipped Promotion layer: service unreachable.", e);
       }
@@ -1699,8 +2214,8 @@ export interface ArcGISMapRef {
           type: "simple",
           symbol: {
             type: "simple-fill",
-            color: [255, 165, 0, 0.25],
-            outline: { color: [255, 140, 0], width: 1 }
+            color: [COLOR_EXCLUSION[0], COLOR_EXCLUSION[1], COLOR_EXCLUSION[2], 0.22],
+            outline: { color: [124, 58, 237, 0.95], width: 1 }
           }
         } as any
       });
@@ -1738,23 +2253,29 @@ export interface ArcGISMapRef {
         // Prefer ArcGIS basemap for clear ArcGIS look & feel
         // Fallbacks: Esri raster tiles -> OSM tiles
         let map: Map;
-        try {
-          const esriVectorBasemap = Basemap.fromId('topo-vector');
-          await esriVectorBasemap!.load();
-          map = new Map({ basemap: esriVectorBasemap });
-        } catch (eVec) {
-          console.warn('ArcGIS vector basemap unavailable; trying Esri raster tiles.', eVec);
+        if (disableEnterpriseLayers) {
+          const osmLayer = new WebTileLayer({ urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png' });
+          const osmBasemap = new Basemap({ baseLayers: [osmLayer], title: 'OpenStreetMap' });
+          map = new Map({ basemap: osmBasemap });
+        } else {
           try {
-            const esriRasterTiles = new WebTileLayer({
-              urlTemplate: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'
-            });
-            const esriRasterBasemap = new Basemap({ baseLayers: [esriRasterTiles], title: 'Esri World Topo Map' });
-            map = new Map({ basemap: esriRasterBasemap });
-          } catch (eRas) {
-            console.warn('Esri raster tiles unavailable; falling back to OpenStreetMap.', eRas);
-            const osmLayer = new WebTileLayer({ urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png' });
-            const osmBasemap = new Basemap({ baseLayers: [osmLayer], title: 'OpenStreetMap' });
-            map = new Map({ basemap: osmBasemap });
+            const esriVectorBasemap = Basemap.fromId('topo-vector');
+            await esriVectorBasemap!.load();
+            map = new Map({ basemap: esriVectorBasemap });
+          } catch (eVec) {
+            console.warn('ArcGIS vector basemap unavailable; trying Esri raster tiles.', eVec);
+            try {
+              const esriRasterTiles = new WebTileLayer({
+                urlTemplate: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'
+              });
+              const esriRasterBasemap = new Basemap({ baseLayers: [esriRasterTiles], title: 'Esri World Topo Map' });
+              map = new Map({ basemap: esriRasterBasemap });
+            } catch (eRas) {
+              console.warn('Esri raster tiles unavailable; falling back to OpenStreetMap.', eRas);
+              const osmLayer = new WebTileLayer({ urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png' });
+              const osmBasemap = new Basemap({ baseLayers: [osmLayer], title: 'OpenStreetMap' });
+              map = new Map({ basemap: osmBasemap });
+            }
           }
         }
 
@@ -1775,9 +2296,11 @@ export interface ArcGISMapRef {
         try { (view.ui as any).components = ['zoom', 'attribution']; } catch {}
 
         // Add ANAM Enterprise layers (non-blocking; skipped if unreachable)
-        if (!DISABLE_ENTERPRISE_LAYERS) {
+        const enterpriseLayersDisabled = DISABLE_ENTERPRISE_LAYERS || disableEnterpriseLayers;
+        if (!enterpriseLayersDisabled) {
+          try { await ensureArcgisCredential(API_BASE); } catch {}
           await addEnterpriseLayers(map);
-        } else {
+        } else if (DISABLE_ENTERPRISE_LAYERS) {
           console.warn('Enterprise layers are disabled by VITE_ARCGIS_DISABLE_ENTERPRISE=true');
         }
 
@@ -1788,6 +2311,8 @@ export interface ArcGISMapRef {
         const previewGraphicsLayer = new GraphicsLayer();
         const searchHighlightLayer = new GraphicsLayer({ elevationInfo: undefined } as any);
         const selectionLayer = new GraphicsLayer({ listMode: 'hide' });
+        const boxSelectionLayer = new GraphicsLayer({ listMode: 'hide' });
+        const overlapHighlightLayer = new GraphicsLayer({ listMode: 'hide' });
         const fuseauxLayer = new GraphicsLayer({ listMode: 'hide' });
         try { (fuseauxLayer as any).popupEnabled = false; } catch {}
         
@@ -1797,6 +2322,8 @@ export interface ArcGISMapRef {
         map.add(previewGraphicsLayer);
         map.add(searchHighlightLayer);
         map.add(selectionLayer);
+        map.add(boxSelectionLayer);
+        map.add(overlapHighlightLayer);
         map.add(fuseauxLayer);
 
         graphicsLayerRef.current = mainGraphicsLayer;
@@ -1805,6 +2332,8 @@ export interface ArcGISMapRef {
         previewLayerRef.current = previewGraphicsLayer;
         searchHighlightLayerRef.current = searchHighlightLayer;
         selectionLayerRef.current = selectionLayer;
+        boxSelectionLayerRef.current = boxSelectionLayer;
+        overlapHighlightLayerRef.current = overlapHighlightLayer;
         fuseauxLayerRef.current = fuseauxLayer;
         viewRef.current = view;
 
@@ -1839,7 +2368,9 @@ export interface ArcGISMapRef {
 
               if (enableSelectionTools && !isDrawing) {
                 const nativeEvt = (event as any)?.native;
-                const isMultiSelect = !!(nativeEvt?.shiftKey || nativeEvt?.ctrlKey || nativeEvt?.metaKey);
+                const wantsToggle = selectionRequiresModifier
+                  ? !!(nativeEvt?.shiftKey || nativeEvt?.ctrlKey || nativeEvt?.metaKey)
+                  : true;
                 const polygonResult = results.find(
                   (r: any) =>
                     r?.graphic?.geometry?.type === 'polygon' &&
@@ -1854,7 +2385,7 @@ export interface ArcGISMapRef {
                     const layer = graphic.layer as any;
                     setSelectedPolygons((prev) => {
                       const exists = prev.find((sel) => sel.key === key);
-                      if (isMultiSelect) {
+                      if (wantsToggle) {
                         if (exists) return prev.filter((sel) => sel.key !== key);
                         return [
                           ...prev,
@@ -1988,7 +2519,9 @@ export interface ArcGISMapRef {
     return () => {
       if (viewRef.current) {
         viewRef.current.destroy();
+        viewRef.current = null;
       }
+      initializedRef.current = false;
     };
   }, []);
 
@@ -2019,30 +2552,289 @@ export interface ArcGISMapRef {
   }, [activeLayers, enterpriseLayers]);
 
   useEffect(() => {
+    const perimetresLayer = perimetresSigLayerRef.current;
+    if (perimetresLayer) {
+      perimetresLayer.renderer = buildPerimetresSigRenderer(overlapClarityEnabled);
+    }
+    const promotionLayer = promotionLayerRef.current;
+    if (promotionLayer) {
+      promotionLayer.renderer = buildPromotionRenderer(overlapClarityEnabled);
+    }
+  }, [overlapClarityEnabled]);
+
+  useEffect(() => {
     if (!selectionLayerRef.current) return;
     const layer = selectionLayerRef.current;
     layer.removeAll();
     if (!enableSelectionTools || !selectedPolygons.length) return;
+    const selectionCount = selectedPolygons.length;
+    const selectionFillAlpha = selectionCount >= 60 ? 0 : selectionCount >= 30 ? 0.04 : 0.06;
+    const selectionStyle = selectionCount >= 60 ? 'none' : 'diagonal-cross';
+    const selectionOutlineWidth = selectionCount >= 60 ? 3 : selectionCount >= 30 ? 2.6 : 2.2;
     const symbol = new SimpleFillSymbol({
-      color: [37, 99, 235, 0.15],
-      outline: { color: [29, 78, 216, 0.95], width: 2 }
+      color: [COLOR_PERIMETRE[0], COLOR_PERIMETRE[1], COLOR_PERIMETRE[2], selectionFillAlpha],
+      outline: { color: [29, 78, 216, 0.9], width: selectionOutlineWidth, style: 'dash' },
+      style: selectionStyle
     });
     selectedPolygons.forEach((selection) => {
       layer.add(new Graphic({ geometry: selection.geometry, symbol }));
     });
   }, [enableSelectionTools, selectedPolygons]);
 
+  useEffect(() => {
+    if (!enableBoxSelection && boxSelectionEnabled) {
+      setBoxSelectionEnabled(false);
+    }
+  }, [enableBoxSelection, boxSelectionEnabled]);
+
+  useEffect(() => {
+    const layer = boxSelectionLayerRef.current;
+    if (!layer) return;
+    if (!enableSelectionTools || !enableBoxSelection || !boxSelectionEnabled) {
+      clearBoxSelectionGraphic();
+    }
+  }, [enableSelectionTools, enableBoxSelection, boxSelectionEnabled]);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    const handle = view.on('drag', (event) => {
+      if (!enableSelectionTools || !enableBoxSelection || !boxSelectionEnabled) return;
+      const nativeEvt = (event as any)?.native;
+      if (event.action === 'start') {
+        if (!nativeEvt?.shiftKey) return;
+        boxSelectionActiveRef.current = true;
+        boxSelectionStartRef.current = { x: event.x, y: event.y };
+        event.stopPropagation();
+        const poly = buildBoxPolygonFromScreen(view, boxSelectionStartRef.current, { x: event.x, y: event.y });
+        if (poly) updateBoxSelectionGraphic(poly);
+        return;
+      }
+      if (!boxSelectionActiveRef.current || !boxSelectionStartRef.current) return;
+      event.stopPropagation();
+      if (event.action === 'update') {
+        const poly = buildBoxPolygonFromScreen(view, boxSelectionStartRef.current, { x: event.x, y: event.y });
+        if (poly) updateBoxSelectionGraphic(poly);
+        return;
+      }
+      if (event.action === 'end') {
+        const poly = buildBoxPolygonFromScreen(view, boxSelectionStartRef.current, { x: event.x, y: event.y });
+        boxSelectionActiveRef.current = false;
+        boxSelectionStartRef.current = null;
+        clearBoxSelectionGraphic();
+        if (poly) {
+          runBoxSelection(poly);
+        }
+      }
+    });
+
+    return () => {
+      handle.remove();
+    };
+  }, [enableSelectionTools, enableBoxSelection, boxSelectionEnabled]);
+
+  useEffect(() => {
+    const layer = overlapHighlightLayerRef.current;
+    if (!layer) return;
+    layer.removeAll();
+    if (!isMapReady) return;
+
+    const selections = Array.isArray(overlapSelections) ? overlapSelections : [];
+    if (!selections.length) return;
+
+    const requestId = ++overlapHighlightRequestRef.current;
+    const view = viewRef.current;
+
+    const toNumber = (val: any) => {
+      const num = Number(val);
+      return Number.isFinite(num) ? num : null;
+    };
+
+    const escapeWhere = (val: string) => String(val).replace(/'/g, "''");
+
+    const resolveLayerKey = (selection: any) => {
+      const raw =
+        selection?.layerType ??
+        selection?.layer_type ??
+        selection?.__layerType ??
+        '';
+      const cleaned = String(raw || '').trim().toLowerCase();
+      if (!cleaned) return 'titres';
+      if (cleaned === 'perimetressig' || cleaned === 'perimetres_sig') return 'perimetresSig';
+      return cleaned;
+    };
+
+    const resolveLayerRef = (layerKey: string) => {
+      if (layerKey === 'titres') return titresLayerRef.current;
+      if (layerKey === 'perimetresSig') return perimetresSigLayerRef.current;
+      const match = enterpriseLayersRef.current.find(
+        (layer: any) => String(layer?.__sigamKey || '').toLowerCase() === layerKey.toLowerCase(),
+      );
+      return match ?? null;
+    };
+
+    const querySelectionFeature = async (selection: any) => {
+      const layerKey = resolveLayerKey(selection);
+      const layerRef = resolveLayerRef(layerKey) as FeatureLayer | null;
+      if (!layerRef) return null;
+
+      try {
+        await layerRef.load();
+      } catch {}
+
+      const objectId =
+        toNumber(selection?.objectid) ??
+        toNumber(selection?.OBJECTID) ??
+        null;
+      if (objectId != null) {
+        const res = await layerRef.queryFeatures({
+          objectIds: [objectId],
+          outFields: ['*'],
+          returnGeometry: true,
+        });
+        return res.features?.[0] ?? null;
+      }
+
+      const clauses: string[] = [];
+
+      if (layerKey === 'titres') {
+        const idTitre = toNumber(selection?.idtitre);
+        const codeVal = toNumber(selection?.code);
+        const codetype = selection?.codetype ?? selection?.type_code ?? null;
+        if (idTitre != null) clauses.push(`idtitre = ${idTitre}`);
+        if (codeVal != null) clauses.push(`code = ${codeVal}`);
+        if (codetype) {
+          clauses.push(`UPPER(codetype) = UPPER('${escapeWhere(codetype)}')`);
+        }
+      } else if (layerKey === 'perimetresSig') {
+        const idVal = toNumber(selection?.id);
+        const procId = toNumber(selection?.sigam_proc_id);
+        const permisId = toNumber(selection?.sigam_permis_id);
+        if (idVal != null) clauses.push(`id = ${idVal}`);
+        if (procId != null) clauses.push(`sigam_proc_id = ${procId}`);
+        if (permisId != null) clauses.push(`sigam_permis_id = ${permisId}`);
+        const permisCode = selection?.permis_code ?? selection?.permisCode ?? null;
+        if (permisCode) {
+          clauses.push(`UPPER(permis_code::text) = UPPER('${escapeWhere(permisCode)}')`);
+        }
+      } else if (layerKey === 'promotion' || layerKey === 'exclusions') {
+        const idZone = toNumber(selection?.idzone);
+        const name = selection?.nom ?? selection?.Nom ?? null;
+        if (idZone != null) clauses.push(`idzone = ${idZone}`);
+        if (name) clauses.push(`UPPER(nom) = UPPER('${escapeWhere(name)}')`);
+      }
+
+      if (!clauses.length) return null;
+
+      const where = clauses.join(' AND ');
+      const res = await layerRef.queryFeatures({
+        where,
+        outFields: ['*'],
+        returnGeometry: true,
+      });
+      return res.features?.[0] ?? null;
+    };
+
+    const resolveOverlapLabelText = (layerKey: string, attrs: any) => {
+      if (!attrs) return '';
+      if (layerKey === 'titres') {
+        const code = attrs.code ?? attrs.idtitre ?? attrs.objectid ?? '';
+        const typetitre = attrs.typetitre ?? attrs.codetype ?? '';
+        const codeText = String(code || '').trim();
+        const typeText = String(typetitre || '').trim();
+        if (codeText && typeText) return `${codeText} / ${typeText}`;
+        return codeText || typeText;
+      }
+      return '';
+    };
+
+    const applyHighlights = async () => {
+      const graphics: Graphic[] = [];
+      let unionExtent: any = null;
+      const selectionCount = selections.length;
+      const highlightFillAlpha = selectionCount >= 60 ? 0 : selectionCount >= 30 ? 0.04 : 0.08;
+      const highlightStyle = overlapClarityEnabled
+      ? (selectionCount >= 60 ? 'none' : 'diagonal-cross')
+      : 'solid';
+      const highlightOutlineWidth = selectionCount >= 60 ? 3 : selectionCount >= 30 ? 2.6 : 2.4;
+
+      for (let i = 0; i < selections.length; i++) {
+        const selection = selections[i];
+        const feature = await querySelectionFeature(selection);
+        if (requestId !== overlapHighlightRequestRef.current) return;
+        if (!feature?.geometry) continue;
+
+        const paletteEntry = OVERLAP_HIGHLIGHT_PALETTE[i % OVERLAP_HIGHLIGHT_PALETTE.length];
+        const baseFill = paletteEntry.fill;
+        const fill = [
+          baseFill[0],
+          baseFill[1],
+          baseFill[2],
+          highlightFillAlpha
+        ] as [number, number, number, number];
+        const symbol = new SimpleFillSymbol({
+          color: fill,
+          outline: { color: paletteEntry.outline, width: highlightOutlineWidth, style: 'dash' },
+          style: highlightStyle,
+        });
+        const graphic = new Graphic({
+          geometry: feature.geometry,
+          symbol,
+          attributes: feature.attributes || selection,
+        });
+        graphics.push(graphic);
+
+        const labelText = resolveOverlapLabelText(
+          resolveLayerKey(selection),
+          feature.attributes || selection,
+        );
+        const labelCenter = (feature.geometry as any).centroid ?? (feature.geometry as any).extent?.center;
+        if (labelText && labelCenter) {
+          const textSymbol = new TextSymbol({
+            text: labelText,
+            color: [17, 24, 39, 1],
+            haloColor: [255, 255, 255, 1],
+            haloSize: 2,
+            font: { size: 10, family: 'Arial', weight: 'bold' } as any,
+          });
+          graphics.push(
+            new Graphic({
+              geometry: labelCenter,
+              symbol: textSymbol,
+              attributes: feature.attributes || selection,
+            }),
+          );
+        }
+
+        const extent = (feature.geometry as any).extent || (feature.geometry as any).getExtent?.();
+        if (extent) {
+          unionExtent = unionExtent
+            ? unionExtent.union(extent)
+            : (extent.clone ? extent.clone() : extent);
+        }
+      }
+
+      if (requestId !== overlapHighlightRequestRef.current) return;
+      layer.removeAll();
+      graphics.forEach((g) => layer.add(g));
+
+      if (view && unionExtent) {
+        try {
+          await view.goTo(unionExtent.expand(1.35));
+        } catch {}
+      }
+    };
+
+    void applyHighlights();
+  }, [overlapSelections, overlapClarityEnabled, isMapReady]);
+
   // Update drawing mode
   useEffect(() => {
-    if (!viewRef.current) return;
-
     const view = viewRef.current;
-    
-    if (isDrawing) {
-      view.container!.style.cursor = 'crosshair';
-    } else {
-      view.container!.style.cursor = 'grab';
-    }
+    const container = (view?.container as HTMLDivElement | null) ?? null;
+    if (!container) return;
+
+    container.style.cursor = isDrawing ? 'crosshair' : 'grab';
   }, [isDrawing]);
 
   // Update existing polygons
@@ -2101,9 +2893,9 @@ export interface ArcGISMapRef {
         currentPolygonRef.current = polygon;
 
         const fillSymbol = new SimpleFillSymbol({
-          color: [128, 0, 128, 0.2],
+          color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2], 0.18],
           outline: {
-            color: [128, 0, 128, 0.7],
+            color: [22, 163, 74, 0.85],
             width: 2,
             style: "dash"
           }
@@ -2278,8 +3070,25 @@ export interface ArcGISMapRef {
     layer.removeAll();
 
     try {
-      const validPoints = points.filter(p => !isNaN(p.x) && !isNaN(p.y));
-      const wgs84Points = validPoints.map(point => convertToWGS84(point));
+      const normalizedPoints = points
+        .map((p) => {
+          const x = parseCoordValue(p.x);
+          const y = parseCoordValue(p.y);
+          if (x == null || y == null) return null;
+          if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+          if (x === 0 && y === 0) return null;
+          return { ...p, x, y };
+        })
+        .filter((p): p is Coordinate => !!p);
+      const wgs84Points = normalizedPoints.map(point => convertToWGS84(point));
+      const zoomKey =
+        wgs84Points.length >= 3
+          ? wgs84Points.map(([lng, lat]) => `${lng.toFixed(6)},${lat.toFixed(6)}`).join('|')
+          : '';
+      if (zoomKey && zoomKey !== lastZoomKeyRef.current) {
+        lastZoomKeyRef.current = zoomKey;
+        hasZoomedToPolygonRef.current = false;
+      }
 
       // Add polygon if we have enough points
       if (wgs84Points.length >= 3) {
@@ -2290,9 +3099,9 @@ export interface ArcGISMapRef {
         currentPolygonRef.current = polygon;
 
         const fillSymbol = new SimpleFillSymbol({
-          color: [37, 99, 235, 0.3],
+          color: [COLOR_PERIMETRE[0], COLOR_PERIMETRE[1], COLOR_PERIMETRE[2], 0.3],
           outline: {
-            color: [37, 99, 235, 1],
+            color: [59, 130, 246, 1],
             width: 2
           }
         });
@@ -2304,8 +3113,8 @@ export interface ArcGISMapRef {
             title: "Nouveau Périmètre Minier",
             content: `
               <div class="popup-content">
-                <p><strong>Superficie:</strong> ${superficie.toLocaleString()} ha</p>
-                <p><strong>Nombre de points:</strong> ${points.length}</p>
+                <p><strong>Superficie:</strong> ${formatAreaHa(superficie, 0)} ha</p>
+                <p><strong>Nombre de points:</strong> ${normalizedPoints.length}</p>
                 <p><strong>Système de coordonnées:</strong> ${coordinateSystem}</p>
                 ${utmZone ? `<p><strong>Zone UTM:</strong> ${utmZone}</p>` : ''}
               </div>
@@ -2359,7 +3168,7 @@ export interface ArcGISMapRef {
       }
 
       // Add point markers
-      validPoints.forEach((point, index) => {
+      normalizedPoints.forEach((point, index) => {
         const [lng, lat] = convertToWGS84(point);
         const mapPoint = new Point({
           longitude: lng,
@@ -2368,7 +3177,7 @@ export interface ArcGISMapRef {
         });
 
         const markerSymbol = new SimpleMarkerSymbol({
-          color: [37, 99, 235],
+          color: [COLOR_PERIMETRE[0], COLOR_PERIMETRE[1], COLOR_PERIMETRE[2]],
           outline: {
             color: [255, 255, 255],
             width: 2
@@ -2413,11 +3222,332 @@ export interface ArcGISMapRef {
     }));
   };
 
+  const toggleTitreType = useCallback((code: string) => {
+    setActiveTitreTypes(prev => ({
+      ...prev,
+      [code]: !prev[code]
+    }));
+  }, []);
+
+  const setAllTitreTypes = useCallback((enabled: boolean) => {
+    setActiveTitreTypes(prev => {
+      const next = { ...prev };
+      TITRE_TYPE_OPTIONS.forEach((item) => {
+        next[item.code] = enabled;
+      });
+      return next;
+    });
+  }, []);
+
+  const resolveOverlapsForPrint = () => {
+    if (Array.isArray(overlapDetails) && overlapDetails.length) return overlapDetails;
+    if (Array.isArray(overlapTitles) && overlapTitles.length) return overlapTitles;
+    return [];
+  };
+
+  const getOverlapLayerType = (o: any) =>
+    String(o?.layerType ?? o?.layer_type ?? o?.__layerType ?? '').trim();
+
+  const normalizeOverlapLayerKey = (value: any) => {
+    const cleaned = String(value ?? '').trim().toLowerCase();
+    if (!cleaned) return '';
+    if (cleaned === 'perimetressig' || cleaned === 'perimetres_sig') return 'perimetresSig';
+    return cleaned;
+  };
+
+  const getOverlapKey = (item: any) => {
+    if (!item) return '';
+    const layerKey = normalizeOverlapLayerKey(getOverlapLayerType(item)) || 'titres';
+    return [
+      layerKey,
+      item.idtitre ?? '',
+      item.code ?? '',
+      item.objectid ?? '',
+      item.id ?? '',
+      item.idzone ?? '',
+      item.codetype ?? '',
+      item.typetitre ?? '',
+      item.tnom ?? '',
+      item.tprenom ?? '',
+      item.sigam_proc_id ?? '',
+      item.sigam_permis_id ?? '',
+      item.permis_code ?? '',
+      item.permisCode ?? '',
+    ].join('|');
+  };
+
+  const getOverlapAreaM2 = (o: any): number | null => {
+    if (typeof o?.overlap_area_m2 === 'number') return o.overlap_area_m2;
+    if (typeof o?.overlap_area_ha === 'number') return o.overlap_area_ha * 10000;
+    return null;
+  };
+
+  const formatOverlapAreaLabel = (o: any) => {
+    const m2 = getOverlapAreaM2(o);
+    if (!Number.isFinite(m2 as number) || !m2) return '';
+    return `chevauchement ~${Math.round(m2 as number)} m\u00B2`;
+  };
+
+  const formatDateValue = (value: any) => {
+    if (value == null || value === '') return '';
+    try {
+      const d = value instanceof Date ? value : new Date(value);
+      if (!isNaN(d.getTime())) return d.toLocaleDateString('fr-DZ');
+    } catch {}
+    return String(value);
+  };
+
+  const formatNumber = (value: number) => {
+    if (!Number.isFinite(value)) return '';
+    const fixed = value.toFixed(2);
+    return fixed.replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+  };
+
+  const formatAreaHa = (value: any, fractionDigits = 0) => {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return '';
+    try {
+      return new Intl.NumberFormat('fr-DZ', {
+        minimumFractionDigits: fractionDigits,
+        maximumFractionDigits: fractionDigits,
+      }).format(num);
+    } catch {
+      return num.toFixed(fractionDigits);
+    }
+  };
+
+  const stripReportText = (value: any) => {
+    if (typeof value !== 'string') return value ?? '';
+    try {
+      return value
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[\u0000-\u001F]/g, ' ')
+        .replace(/[^\x20-\x7E\u00A0-\u00FF]/g, '');
+    } catch {
+      return value;
+    }
+  };
+
+  const resolvePreparedByName = () => {
+    let name = '';
+    if (typeof window !== 'undefined') {
+      try {
+        name =
+          window.localStorage.getItem('auth_user_name') ||
+          window.localStorage.getItem('auth_user_username') ||
+          '';
+        if (!name) {
+          const raw = window.localStorage.getItem('auth');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            name =
+              [parsed?.prenom, parsed?.nom].filter(Boolean).join(' ').trim() ||
+              parsed?.fullName ||
+              parsed?.username ||
+              parsed?.email ||
+              '';
+          }
+        }
+        if (!name) {
+          const legacy = window.localStorage.getItem('auth-storage');
+          if (legacy) {
+            const parsed = JSON.parse(legacy);
+            const authState = parsed?.state?.auth ?? {};
+            name =
+              [authState?.prenom, authState?.nom].filter(Boolean).join(' ').trim() ||
+              authState?.fullName ||
+              authState?.username ||
+              authState?.email ||
+              '';
+          }
+        }
+      } catch {}
+    }
+    if (!name) {
+      name = auth?.username || auth?.email || '';
+    }
+    return String(name || '').trim();
+  };
+
+  const resolveAreaHa = (o: any, fallback?: any) => {
+    const raw = o?.sig_area ?? o?.permis_area_ha ?? fallback ?? null;
+    const num = Number(raw);
+    return Number.isFinite(num) ? num : null;
+  };
+
+  const resolveOverlapDisplay = (o: any) => {
+    const hintedTitle = o?.typetitre || o?.codetype || o?.idtitre || o?.code;
+    const rawLayer = getOverlapLayerType(o);
+    const lt = normalizeOverlapLayerKey(rawLayer) || (hintedTitle ? 'titres' : '');
+    const areaLabel = formatOverlapAreaLabel(o);
+    let typeLabel = lt || 'chevauchement';
+    let code = '';
+    let name = '';
+    let holder = '';
+    let location = '';
+    let observation = '';
+
+    if (lt === 'titres') {
+      typeLabel = 'Titres miniers';
+      const typ = o.typetitre || o.codetype || 'Titre';
+      const rawCode = o.code ?? o.idtitre ?? o.objectid ?? '';
+      code = rawCode ? String(rawCode) : '';
+      name = `${typ} ${o.codetype || ''} ${code}`.replace(/\s+/g, ' ').trim();
+      holder = [o.tnom, o.tprenom].filter(Boolean).join(' ').trim();
+      location = [o.wilaya, o.daira, o.commune].filter(Boolean).join(' / ');
+      const obsParts: string[] = [];
+      const areaHa = resolveAreaHa(o);
+      if (areaHa != null) obsParts.push(`Superficie: ${formatNumber(areaHa)} ha`);
+      const dOctroi = formatDateValue(o.dateoctroi);
+      const dExp = formatDateValue(o.dateexpiration);
+      if (dOctroi || dExp) {
+        const dateText = [dOctroi ? `Octroi ${dOctroi}` : '', dExp ? `Expiration ${dExp}` : '']
+          .filter(Boolean)
+          .join(' - ');
+        if (dateText) obsParts.push(dateText);
+      }
+      if (holder) obsParts.push(`Titulaire: ${holder}`);
+      const substance = o.substance1 || o.substances;
+      if (substance) obsParts.push(`Substance: ${substance}`);
+      if (location) obsParts.push(`Localisation: ${location}`);
+      if (areaLabel) obsParts.push(areaLabel);
+      observation = obsParts.join(' - ');
+    } else if (lt === 'perimetresSig') {
+      typeLabel = 'Perimetres SIG';
+      const label = o.permis_type_label ?? o.permisTypeLabel ?? 'Perimetre SIG';
+      const rawCode =
+        o.permis_code ??
+        o.permisCode ??
+        o.sigam_permis_id ??
+        o.sigam_proc_id ??
+        o.id ??
+        '';
+      code = rawCode ? String(rawCode) : '';
+      name = code ? `${label} (${code})` : String(label || '');
+      holder = String(o.permis_titulaire ?? o.permisTitulaire ?? '').trim();
+      location = String(o.source ?? '').trim();
+      const obsParts: string[] = [];
+      const areaHa = resolveAreaHa(o);
+      if (areaHa != null) obsParts.push(`Superficie: ${formatNumber(areaHa)} ha`);
+      if (holder) obsParts.push(`Titulaire: ${holder}`);
+      if (location) obsParts.push(`Source: ${location}`);
+      if (areaLabel) obsParts.push(areaLabel);
+      observation = obsParts.join(' - ');
+    } else if (lt === 'promotion') {
+      typeLabel = 'Promotion';
+      const rawName = o.nom || o.Nom || 'Promotion';
+      const rawId = o.objectid ?? o.OBJECTID ?? o.idzone ?? '';
+      code = rawId ? String(rawId) : '';
+      name = code ? `${rawName} (#${code})` : String(rawName);
+      holder = String(rawName || '');
+      const obsParts: string[] = [];
+      const areaHa = resolveAreaHa(o);
+      if (areaHa != null) obsParts.push(`Superficie: ${formatNumber(areaHa)} ha`);
+      if (areaLabel) obsParts.push(areaLabel);
+      observation = obsParts.join(' - ');
+    } else if (lt === 'modifications') {
+      typeLabel = 'Modifications';
+      const modType = o.typemodification || 'Modification';
+      const rawCode = o.code ?? o.idtitre ?? o.objectid ?? '';
+      code = rawCode ? String(rawCode) : '';
+      const typeTitre = o.typetitre ? String(o.typetitre) : '';
+      name = `${modType}${typeTitre ? ' - ' + typeTitre : ''}${code ? ' (' + code + ')' : ''}`.trim();
+      holder = [o.tnom, o.tprenom].filter(Boolean).join(' ').trim();
+      const obsParts: string[] = [];
+      const areaHa = resolveAreaHa(o);
+      if (areaHa != null) obsParts.push(`Superficie: ${formatNumber(areaHa)} ha`);
+      if (holder) obsParts.push(`Titulaire: ${holder}`);
+      const substance = o.substance1 || o.substances;
+      if (substance) obsParts.push(`Substance: ${substance}`);
+      if (areaLabel) obsParts.push(areaLabel);
+      observation = obsParts.join(' - ');
+    } else if (lt === 'exclusions') {
+      typeLabel = "Zones d'exclusion";
+      const rawName = o.nom || o.Nom || "Zone d'exclusion";
+      const rawId = o.objectid ?? o.OBJECTID ?? o.idzone ?? '';
+      code = rawId ? String(rawId) : '';
+      name = code ? `${rawName} (#${code})` : String(rawName);
+      holder = String(rawName || '');
+      const obsParts: string[] = [];
+      const areaHa = resolveAreaHa(o);
+      if (areaHa != null) obsParts.push(`Superficie: ${formatNumber(areaHa)} ha`);
+      if (areaLabel) obsParts.push(areaLabel);
+      observation = obsParts.join(' - ');
+    } else {
+      typeLabel = lt || 'Chevauchement';
+    }
+
+    if (!observation) {
+      const observationBase = [holder, location].filter(Boolean).join(' - ');
+      observation = [observationBase, areaLabel].filter(Boolean).join(' ');
+    }
+    return {
+      typeLabel,
+      code,
+      name: name || holder || code || typeLabel,
+      holder,
+      location,
+      areaLabel,
+      observation,
+    };
+  };
+
+  const resolveOverlapLegendColor = (o: any): [number, number, number] => {
+    const lt = normalizeOverlapLayerKey(getOverlapLayerType(o)) || '';
+    if (lt === 'titres') return [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]];
+    if (lt === 'perimetresSig') return [COLOR_DEMANDES[0], COLOR_DEMANDES[1], COLOR_DEMANDES[2]];
+    if (lt === 'promotion') return [COLOR_DEMANDES[0], COLOR_DEMANDES[1], COLOR_DEMANDES[2]];
+    if (lt === 'modifications') return [COLOR_DEMANDES[0], COLOR_DEMANDES[1], COLOR_DEMANDES[2]];
+    if (lt === 'exclusions') return [COLOR_EXCLUSION[0], COLOR_EXCLUSION[1], COLOR_EXCLUSION[2]];
+    return [COLOR_DEMANDES[0], COLOR_DEMANDES[1], COLOR_DEMANDES[2]];
+  };
+
+  const buildOverlapSummary = (o: any) => {
+    const display = resolveOverlapDisplay(o);
+    const head = display.name ? `${display.typeLabel}: ${display.name}` : display.typeLabel;
+    const details =
+      display.observation ||
+      [display.holder, display.location, display.areaLabel].filter(Boolean).join(' - ');
+    return [head, details].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  };
+
+  const buildReportV2Rows = (): ReportV2Row[] => {
+    const overlaps = resolveOverlapsForPrint();
+    if (!overlaps || !overlaps.length) return [];
+    const selections = Array.isArray(overlapSelections) ? overlapSelections : [];
+    const selectionColors: Record<string, [number, number, number]> = {};
+    selections.forEach((item, idx) => {
+      const key = getOverlapKey(item);
+      if (!key) return;
+      const paletteEntry = OVERLAP_HIGHLIGHT_PALETTE[idx % OVERLAP_HIGHLIGHT_PALETTE.length];
+      const outline = paletteEntry.outline;
+      selectionColors[key] = [outline[0], outline[1], outline[2]];
+    });
+    return overlaps.map((item: any, idx: number) => {
+      const display = resolveOverlapDisplay(item);
+      const name = stripReportText(display.name || display.code || '');
+      const obs = stripReportText(display.observation || display.areaLabel || '');
+      const key = getOverlapKey(item);
+      const selectedColor = key ? selectionColors[key] : null;
+      const color = selectedColor || resolveOverlapLegendColor(item);
+      return { name, observation: obs, color };
+    });
+  };
+
   // Export current map view to PNG
+  const waitForViewReady = async (view: any) => {
+    if (!view) return;
+    try { await view.when(); } catch {}
+    try { if (view.whenTrue) await view.whenTrue('stationary'); } catch {}
+    try { if (view.whenFalse) await view.whenFalse('updating'); } catch {}
+  };
+
   const exportPNG = async () => {
     if (!viewRef.current) return;
     try {
       setIsExporting(true);
+      await waitForViewReady(viewRef.current);
       const shot: any = await (viewRef.current as any).takeScreenshot({ format: 'png', quality: 1 });
       const a = document.createElement('a');
       const ts = new Date().toISOString().replace(/[:.]/g, '-');
@@ -2434,12 +3564,28 @@ export interface ArcGISMapRef {
     }
   };
 
+  const takeHiResScreenshot = async (view: any, scale = 2.5) => {
+    await waitForViewReady(view);
+    const baseW = Number(view?.width || view?.container?.clientWidth || 1200);
+    const baseH = Number(view?.height || view?.container?.clientHeight || 800);
+    const maxDim = 3600;
+    const targetW = Math.min(baseW * scale, maxDim);
+    const targetH = Math.min(baseH * scale, maxDim);
+    return view.takeScreenshot({
+      format: 'png',
+      quality: 1,
+      width: Math.round(targetW),
+      height: Math.round(targetH),
+    });
+  };
+
   // Export PDF via ArcGIS Printing Service
   const exportPDF = async () => {
     if (!viewRef.current) return;
     try {
       setIsExporting(true);
       const taskUrl = `${enterpriseServices.printingService}/Export%20Web%20Map%20Task`;
+      await waitForViewReady(viewRef.current);
       // Compose a title from selected attributes when possible
       const typ = selectedTitreAttributes?.typetitre || selectedTitreAttributes?.codetype || 'Titre minier';
       const code = selectedTitreAttributes?.code ?? selectedTitreAttributes?.idtitre ?? selectedTitreAttributes?.objectid ?? '';
@@ -2447,20 +3593,20 @@ export interface ArcGISMapRef {
       const titleText = `${typ} ${selectedTitreAttributes?.codetype || ''} ${code}`.replace(/\s+/g, ' ').trim();
 
       // Use precomputed overlaps when available to avoid slow remote queries during export.
-      const overlapsForPrint: any[] = Array.isArray(overlapTitles) ? overlapTitles : [];
+      const overlapsForPrint = resolveOverlapsForPrint();
       const overlapCount = overlapsForPrint?.length || 0;
-      const overlapList = (overlapsForPrint || []).slice(0, 8).map((t: any, i: number) => {
-        const ttyp = t.typetitre || t.codetype || 'Titre';
-        const tcode = t.code ?? t.idtitre ?? t.objectid ?? '';
-        const ttit = [t.tnom, t.tprenom].filter(Boolean).join(' ').trim();
-        const tloc = [t.wilaya, t.daira, t.commune].filter(Boolean).join(' / ');
-        return `${i+1}. ${ttyp} ${t.codetype || ''} ${tcode}${ttit ? ' — ' + ttit : ''}${tloc ? ' — ' + tloc : ''}`.replace(/\s+/g,' ').trim();
-      }).join('\n');
+      const overlapList = (overlapsForPrint || [])
+        .slice(0, 8)
+        .map((t: any, i: number) => `${i + 1}. ${buildOverlapSummary(t)}`)
+        .join('\n');
+      const superficieDisplay = selectedTitreAttributes?.sig_area != null
+        ? formatAreaHa(selectedTitreAttributes.sig_area, 1)
+        : formatAreaHa(superficie, 0);
 
       const template = new PrintTemplate({
         format: 'pdf',
         layout: 'a4-portrait',
-        exportOptions: { dpi: 96 } as any,
+        exportOptions: { dpi: 300 } as any,
         layoutOptions: {
           titleText: titleText || 'Carte des titres miniers',
           authorText: titulaire || 'ANAM',
@@ -2473,7 +3619,7 @@ export interface ArcGISMapRef {
             { label: 'Daira', value: (adminInfo as any)?.daira ?? selectedTitreAttributes?.daira ?? '' },
             { label: 'Commune', value: (adminInfo as any)?.commune ?? selectedTitreAttributes?.commune ?? '' },
             { label: 'Substance', value: selectedTitreAttributes?.substance1 || selectedTitreAttributes?.substances || '' },
-            { label: 'Superficie (ha)', value: selectedTitreAttributes?.sig_area || superficie || '' },
+            { label: 'Superficie (ha)', value: superficieDisplay },
             { label: 'Chevauchements (compte)', value: String(overlapCount) },
             { label: 'Chevauchements (liste)', value: overlapList }
           ] as any
@@ -2529,13 +3675,13 @@ export interface ArcGISMapRef {
     if (!viewRef.current) return;
     const view = viewRef.current as any;
 
-    const shot: any = await view.takeScreenshot({ format: 'jpg', quality: 0.85 });
+    const shot: any = await takeHiResScreenshot(view, 2);
     const dataUrl: string = shot?.dataUrl || '';
 
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 10;
+    const margin = 6;
 
     // Header
     doc.setFont('helvetica', 'bold');
@@ -2544,7 +3690,7 @@ export interface ArcGISMapRef {
     doc.setFontSize(12);
     const typ = selectedTitreAttributes?.typetitre || selectedTitreAttributes?.codetype || 'Titre minier';
     const code = selectedTitreAttributes?.code ?? selectedTitreAttributes?.idtitre ?? selectedTitreAttributes?.objectid ?? '';
-    const titleLine = `${typ}${selectedTitreAttributes?.codetype ? ' ' + selectedTitreAttributes.codetype : ''}${code ? ' — ' + code : ''}`.replace(/\s+/g, ' ').trim();
+    const titleLine = `${typ}${selectedTitreAttributes?.codetype ? ' ' + selectedTitreAttributes.codetype : ''}${code ? ' - ' + code : ''}`.replace(/\s+/g, ' ').trim();
     doc.text(titleLine || 'Rapport du Titre Minier', pageWidth / 2, margin + 7, { align: 'center' });
 
     // Map image
@@ -2557,7 +3703,7 @@ export interface ArcGISMapRef {
         const sH = shot?.height || 900;
         const imgH = Math.min((imgW * sH) / sW, pageHeight * 0.45);
         const imgFormat = dataUrl.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
-        doc.addImage(dataUrl, imgFormat as any, margin, y, imgW, imgH, undefined, 'FAST');
+        doc.addImage(dataUrl, imgFormat as any, margin, y, imgW, imgH, undefined, 'SLOW');
         y += imgH + 6;
       }
     } catch {}
@@ -2576,7 +3722,6 @@ export interface ArcGISMapRef {
 
     // Attributes table (site minier)
     const titulaire = [selectedTitreAttributes?.tnom, selectedTitreAttributes?.tprenom].filter(Boolean).join(' ').trim();
-    const location = [selectedTitreAttributes?.wilaya, selectedTitreAttributes?.daira, selectedTitreAttributes?.commune].filter(Boolean).join(' / ');
     const admin = {
       codeDemande: (adminInfo as any)?.codeDemande ?? (labelText || ''),
       typePermis: (adminInfo as any)?.typePermis ?? '',
@@ -2584,10 +3729,6 @@ export interface ArcGISMapRef {
       wilaya: (adminInfo as any)?.wilaya ?? selectedTitreAttributes?.wilaya ?? '',
       daira: (adminInfo as any)?.daira ?? selectedTitreAttributes?.daira ?? '',
       commune: (adminInfo as any)?.commune ?? selectedTitreAttributes?.commune ?? ''
-    };
-    const formatDate = (v: any) => {
-      try { const d = new Date(v); if (!isNaN(d.getTime())) return d.toLocaleDateString('fr-DZ'); } catch {}
-      return '';
     };
     const rowsAdmin: Array<[string, string]> = [
       ['Code demande', stripUnsupported(admin.codeDemande)],
@@ -2601,12 +3742,15 @@ export interface ArcGISMapRef {
     if (detectedLieu) {
       rowsAdmin.push(['Lieu détecté', stripUnsupported(detectedLieu)]);
     }
+    const superficieText = selectedTitreAttributes?.sig_area != null
+      ? fmtNum(selectedTitreAttributes.sig_area, 1)
+      : formatAreaHa(superficie, 0);
     const rowsTech: Array<[string, string]> = [
       ['Nombre de points', String((points || []).length)],
-      ['Superficie (ha)', fmtNum(selectedTitreAttributes?.sig_area || superficie, 1)],
+      ['Superficie (ha)', superficieText],
       ['Superficie déclarée (ha)', (typeof (declaredAreaHa) !== 'undefined' ? fmtNum(declaredAreaHa, 1) : '')],
       ['Situation géographique OK', yesNo((validationSummary as any)?.sitGeoOk)],
-      ['Absence d\'empiétements', yesNo((validationSummary as any)?.empietOk)],
+      ['Absence d\'empietements', yesNo((validationSummary as any)?.empietOk)],
       ['Géométrie correcte', yesNo((validationSummary as any)?.geomOk)],
       ['Superficie conforme', yesNo((validationSummary as any)?.superfOk)]
     ];
@@ -2648,22 +3792,31 @@ export interface ArcGISMapRef {
       // ignore if autotable unavailable
     }
 
-    // Chevauchements avec Titres Miniers ANAM
+    // Chevauchements détectés (couches selectionnees)
     nextY = (doc as any)?.lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 10 : (nextY + 20);
     try {
-      const overlaps = Array.isArray(overlapTitles) ? overlapTitles : null;
+      const overlaps = resolveOverlapsForPrint();
       if (overlaps && overlaps.length) {
-        const overlapRows = overlaps.slice(0, 50).map((t: any, idx: number) => {
-          const ttyp = t.typetitre || t.codetype || 'Titre';
-          const tcode = t.code ?? t.idtitre ?? t.objectid ?? '';
-          const ttit = [t.tnom, t.tprenom].filter(Boolean).join(' ').trim();
-          const tloc = [t.wilaya, t.daira, t.commune].filter(Boolean).join(' / ');
-          return [String(idx + 1), stripUnsupported(`${ttyp} ${t.codetype || ''}`.replace(/\s+/g,' ').trim()), String(tcode), stripUnsupported(ttit || ''), stripUnsupported(tloc || '')];
+        const overlapRows = overlaps.map((t: any, idx: number) => {
+          const display = resolveOverlapDisplay(t);
+          const typeCell = display.typeLabel || 'Chevauchement';
+          const codeCell = display.code || '';
+          const holderCell = display.holder || display.name || '';
+          const locationCell = [display.location, display.areaLabel].filter(Boolean).join(' ');
+          return [
+            String(idx + 1),
+            stripUnsupported(typeCell),
+            stripUnsupported(codeCell),
+            stripUnsupported(holderCell),
+            stripUnsupported(locationCell)
+          ];
         });
         (autoTable as any)(doc, {
           head: [[{ content: `Chevauchements détectés (${overlaps.length})`, colSpan: 5, styles: { halign: 'center' } }], ['#', 'Type', 'Code', 'Titulaire', 'Localisation']],
           body: overlapRows,
           startY: nextY,
+          pageBreak: 'auto',
+          margin: { left: margin, right: margin, top: margin, bottom: margin },
           theme: 'grid',
           styles: { font: 'helvetica', fontSize: 9 },
           headStyles: { fillColor: [31, 41, 55], textColor: 255 },
@@ -2675,12 +3828,12 @@ export interface ArcGISMapRef {
         doc.text('Chevauchements détectés (0)', margin, nextY);
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
-        doc.text('Aucun empiètement détecté avec les titres miniers ANAM.', margin, nextY + 6);
+        doc.text('Aucun chevauchement détecté (couches sélectionnées).', margin, nextY + 6);
       }
     } catch (e) {
       // If the service is unreachable, add a note
       doc.setFont('helvetica', 'bold');
-      doc.text('Chevauchements — Information indisponible', margin, nextY);
+      doc.text('Chevauchements - Information indisponible', margin, nextY);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       doc.text(`La vérification des chevauchements n'a pas pu être effectuée.`, margin, nextY + 6);
@@ -2696,6 +3849,207 @@ export interface ArcGISMapRef {
     const tsFile = new Date().toISOString().substring(0,19).replace(/[:T]/g, '-');
     const codePart = code ? `-${code}` : '';
     doc.save(`rapport-titre${codePart}-${tsFile}.pdf`);
+  };
+
+  const buildReportV2Pdf = async (options: ReportV2Options = {}) => {
+    if (!viewRef.current) return;
+    const view = viewRef.current as any;
+    const shot: any = options.shot ?? await takeHiResScreenshot(view, 2.5);
+    const dataUrl: string = shot?.dataUrl || '';
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 10;
+
+    const defaultRows = buildReportV2Rows();
+    const legendRows = options.rows != null ? options.rows : defaultRows;
+    const legendColors = legendRows.map((row) => row.color ?? null);
+
+    const titleRaw = options.title != null ? options.title : 'PROJECTION SIGAM';
+    const titleText = stripReportText(String(titleRaw || '').trim()) || 'PROJECTION SIGAM';
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text(titleText, pageWidth / 2, margin, { align: 'center' });
+
+    let y = margin + 6;
+    if (dataUrl) {
+      const mapW = pageWidth - margin * 2;
+      const sW = shot?.width || view?.width || 1600;
+      const sH = shot?.height || view?.height || 900;
+      const ratio = sH / sW;
+      const maxMapH = Math.min(pageHeight * 0.75, pageHeight - margin - y - 30);
+      const mapH = Math.max(60, Math.min(mapW * ratio, maxMapH));
+      doc.addImage(dataUrl, 'PNG', margin, y, mapW, mapH, undefined, 'SLOW');
+      y = y + mapH + 4;
+    }
+
+    const preparedByRaw =
+      options.preparedBy !== undefined ? options.preparedBy : resolvePreparedByName();
+    const preparedByName = String(preparedByRaw || '').trim();
+    const preparedByLabelRaw = preparedByName
+      ? `Etabli par : ${preparedByName} / DDM signature`
+      : 'Etabli par : / DDM signature';
+    const preparedByLabel = stripReportText(preparedByLabelRaw);
+    const noteText = stripReportText(String(options.note || '').trim());
+    if (noteText) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      const noteLines = doc.splitTextToSize(noteText, pageWidth - margin * 2);
+      doc.text(noteLines, margin, y + 2);
+      y += noteLines.length * 4 + 4;
+    }
+
+    const headRows = [
+      [{ content: preparedByLabel, colSpan: 3, styles: { halign: 'left', fontStyle: 'normal' } }],
+      ['LEGENDE', 'Nom du périmètre sur SIGAM', 'Observation de la structure concernée'],
+    ];
+    const bodyRows = legendRows.length
+      ? legendRows.map((row) => ['', stripReportText(row.name), stripReportText(row.observation)])
+      : [['', 'Aucun chevauchement d??tect??', '']];
+    try {
+      (autoTable as any)(doc, {
+        head: headRows,
+        body: bodyRows,
+        startY: y,
+        pageBreak: 'auto',
+        margin: { left: margin, right: margin, top: margin, bottom: margin },
+        theme: 'grid',
+        styles: { font: 'helvetica', fontSize: 9, cellPadding: 1.5, lineColor: [0, 0, 0], lineWidth: 0.2 },
+        headStyles: { fillColor: [255, 255, 255], textColor: 0, lineColor: [0, 0, 0], lineWidth: 0.2 },
+        columnStyles: { 0: { cellWidth: 12 }, 1: { cellWidth: 125 }, 2: { cellWidth: 'auto' } },
+        didDrawCell: (data: any) => {
+          if (data.section !== 'body' || data.column.index !== 0) return;
+          const rowIdx = data.row.index;
+          const color = legendColors[rowIdx];
+          if (!color) return;
+          const [r, g, b] = color;
+          const size = Math.max(3, Math.min(data.cell.height - 3, data.cell.width - 3));
+          const x = data.cell.x + Math.round((data.cell.width - size) / 2);
+          const y = data.cell.y + Math.round((data.cell.height - size) / 2);
+          doc.setFillColor(r, g, b);
+          doc.rect(x, y, size, size, 'F');
+          doc.setDrawColor(0);
+          doc.rect(x, y, size, size, 'S');
+        },
+      });
+    } catch {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('Aucun chevauchement détecté.', margin, y + 8);
+    }
+
+    const tsFile = new Date().toISOString().substring(0, 19).replace(/[:T]/g, '-');
+    const codeVal = selectedTitreAttributes?.code ?? selectedTitreAttributes?.idtitre ?? selectedTitreAttributes?.objectid ?? '';
+    const codePart = codeVal ? `-${codeVal}` : '';
+    const fileName = `rapport-v2${codePart}-${tsFile}.pdf`;
+    return { doc, fileName, shot };
+  };
+
+  const refreshReportV2Preview = async (
+    forceShot = false,
+    overrides: Partial<ReportV2Options> = {},
+  ) => {
+    if (!viewRef.current) return;
+    setReportV2Loading(true);
+    try {
+      const shot =
+        !forceShot && reportV2ShotRef.current
+          ? reportV2ShotRef.current
+          : await takeHiResScreenshot(viewRef.current, 2.5);
+      reportV2ShotRef.current = shot;
+      const result = await buildReportV2Pdf({
+        title: overrides.title ?? reportV2Title,
+        preparedBy: overrides.preparedBy ?? reportV2PreparedBy,
+        note: overrides.note ?? reportV2Note,
+        rows: overrides.rows ?? reportV2Rows,
+        shot,
+      });
+      if (!result) return;
+      const blob = result.doc.output('blob');
+      const url = URL.createObjectURL(blob);
+      setReportV2PreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return url;
+      });
+      setReportV2FileName(result.fileName);
+    } catch (e) {
+      console.error('Erreur apercu PDF V2:', e);
+    } finally {
+      setReportV2Loading(false);
+    }
+  };
+
+  const updateReportV2Row = (index: number, field: 'name' | 'observation', value: string) => {
+    setReportV2Rows((prev) =>
+      prev.map((row, idx) => (idx === index ? { ...row, [field]: value } : row)),
+    );
+  };
+
+  const addReportV2Row = () => {
+    setReportV2Rows((prev) => [...prev, { name: '', observation: '', color: null }]);
+  };
+
+  const removeReportV2Row = (index: number) => {
+    setReportV2Rows((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const resetReportV2Rows = async () => {
+    const nextRows = buildReportV2Rows();
+    setReportV2Rows(nextRows);
+    await refreshReportV2Preview(true, { rows: nextRows });
+  };
+
+  const openReportV2Modal = async () => {
+    if (!viewRef.current || reportV2Loading) return;
+    const fallbackPreparedBy = reportV2PreparedBy || resolvePreparedByName();
+    const nextRows = reportV2Rows.length ? reportV2Rows : buildReportV2Rows();
+    setReportV2Rows(nextRows);
+    if (!reportV2PreparedBy && fallbackPreparedBy) {
+      setReportV2PreparedBy(fallbackPreparedBy);
+    }
+    setReportV2Open(true);
+    await refreshReportV2Preview(true, { preparedBy: fallbackPreparedBy, rows: nextRows });
+  };
+
+  const closeReportV2Modal = () => {
+    setReportV2Open(false);
+    setReportV2Loading(false);
+    setReportV2PreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setReportV2FileName('');
+    reportV2ShotRef.current = null;
+  };
+
+  const downloadReportV2 = async () => {
+    if (!viewRef.current) return;
+    try {
+      setIsExporting(true);
+      const result = await buildReportV2Pdf({
+        title: reportV2Title,
+        preparedBy: reportV2PreparedBy,
+        note: reportV2Note,
+        rows: reportV2Rows,
+        shot: reportV2ShotRef.current,
+      });
+      if (!result) return;
+      result.doc.save(result.fileName);
+    } catch (e) {
+      console.error('Erreur export PDF V2:', e);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const exportPDFV2 = async () => {
+    if (!viewRef.current) return;
+    try {
+      await openReportV2Modal();
+    } catch (e) {
+      console.error('Erreur ouverture PDF V2:', e);
+    }
   };
 
   const escapeKmlText = (value: string) =>
@@ -2761,6 +4115,10 @@ export interface ArcGISMapRef {
     setCoordsCopied(false);
   };
 
+  const reportV2ViewerUrl = reportV2PreviewUrl
+    ? `${reportV2PreviewUrl}#toolbar=0&navpanes=0&scrollbar=0&zoom=page-width`
+    : null;
+
   return (
     <div className="arcgis-enterprise-container">
       <div 
@@ -2769,100 +4127,240 @@ export interface ArcGISMapRef {
         style={{ 
           width: '100%',
           height: '100%',
-          cursor: isDrawing ? 'crosshair' : 'grab'
+          cursor: isDrawing || boxSelectionEnabled ? 'crosshair' : 'grab'
         }}
       />
       
-      {/* Layer toggle button */}
-      <button
-        className="layer-toggle-btn"
-        onClick={() => setIsLayerPanelOpen(v => !v)}
-        aria-label={isLayerPanelOpen ? 'Masquer les couches' : 'Afficher les couches'}
-      >
-        {isLayerPanelOpen ? 'Masquer les couches' : 'Afficher les couches'}
-      </button>
-
-      <div className="tools-menu">
+      <div className="map-toolbar">
         <button
-          className="tools-toggle"
-          type="button"
-          onClick={() => setIsToolsOpen((v) => !v)}
-          aria-expanded={isToolsOpen}
+          className="toolbar-btn layer-toggle-btn"
+          onClick={() => setIsLayerPanelOpen(v => !v)}
+          aria-label={isLayerPanelOpen ? 'Masquer les couches' : 'Afficher les couches'}
         >
-          Outils
+          <FiLayers className="toolbar-icon" />
+          {isLayerPanelOpen ? 'Masquer les couches' : 'Afficher les couches'}
         </button>
-        {isToolsOpen && (
-          <div className="tools-panel">
-            <div className="tools-section">
-              <div className="tools-title">Mesure</div>
-              <button
-                className={`tools-btn ${activeMeasureTool === 'distance' ? 'active' : ''}`}
-                type="button"
-                onClick={() => toggleMeasurementTool('distance')}
-                disabled={!isMapReady}
-                aria-pressed={activeMeasureTool === 'distance'}
-              >
-                Mesurer distance
-              </button>
-              <button
-                className={`tools-btn ${activeMeasureTool === 'area' ? 'active' : ''}`}
-                type="button"
-                onClick={() => toggleMeasurementTool('area')}
-                disabled={!isMapReady}
-                aria-pressed={activeMeasureTool === 'area'}
-              >
-                Mesurer surface
-              </button>
-              <button
-                className="tools-btn"
-                type="button"
-                onClick={clearMeasurementTools}
-                disabled={!isMapReady || activeMeasureTool === 'none'}
-              >
-                Effacer mesures
-              </button>
-            </div>
-            <div className="tools-section">
-              <div className="tools-title">Navigation</div>
-              <button
-                className={`tools-btn ${rotationToolsEnabled ? 'active' : ''}`}
-                type="button"
-                onClick={toggleRotationTools}
-                disabled={!isMapReady}
-                aria-pressed={rotationToolsEnabled}
-              >
-                Rotation 3D
-              </button>
-              <button
-                className="tools-btn"
-                type="button"
-                onClick={resetRotation}
-                disabled={!isMapReady}
-              >
-                Reinitialiser rotation
-              </button>
-              <button
-                className="tools-btn"
-                type="button"
-                onClick={() => zoomToCurrentPolygon()}
-                disabled={!isMapReady}
-              >
-                Recentrer perimetre
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Export controls */}
-      <div className="export-controls">
-        <button className="export-btn" onClick={exportPNG} disabled={isExporting}>
+        <button className="toolbar-btn" onClick={exportPNG} disabled={isExporting}>
+          <FiDownload className="toolbar-icon" />
           {isExporting ? 'Export…' : 'Exporter PNG'}
         </button>
-        <button className="export-btn" onClick={exportPDF} disabled={isExporting}>
-          {isExporting ? 'Export…' : 'Télécharger PDF'}
+        <button
+          className="toolbar-btn"
+          onClick={exportPDFV2}
+          disabled={isExporting || reportV2Loading}
+        >
+          <FiFileText className="toolbar-icon" />
+          {isExporting || reportV2Loading ? 'Export…' : 'Rapport V2'}
         </button>
+        <div className="tools-menu">
+          <button
+            className="toolbar-btn tools-toggle"
+            type="button"
+            onClick={() => setIsToolsOpen((v) => !v)}
+            aria-expanded={isToolsOpen}
+          >
+            <FiTool className="toolbar-icon" />
+            Outils
+          </button>
+          {isToolsOpen && (
+            <div className="tools-panel">
+              <div className="tools-section">
+                <div className="tools-title">Mesure</div>
+                <button
+                  className={`tools-btn ${activeMeasureTool === 'distance' ? 'active' : ''}`}
+                  type="button"
+                  onClick={() => toggleMeasurementTool('distance')}
+                  disabled={!isMapReady}
+                  aria-pressed={activeMeasureTool === 'distance'}
+                >
+                  Mesurer distance
+                </button>
+                <button
+                  className={`tools-btn ${activeMeasureTool === 'area' ? 'active' : ''}`}
+                  type="button"
+                  onClick={() => toggleMeasurementTool('area')}
+                  disabled={!isMapReady}
+                  aria-pressed={activeMeasureTool === 'area'}
+                >
+                  Mesurer surface
+                </button>
+                <button
+                  className="tools-btn"
+                  type="button"
+                  onClick={clearMeasurementTools}
+                  disabled={!isMapReady || activeMeasureTool === 'none'}
+                >
+                  Effacer mesures
+                </button>
+              </div>
+              <div className="tools-section">
+                <div className="tools-title">Navigation</div>
+                <button
+                  className={`tools-btn ${rotationToolsEnabled ? 'active' : ''}`}
+                  type="button"
+                  onClick={toggleRotationTools}
+                  disabled={!isMapReady}
+                  aria-pressed={rotationToolsEnabled}
+                >
+                  Rotation 3D
+                </button>
+                <button
+                  className="tools-btn"
+                  type="button"
+                  onClick={resetRotation}
+                  disabled={!isMapReady}
+                >
+                  Reinitialiser rotation
+                </button>
+                <button
+                  className="tools-btn"
+                  type="button"
+                  onClick={() => zoomToCurrentPolygon()}
+                  disabled={!isMapReady}
+                >
+                  Recentrer perimetre
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+
+      {reportV2Open && (
+        <div className="report-v2-overlay" role="dialog" aria-modal="true">
+          <div className="report-v2-backdrop" onClick={closeReportV2Modal} />
+          <div className="report-v2-modal">
+            <div className="report-v2-header">
+              <div>Rapport V2</div>
+              <button className="report-v2-close" type="button" onClick={closeReportV2Modal}>
+                X
+              </button>
+            </div>
+            <div className="report-v2-body">
+              <div className="report-v2-preview">
+                {reportV2Loading ? (
+                  <div className="report-v2-loading">Chargement de l'apercu...</div>
+                ) : reportV2PreviewUrl ? (
+                  <iframe title="Apercu rapport V2" src={reportV2ViewerUrl || reportV2PreviewUrl} />
+                ) : (
+                  <div className="report-v2-loading">Apercu indisponible.</div>
+                )}
+              </div>
+              <div className="report-v2-editor">
+                <label>
+                  Titre du rapport
+                  <input
+                    type="text"
+                    value={reportV2Title}
+                    onChange={(e) => setReportV2Title(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Etabli par
+                  <input
+                    type="text"
+                    value={reportV2PreparedBy}
+                    onChange={(e) => setReportV2PreparedBy(e.target.value)}
+                    placeholder="Nom et prenom"
+                  />
+                </label>
+                <label>
+                  Note / commentaire
+                  <textarea
+                    rows={6}
+                    value={reportV2Note}
+                    onChange={(e) => setReportV2Note(e.target.value)}
+                    placeholder="Ajouter un texte a inserer dans le rapport."
+                  />
+                </label>
+                <div className="report-v2-legend">
+                  <div className="report-v2-legend-header">
+                    <div>Table legendes</div>
+                    <button
+                      type="button"
+                      className="report-v2-secondary"
+                      onClick={resetReportV2Rows}
+                      disabled={reportV2Loading}
+                    >
+                      Reinitialiser
+                    </button>
+                  </div>
+                  <div className="report-v2-legend-labels">
+                    <span>Legende</span>
+                    <span>Nom</span>
+                    <span>Observation</span>
+                    <span />
+                  </div>
+                  <div className="report-v2-legend-list">
+                    {reportV2Rows.length ? (
+                      reportV2Rows.map((row, idx) => (
+                        <div className="report-v2-row" key={`report-v2-row-${idx}`}>
+                          <div
+                            className="report-v2-color"
+                            style={{
+                              background: row.color ? `rgb(${row.color[0]}, ${row.color[1]}, ${row.color[2]})` : '#ffffff',
+                            }}
+                          />
+                          <input
+                            type="text"
+                            value={row.name}
+                            onChange={(e) => updateReportV2Row(idx, 'name', e.target.value)}
+                            placeholder="Nom du perimetre"
+                          />
+                          <textarea
+                            rows={2}
+                            value={row.observation}
+                            onChange={(e) => updateReportV2Row(idx, 'observation', e.target.value)}
+                            placeholder="Observation"
+                          />
+                          <button
+                            type="button"
+                            className="report-v2-row-remove"
+                            onClick={() => removeReportV2Row(idx)}
+                          >
+                            Supprimer
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="report-v2-empty">Aucune ligne.</div>
+                    )}
+                  </div>
+                  <button type="button" className="report-v2-row-add" onClick={addReportV2Row}>
+                    Ajouter ligne
+                  </button>
+                </div>
+                <div className="report-v2-actions">
+                  <button
+                    type="button"
+                    className="report-v2-btn"
+                    onClick={() => refreshReportV2Preview(true, { rows: reportV2Rows })}
+                    disabled={reportV2Loading}
+                  >
+                    Mettre a jour l'apercu
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="report-v2-footer">
+              <div className="report-v2-filename">{reportV2FileName || 'rapport-v2.pdf'}</div>
+              <div className="report-v2-footer-actions">
+                <button className="report-v2-secondary" type="button" onClick={closeReportV2Modal}>
+                  Fermer
+                </button>
+                <button
+                  className="report-v2-primary"
+                  type="button"
+                  onClick={downloadReportV2}
+                  disabled={isExporting || reportV2Loading}
+                >
+                  Telecharger PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {enableSelectionTools && (
         <div className="selection-panel">
@@ -2871,9 +4369,26 @@ export interface ArcGISMapRef {
               <div className="selection-title">
                 Selection ({selectedPolygons.length})
               </div>
-              <div className="selection-hint">Ctrl/Shift pour multi-selection</div>
+              <div className="selection-hint">
+                {enableBoxSelection && boxSelectionEnabled
+                  ? 'Shift + glisser pour selectionner'
+                  : selectionRequiresModifier
+                    ? 'Ctrl/Shift pour multi-selection'
+                    : 'Cliquez pour ajouter/retirer'}
+              </div>
             </div>
             <div className="selection-header-actions">
+              {enableBoxSelection && (
+                <button
+                  className={`selection-mode-btn ${boxSelectionEnabled ? 'active' : ''}`}
+                  onClick={() => setBoxSelectionEnabled((prev) => !prev)}
+                  type="button"
+                  aria-pressed={boxSelectionEnabled}
+                  title="Selection zone (Shift + glisser)"
+                >
+                  <FiMousePointer size={14} />
+                </button>
+              )}
               <button
                 className="selection-toggle"
                 onClick={() => setSelectionCollapsed((prev) => !prev)}
@@ -2969,16 +4484,86 @@ export interface ArcGISMapRef {
           </div>
         )}
         <div className="layer-list">
-          {layerToggleOptions.map(({ key, label }) => (
-            <div className="layer-item" key={key}>
-              <input 
-                type="checkbox" 
-                checked={!!activeLayers[key]}
-                onChange={() => toggleLayer(key)}
-              />
-              <label>{label}</label>
-            </div>
-          ))}
+          {layerToggleOptions.map(({ key, label }) => {
+            if (key !== 'titres') {
+              return (
+                <div className="layer-item" key={key}>
+                  <input
+                    type="checkbox"
+                    checked={!!activeLayers[key]}
+                    onChange={() => toggleLayer(key)}
+                  />
+                  <label>{label}</label>
+                </div>
+              );
+            }
+
+            return (
+              <div className="layer-item layer-item-column" key={key}>
+                <div className="layer-item-main">
+                  <input
+                    type="checkbox"
+                    checked={!!activeLayers[key]}
+                    onChange={() => toggleLayer(key)}
+                  />
+                  <label>
+                    {label}
+                  </label>
+                  <button
+                    type="button"
+                    className="layer-types-toggle"
+                    disabled={!activeLayers[key]}
+                    onClick={() => setTitresTypesOpen((prev) => !prev)}
+                    title="Afficher les types de titres"
+                  >
+                    Types ({activeTitreTypesCount}/{totalTitreTypes})
+                  </button>
+                </div>
+                {activeLayers[key] && titresTypesOpen && (
+                  <div className="layer-sublist">
+                    {TITRE_TYPE_OPTIONS.map((item) => {
+                      const color = `rgb(${item.color[0]}, ${item.color[1]}, ${item.color[2]})`;
+                      return (
+                        <label className="layer-subitem" key={item.code}>
+                          <input
+                            type="checkbox"
+                            checked={!!activeTitreTypes[item.code]}
+                            onChange={() => toggleTitreType(item.code)}
+                          />
+                          <span className="layer-color-dot" style={{ backgroundColor: color }} />
+                          <span>{item.label}</span>
+                        </label>
+                      );
+                    })}
+                    <div className="layer-subactions">
+                      <button
+                        type="button"
+                        className="layer-subaction-btn"
+                        onClick={() => setAllTitreTypes(true)}
+                      >
+                        Tout
+                      </button>
+                      <button
+                        type="button"
+                        className="layer-subaction-btn"
+                        onClick={() => setAllTitreTypes(false)}
+                      >
+                        Aucun
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="layer-item">
+          <input
+            type="checkbox"
+            checked={overlapClarityEnabled}
+            onChange={(e) => setOverlapClarityEnabled(e.target.checked)}
+          />
+          <label>Opacité réduite (chevauchements)</label>
         </div>
       </div>
       )}
@@ -2997,40 +4582,59 @@ export interface ArcGISMapRef {
           padding: 4px 4px;
           min-height: 20px;
         }
-        .layer-toggle-btn {
+        .map-toolbar {
           position: absolute;
-          top: 10px;
-          right: 10px;
-          z-index: 1001;
-          background: #ffffff;
+          top: 48px;
+          right: 12px;
+          z-index: 1002;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          align-items: center;
+        }
+        .toolbar-btn {
+          background: #f8fafc;
           border: 1px solid #e2e8f0;
-          border-radius: 6px;
+          border-radius: 8px;
           padding: 6px 10px;
           font-size: 12px;
-          color: #2d3748;
+          color: #334155;
           cursor: pointer;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          box-shadow: 0 2px 8px rgba(15, 23, 42, 0.1);
+          transition: border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+        }
+        .toolbar-btn:hover {
+          border-color: #8b5cf6;
+          color: #6d28d9;
+          background: #f5f3ff;
+          transform: translateY(-1px);
+          box-shadow: 0 6px 14px rgba(139, 92, 246, 0.2);
+        }
+        .toolbar-btn[disabled] {
+          opacity: 0.6;
+          cursor: default;
+          box-shadow: none;
+          transform: none;
+        }
+        .toolbar-icon {
+          font-size: 14px;
+        }
+        .layer-toggle-btn {
+          border-color: #cbd5f5;
+        }
+        :global(.esri-ui-top-left) {
+          top: 50px;
         }
         .tools-menu {
-          position: absolute;
-          bottom: 54px;
-          right: 10px;
-          z-index: 1001;
-        }
-        .tools-toggle {
-          background: #111827;
-          border: 1px solid #111827;
-          color: #ffffff;
-          border-radius: 6px;
-          padding: 6px 10px;
-          font-size: 12px;
-          cursor: pointer;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+          position: relative;
         }
         .tools-panel {
           position: absolute;
           right: 0;
-          bottom: 40px;
+          top: calc(100% + 8px);
           width: 220px;
           background: #ffffff;
           border: 1px solid #e2e8f0;
@@ -3074,9 +4678,9 @@ export interface ArcGISMapRef {
           cursor: default;
         }
         .layer-control-panel {
-          position: fixed;
-          top: 48px; /* leave space for toggle btn */
-          right: 10px;
+          position: absolute;
+          top: 92px;
+          right: 12px;
           background: white;
           padding: 15px;
           border-radius: 8px;
@@ -3136,6 +4740,15 @@ export interface ArcGISMapRef {
           margin: 8px 0;
           padding: 4px 0;
         }
+        .layer-item.layer-item-column {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .layer-item-main {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
         .layer-item label {
           margin-left: 8px;
           font-size: 13px;
@@ -3145,25 +4758,283 @@ export interface ArcGISMapRef {
         .layer-item input[type="checkbox"] {
           cursor: pointer;
         }
+        .layer-types-toggle {
+          margin-left: auto;
+          border: 1px solid #e5e7eb;
+          background: #f8fafc;
+          color: #111827;
+          border-radius: 6px;
+          padding: 3px 8px;
+          font-size: 11px;
+          cursor: pointer;
+        }
+        .layer-types-toggle[disabled] {
+          opacity: 0.6;
+          cursor: default;
+        }
+        .layer-sublist {
+          margin: 6px 0 0 24px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .layer-subitem {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 12px;
+          color: #4a5568;
+        }
+        .layer-color-dot {
+          width: 10px;
+          height: 10px;
+          border-radius: 999px;
+          border: 1px solid rgba(0, 0, 0, 0.2);
+        }
+        .layer-subactions {
+          display: flex;
+          gap: 6px;
+          margin-left: 24px;
+          margin-top: 4px;
+        }
+        .layer-subaction-btn {
+          border: 1px solid #e5e7eb;
+          background: #ffffff;
+          color: #111827;
+          border-radius: 6px;
+          padding: 3px 8px;
+          font-size: 11px;
+          cursor: pointer;
+        }
         .export-controls {
+          display: none;
+        }
+        .report-v2-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 1200;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .report-v2-backdrop {
           position: absolute;
-          bottom: 10px;
-          right: 10px;
-          z-index: 1001;
+          inset: 0;
+          background: rgba(15, 23, 42, 0.45);
+        }
+        .report-v2-modal {
+          position: relative;
+          width: 100vw;
+          height: 100vh;
+          max-height: none;
+          background: #ffffff;
+          border-radius: 0;
+          box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          z-index: 1;
+        }
+        .report-v2-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px 16px;
+          background: #f9fafb;
+          border-bottom: 1px solid #e5e7eb;
+          font-size: 14px;
+          font-weight: 600;
+          color: #111827;
+        }
+        .report-v2-close {
+          border: none;
+          background: transparent;
+          font-size: 18px;
+          cursor: pointer;
+          color: #6b7280;
+        }
+        .report-v2-body {
+          display: grid;
+          grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.8fr);
+          gap: 20px;
+          padding: 20px;
+          flex: 1;
+          min-height: 0;
+          overflow: hidden;
+        }
+        .report-v2-preview {
+          border: 1px solid #e5e7eb;
+          border-radius: 10px;
+          background: #f8fafc;
+          min-height: 0;
+          overflow: hidden;
+          height: 100%;
+        }
+        .report-v2-preview iframe {
+          width: 100%;
+          height: 100%;
+          border: none;
+        }
+        .report-v2-loading {
+          padding: 16px;
+          font-size: 12px;
+          color: #6b7280;
+        }
+        .report-v2-editor {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          overflow: auto;
+          min-height: 0;
+          padding-right: 4px;
+        }
+        .report-v2-legend {
+          border: 1px solid #e5e7eb;
+          border-radius: 10px;
+          padding: 10px;
+          background: #f9fafb;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .report-v2-legend-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 12px;
+          font-weight: 600;
+          color: #374151;
+        }
+        .report-v2-legend-labels {
+          display: grid;
+          grid-template-columns: 16px minmax(120px, 1fr) minmax(140px, 1.2fr) 70px;
+          gap: 8px;
+          font-size: 11px;
+          color: #6b7280;
+        }
+        .report-v2-legend-list {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          max-height: 35vh;
+          overflow: auto;
+          padding-right: 4px;
+        }
+        .report-v2-row {
+          display: grid;
+          grid-template-columns: 16px minmax(120px, 1fr) minmax(140px, 1.2fr) 70px;
+          gap: 8px;
+          align-items: center;
+        }
+        .report-v2-color {
+          width: 14px;
+          height: 14px;
+          border-radius: 3px;
+          border: 1px solid #111827;
+        }
+        .report-v2-row input,
+        .report-v2-row textarea {
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+          padding: 6px 8px;
+          font-size: 12px;
+          width: 90%;
+        }
+        .report-v2-row textarea {
+          resize: vertical;
+          min-height: 34px;
+        }
+        .report-v2-row-remove {
+          border: 1px solid #fecaca;
+          background: #fee2e2;
+          color: #b91c1c;
+          border-radius: 6px;
+          font-size: 11px;
+          padding: 6px 8px;
+          cursor: pointer;
+        }
+        .report-v2-row-add {
+          border: 1px dashed #cbd5e1;
+          background: #ffffff;
+          color: #1f2937;
+          border-radius: 8px;
+          font-size: 12px;
+          padding: 6px 10px;
+          cursor: pointer;
+        }
+        .report-v2-empty {
+          font-size: 12px;
+          color: #6b7280;
+          padding: 6px;
+          border: 1px dashed #d1d5db;
+          border-radius: 8px;
+          text-align: center;
+        }
+        .report-v2-editor label {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          font-size: 12px;
+          font-weight: 600;
+          color: #374151;
+        }
+        .report-v2-editor input,
+        .report-v2-editor textarea {
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          padding: 8px 10px;
+          font-size: 12px;
+        }
+        .report-v2-actions {
           display: flex;
           gap: 8px;
         }
-        .export-btn {
-          background: #1f2937;
-          color: #fff;
-          border: none;
-          border-radius: 6px;
-          padding: 8px 10px;
+        .report-v2-btn {
+          background: #111827;
+          border: 1px solid #111827;
+          color: #ffffff;
+          border-radius: 8px;
+          padding: 8px 12px;
           font-size: 12px;
           cursor: pointer;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.12);
         }
-        .export-btn[disabled] {
+        .report-v2-btn[disabled] {
+          opacity: 0.6;
+          cursor: default;
+        }
+        .report-v2-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px 16px;
+          border-top: 1px solid #e5e7eb;
+          background: #f9fafb;
+          font-size: 12px;
+          color: #6b7280;
+        }
+        .report-v2-footer-actions {
+          display: flex;
+          gap: 8px;
+        }
+        .report-v2-secondary {
+          background: #ffffff;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          padding: 6px 10px;
+          font-size: 12px;
+          cursor: pointer;
+          color: #111827;
+        }
+        .report-v2-primary {
+          background: #2563eb;
+          border: none;
+          border-radius: 8px;
+          padding: 6px 12px;
+          font-size: 12px;
+          cursor: pointer;
+          color: #ffffff;
+        }
+        .report-v2-primary[disabled] {
           opacity: 0.6;
           cursor: default;
         }
@@ -3191,6 +5062,23 @@ export interface ArcGISMapRef {
         .selection-header-actions {
           display: flex;
           gap: 6px;
+        }
+        .selection-mode-btn {
+          background: #ffffff;
+          border: 1px solid #e5e7eb;
+          border-radius: 6px;
+          padding: 4px 6px;
+          font-size: 11px;
+          color: #111827;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .selection-mode-btn.active {
+          background: #2563eb;
+          border-color: #2563eb;
+          color: #ffffff;
         }
         .selection-title {
           font-size: 13px;
@@ -3284,17 +5172,35 @@ export interface ArcGISMapRef {
           resize: vertical;
           font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
         }
+        @media (max-width: 900px) {
+          .report-v2-body {
+            grid-template-columns: 1fr;
+            padding: 16px;
+          }
+          .report-v2-preview {
+            min-height: 40vh;
+          }
+          .report-v2-legend-list {
+            max-height: 28vh;
+          }
+        }
         @media (max-width: 640px) {
           .selection-panel {
             width: auto;
             left: 10px;
             right: 10px;
           }
+          .map-toolbar {
+            left: 10px;
+            right: 10px;
+            justify-content: flex-end;
+          }
           .tools-panel {
             width: 180px;
           }
-          .tools-menu {
-            bottom: 64px;
+          .layer-control-panel {
+            right: 10px;
+            top: 98px;
           }
         }
       `}</style>

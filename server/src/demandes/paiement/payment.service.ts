@@ -947,7 +947,7 @@ async createRenewalObligations(
   };
 }
 
-async generatePaymentReceipt(paymentId: number) {
+  async generatePaymentReceipt(paymentId: number) {
   try {
 
     const payment = await this.prisma.paiement.findUnique({
@@ -1110,7 +1110,22 @@ private async updateObligationStatus(obligationId: number) {
     data: { statut: newStatus }
   });
 }
+//////////
 
+
+  async confirmDemandePayment(demandeId: number) {
+    const demande = await this.prisma.demandePortail.findUnique({
+      where: { id_demande: demandeId },
+      select: { id_demande: true, date_demande: true },
+    });
+    if (!demande) {
+      throw new NotFoundException(`Demande ${demandeId} non trouvee`);
+    }
+    return this.prisma.demandePortail.update({
+      where: { id_demande: demandeId },
+      data: { date_demande: new Date() },
+    });
+  }
 
 /*async updatePaymentStatus(paymentId: number, status: string) {
   return this.prisma.paiement.update({

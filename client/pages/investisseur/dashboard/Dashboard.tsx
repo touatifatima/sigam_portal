@@ -52,7 +52,7 @@ const cards: CardConfig[] = [
   {
     title: "Mes Permis",
     description: "Consulter vos permis delivres et leur validite",
-    route: "/investisseur/permis",
+    route: "/operateur/permisdashboard/mes-permis",
     tone: "green",
     icon: <Gem size={26} />,
   },

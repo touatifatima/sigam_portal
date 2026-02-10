@@ -145,7 +145,11 @@ const Profil = () => {
                     <User className="w-12 h-12" />
                   </div>
                   <div className={styles.avatarInfo}>
-                    <h3 className={styles.userName}>{auth.username || "Utilisateur"}</h3>
+                    <h3 className={styles.userName}>
+                      {auth.Prenom || auth.nom
+                        ? `${auth.Prenom ?? ""} ${auth.nom ?? ""}`.trim()
+                        : auth.username || "Utilisateur"}
+                    </h3>
                     <p className={styles.userEmail}>{auth.email || "email@exemple.com"}</p>
                   </div>
                   <Button variant="outline" size="sm" className={styles.editButton} onClick={handleEditBlocked}>
@@ -167,7 +171,9 @@ const Profil = () => {
                     <Phone className={styles.infoIcon} />
                     <div>
                       <span className={styles.infoLabel}>Telephone</span>
-                      <span className={styles.infoValue}>Non renseigne</span>
+                      <span className={styles.infoValue}>
+                        {auth.telephone || "Non renseigne"}
+                      </span>
                     </div>
                   </div>
 
@@ -175,7 +181,9 @@ const Profil = () => {
                     <Calendar className={styles.infoIcon} />
                     <div>
                       <span className={styles.infoLabel}>Date d'inscription</span>
-                      <span className={styles.infoValue}>Non renseigne</span>
+                      <span className={styles.infoValue}>
+                        {formatDate(auth.createdAt)}
+                      </span>
                     </div>
                   </div>
 

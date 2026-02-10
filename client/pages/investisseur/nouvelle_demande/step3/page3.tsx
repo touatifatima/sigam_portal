@@ -75,47 +75,6 @@ export default function Capacites() {
     allDataReady: false
   });
   const [checkInterval, setCheckInterval] = useState<NodeJS.Timeout | null>(null);
-  // Missing docs alert for first-phase reminder
-  const [missingDocsAlert, setMissingDocsAlert] = useState<{ missing: string[]; deadline?: string | null } | null>(null);
-  const [tick, setTick] = useState(0);
-
-  const computeRemaining = (deadline?: string | null) => {
-    if (!deadline) return null;
-    const d = new Date(deadline).getTime();
-    const now = Date.now();
-    const diff = d - now;
-    if (diff <= 0) return 'Délai expiré';
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    return `${days}j ${hours}h restants`;
-  };
-
-  useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), 60000);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    if (!idDemande) { setMissingDocsAlert(null); return; }
-    const controller = new AbortController();
-    const load = async () => {
-      try {
-        const res = await axios.get(`${apiURL}/api/procedure/${idDemande}/documents`, { signal: controller.signal });
-        const miss = (res.data?.missingSummary?.requiredMissing ?? []).map((d: any) => d.nom_doc);
-        const deadline = res.data?.deadlines?.miseEnDemeure ?? null;
-        if (Array.isArray(miss) && miss.length > 0) {
-          setMissingDocsAlert({ missing: miss, deadline });
-        } else {
-          setMissingDocsAlert(null);
-        }
-      } catch (e) {
-        if (!axios.isCancel(e)) setMissingDocsAlert(null);
-      }
-    };
-    load();
-    return () => controller.abort();
-  }, [idDemande, apiURL, tick]);
-
   // Check if all required data is available
   const checkRequiredData = useCallback(() => {
     const newStatus = {
@@ -410,7 +369,7 @@ export default function Capacites() {
       await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`);
       setRefetchTrigger((prev) => prev + 1);
       toast.success("Capacit?s enregistr?es avec succ?s");
-      router.push(`/investisseur/nouvelle_demande/step4/page4?id=${idProc}`);
+      router.push(`/investisseur/nouvelle_demande/step1/page1?id=${idProc}`);
     } catch (err) {
       console.error(err);
       toast.error("Erreur lors de l'enregistrement");
@@ -425,7 +384,7 @@ export default function Capacites() {
       setError("ID procédure manquant");
       return;
     }
-    router.push(`/investisseur/nouvelle_demande/step2/page2?id=${idProc}`);
+    router.push(`/investisseur/nouvelle_demande/step4/page4?id=${idProc}`);
   };
 
   if (!isReady) {
@@ -460,24 +419,6 @@ export default function Capacites() {
       <div className={styles.appContent}>
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles.mainContent}>
-          {missingDocsAlert && (
-            <div style={{
-              background: 'rgba(220,38,38,0.1)',
-              border: '1px solid rgba(220,38,38,0.4)',
-              padding: '10px 12px',
-              borderRadius: 6,
-              marginBottom: 12,
-              color: '#991b1b',
-              fontWeight: 600,
-            }}>
-              Documents obligatoires manquants: {missingDocsAlert.missing.join(', ')}
-              {missingDocsAlert.deadline && (
-                <span style={{ marginLeft: 8, fontWeight: 500 }}>
-                  — {computeRemaining(missingDocsAlert.deadline)}
-                </span>
-              )}
-            </div>
-          )}
           <div className={styles.breadcrumb}>
             <span>SIGAM</span>
             <FiChevronRight className={styles.breadcrumbArrow} />
@@ -497,7 +438,7 @@ export default function Capacites() {
                  />
               )}
       <h2 className={styles.pageTitle}>  
-                Etape 3 : Capacités techniques et financiéres
+                 Capacités techniques et financiéres
               </h2>
                  <p className={styles['page-subtitle']}>
                               Veuillez fournir les informations sur les substances et les coordonnées prévues

@@ -5,8 +5,8 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background-color: var(--bg);
-  color: var(--text);
+  background-color: #f8fafc;
+  color: #1e293b;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   line-height: 1.5;
 }
@@ -18,7 +18,6 @@
 
 .mainContent {
   flex: 1;
-  padding: 2rem;
   background-color: #fff;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -28,7 +27,7 @@
 }
 .permisTableSection {
   padding: 2rem;
-  background: var(--bg);
+  background: #f8fafc;
   min-height: 100vh;
 }
 
@@ -45,13 +44,13 @@
 
 .headerTitle h2 {
   margin: 0;
-  color: var(--text, #2d1b27);
+  color: #1e293b;
   font-size: 1.75rem;
   font-weight: 700;
 }
 
 .resultCount {
-  color: var(--muted, #6b4d5e);
+  color: #64748b;
   font-size: 0.875rem;
   margin-top: 0.25rem;
 }
@@ -75,23 +74,23 @@
   background: transparent;
   border-radius: 6px;
   cursor: pointer;
-  color: var(--muted, #6b4d5e);
+  color: #64748b;
   transition: all 0.2s ease;
 }
 
 .viewToggleButton:hover {
-  color: var(--text, #2d1b27);
+  color: #334155;
 }
 
 .viewToggleButton.active {
   background: white;
-  color: var(--primary);
+  color: #3b82f6;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .addButton {
   padding: 0.75rem 1.5rem;
-  background: var(--primary);
+  background: #3b82f6;
   color: white;
   border: none;
   border-radius: 8px;
@@ -104,7 +103,7 @@
 }
 
 .addButton:hover {
-  background: var(--primary-hover);
+  background: #2563eb;
   transform: translateY(-1px);
 }
 
@@ -125,24 +124,24 @@
   left: 1rem;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--muted, #6b4d5e);
+  color: #64748b;
   z-index: 1;
 }
 
 .searchInput {
   width: 26%;
   padding: 0.875rem 1rem 0.875rem 3rem;
-  border: 1px solid var(--border-light, #e5d5dd);
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   font-size: 0.875rem;
   transition: all 0.2s ease;
-  background: var(--bg, #fff);
+  background: white;
 }
 
 .searchInput:focus {
   outline: none;
-  border-color: var(--primary, #8b3a62);
-  box-shadow: 0 0 0 3px rgba(139, 58, 98, 0.1);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .filterActions {
@@ -152,31 +151,31 @@
 
 .filterToggle {
   padding: 0.75rem 1rem;
-  border: 1px solid var(--border-light, #e5d5dd);
-  background: var(--bg, #fff);
+  border: 1px solid #e2e8f0;
+  background: white;
   border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
-  color: var(--muted, #6b4d5e);
+  color: #64748b;
   transition: all 0.2s ease;
 }
 
 .filterToggle:hover {
-  border-color: var(--primary, #8b3a62);
-  color: var(--text, #2d1b27);
+  border-color: #cbd5e1;
+  color: #334155;
 }
 
 .filterToggle.active {
-  border-color: var(--primary, #8b3a62);
-  color: var(--primary, #8b3a62);
-  background: var(--primary-light, #f7e9ef);
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: #eff6ff;
 }
 
 .filterCount {
-  background: var(--primary, #8b3a62);
+  background: #3b82f6;
   color: white;
   border-radius: 50%;
   width: 1.25rem;
@@ -190,21 +189,21 @@
 
 .exportButton {
   padding: 0.75rem 1rem;
-  border: 1px solid var(--border);
-  background: var(--bg);
+  border: 1px solid #e2e8f0;
+  background: white;
   border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
-  color: var(--muted);
+  color: #64748b;
   transition: all 0.2s ease;
 }
 
 .exportButton:hover:not(:disabled) {
-  border-color: var(--primary);
-  color: var(--primary);
+  border-color: #cbd5e1;
+  color: #334155;
 }
 
 .exportButton:disabled {
@@ -242,7 +241,7 @@
 .filterGroup select,
 .filterGroup input {
   padding: 0.75rem;
-  border: 1px solid var(--border-light, #e5d5dd);
+  border: 1px solid #d1d5db;
   border-radius: 6px;
   font-size: 0.875rem;
   transition: all 0.2s ease;
@@ -251,8 +250,8 @@
 .filterGroup select:focus,
 .filterGroup input:focus {
   outline: none;
-  border-color: var(--primary, #8b3a62);
-  box-shadow: 0 0 0 3px rgba(139, 58, 98, 0.1);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .rangeInputs,
@@ -275,9 +274,9 @@
 .dropdownToggle {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid var(--border-light, #e5d5dd);
+  border: 1px solid #d1d5db;
   border-radius: 6px;
-  background: var(--bg, #fff);
+  background: white;
   text-align: left;
   cursor: pointer;
   display: flex;
@@ -359,25 +358,24 @@
 .clearSelectionButton {
   width: 100%;
   padding: 0.5rem;
-  background: var(--primary-light);
+  background: #f3f4f6;
   border: none;
   border-radius: 4px;
-  color: var(--text-dark);
+  color: #374151;
   cursor: pointer;
   font-size: 0.875rem;
 }
 
 .clearSelectionButton:hover {
-  background: var(--primary);
-  color: white;
+  background: #e5e7eb;
 }
 
 .clearFiltersButton {
   padding: 0.75rem 1rem;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: 6px;
-  color: var(--muted);
+  color: #64748b;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -387,8 +385,8 @@
 }
 
 .clearFiltersButton:hover {
-  background: var(--primary-light);
-  color: var(--text-dark);
+  background: #f1f5f9;
+  color: #334155;
 }
 
 .rotate180 {
@@ -409,13 +407,13 @@
   padding: 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: all 0.2s ease;
-  border: 1px solid var(--border-light, #e5d5dd);
+  border: 1px solid #f1f5f9;
 }
 
 .permisCard:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-color: var(--border-light, #e5d5dd);
+  border-color: #e2e8f0;
 }
 
 .cardHeader {
@@ -428,7 +426,7 @@
 .cardCode {
   font-size: 1.125rem;
   font-weight: 700;
-  color: var(--text, #2d1b27);
+  color: #1e293b;
 }
 
 .statusBadge {
@@ -475,13 +473,13 @@
 
 .cardField label {
   font-size: 0.875rem;
-  color: var(--muted, #6b4d5e);
+  color: #64748b;
   font-weight: 500;
 }
 
 .cardField span {
   font-size: 0.875rem;
-  color: var(--text, #2d1b27);
+  color: #1e293b;
   font-weight: 600;
   text-align: right;
 }
@@ -508,12 +506,12 @@
 
 .dateItem label {
   font-size: 0.75rem;
-  color: var(--muted, #6b4d5e);
+  color: #64748b;
 }
 
 .dateItem span {
   font-size: 0.875rem;
-  color: var(--text, #2d1b27);
+  color: #1e293b;
   font-weight: 600;
 }
 
@@ -528,7 +526,7 @@
 
 .substancesContainer label {
   font-size: 0.75rem;
-  color: var(--muted, #6b4d5e);
+  color: #64748b;
   display: block;
   margin-bottom: 0.5rem;
 }
@@ -571,17 +569,17 @@
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
-  color: var(--muted);
+  color: #64748b;
 }
 
 .viewButton:hover {
-  background: var(--primary-light);
-  color: var(--primary);
+  background: #dbeafe;
+  color: #1d4ed8;
 }
 
 .editButton:hover {
-  background: var(--primary-light);
-  color: var(--primary-dark);
+  background: #fef3c7;
+  color: #d97706;
 }
 
 .deleteButton:hover {
@@ -607,16 +605,16 @@
   padding: 1rem;
   text-align: left;
   font-weight: 600;
-  color: var(--text, #2d1b27);
+  color: #374151;
   font-size: 0.875rem;
-  border-bottom: 1px solid var(--border-light, #e5d5dd);
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .permisTable td {
   padding: 1rem;
-  border-bottom: 1px solid var(--border-light, #e5d5dd);
+  border-bottom: 1px solid #f1f5f9;
   font-size: 0.875rem;
-  color: var(--text, #2d1b27);
+  color: #374151;
 }
 
 .permisTable tr:last-child td {
@@ -641,7 +639,7 @@
 
 .moreSubstances {
   font-size: 0.75rem;
-  color: var(--muted, #6b4d5e);
+  color: #64748b;
   margin-left: 0.25rem;
 }
 
@@ -656,7 +654,7 @@
   align-items: center;
   justify-content: center;
   padding: 4rem;
-  color: var(--muted, #6b4d5e);
+  color: #64748b;
   gap: 1rem;
 }
 
@@ -672,18 +670,18 @@
 .noData {
   text-align: center;
   padding: 4rem;
-  color: var(--muted, #6b4d5e);
+  color: #64748b;
 }
 
 .noData h3 {
   margin: 1rem 0 0.5rem;
-  color: var(--text, #2d1b27);
+  color: #374151;
 }
 
 .clearAllButton {
   margin-top: 1rem;
   padding: 0.75rem 1.5rem;
-  background: var(--primary, #8b3a62);
+  background: #3b82f6;
   color: white;
   border: none;
   border-radius: 6px;
@@ -693,7 +691,7 @@
 }
 
 .clearAllButton:hover {
-  background: var(--primary-dark, #a84968);
+  background: #2563eb;
 }
 
 .pagination {
@@ -707,7 +705,7 @@
 }
 
 .paginationInfo {
-  color: var(--muted);
+  color: #64748b;
   font-size: 0.875rem;
 }
 
@@ -719,18 +717,18 @@
 
 .paginationButton {
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--border);
-  background: var(--bg);
+  border: 1px solid #e2e8f0;
+  background: white;
   border-radius: 6px;
   cursor: pointer;
-  color: var(--muted);
+  color: #64748b;
   transition: all 0.2s ease;
   min-width: 2.5rem;
 }
 
 .paginationButton:hover:not(:disabled) {
-  border-color: var(--primary);
-  color: var(--primary);
+  border-color: #cbd5e1;
+  color: #334155;
 }
 
 .paginationButton:disabled {
@@ -739,21 +737,21 @@
 }
 
 .paginationButton.active {
-  background: var(--primary);
-  border-color: var(--primary);
+  background: #3b82f6;
+  border-color: #3b82f6;
   color: white;
 }
 
 .paginationEllipsis {
   padding: 0.5rem;
-  color: var(--muted);
+  color: #64748b;
 }
 
 .pageSizeSelector {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--muted);
+  color: #64748b;
   font-size: 0.875rem;
 }
 

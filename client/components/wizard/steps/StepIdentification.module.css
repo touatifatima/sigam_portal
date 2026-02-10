@@ -123,49 +123,26 @@
 
 /* Select Styles */
 .select {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  padding: 0.75rem 1rem;
-  padding-right: 2.75rem;
+  height: 48px;
+  border-radius: 8px;
+  border: 1px solid #e2e5ec;
+  padding: 0 14px;
+  background: #ffffff;
+  color: #2b2730;
   font-size: 0.95rem;
-  border: 1px solid rgba(139, 58, 98, 0.25);
-  border-radius: 12px;
-  background: linear-gradient(180deg, rgba(255, 247, 249, 0.75) 0%, rgba(255, 255, 255, 0.6) 100%);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: #2d1b27;
-  transition: all 0.3s ease;
-  cursor: pointer;
-  box-shadow:
-    0 8px 24px rgba(139, 58, 98, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  background-image:
-    linear-gradient(45deg, transparent 50%, #8b3a62 50%),
-    linear-gradient(135deg, #8b3a62 50%, transparent 50%),
-    linear-gradient(to right, rgba(139, 58, 98, 0.25), rgba(139, 58, 98, 0.25));
-  background-position:
-    calc(100% - 18px) 50%,
-    calc(100% - 12px) 50%,
-    calc(100% - 2.25rem) 50%;
-  background-size: 6px 6px, 6px 6px, 1px 60%;
-  background-repeat: no-repeat;
-  accent-color: #8b3a62;
+  transition: all 0.2s ease;
+}
+
+.select:hover {
+  border-color: rgba(155, 44, 88, 0.45);
 }
 
 .select:focus,
-.select:focus-visible {
+.select:focus-visible,
+.select[data-state="open"] {
   outline: none;
-  border-color: rgba(139, 58, 98, 0.6);
-  box-shadow:
-    0 0 0 3px rgba(168, 73, 104, 0.25),
-    0 10px 26px rgba(139, 58, 98, 0.18);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 247, 249, 0.7) 100%);
-}
-
-.select:hover:not(:focus) {
-  border-color: rgba(139, 58, 98, 0.5);
-  box-shadow: 0 10px 28px rgba(139, 58, 98, 0.18);
+  border-color: rgba(155, 44, 88, 0.65);
+  box-shadow: 0 0 0 3px rgba(155, 44, 88, 0.18);
 }
 
 .select:disabled {
@@ -175,18 +152,59 @@
   box-shadow: none;
 }
 
-.select option {
-  color: #2d1b27;
-  background: #fff7f9;
+.select svg {
+  width: 16px;
+  height: 16px;
+  color: #7f2044;
+  opacity: 0.9;
 }
 
-.select option:checked {
-  background: #8b3a62;
-  color: #ffffff;
+.selectValue[data-placeholder] {
+  color: #6e7080;
 }
 
-.select option:hover {
-  background: rgba(139, 58, 98, 0.12);
+.selectContent {
+  border-radius: 12px;
+  border: 1px solid rgba(155, 44, 88, 0.2);
+  background: #fff;
+  box-shadow: 0 18px 40px rgba(44, 32, 42, 0.18);
+  padding: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.selectContent::-webkit-scrollbar {
+  width: 8px;
+}
+
+.selectContent::-webkit-scrollbar-thumb {
+  background: rgba(155, 44, 88, 0.35);
+  border-radius: 999px;
+}
+
+.selectContent::-webkit-scrollbar-track {
+  background: rgba(155, 44, 88, 0.08);
+  border-radius: 999px;
+}
+
+.selectItem {
+  border-radius: 8px;
+  padding: 8px 12px 8px 32px;
+  color: #2b2730;
+  font-size: 14px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.selectItem[data-highlighted] {
+  background: #f5e5ed;
+  color: #7f2044;
+}
+
+.selectItem[data-state="checked"] {
+  background: rgba(155, 44, 88, 0.14);
+  color: #7f2044;
+  font-weight: 600;
 }
 
 /* Date input - keep chrome calendar in theme */

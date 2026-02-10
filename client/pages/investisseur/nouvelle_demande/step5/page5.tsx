@@ -17,6 +17,17 @@ import { useActivateEtape } from '@/src/hooks/useActivateEtape';
 import dynamic from 'next/dynamic';
 import { Phase, Procedure, ProcedureEtape, ProcedurePhase, StatutProcedure } from '@/src/types/procedure';
 import proj4 from 'proj4';
+import * as XLSX from 'xlsx';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const ArcGISMap = dynamic(() => import('@/components/arcgismap/ArcgisMap'), { ssr: false });
 
@@ -69,6 +80,26 @@ const coerceUtmZone = (value: unknown, fallback: number) => {
   return fallback;
 };
 
+const parseExcelNumber = (value: any): number => {
+  if (value == null) return Number.NaN;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : Number.NaN;
+  const raw = String(value).trim();
+  if (!raw) return Number.NaN;
+  const normalized = raw.replace(/[\s\u00A0\u202F]/g, '').replace(/,/g, '.');
+  const num = Number(normalized);
+  return Number.isFinite(num) ? num : Number.NaN;
+};
+
+const parseExcelZone = (value: any): number | null => {
+  if (value == null) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const digits = raw.replace(/[^\d]/g, '');
+  if (!digits) return null;
+  const num = Number(digits);
+  return Number.isFinite(num) ? num : null;
+};
+
 type PermitData = {
   code: string;
   type: string;
@@ -107,8 +138,10 @@ export default function CadastrePage() {
   const [comment, setComment] = useState('');
   const [overlapDetected, setOverlapDetected] = useState(false);
   const [overlapPermits, setOverlapPermits] = useState<string[]>([]);
+  const [blockingOverlapLabels, setBlockingOverlapLabels] = useState<string[]>([]);
   const [miningTitleOverlaps, setMiningTitleOverlaps] = useState<any[]>([]);
   const [isCheckingOverlaps, setIsCheckingOverlaps] = useState(false);
+  const [overlapChecked, setOverlapChecked] = useState(false);
   const [lastOverlapCheckInfo, setLastOverlapCheckInfo] = useState<{
     at: string;
     layersLabel: string;
@@ -122,7 +155,17 @@ export default function CadastrePage() {
   const { auth, isLoaded, hasPermission } = useAuthStore();
   const isCadastre = auth.role === 'cadastre';
   const [isPolygonValid, setIsPolygonValid] = useState(true);
-  const hasUniqueCoords = new Set(points.map(p => `${p.x},${p.y}`)).size === points.length;
+  const hasUniqueCoords = useMemo(() => {
+    const finite = points.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+    if (finite.length <= 1) return true;
+    const first = finite[0];
+    const last = finite[finite.length - 1];
+    const coords =
+      finite.length >= 4 && first.x === last.x && first.y === last.y
+        ? finite.slice(0, -1)
+        : finite;
+    return new Set(coords.map((p) => `${p.x},${p.y}`)).size >= 3;
+  }, [points]);
   const [demandeSummary, setDemandeSummary] = useState<any>(null);
   const { currentView, navigateTo } = useViewNavigator("nouvelle-demande");
   const currentStep = 5;
@@ -137,6 +180,7 @@ export default function CadastrePage() {
     commune: ''
   });
   const mapRef = useRef<any>(null);
+  const excelInputRef = useRef<HTMLInputElement | null>(null);
   const [statutProc, setStatutProc] = useState<string | undefined>(undefined);
   const [procedureData, setProcedureData] = useState<Procedure | null>(null);
   const [currentEtape, setCurrentEtape] = useState<{ id_etape: number } | null>(null);
@@ -160,6 +204,26 @@ export default function CadastrePage() {
 	  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
 	  const [existingPolygons, setExistingPolygons] = useState<ExistingPolygon[]>([]);
   const [showFuseaux, setShowFuseaux] = useState(false);
+  const [showLegend, setShowLegend] = useState(true);
+
+  useEffect(() => {
+    let attempts = 0;
+    const timer = setInterval(() => {
+      const map = mapRef.current as any;
+      if (map?.setLayerActive) {
+        map.setLayerActive('perimetresSig', true);
+        map.setLayerActive('exclusions', true);
+        map.setLayerActive('titres', true);
+        clearInterval(timer);
+        return;
+      }
+      attempts += 1;
+      if (attempts > 10) {
+        clearInterval(timer);
+      }
+    }, 200);
+    return () => clearInterval(timer);
+  }, []);
   const [historyProcedures, setHistoryProcedures] = useState<{ procId: number; typeLabel: string; codeDemande?: string }[]>([]);
   const [selectedHistoryProcId, setSelectedHistoryProcId] = useState<number | null>(null);
   const historyProcCacheRef = useRef<Map<number, { typeLabel: string; codeDemande?: string }>>(new Map());
@@ -167,6 +231,8 @@ export default function CadastrePage() {
   const [searchTitreCode, setSearchTitreCode] = useState('');
   const [searchPerimetreCode, setSearchPerimetreCode] = useState('');
   const [searchMessage, setSearchMessage] = useState<string | null>(null);
+  const overlapDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const overlapRequestIdRef = useRef(0);
   const handleSearchPerimetre = useCallback(async () => {
     const code = (searchPerimetreCode || '').trim();
     if (!code) return;
@@ -187,13 +253,16 @@ export default function CadastrePage() {
   const refreshDetectedLieu = useCallback(async () => {
     if (!points || points.length === 0) return;
     try {
-      const payloadPoints = points.map((p) => ({
-        x: p.x,
-        y: p.y,
-        system: p.system,
-        zone: p.zone ?? utmZone,
-        hemisphere: p.hemisphere ?? utmHemisphere,
-      }));
+      const payloadPoints = points
+        .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y))
+        .map((p) => ({
+          x: p.x,
+          y: p.y,
+          system: p.system,
+          zone: p.zone ?? utmZone,
+          hemisphere: p.hemisphere ?? utmHemisphere,
+        }));
+      if (payloadPoints.length === 0) return;
       const resp = await axios.post(`${apiURL}/gis/admin-location`, {
         points: payloadPoints,
       });
@@ -260,6 +329,50 @@ export default function CadastrePage() {
       seen.add(key);
       return true;
     });
+  };
+
+  const getOverlapLayerType = (item: any) => {
+    const raw =
+      item?.layerType ??
+      item?.layer_type ??
+      item?.__layerType ??
+      '';
+    const cleaned = String(raw || '').trim().toLowerCase();
+    if (!cleaned) return '';
+    if (cleaned === 'perimetressig' || cleaned === 'perimetres_sig') return 'perimetresSig';
+    return cleaned;
+  };
+
+  const formatOverlapDemandLabel = (item: any, areaHa?: number | null) => {
+    const code =
+      item?.permis_code ??
+      item?.permisCode ??
+      item?.code_demande ??
+      item?.codeDemande ??
+      item?.code ??
+      '';
+    const overlapAreaM2 =
+      typeof item?.overlap_area_m2 === 'number'
+        ? item.overlap_area_m2
+        : typeof item?.overlap_area_ha === 'number'
+          ? item.overlap_area_ha * 10000
+          : null;
+    const percent =
+      overlapAreaM2 != null && areaHa && areaHa > 0
+        ? Math.round((overlapAreaM2 / (areaHa * 10000)) * 1000) / 10
+        : null;
+    const percentText = percent != null && Number.isFinite(percent) ? ` (${percent}%)` : '';
+    return `${code || 'Demande en cours'}${percentText}`;
+  };
+
+  const formatBlockingOverlapLabel = (item: any) => {
+    const layerType = getOverlapLayerType(item);
+    if (layerType === 'exclusions') {
+      return item?.nom || item?.Nom || "Zone d'exclusion";
+    }
+    const code = item?.code ?? item?.permis_code ?? item?.permisCode ?? item?.idtitre ?? item?.objectid ?? '';
+    const typeLabel = item?.typetitre || item?.codetype || item?.typeLabel || 'Titre';
+    return `${typeLabel} ${code}`.trim();
   };
 
   // Stable signature of current displayed points to avoid re-applying same dataset
@@ -398,7 +511,7 @@ export default function CadastrePage() {
   );
 
   const fetchProcedureData = async () => {
-    if (!idProc) return;
+    if (!idProc) return false;
     try {
       const response = await axios.get<Procedure>(`${apiURL}/api/procedure-etape/procedure/${idProc}`);
       setProcedureData(response.data);
@@ -413,6 +526,7 @@ export default function CadastrePage() {
       console.error('Error fetching procedure data:', error);
       setError('Failed to fetch procedure data');
       setTimeout(() => setError(null), 4000);
+      return false;
     }
   };
 
@@ -765,7 +879,8 @@ export default function CadastrePage() {
         console.error("? Failed to fetch summary", error);
         setError('Failed to fetch demande summary');
         setTimeout(() => setError(null), 4000);
-      }
+      return false;
+    }
     };
     fetchSummary();
   }, [idDemande]);
@@ -795,6 +910,11 @@ export default function CadastrePage() {
     return Math.max(...points.map(p => p.id), 0) + 1;
   };
 
+  const removePoint = (id: number) => {
+    if (points.length <= 3) return;
+    setPoints(points.filter(p => p.id !== id));
+  };
+
   const addPoint = useCallback((coords?: { x: number, y: number }) => {
     const last = points.length > 0 ? points[points.length - 1] : undefined;
     // Avoid defaulting to (0,0) which draws a long line on the map (Gulf of Guinea).
@@ -814,6 +934,147 @@ export default function CadastrePage() {
     return newPoint;
   }, [points, coordinateSystem, utmZone, utmHemisphere]);
 
+  const handleExcelPick = () => {
+    excelInputRef.current?.click();
+  };
+
+  const handleExcelFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    if (file.size > 1024 * 1024) {
+      setError('Fichier trop volumineux (max 1 Mo).');
+      setTimeout(() => setError(null), 4000);
+      return;
+    }
+
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheetName = workbook.SheetNames?.[0];
+      const sheet = sheetName ? workbook.Sheets[sheetName] : undefined;
+      if (!sheet) throw new Error('invalid');
+
+      const rows = XLSX.utils.sheet_to_json(sheet, {
+        header: 1,
+        raw: true,
+        defval: '',
+      }) as any[][];
+
+      if (!rows || rows.length === 0) throw new Error('invalid');
+
+      const firstRow = rows[0] ?? [];
+      const headerCells = firstRow.map((c) => String(c).toLowerCase());
+      const headerText = headerCells.join(' ');
+      const isHeader =
+        /label/.test(headerText) ||
+        /fuseau/.test(headerText) ||
+        /zone/.test(headerText) ||
+        (headerText.includes('x') && headerText.includes('y'));
+
+      const startIndex = isHeader ? 1 : 0;
+      const baseId = generateId();
+      const nextPoints: Point[] = [];
+      let zoneHint: number | null = null;
+
+      const headerX = headerCells.findIndex((c) => c.includes('x') || c.includes('easting') || c.includes('ei'));
+      const headerY = headerCells.findIndex((c) => c.includes('y') || c.includes('northing') || c.includes('ni'));
+      const headerZone = headerCells.findIndex((c) => c.includes('fuseau') || c.includes('zone') || c.includes('utm'));
+      const firstDataRow = rows[startIndex] ?? [];
+      const firstX0 = parseExcelNumber(firstDataRow[0]);
+      const firstY1 = parseExcelNumber(firstDataRow[1]);
+      const firstY2 = parseExcelNumber(firstDataRow[2]);
+      let hasLabelColumn = false;
+      if (Number.isFinite(firstX0) && Number.isFinite(firstY1)) {
+        hasLabelColumn = false;
+      } else if (Number.isFinite(firstY1) && Number.isFinite(firstY2)) {
+        hasLabelColumn = true;
+      } else {
+        hasLabelColumn = true;
+      }
+      const fallbackXIndex = hasLabelColumn ? 1 : 0;
+      const fallbackYIndex = hasLabelColumn ? 2 : 1;
+      const fallbackZoneIndex = hasLabelColumn ? 3 : 2;
+      const xIndex = headerX >= 0 ? headerX : fallbackXIndex;
+      const yIndex = headerY >= 0 ? headerY : fallbackYIndex;
+      const zoneIndex = headerZone >= 0 ? headerZone : fallbackZoneIndex;
+
+      for (let i = startIndex; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.length < 2) continue;
+        const x = parseExcelNumber(row[xIndex]);
+        const y = parseExcelNumber(row[yIndex]);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+
+        const parsedZone = parseExcelZone(row[zoneIndex]);
+        const zone = coerceUtmZone(parsedZone ?? utmZone, utmZone);
+        if (zoneHint == null && parsedZone != null) {
+          zoneHint = zone;
+        }
+
+        nextPoints.push({
+          id: baseId + nextPoints.length,
+          idTitre: points[0]?.idTitre ?? 1007,
+          h: points[0]?.h ?? 32,
+          x,
+          y,
+          system: 'UTM',
+          zone,
+          hemisphere: utmHemisphere,
+        });
+      }
+
+      if (nextPoints.length < 3) {
+        setError('Fichier invalide. Verifiez les colonnes X, Y, Fuseau.');
+        setTimeout(() => setError(null), 4000);
+        return;
+      }
+
+      if (zoneHint != null) {
+        setUtmZone(zoneHint);
+      }
+      setCoordinateSystem('UTM');
+      setPoints(nextPoints);
+      if (coordSource === 'provisoire') {
+        setProvisionalPoints(nextPoints);
+      } else {
+        setValidatedPoints(nextPoints);
+      }
+
+      setSuccess(`Points importes (${nextPoints.length}).`);
+      setTimeout(() => setSuccess(null), 3000);
+    } catch {
+      setError('Fichier invalide. Verifiez les colonnes X, Y, Fuseau.');
+      setTimeout(() => setError(null), 4000);
+    }
+  };
+
+  const handleDownloadTemplate = () => {
+    const ws = XLSX.utils.aoa_to_sheet([
+      ['Label', 'X (Ei)', 'Y (Ni)', 'Fuseau'],
+      ['A', 500000, 3000000, 'F31'],
+    ]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Coordonnees');
+    const data = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([data], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'modele_coordonnees.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const requestPolygonZoom = useCallback(() => {
+    setTimeout(() => {
+      mapRef.current?.zoomToCurrentPolygon?.();
+    }, 0);
+  }, []);
+
   const insertPointAfter = (index: number) => {
     const base = points[index];
     const newPoint: Point = {
@@ -826,495 +1087,33 @@ export default function CadastrePage() {
       zone: coordinateSystem === 'UTM' ? (base?.zone ?? utmZone) : undefined,
       hemisphere: coordinateSystem === 'UTM' ? (base?.hemisphere ?? utmHemisphere) : undefined,
     };
-    const next = [...points];
-    next.splice(index + 1, 0, newPoint);
-    setPoints(next);
+    setPoints((prev) => {
+      const next = [...prev];
+      next.splice(index + 1, 0, newPoint);
+      return next;
+    });
+    requestPolygonZoom();
   };
 
   const movePointUp = (index: number) => {
     if (index <= 0) return;
-    const next = [...points];
-    const [p] = next.splice(index, 1);
-    next.splice(index - 1, 0, p);
-    setPoints(next);
+    setPoints((prev) => {
+      const next = [...prev];
+      [next[index - 1], next[index]] = [next[index], next[index - 1]];
+      return next;
+    });
+    requestPolygonZoom();
   };
 
   const movePointDown = (index: number) => {
     if (index >= points.length - 1) return;
-    const next = [...points];
-    const [p] = next.splice(index, 1);
-    next.splice(index + 1, 0, p);
-    setPoints(next);
+    setPoints((prev) => {
+      const next = [...prev];
+      [next[index], next[index + 1]] = [next[index + 1], next[index]];
+      return next;
+    });
+    requestPolygonZoom();
   };
-  const getSelectedOverlapLayers = useCallback(() => {
-    const defaults = {
-      titres: true,
-      perimetresSig: false,
-      promotion: false,
-      modifications: false,
-      exclusions: false,
-    };
-
-    const layerState = mapRef.current?.getActiveLayers?.();
-    if (layerState && typeof layerState === 'object') {
-      return {
-        titres: !!(layerState as any).titres,
-        perimetresSig: !!(layerState as any).perimetresSig,
-        promotion: !!(layerState as any).promotion,
-        modifications: !!(layerState as any).modifications,
-        exclusions: !!(layerState as any).exclusions,
-      };
-    }
-
-    try {
-      if (typeof window !== 'undefined') {
-        const raw = window.localStorage.getItem('sigam_arcgis_active_layers');
-        if (raw) {
-          const parsed = JSON.parse(raw) as Record<string, unknown>;
-          return {
-            titres: !!parsed.titres,
-            perimetresSig: !!parsed.perimetresSig,
-            promotion: !!parsed.promotion,
-            modifications: !!parsed.modifications,
-            exclusions: !!parsed.exclusions,
-          };
-        }
-      }
-    } catch {
-      // ignore
-    }
-
-    return defaults;
-  }, []);
-  const lastOverlapStatusRef = useRef<'none' | 'overlap' | 'unreachable' | null>(
-    null,
-  );
-
-  // Load demande info (idDemande, statut) from procedure id
-  useEffect(() => {
-    if (!router.isReady) return;
-    const id_proc = router.query.id as string;
-    if (!id_proc) return;
-    const fetchDemande = async () => {
-      try {
-        const res = await axios.get(`${apiURL}/api/procedures/${id_proc}/demande`);
-        setIdDemande(res.data.id_demande);
-        setStatutProc(res.data.procedure.statut_proc);
-      } catch (error) {
-        console.error('Failed to fetch demande:', error);
-        // keep UI usable even if this fails
-      }
-    };
-    fetchDemande();
-  }, [router.isReady, router.query.id, apiURL]);
-
-  // Ensure re-fetch on repeated navigations even to same URL
-  useEffect(() => {
-    const id_proc = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('id') ?? '' : '';
-    if (!id_proc) return;
-    const fetchDemande = async () => {
-      try {
-        const res = await axios.get(`${apiURL}/api/procedures/${id_proc}/demande`);
-        setIdDemande(res.data.id_demande);
-        setStatutProc(res.data.procedure.statut_proc);
-      } catch (error) {
-        // swallow duplicate errors
-      }
-    };
-    fetchDemande();
-  }, [router.asPath, apiURL]);
-
-  // Removed legacy initial points loader to avoid ping-pong with source selection
-
-  // Load existing verification (cadastral) status for the demande
-  useEffect(() => {
-    if (!idDemande) return;
-    const fetchVerification = async () => {
-      try {
-        const res = await axios.get(`${apiURL}/verification-geo/demande/${idDemande}`);
-        const v = res.data || {};
-        if (typeof v.sit_geo_ok === 'boolean') setSitGeoOk(v.sit_geo_ok);
-        if (typeof v.empiet_ok === 'boolean') setEmpietOk(v.empiet_ok);
-        if (typeof v.geom_ok === 'boolean') setGeomOk(v.geom_ok);
-        if (typeof v.superf_ok === 'boolean') setSuperfOk(v.superf_ok);
-        if (typeof v.superficie_cadastrale === 'number') setSuperficieCadastrale(v.superficie_cadastrale);
-      } catch (e) {
-        // If not found yet, keep defaults; avoid noisy errors
-      }
-    };
-    fetchVerification();
-  }, [idDemande, apiURL]);
-  // Add new function to check mining title overlaps
-  const checkMiningTitleOverlaps = async () => {
-    if (!points || points.length < 3) {
-      setError("Dessinez d'abord un polygone valide");
-      setTimeout(() => setError(null), 4000);
-      return;
-    }
-
-    const selectedLayers = getSelectedOverlapLayers();
-    const anyLayerActive = Object.values(selectedLayers).some(Boolean);
-    if (!anyLayerActive) {
-      setOverlapDetected(false);
-      setMiningTitleOverlaps([]);
-      setOverlapPermits([]);
-      setMinDistanceM(null);
-      setNearestTitle(null);
-      setError('Veuillez sélectionner au moins une couche à vérifier.');
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
-
-    try {
-      setIsCheckingOverlaps(true);
-      setError(null);
-      setSuccess(null);
-      lastOverlapStatusRef.current = null;
-
-      const layerLabels: Record<string, string> = {
-        titres: 'Titres miniers',
-        perimetresSig: 'Périmètres SIG',
-        promotion: 'Promotion',
-        modifications: 'Modifications',
-        exclusions: "Zones d'exclusion",
-      };
-      const layersLabel = Object.entries(selectedLayers)
-        .filter(([, v]) => !!v)
-        .map(([k]) => layerLabels[k] || k)
-        .join(', ');
-      setLastOverlapCheckInfo({
-        at: new Date().toLocaleTimeString('fr-DZ'),
-        layersLabel,
-      });
-
-      const payloadPoints = points.map((p) => ({
-        x: p.x,
-        y: p.y,
-        system: p.system,
-        zone: p.zone ?? utmZone,
-        hemisphere: p.hemisphere ?? utmHemisphere,
-      }));
-
-      const res = await axios.post(`${apiURL}/gis/analyze-perimeter`, {
-        points: payloadPoints,
-        layers: selectedLayers,
-      });
-
-      const areaHa = res.data?.areaHa;
-      const overlapsRaw = Array.isArray(res.data?.overlaps) ? res.data.overlaps : [];
-      const baseAreaHa =
-        typeof areaHa === 'number' && !Number.isNaN(areaHa)
-          ? areaHa
-          : Number.isFinite(superficie) && superficie > 0
-            ? superficie
-            : null;
-      const baseAreaM2 = baseAreaHa != null ? baseAreaHa * 10000 : null;
-      const overlapToleranceM2 =
-        baseAreaM2 != null ? Math.min(100, Math.max(10, baseAreaM2 * 0.0001)) : 10;
-      const overlaps = overlapsRaw.filter((o: any) => {
-        const m2 =
-          typeof o?.overlap_area_m2 === 'number'
-            ? o.overlap_area_m2
-            : typeof o?.overlap_area_ha === 'number'
-              ? o.overlap_area_ha * 10000
-              : 0;
-        return m2 > overlapToleranceM2;
-      });
-      const dist = res.data?.minDistanceM;
-      const nearest = res.data?.nearestTitle ?? null;
-
-      if (typeof areaHa === 'number' && !Number.isNaN(areaHa)) {
-        const rounded = parseFloat(areaHa.toFixed(2));
-        if (!Number.isFinite(superficie) || superficie <= 0) {
-          setSuperficie(rounded);
-        }
-        const displayArea = Number.isFinite(superficie) && superficie > 0 ? superficie : rounded;
-        setSuperficieCadastrale(displayArea);
-      }
-
-      if (nearest && typeof nearest.distance === 'number' && !Number.isNaN(nearest.distance)) {
-        setMinDistanceM(nearest.distance);
-        setNearestTitle(nearest);
-      } else if (typeof dist === 'number' && !Number.isNaN(dist)) {
-        setMinDistanceM(dist);
-        setNearestTitle(null);
-      } else {
-        setMinDistanceM(null);
-        setNearestTitle(null);
-      }
-
-      const getLayerType = (o: any) =>
-        String(o?.layerType ?? o?.layer_type ?? o?.__layerType ?? '').trim();
-
-      // Keep detailed cards for titles only; other couches are listed in the summary.
-      const titleOverlapsRaw = overlaps.filter((o: any) => getLayerType(o) === 'titres');
-      const titleOverlaps = dedupeTitles(titleOverlapsRaw);
-      setMiningTitleOverlaps(titleOverlaps);
-
-      if (overlaps.length > 0) {
-        setOverlapDetected(true);
-        setEmpietOk(false);
-
-        const formatted = overlaps.map((o: any) => {
-          const lt = getLayerType(o);
-          const overlapAreaM =
-            typeof o?.overlap_area_m2 === 'number'
-              ? o.overlap_area_m2
-              : typeof o?.overlap_area_ha === 'number'
-                ? o.overlap_area_ha * 10000
-                : null;
-          const overlapText = overlapAreaM ? ` (chevauchement ~${overlapAreaM.toFixed(0)} m²)` : '';
-
-          if (lt === 'titres') {
-            const typ = o.typetitre || o.codetype || 'Titre';
-            const code = o.code ?? o.idtitre ?? o.objectid ?? '';
-            const titulaire = [o.tnom, o.tprenom].filter(Boolean).join(' ').trim();
-            const locationParts = [o.wilaya, o.daira, o.commune].filter(Boolean);
-            const location = locationParts.length ? ` — ${locationParts.join(' / ')}` : '';
-            const holder = titulaire ? ` — ${titulaire}` : '';
-            return `Titres miniers: ${typ} ${o.codetype || ''} ${code}${holder}${location}${overlapText}`
-              .replace(/\s+/g, ' ')
-              .trim();
-          }
-
-          if (lt === 'perimetresSig') {
-            const code = o.permis_code ?? o.permisCode ?? '';
-            const label = o.permis_type_label ?? o.permisTypeLabel ?? 'Périmètre SIG';
-            const src = o.source ? ` — ${o.source}` : '';
-            const codePart = code ? ` (${code})` : o.id ? ` (#${o.id})` : '';
-            return `Périmètres SIG: ${label}${codePart}${src}${overlapText}`.replace(/\s+/g, ' ').trim();
-          }
-
-          if (lt === 'promotion') {
-            const name = o.nom || o.Nom || 'Promotion';
-            const id = o.objectid ?? o.OBJECTID ?? '';
-            const idPart = id ? ` (#${id})` : '';
-            return `Promotion: ${name}${idPart}${overlapText}`.replace(/\s+/g, ' ').trim();
-          }
-
-          if (lt === 'modifications') {
-            const modType = o.typemodification || 'Modification';
-            const code = o.code ?? o.idtitre ?? '';
-            const codePart = code ? ` (${code})` : '';
-            const typeTitre = o.typetitre ? ` — ${o.typetitre}` : '';
-            return `Modifications: ${modType}${typeTitre}${codePart}${overlapText}`.replace(/\s+/g, ' ').trim();
-          }
-
-          if (lt === 'exclusions') {
-            const name = o.nom || o.Nom || "Zone d'exclusion";
-            const id = o.objectid ?? o.OBJECTID ?? '';
-            const idPart = id ? ` (#${id})` : '';
-            return `Zones d'exclusion: ${name}${idPart}${overlapText}`.replace(/\s+/g, ' ').trim();
-          }
-
-          return `Chevauchement: ${lt || 'couche'}${overlapText}`.replace(/\s+/g, ' ').trim();
-        });
-
-        setOverlapPermits(Array.from(new Set(formatted)));
-        if (lastOverlapStatusRef.current !== 'overlap') {
-          lastOverlapStatusRef.current = 'overlap';
-          setError(`Chevauchement détecté avec ${overlaps.length} élément(s) (couches sélectionnées)`);
-          setTimeout(() => setError(null), 5000);
-        }
-      } else {
-        setOverlapDetected(false);
-        setEmpietOk(true);
-        setOverlapPermits([]);
-        if (lastOverlapStatusRef.current !== 'none') {
-          lastOverlapStatusRef.current = 'none';
-          setSuccess('Aucun chevauchement détecté (couches sélectionnées)');
-          setTimeout(() => setSuccess(null), 2000);
-        }
-      }
-    } catch (error) {
-      console.error('Error checking mining title overlaps:', error);
-      setError('Erreur lors de la vérification des chevauchements');
-      setTimeout(() => setError(null), 4000);
-    }
-    setIsCheckingOverlaps(false);
-  };
-
-
-
-  const removePoint = (id: number) => {
-    if (points.length <= 3) return;
-    setPoints(points.filter(p => p.id !== id));
-  };
-
-  const requestPolygonZoom = useCallback(() => {
-    setTimeout(() => {
-      mapRef.current?.zoomToCurrentPolygon?.();
-    }, 0);
-  }, []);
-
-  const handleChange = (id: number, key: keyof Point, value: string) => {
-    const parsedValue =
-      key === 'id' || key === 'idTitre' || key === 'h' || key === 'zone'
-        ? parseInt(value, 10) || 0
-        : parseFloat(value) || 0;
-    setPoints(prev =>
-      prev.map(p =>
-        p.id === id ? { ...p, [key]: parsedValue } : p
-      )
-    );
-    if (key === 'zone') {
-      const nextZone = parseInt(value, 10);
-      if (Number.isFinite(nextZone)) {
-        setUtmZone(nextZone);
-      }
-      requestPolygonZoom();
-    }
-  };
-
-  const saveCoordinatesToBackend = async () => {
-    if (lockPerimeter) {
-      setError("Le périmètre d’exploitation doit rester identique au titre précédent.");
-      setTimeout(() => setError(null), 4000);
-      return;
-    }
-    if (!idProc) {
-      setError("ID procedure manquant !");
-      setTimeout(() => setError(null), 4000);
-      return;
-    }
-    if (!points || points.length < 3) {
-      setError("Le polygone doit contenir au moins 3 points.");
-      setTimeout(() => setError(null), 4000);
-      return;
-    }
-    try {
-      const payloadPoints = points.map(p => {
-        let x = p.x;
-        let y = p.y;
-        if (p.system === 'UTM') {
-          const shift = getUtmShift(p.zone || utmZone);
-          x = x + shift.x;
-          y = y + shift.y;
-        }
-        return {
-          x: x.toString(),
-          y: y.toString(),
-          z: "0",
-          system: p.system,
-          zone: p.zone ?? utmZone,
-          hemisphere: p.hemisphere ?? utmHemisphere,
-        };
-      });
-      await axios.post(`${apiURL}/coordinates/update`, {
-        id_proc: idProc,
-        id_zone_interdite: null,
-        points: payloadPoints,
-        superficie
-      });
-      setSuccess("Coordonnées sauvegardées avec succès !");
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      console.error("Erreur lors de la sauvegarde des coordonnées:", err);
-      setError("Échec de la sauvegarde des coordonnées.");
-      setTimeout(() => setError(null), 4000);
-    }
-  };
-
-  // If perimeter should be locked (exploitation), ensure drawing is disabled
-  useEffect(() => {
-    if (lockPerimeter) {
-      try { setIsDrawing(false); } catch {}
-    }
-  }, [lockPerimeter]);
-
-  const validateCoordinate = (point: Point): boolean => {
-    switch (point.system) {
-      case 'UTM':
-        // Use globally selected UTM fuseau for validation
-        const hemisphere = point.hemisphere ?? utmHemisphere;
-        if (!hemisphere) return false;
-        const easting = point.x;
-        const northing = point.y;
-        if (easting < 100000 || easting > 999999) return false;
-        if (hemisphere === 'N') {
-          return northing >= 0 && northing <= 10000000;
-        } else {
-          return northing >= 1000000 && northing <= 10000000;
-        }
-    
-      default:
-        return false;
-    }
-  };
-
-  const calculateArea = useCallback(() => {
-    const validPoints = points.filter(p => !isNaN(p.x) && !isNaN(p.y) && validateCoordinate(p));
-    if (validPoints.length < 3) {
-      setSuperficie(0);
-      setIsPolygonValid(false);
-      return 0;
-    }
-    try {
-      let area: number;
-      if (coordinateSystem === 'UTM' || coordinateSystem === 'LAMBERT') {
-        const coordinates = validPoints.map(p => [p.x, p.y]);
-        const cleanedCoordinates = coordinates.filter((coord, index) => 
-          index === 0 || !(coord[0] === coordinates[index-1][0] && coord[1] === coordinates[index-1][1])
-        );
-        if (cleanedCoordinates.length < 3) {
-          setIsPolygonValid(false);
-          setSuperficie(0);
-          return 0;
-        }
-        const first = cleanedCoordinates[0];
-        const last = cleanedCoordinates[cleanedCoordinates.length - 1];
-        const finalCoordinates = [...cleanedCoordinates];
-        if (first[0] !== last[0] || first[1] !== last[1]) {
-          finalCoordinates.push([...first]);
-        }
-        let shoelaceArea = 0;
-        const n = finalCoordinates.length;
-        for (let i = 0; i < n - 1; i++) {
-          shoelaceArea += finalCoordinates[i][0] * finalCoordinates[i + 1][1] - finalCoordinates[i + 1][0] * finalCoordinates[i][1];
-        }
-        area = Math.abs(shoelaceArea) / 2;
-      } else {
-        const wgs84Coordinates = validPoints.map(point => {
-        
-            return convertToWGS84(point);
-          
-        });
-        const cleanedCoordinates = wgs84Coordinates.filter((coord, index) => 
-          index === 0 || !(coord[0] === wgs84Coordinates[index-1][0] && coord[1] === wgs84Coordinates[index-1][1])
-        );
-        if (cleanedCoordinates.length < 3) {
-          setIsPolygonValid(false);
-          setSuperficie(0);
-          return 0;
-        }
-        const first = cleanedCoordinates[0];
-        const last = cleanedCoordinates[cleanedCoordinates.length - 1];
-        const finalCoordinates = [...cleanedCoordinates];
-        if (first[0] !== last[0] || first[1] !== last[1]) {
-          finalCoordinates.push([...first]);
-        }
-        const polygon = turf.polygon([finalCoordinates]);
-        if (!turf.booleanValid(polygon)) {
-          console.warn('Invalid polygon geometry');
-          setIsPolygonValid(false);
-          setSuperficie(0);
-          return 0;
-        }
-        area = turf.area(polygon);
-      }
-      const areaHectares = area / 10000;
-      setIsPolygonValid(true);
-      setSuperficie(parseFloat(areaHectares.toFixed(2)));
-      return areaHectares;
-    } catch (err) {
-      console.error('Area calculation error:', err);
-      setIsPolygonValid(false);
-      setSuperficie(0);
-      setError('Failed to calculate area');
-      setTimeout(() => setError(null), 4000);
-      return 0;
-    }
-  }, [points, coordinateSystem, utmZone, utmHemisphere]);
 
   const convertToWGS84 = (point: Point): [number, number] => {
     try {
@@ -1375,22 +1174,134 @@ export default function CadastrePage() {
     requestPolygonZoom();
   };
 
+  const handleChange = (id: number, key: keyof Point, value: string) => {
+    let parsedValue: any = value;
+    if (key === 'id' || key === 'idTitre' || key === 'h' || key === 'zone') {
+      parsedValue = value.trim() === '' ? NaN : parseInt(value, 10);
+    } else {
+      parsedValue = value.trim() === '' ? NaN : parseFloat(value);
+    }
+    setPoints((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, [key]: parsedValue } : p))
+    );
+    if (key === 'zone') {
+      const nextZone = parseInt(value, 10);
+      if (Number.isFinite(nextZone)) {
+        setUtmZone(nextZone);
+      }
+      requestPolygonZoom();
+    }
+  };
+
+  
   const polygonValid = points.length >= 4 && hasUniqueCoords;
   const allFilled = points.every(p => !isNaN(p.x) && !isNaN(p.y) && !isNaN(p.h));
   const hasValidatedPerimeter = validatedPoints.length >= 3;
   const isFormComplete = hasValidatedPerimeter;
 
+  const handleValidatePerimeter = useCallback(async (): Promise<boolean> => {
+    if (!idProc) return false;
+    try {
+      // Save current edited points into inscription provisoire first,
+      // because the promotion reads from this table.
+      const provisionalPayloadPoints = (points || [])
+        .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y))
+        .map((p) => ({
+          x: Number(p.x),
+          y: Number(p.y),
+          z: 0,
+          system: p.system,
+          zone: p.zone ?? utmZone,
+          hemisphere: p.hemisphere ?? utmHemisphere,
+        }));
+      if (provisionalPayloadPoints.length < 3) {
+        setError('Le polygone doit contenir au moins 3 points.');
+        setTimeout(() => setError(null), 4000);
+        return false;
+      }
+
+      await axios.post(`${apiURL}/inscription-provisoire`, {
+        id_proc: idProc,
+        points: provisionalPayloadPoints,
+        system: coordinateSystem,
+        zone: utmZone,
+        hemisphere: utmHemisphere,
+        superficie_declaree:
+          typeof superficieDeclaree === 'number' ? superficieDeclaree : undefined,
+      });
+
+      // Persist superficie cadastrale into Demande before promotion
+      if (idDemande && Number.isFinite(superficieCadastrale)) {
+        await axios.post(`${apiURL}/verification-geo/demande/${idDemande}`, {
+          superficie_cadastrale: superficieCadastrale,
+        });
+      }
+      await axios.post(`${apiURL}/inscription-provisoire/promote/${idProc}`);
+      // Reload definitive coordinates
+      const res = await axios.get(`${apiURL}/coordinates/procedure/${idProc}`);
+      const coords = res.data;
+      const safeCoords = (coords ?? []).filter(
+        (c: any) => c?.coordonnee?.x !== undefined && c?.coordonnee?.y !== undefined,
+      );
+      const mappedPoints = safeCoords.map((c: any) => {
+        const point = c.coordonnee;
+        return {
+          id: point.id,
+          idTitre: point.idTitre || 1007,
+          h: point.h || 32,
+          x: point.x,
+          y: point.y,
+          system: point.system || 'UTM',
+          zone: point.system === 'UTM' ? (point.zone || utmZone) : undefined,
+          hemisphere: point.system === 'UTM' ? (point.hemisphere || utmHemisphere) : undefined,
+        };
+      });
+      setPoints(mappedPoints);
+      setCoordSource('validees');
+      setValidatedPoints(mappedPoints);
+      setSuccess('Périmètre validé avec succès.');
+      setTimeout(() => setSuccess(null), 3000);
+      return true;
+    } catch (e) {
+      setError('Échec de la validation du périmètre');
+      setTimeout(() => setError(null), 4000);
+      return false;
+    }
+  }, [
+    apiURL,
+    coordinateSystem,
+    idDemande,
+    idProc,
+    points,
+    superficieCadastrale,
+    superficieDeclaree,
+    utmHemisphere,
+    utmZone,
+  ]);
+
  const handleNext = async () => {
     if (!idProc) {
-      setError("ID procedure manquant");
+      setError('ID procedure manquant');
+      setTimeout(() => setError(null), 4000);
+      return;
+    }
+
+    if (hasBlockingOverlap) {
+      setError('Chevauchement bloquant détecté. Corrigez le périmètre avant de continuer.');
+      setTimeout(() => setError(null), 4000);
+      return;
+    }
+
+    const perimeterReady = points.length >= 3 && allFilled && hasUniqueCoords && isPolygonValid;
+    if (!perimeterReady) {
+      setError('Veuillez saisir un polygone valide (au moins 3 points).');
       setTimeout(() => setError(null), 4000);
       return;
     }
 
     if (!isFormComplete && !isStepSaved) {
-      setError("Veuillez valider le p?rim?tre avant de continuer");
-      setTimeout(() => setError(null), 4000);
-      return;
+      const ok = await handleValidatePerimeter();
+      if (!ok) return;
     }
 
     setSavingEtape(true);
@@ -1415,12 +1326,12 @@ export default function CadastrePage() {
       etapeId = etapeIdForThisPage ?? etapeId;
       await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`);
       setRefetchTrigger((prev) => prev + 1);
-      setSuccess("?tape 5 enregistr?e avec succ?s !");
+      setSuccess('Étape 5 enregistrée avec succès !');
       setTimeout(() => setSuccess(null), 3000);
       router.push(`/investisseur/nouvelle_demande/step4/page4?id=${idProc}`);
     } catch (err) {
-      console.error("Erreur ?tape", err);
-      setError("Erreur lors de l'enregistrement de l'?tape");
+      console.error('Erreur étape', err);
+      setError("Erreur lors de l'enregistrement de l'étape");
       setTimeout(() => setError(null), 4000);
     } finally {
       setSavingEtape(false);
@@ -1429,7 +1340,7 @@ export default function CadastrePage() {
 
   const handleBack = () => {
     if (!idProc) {
-      setError("ID procedure manquant");
+      setError('ID procedure manquant');
       setTimeout(() => setError(null), 4000);
       return;
     }
@@ -1473,12 +1384,178 @@ export default function CadastrePage() {
         console.error('Error parsing file:', error);
         setError('Failed to import data');
         setTimeout(() => setError(null), 4000);
-      }
+      return false;
+    }
     };
     reader.readAsText(file);
   };
 
-  const handleMapClick = useCallback((x: number, y: number) => {
+  const runOverlapCheck = useCallback(async () => {
+    if (!apiURL) return;
+    const validPoints = points.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+    if (validPoints.length < 3) return;
+    const first = validPoints[0];
+    const last = validPoints[validPoints.length - 1];
+    const normalizedPoints =
+      validPoints.length >= 4 && first.x === last.x && first.y === last.y
+        ? validPoints.slice(0, -1)
+        : validPoints;
+    const dedupedPoints = normalizedPoints.filter(
+      (p, idx, arr) =>
+        idx === 0 || p.x !== arr[idx - 1].x || p.y !== arr[idx - 1].y,
+    );
+    if (dedupedPoints.length < 3) return;
+
+    const requestId = ++overlapRequestIdRef.current;
+    setIsCheckingOverlaps(true);
+    setOverlapChecked(false);
+    try {
+      const payloadPoints = dedupedPoints.map((p) => ({
+        x: p.x,
+        y: p.y,
+        system: p.system,
+        zone: p.zone ?? utmZone,
+        hemisphere: p.hemisphere ?? utmHemisphere,
+      }));
+
+      const res = await axios.post(`${apiURL}/gis/analyze-perimeter`, {
+        points: payloadPoints,
+        layers: {
+          titres: true,
+          exclusions: true,
+          perimetresSig: true,
+          promotion: true,
+          modifications: true,
+        },
+      });
+
+      if (requestId !== overlapRequestIdRef.current) return;
+
+      const areaHa = res.data?.areaHa;
+      if (typeof areaHa === 'number' && Number.isFinite(areaHa)) {
+        setSuperficie(parseFloat(areaHa.toFixed(2)));
+      }
+
+      const overlapsRaw = Array.isArray(res.data?.overlaps) ? res.data.overlaps : [];
+      const blocking = overlapsRaw.filter((o: any) => {
+        const lt = getOverlapLayerType(o);
+        return lt === 'titres' || lt === 'exclusions';
+      });
+      const warnings = overlapsRaw.filter((o: any) => getOverlapLayerType(o) === 'perimetresSig');
+
+      const blockingLabels = blocking.map(formatBlockingOverlapLabel).filter(Boolean);
+      const warningLabels = warnings.map((o: any) => formatOverlapDemandLabel(o, areaHa)).filter(Boolean);
+
+      setBlockingOverlapLabels(blockingLabels);
+      setOverlapPermits(Array.from(new Set(warningLabels)));
+      setMiningTitleOverlaps(blocking.filter((o: any) => getOverlapLayerType(o) === 'titres'));
+      setOverlapDetected(overlapsRaw.length > 0);
+      setOverlapChecked(true);
+
+      if (typeof res.data?.minDistanceM === 'number') {
+        setMinDistanceM(res.data.minDistanceM);
+        setNearestTitle(res.data?.nearestTitle ?? null);
+      } else {
+        setMinDistanceM(null);
+        setNearestTitle(null);
+      }
+
+      if (idDemande) {
+        try {
+          await axios.post(`${apiURL}/verification-geo/demande/${idDemande}`, {
+            empiet_ok: blockingLabels.length === 0,
+          });
+          setEmpietOk(blockingLabels.length === 0);
+        } catch (e) {
+          // keep silent
+        }
+      }
+    } catch (error) {
+      console.error('Error checking overlaps:', error);
+      if (requestId !== overlapRequestIdRef.current) return;
+      setOverlapChecked(false);
+    } finally {
+      if (requestId === overlapRequestIdRef.current) {
+        setIsCheckingOverlaps(false);
+      }
+    }
+  }, [apiURL, idDemande, points, utmZone, utmHemisphere]);
+
+  const checkMiningTitleOverlaps = useCallback(async () => {
+    await runOverlapCheck();
+  }, [runOverlapCheck]);
+
+  const calculateArea = useCallback(() => {
+    const validPoints = points.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+    if (validPoints.length < 3) {
+      setSuperficie(0);
+      setIsPolygonValid(false);
+      return 0;
+    }
+    try {
+      let area = 0;
+      if (coordinateSystem === 'UTM' || coordinateSystem === 'LAMBERT') {
+        const coordinates = validPoints.map((p) => [p.x, p.y]);
+        const cleanedCoordinates = coordinates.filter((coord, index) =>
+          index === 0 || !(coord[0] === coordinates[index - 1][0] && coord[1] === coordinates[index - 1][1])
+        );
+        if (cleanedCoordinates.length < 3) {
+          setIsPolygonValid(false);
+          setSuperficie(0);
+          return 0;
+        }
+        const first = cleanedCoordinates[0];
+        const last = cleanedCoordinates[cleanedCoordinates.length - 1];
+        const finalCoordinates = cleanedCoordinates.slice();
+        if (first[0] !== last[0] || first[1] !== last[1]) {
+          finalCoordinates.push([first[0], first[1]]);
+        }
+        let shoelaceArea = 0;
+        const n = finalCoordinates.length;
+        for (let i = 0; i < n - 1; i++) {
+          shoelaceArea += finalCoordinates[i][0] * finalCoordinates[i + 1][1] - finalCoordinates[i + 1][0] * finalCoordinates[i][1];
+        }
+        area = Math.abs(shoelaceArea) / 2;
+      } else {
+        const wgs84Coordinates = validPoints.map((point) => convertToWGS84(point));
+        const cleanedCoordinates = wgs84Coordinates.filter((coord, index) =>
+          index === 0 || !(coord[0] === wgs84Coordinates[index - 1][0] && coord[1] === wgs84Coordinates[index - 1][1])
+        );
+        if (cleanedCoordinates.length < 3) {
+          setIsPolygonValid(false);
+          setSuperficie(0);
+          return 0;
+        }
+        const first = cleanedCoordinates[0];
+        const last = cleanedCoordinates[cleanedCoordinates.length - 1];
+        const finalCoordinates = cleanedCoordinates.slice();
+        if (first[0] !== last[0] || first[1] !== last[1]) {
+          finalCoordinates.push([first[0], first[1]]);
+        }
+        const polygon = turf.polygon([finalCoordinates]);
+        if (!turf.booleanValid(polygon)) {
+          console.warn('Invalid polygon geometry');
+          setIsPolygonValid(false);
+          setSuperficie(0);
+          return 0;
+        }
+        area = turf.area(polygon);
+      }
+      const areaHectares = area / 10000;
+      setIsPolygonValid(true);
+      setSuperficie(parseFloat(areaHectares.toFixed(2)));
+      return areaHectares;
+    } catch (err) {
+      console.error('Area calculation error:', err);
+      setIsPolygonValid(false);
+      setSuperficie(0);
+      setError('Failed to calculate area');
+      setTimeout(() => setError(null), 4000);
+      return 0;
+    }
+  }, [points, coordinateSystem, utmZone, utmHemisphere]);
+
+const handleMapClick = useCallback((x: number, y: number) => {
     if (lockPerimeter) return; // Disable drawing for exploitation titles
     if (isDrawing) {
       addPoint({ x, y });
@@ -1491,6 +1568,7 @@ export default function CadastrePage() {
     if (points.length < 3) {
       setOverlapDetected(false);
       setOverlapPermits([]);
+      setBlockingOverlapLabels([]);
       setMiningTitleOverlaps([]);
       setMinDistanceM(null);
       setNearestTitle(null);
@@ -1508,6 +1586,340 @@ export default function CadastrePage() {
       calculateArea(); // fallback to existing method
     }
   };
+
+
+  const pointsSignature = useMemo(
+    () =>
+      points
+        .map((p) => `${p.x}|${p.y}|${p.system}|${p.zone ?? ''}|${p.hemisphere ?? ''}`)
+        .join(';'),
+    [points],
+  );
+
+  const hasBlockingOverlap = blockingOverlapLabels.length > 0;
+  const hasWarningOverlap = overlapPermits.length > 0 && !hasBlockingOverlap;
+  const perimeterReady = points.length >= 3 && allFilled && hasUniqueCoords && isPolygonValid;
+  const pointsStatusLabel =
+    points.length < 3
+      ? `${points.length} points saisis � Polygone incomplet`
+      : hasValidatedPerimeter
+        ? `${points.length} points saisis � Périmètre validé`
+        : `${points.length} points saisis � Validation requise`;
+  const shouldDisableNext =
+    isLoading || savingEtape || !perimeterReady || hasBlockingOverlap;
+
+  useEffect(() => {
+    if (!perimeterReady) {
+      if (overlapDebounceRef.current) {
+        clearTimeout(overlapDebounceRef.current);
+      }
+      setOverlapChecked(false);
+      setIsCheckingOverlaps(false);
+      setOverlapPermits([]);
+      setBlockingOverlapLabels([]);
+      setMiningTitleOverlaps([]);
+      return;
+    }
+    if (overlapDebounceRef.current) {
+      clearTimeout(overlapDebounceRef.current);
+    }
+    setIsCheckingOverlaps(true);
+    overlapDebounceRef.current = setTimeout(() => {
+      runOverlapCheck();
+    }, 1200);
+    return () => {
+      if (overlapDebounceRef.current) {
+        clearTimeout(overlapDebounceRef.current);
+      }
+    };
+  }, [perimeterReady, pointsSignature, runOverlapCheck]);
+
+  if (auth.role !== 'cadastre') {
+    return (
+      <div className={styles['app-container']}>
+        <Navbar />
+        <div className={styles['app-content']}>
+          <Sidebar currentView={currentView} navigateTo={navigateTo} />
+          <main className={styles['main-content']}>
+            <div className={styles['breadcrumb']}>
+              <span>SIGAM</span>
+              <FiChevronRight className={styles['breadcrumb-arrow']} />
+              <span>Cadastre</span>
+            </div>
+            <div className={styles['content-wrapper']}>
+              {procedureData && (
+                <ProgressStepper
+                  phases={phases}
+                  currentProcedureId={idProc}
+                  currentEtapeId={etapeIdForRoute ?? currentEtape?.id_etape ?? currentStep}
+                  procedurePhases={procedureData.ProcedurePhase || []}
+                  procedureTypeId={procedureTypeId}
+                  procedureEtapes={procedureData.ProcedureEtape || []}
+                />
+              )}
+
+              <div className={styles.cadastreHeader}>
+                <div className={styles.cadastreTitle}>
+                  <span className={styles.cadastreTitleIcon}>
+                    <FiMapPin />
+                  </span>
+                  <div>
+                    <h1>Saisissez votre périmètre</h1>
+                    <p>
+                      Ajoutez les coordonnées des sommets de votre zone minière. Le polygone et les vérifications
+                      s&apos;affichent en temps réel.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.cadastreGrid}>
+                <aside className={styles.pointsPanel}>
+                  <div className={styles.pointsHeader}>
+                    <div>
+                      <h3>Coordonnées des sommets</h3>
+                      <p>Système UTM Nord Sahara à Minimum 3 points</p>
+                    </div>
+                  </div>
+
+                  <div className={styles.systemSelect}>
+                    <label>Système</label>
+                    <Select value={coordinateSystem} onValueChange={(value) => handleCoordinateSystemChange(value as CoordinateSystem)}>
+                      <SelectTrigger className={styles.systemTrigger}>
+                        <SelectValue placeholder="Nord Sahara UTM" />
+                      </SelectTrigger>
+                      <SelectContent className={styles.selectContent}>
+                        <SelectItem className={styles.selectItem} value="UTM">Nord Sahara UTM</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className={styles.pointsList}>
+                    {points.map((point, index) => (
+                      <div className={styles.pointRow} key={point.id}>
+                        <div className={styles.pointBadge}>{String.fromCharCode(65 + index)}</div>
+                        <Input
+                          type="number"
+                          placeholder="X (E)"
+                          value={Number.isFinite(point.x) ? String(point.x) : ''}
+                          onChange={(e) => handleChange(point.id, 'x', e.target.value)}
+                          disabled={false}
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Y (N)"
+                          value={Number.isFinite(point.y) ? String(point.y) : ''}
+                          onChange={(e) => handleChange(point.id, 'y', e.target.value)}
+                          disabled={false}
+                        />
+                        <Select
+                          value={String(Number.isFinite(point.zone ?? utmZone) ? point.zone ?? utmZone : utmZone)}
+                          onValueChange={(value) => handleChange(point.id, 'zone', value)}
+                        >
+                          <SelectTrigger className={styles.zoneSelect}>
+                            <SelectValue placeholder="Fuseau" />
+                          </SelectTrigger>
+                          <SelectContent className={styles.selectContent}>
+                            {[29, 30, 31, 32].map((zone) => (
+                              <SelectItem className={styles.selectItem} key={zone} value={String(zone)}>
+                                F{zone}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <button
+                          type="button"
+                          className={styles.pointDelete}
+                          onClick={() => removePoint(point.id)}
+                          disabled={points.length <= 3}
+                          title={points.length <= 3 ? 'Au moins 3 points requis' : 'Supprimer'}
+                        >
+                          <FiTrash2 />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={styles.addPointBtn}
+                    onClick={() => addPoint()}
+                    disabled={false}
+                  >
+                    <FiPlus />
+                    Ajouter un point
+                  </Button>
+
+                  <input
+                    ref={excelInputRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleExcelFile}
+                    className={styles.hiddenInput}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={styles.importExcelBtn}
+                    onClick={handleExcelPick}
+                  >
+                    <FiUpload />
+                    Importer fichier Excel
+                  </Button>
+                  <button
+                    type="button"
+                    className={styles.templateLink}
+                    onClick={handleDownloadTemplate}
+                  >
+                    Télécharger un modèle Excel
+                  </button>
+
+                  <div className={styles.areaCard}>
+                    <span>Superficie calculée</span>
+                    <strong>{Number.isFinite(superficie) ? superficie.toFixed(2) : '0.00'} ha</strong>
+                  </div>
+
+                                    {!perimeterReady && (
+                    <Alert className={styles.helperAlert}>
+                      <AlertTitle>En attente de verification</AlertTitle>
+                      <AlertDescription>
+                        Ajoutez au moins 3 points pour former un polygone et lancer la verification automatique.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {perimeterReady && isCheckingOverlaps && (
+                    <Alert className={styles.helperAlert}>
+                      <AlertTitle>Verification en cours</AlertTitle>
+                      <AlertDescription>
+                        Analyse automatique du perimetre en cours...
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {perimeterReady && !isCheckingOverlaps && hasBlockingOverlap && (
+                    <Alert variant="destructive" className={styles.helperAlert}>
+                      <AlertTitle>Desole, chevauchement detecte</AlertTitle>
+                      <AlertDescription>
+                        Impossible de faire cette demande car il y a un chevauchement avec un titre existant ou une zone
+                        interdite.
+                        {blockingOverlapLabels.length > 0 && (
+                          <div className={styles.overlapList}>
+                            {blockingOverlapLabels.map((label, idx) => (
+                              <div key={`${label}-${idx}`}>{label}</div>
+                            ))}
+                          </div>
+                        )}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {perimeterReady && !isCheckingOverlaps && !hasBlockingOverlap && hasWarningOverlap && (
+                    <Alert className={styles.warningAlert}>
+                      <AlertTitle>Attention</AlertTitle>
+                      <AlertDescription>
+                        Chevauchement avec des demandes existantes : {overlapPermits.join(', ')}. Vous pouvez continuer,
+                        une decision de priorite sera prise plus tard.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {perimeterReady && !isCheckingOverlaps && overlapChecked && !hasBlockingOverlap && !hasWarningOverlap && (
+                    <Alert className={styles.successAlert}>
+                      <AlertTitle>Aucun chevauchement detecte</AlertTitle>
+                      <AlertDescription>
+                        Votre perimetre est libre. Vous pouvez continuer.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+</aside>
+
+                <section className={styles.mapPanel}>
+                  <div className={styles.mapHeader}>
+                    <h3>Visualisation du périmètre</h3>
+                  </div>
+
+                  <div className={styles.mapCanvas}>
+
+                    <button
+                      type="button"
+                      className={styles.legendToggle}
+                      onClick={() => setShowLegend((prev) => !prev)}
+                    >
+                      {showLegend ? 'Masquer légende' : 'Afficher la légende'}
+                    </button>
+                    <ArcGISMap
+                      key={`map-${coordSource}`}
+                      ref={mapRef}
+                      points={points}
+                      superficie={superficie}
+                      isDrawing={false}
+                      onMapClick={handleMapClick}
+                      onTitreSelected={handleTitreSelected}
+                      showFuseaux={showFuseaux}
+                      existingPolygons={existingPolygons}
+                      selectedExistingProcId={selectedHistoryProcId}
+                      coordinateSystem={coordinateSystem}
+                      utmZone={utmZone}
+                      utmHemisphere={utmHemisphere}
+                      overlapTitles={miningTitleOverlaps}
+                      enableSelectionTools
+                    />
+                    {showLegend && (
+                      <div className={styles.mapLegend}>
+                        <h4>Légende</h4>
+                        <ul>
+                          <li>
+                            <span className={styles.legendSwatchPrimary}></span> Votre périmètre
+                          </li>
+                          <li>
+                            <span className={styles.legendSwatchTitles}></span> Titres existants
+                          </li>
+                          <li>
+                            <span className={styles.legendSwatchExclusion}></span> Zones d'exclusion
+                          </li>
+                          <li>
+                            <span className={styles.legendSwatchDemandes}></span> Demandes en cours
+                          </li>
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              </div>
+
+              <div className={styles.bottomBar}>
+                <span className={styles.pointsStatus}>{pointsStatusLabel}</span>
+                <div className={styles['navigation-buttons']}>
+                  <button
+                    className={`${styles['btn']} ${styles['btn-outline']}`}
+                    onClick={handleBack}
+                    disabled={isLoading}
+                  >
+                    <FiChevronLeft className={styles['btn-icon']} />
+                    Précédent
+                  </button>
+                  <button
+                    className={`${styles['btn']} ${styles['btn-primary']}`}
+                    onClick={handleNext}
+                    disabled={shouldDisableNext}
+                  >
+                    Suivant
+                    <FiChevronRight className={styles['btn-icon']} />
+                  </button>
+                </div>
+              </div>
+
+              {success && <div className={`${styles['etapeMessage']} ${styles['success']}`}>{success}</div>}
+              {error && <div className={`${styles['etapeMessage']} ${styles['error']}`}>{error}</div>}
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   // Update the map section in your return statement
   return (
@@ -1629,13 +2041,7 @@ export default function CadastrePage() {
                         >
                           <FiRefreshCw /> Calculer
                         </button>
-                        <button 
-                          className={styles['map-btn']}
-                          onClick={checkMiningTitleOverlaps}
-                          disabled={points.length < 3 || isCheckingOverlaps}
-                        >
-                          <FiAlertTriangle /> Vérifier Chevauchements
-                        </button>
+                        
                         <button
                           className={styles['map-btn']}
                           onClick={() => mapRef.current?.toggleLayerPanel?.()}
@@ -1836,7 +2242,7 @@ export default function CadastrePage() {
                               <option value="provisoire">Inscription provisoire</option>
                               <option value="validees">Coordonnées validées</option>
                             </select>
-                            <button className={styles['add-btn']} onClick={() => addPoint()} disabled={lockPerimeter}>
+                            <button className={styles['add-btn']} onClick={() => addPoint()} disabled={false}>
                               <FiPlus /> Ajouter
                             </button>
                             <button className={styles['add-btn']} onClick={() => setRefetchTrigger(prev => prev + 1)}>
@@ -1858,25 +2264,27 @@ export default function CadastrePage() {
                                   type="number"
                                   value={Number.isFinite(point.zone ?? utmZone) ? (point.zone ?? utmZone) : utmZone}
                                   onChange={(e) => handleChange(point.id, 'zone', e.target.value)}
-                                  disabled={editableRowId !== point.id}
+                                  disabled={false}
                                   min={29}
                                   max={32}
                                 />
                               </div>
                               <div>
                                 <input
-                                  type="number"
-                                  value={Number.isFinite(point.x) ? point.x : 0}
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={Number.isFinite(point.x) ? String(point.x) : ""}
                                   onChange={(e) => handleChange(point.id, 'x', e.target.value)}
-                                  disabled={editableRowId !== point.id}
+                                  disabled={false}
                                 />
                               </div>
                               <div>
                                 <input
-                                  type="number"
-                                  value={Number.isFinite(point.y) ? point.y : 0}
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={Number.isFinite(point.y) ? String(point.y) : ""}
                                   onChange={(e) => handleChange(point.id, 'y', e.target.value)}
-                                  disabled={editableRowId !== point.id}
+                                  disabled={false}
                                 />
                               </div>
                               <div>
@@ -1917,8 +2325,8 @@ export default function CadastrePage() {
                                   <button
                                     className={styles['delete-btn']}
                                     onClick={() => removePoint(point.id)}
-                                    disabled={points.length <= 3 }
-                                    title={points.length <= 3 ? "Un polygone doit avoir au moins 3 points" : "Supprimer ce point"}
+                                    disabled={points.length <= 3}
+                                    title={points.length <= 3 ? "Au moins 3 points requis" : "Supprimer ce point"}
                                   >
                                     <FiTrash2 />
                                   </button>
@@ -2011,9 +2419,9 @@ export default function CadastrePage() {
                             {!polygonValid || !allFilled || !isPolygonValid ? <FiAlertTriangle /> : <FiCheckCircle />}
                             <h3>Validation du polygone</h3>
                           </div>
-                          {!polygonValid && <p>• Au moins 4 points requis pour former un polygone</p>}
-                          {!allFilled && <p>• Toutes les coordonnées doivent être renseignées</p>}
-                          {!isPolygonValid && <p>• Le polygone est géométriquement invalide</p>}
+                          {!polygonValid && <p>� Au moins 4 points requis pour former un polygone</p>}
+                          {!allFilled && <p>� Toutes les coordonnées doivent être renseignées</p>}
+                          {!isPolygonValid && <p>� Le polygone est géométriquement invalide</p>}
                           {polygonValid && allFilled && isPolygonValid && <p>Le polygone est valide</p>}
                         </div>
 
@@ -2058,12 +2466,12 @@ export default function CadastrePage() {
                                 if (!apiURL) {
                                   setError('API URL manquant (NEXT_PUBLIC_API_URL).');
                                   setTimeout(() => setError(null), 4000);
-                                  return;
+        return false;
                                 }
                                 if (!idDemande) {
                                   setError("ID demande manquant: impossible d'enregistrer la verification.");
                                   setTimeout(() => setError(null), 4000);
-                                  return;
+        return false;
                                 }
                                 try {
                                   const res = await axios.post(`${apiURL}/verification-geo/demande/${idDemande}`, {
@@ -2083,10 +2491,12 @@ export default function CadastrePage() {
                                   }
                                   setSuccess('Vérification cadastrale enregistrée');
                                   setTimeout(() => setSuccess(null), 3000);
-                                } catch (e) {
+      return true;
+    } catch (e) {
                                   setError("Erreur lors de l'enregistrement de la vérification cadastrale");
                                   setTimeout(() => setError(null), 4000);
-                                }
+      return false;
+    }
                               }}
                             >
                               Enregistrer la vérification
@@ -2209,75 +2619,10 @@ export default function CadastrePage() {
                       >
                         Enregistrer brouillon
                       </button>
-                      <button
+                            <button
                               className={styles['map-btn']}
                               style={{ marginLeft: 8 }}
-                              onClick={async () => {
-                                if (!idProc) return;
-                                try {
-                                  // Save current edited points into inscription provisoire first,
-                                  // because the promotion reads from this table.
-                                  const provisionalPayloadPoints = (points || [])
-                                    .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y))
-                                    .map((p) => ({
-                                      x: Number(p.x),
-                                      y: Number(p.y),
-                                      z: 0,
-                                      system: p.system,
-                                      zone: p.zone ?? utmZone,
-                                      hemisphere: p.hemisphere ?? utmHemisphere,
-                                    }));
-                                  if (provisionalPayloadPoints.length < 3) {
-                                    setError("Le polygone doit contenir au moins 3 points.");
-                                    setTimeout(() => setError(null), 4000);
-                                    return;
-                                  }
-
-                                  await axios.post(`${apiURL}/inscription-provisoire`, {
-                                    id_proc: idProc,
-                                    points: provisionalPayloadPoints,
-                                    system: coordinateSystem,
-                                    zone: utmZone,
-                                    hemisphere: utmHemisphere,
-                                    superficie_declaree:
-                                      typeof superficieDeclaree === 'number' ? superficieDeclaree : undefined,
-                                  });
-
-                                  // Persist superficie cadastrale into Demande before promotion
-                                  if (idDemande && Number.isFinite(superficieCadastrale)) {
-                                    await axios.post(`${apiURL}/verification-geo/demande/${idDemande}`, {
-                                      superficie_cadastrale: superficieCadastrale,
-                                    });
-                                  }
-                                  await axios.post(`${apiURL}/inscription-provisoire/promote/${idProc}`);
-                                  // Reload definitive coordinates
-                                  const res = await axios.get(`${apiURL}/coordinates/procedure/${idProc}`);
-                                  const coords = res.data;
-                                  const safeCoords = (coords ?? []).filter((c: any) => c?.coordonnee?.x !== undefined && c?.coordonnee?.y !== undefined);
-                                  const mappedPoints = safeCoords.map((c: any) => {
-                                    const point = c.coordonnee;
-                                    return {
-                                      id: point.id,
-                                      idTitre: point.idTitre || 1007,
-                                      h: point.h || 32,
-                                      x: point.x,
-                                      y: point.y,
-                                      system: point.system || 'UTM',
-                                      zone: point.system === 'UTM' ? (point.zone || utmZone) : undefined,
-                                      hemisphere: point.system === 'UTM' ? (point.hemisphere || utmHemisphere) : undefined
-                                    };
-                                  });
-                                  setPoints(mappedPoints);
-                                  setCoordSource('validees');
-                                  setValidatedPoints(mappedPoints);
-                                  setSuccess('perimetres validés et promus');
-                                  setTimeout(() => setSuccess(null), 3000);
-                                } catch (e) {
-                                  setError('Échec de la promotion des perimetres');
-                                  setTimeout(() => setError(null), 4000);
-                                }
-                              }}
-                            //  disabled={!statutProc}
+                              onClick={handleValidatePerimeter}
                             >
                               Valider les perimetres
                             </button>
@@ -2442,4 +2787,9 @@ export default function CadastrePage() {
   );
   
 }
+
+
+
+
+
 

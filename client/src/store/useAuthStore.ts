@@ -6,10 +6,15 @@ import type { UseBoundStore } from 'zustand';
 import axios from 'axios';
 
 interface AuthData {
+  antenneId: any;
   token: string | null;
   id: number | null;
   username: string | null;
   email: string | null;
+  nom?: string | null;
+  Prenom?: string | null;
+  telephone?: string | null;
+  createdAt?: string | null;
   role: string | null;
   permissions: string[];
   isEntrepriseVerified: boolean;
@@ -20,6 +25,10 @@ const emptyAuthState: AuthData = {
   id: null,
   username: null,
   email: null,
+  nom: null,
+  Prenom: null,
+  telephone: null,
+  createdAt: null,
   role: null,
   permissions: [],
   isEntrepriseVerified: false,
@@ -52,6 +61,10 @@ function readAuthFromStorage(): AuthData | null {
         id: parsed.id ?? null,
         username: parsed.username ?? null,
         email: parsed.email ?? null,
+        nom: parsed.nom ?? null,
+        Prenom: parsed.Prenom ?? null,
+        telephone: parsed.telephone ?? null,
+        createdAt: parsed.createdAt ?? null,
         role: parsed.role ?? null,
         permissions: Array.isArray(parsed.permissions) ? parsed.permissions : [],
         isEntrepriseVerified: Boolean(parsed.isEntrepriseVerified),
@@ -68,6 +81,10 @@ function readAuthFromStorage(): AuthData | null {
         id: s.id ?? null,
         username: s.username ?? null,
         email: s.email ?? null,
+        nom: s.nom ?? null,
+        Prenom: s.Prenom ?? null,
+        telephone: s.telephone ?? null,
+        createdAt: s.createdAt ?? null,
         role: s.role ?? null,
         permissions: Array.isArray(s.permissions) ? s.permissions : [],
         isEntrepriseVerified: Boolean(s.isEntrepriseVerified),
@@ -98,6 +115,10 @@ function createAuthStore(): BoundStore {
         id: data.user.id,
         username: data.user.username,
         email: data.user.email,
+        nom: (data.user as any).nom ?? null,
+        Prenom: (data.user as any).Prenom ?? null,
+        telephone: (data.user as any).telephone ?? null,
+        createdAt: (data.user as any).createdAt ?? null,
         role: data.user.role,
         permissions: data.user.permissions,
         isEntrepriseVerified:
@@ -151,6 +172,39 @@ function createAuthStore(): BoundStore {
       const token = authState.token;
 
       if (!token) {
+        try {
+          const response = await axios.get(`${apiURL}/auth/me`, {
+            withCredentials: true,
+          });
+          if (response.data?.user) {
+            const updatedAuth = {
+              token: null,
+              id: response.data.user.id,
+              username: response.data.user.username,
+              email: response.data.user.email,
+              nom: (response.data.user as any).nom ?? null,
+              Prenom: (response.data.user as any).Prenom ?? null,
+              telephone: (response.data.user as any).telephone ?? null,
+              createdAt: (response.data.user as any).createdAt ?? null,
+              role: response.data.user.role,
+              permissions: response.data.user.permissions,
+              isEntrepriseVerified:
+                (response.data.user as any).isEntrepriseVerified ??
+                (response.data.user as any).entrepriseVerified ??
+                (response.data.user as any).entreprise_verified ??
+                authState.isEntrepriseVerified,
+            };
+
+            if (typeof window !== 'undefined') {
+              window.localStorage.setItem('auth', JSON.stringify(updatedAuth));
+            }
+
+            set({ auth: updatedAuth, isLoaded: true });
+            return;
+          }
+        } catch (error) {
+          console.warn('Auth cookie verification failed', error);
+        }
         set({ isLoaded: true });
         return;
       }
@@ -165,15 +219,19 @@ function createAuthStore(): BoundStore {
         if (response.data?.user) {
           const updatedAuth = {
             token,
-            id: response.data.user.id,
-            username: response.data.user.username,
-            email: response.data.user.email,
-            role: response.data.user.role,
-            permissions: response.data.user.permissions,
-            isEntrepriseVerified:
-              (response.data.user as any).isEntrepriseVerified ??
-              (response.data.user as any).entrepriseVerified ??
-              (response.data.user as any).entreprise_verified ??
+          id: response.data.user.id,
+          username: response.data.user.username,
+          email: response.data.user.email,
+          nom: (response.data.user as any).nom ?? null,
+          Prenom: (response.data.user as any).Prenom ?? null,
+          telephone: (response.data.user as any).telephone ?? null,
+          createdAt: (response.data.user as any).createdAt ?? null,
+          role: response.data.user.role,
+          permissions: response.data.user.permissions,
+          isEntrepriseVerified:
+            (response.data.user as any).isEntrepriseVerified ??
+            (response.data.user as any).entrepriseVerified ??
+            (response.data.user as any).entreprise_verified ??
               authState.isEntrepriseVerified,
           };
 

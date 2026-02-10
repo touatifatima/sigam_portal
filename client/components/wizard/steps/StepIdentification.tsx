@@ -3,6 +3,13 @@ import axios from "axios";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Building2, User, FileText, Users, Plus, X, AlertCircle } from "lucide-react";
 import styles from "./StepIdentification.module.css";
 
@@ -196,42 +203,57 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
 
             <div className={styles.inputGroup}>
               <Label htmlFor="statutJuridique" className={styles.label}>Statut juridique *</Label>
-              <select
-                id="statutJuridique"
-                className={styles.select}
-                value={identification.statutJuridique}
-                onChange={(e) => handleChange("statutJuridique", e.target.value)}
+              <Select
+                value={identification.statutJuridique || undefined}
+                onValueChange={(value) => handleChange("statutJuridique", value)}
               >
-                <option value="">Selectionner</option>
-                {statutsJuridiques.map((statut) => {
-                  const value = statut.code_statut || statut.statut_fr;
-                  const label = statut.code_statut
-                    ? `${statut.code_statut} - ${statut.statut_fr}`
-                    : statut.statut_fr;
-                  return (
-                    <option key={statut.id_statutJuridique} value={value}>
-                      {label}
-                    </option>
-                  );
-                })}
-              </select>
+                <SelectTrigger id="statutJuridique" className={styles.select}>
+                  <SelectValue
+                    className={styles.selectValue}
+                    placeholder="Selectionner"
+                  />
+                </SelectTrigger>
+                <SelectContent className={styles.selectContent}>
+                  {statutsJuridiques.map((statut) => {
+                    const value = statut.code_statut || statut.statut_fr;
+                    const label = statut.code_statut
+                      ? `${statut.code_statut} - ${statut.statut_fr}`
+                      : statut.statut_fr;
+                    return (
+                      <SelectItem
+                        key={statut.id_statutJuridique}
+                        value={value}
+                        className={styles.selectItem}
+                      >
+                        {label}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className={styles.inputGroup}>
               <Label htmlFor="pays" className={styles.label}>Pays *</Label>
-              <select
-                id="pays"
-                className={styles.select}
-                value={identification.pays}
-                onChange={(e) => handleChange("pays", e.target.value)}
+              <Select
+                value={identification.pays || undefined}
+                onValueChange={(value) => handleChange("pays", value)}
               >
-                <option value="">Selectionner</option>
-                {paysOptions.map((p) => (
-                  <option key={p.id_pays} value={p.nom_pays}>
-                    {p.nom_pays}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id="pays" className={styles.select}>
+                  <SelectValue className={styles.selectValue} placeholder="Selectionner" />
+                </SelectTrigger>
+                <SelectContent className={styles.selectContent}>
+                  {paysOptions.map((p) => (
+                    <SelectItem
+                      key={p.id_pays}
+                      value={p.nom_pays}
+                      className={styles.selectItem}
+                    >
+                      {p.nom_pays}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className={styles.inputGroup}>
@@ -283,19 +305,25 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
 
             <div className={styles.inputGroup}>
               <Label htmlFor="nationalite" className={styles.label}>Nationalite *</Label>
-              <select
-                id="nationalite"
-                className={styles.select}
-                value={identification.nationalite}
-                onChange={(e) => handleChange("nationalite", e.target.value)}
+              <Select
+                value={identification.nationalite || undefined}
+                onValueChange={(value) => handleChange("nationalite", value)}
               >
-                <option value="">Selectionner</option>
-                {nationalitesOptions.map((nat) => (
-                  <option key={nat.id_nationalite} value={nat.libelle}>
-                    {nat.libelle}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id="nationalite" className={styles.select}>
+                  <SelectValue className={styles.selectValue} placeholder="Selectionner" />
+                </SelectTrigger>
+                <SelectContent className={styles.selectContent}>
+                  {nationalitesOptions.map((nat) => (
+                    <SelectItem
+                      key={nat.id_nationalite}
+                      value={nat.libelle}
+                      className={styles.selectItem}
+                    >
+                      {nat.libelle}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className={styles.inputGroup}>
@@ -418,53 +446,71 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
 
             <div className={styles.inputGroup}>
               <Label htmlFor="representantQualite" className={styles.label}>Qualite de representant *</Label>
-              <select
-                id="representantQualite"
-                className={styles.select}
-                value={identification.representantQualite}
-                onChange={(e) => handleChange("representantQualite", e.target.value)}
+              <Select
+                value={identification.representantQualite || undefined}
+                onValueChange={(value) => handleChange("representantQualite", value)}
               >
-                <option value="">Selectionner</option>
-                {qualitesRepresentant.map((qualite) => (
-                  <option key={qualite} value={qualite}>
-                    {qualite}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id="representantQualite" className={styles.select}>
+                  <SelectValue className={styles.selectValue} placeholder="Selectionner" />
+                </SelectTrigger>
+                <SelectContent className={styles.selectContent}>
+                  {qualitesRepresentant.map((qualite) => (
+                    <SelectItem
+                      key={qualite}
+                      value={qualite}
+                      className={styles.selectItem}
+                    >
+                      {qualite}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className={styles.inputGroup}>
               <Label htmlFor="representantNationalite" className={styles.label}>Nationalite *</Label>
-              <select
-                id="representantNationalite"
-                className={styles.select}
-                value={identification.representantNationalite}
-                onChange={(e) => handleChange("representantNationalite", e.target.value)}
+              <Select
+                value={identification.representantNationalite || undefined}
+                onValueChange={(value) => handleChange("representantNationalite", value)}
               >
-                <option value="">Selectionner</option>
-                {nationalitesOptions.map((nat) => (
-                  <option key={nat.id_nationalite} value={nat.libelle}>
-                    {nat.libelle}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id="representantNationalite" className={styles.select}>
+                  <SelectValue className={styles.selectValue} placeholder="Selectionner" />
+                </SelectTrigger>
+                <SelectContent className={styles.selectContent}>
+                  {nationalitesOptions.map((nat) => (
+                    <SelectItem
+                      key={nat.id_nationalite}
+                      value={nat.libelle}
+                      className={styles.selectItem}
+                    >
+                      {nat.libelle}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className={styles.inputGroup}>
               <Label htmlFor="representantPays" className={styles.label}>Pays *</Label>
-              <select
-                id="representantPays"
-                className={styles.select}
-                value={identification.representantPays}
-                onChange={(e) => handleChange("representantPays", e.target.value)}
+              <Select
+                value={identification.representantPays || undefined}
+                onValueChange={(value) => handleChange("representantPays", value)}
               >
-                <option value="">Selectionner</option>
-                {paysOptions.map((p) => (
-                  <option key={p.id_pays} value={p.nom_pays}>
-                    {p.nom_pays}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id="representantPays" className={styles.select}>
+                  <SelectValue className={styles.selectValue} placeholder="Selectionner" />
+                </SelectTrigger>
+                <SelectContent className={styles.selectContent}>
+                  {paysOptions.map((p) => (
+                    <SelectItem
+                      key={p.id_pays}
+                      value={p.nom_pays}
+                      className={styles.selectItem}
+                    >
+                      {p.nom_pays}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className={styles.inputGroup}>
@@ -649,20 +695,30 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
 
                   <div className={styles.inputGroup}>
                     <Label className={styles.label}>Nationalite *</Label>
-                    <select
-                      className={styles.select}
-                      value={actionnaire.nationalite}
-                      onChange={(e) =>
-                        handleActionnaireChange(actionnaire.id, "nationalite", e.target.value)
+                    <Select
+                      value={actionnaire.nationalite || undefined}
+                      onValueChange={(value) =>
+                        handleActionnaireChange(actionnaire.id, "nationalite", value)
                       }
                     >
-                      <option value="">Selectionner</option>
-                      {nationalitesOptions.map((nat) => (
-                        <option key={nat.id_nationalite} value={nat.libelle}>
-                          {nat.libelle}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className={styles.select}>
+                        <SelectValue
+                          className={styles.selectValue}
+                          placeholder="Selectionner"
+                        />
+                      </SelectTrigger>
+                      <SelectContent className={styles.selectContent}>
+                        {nationalitesOptions.map((nat) => (
+                          <SelectItem
+                            key={nat.id_nationalite}
+                            value={nat.libelle}
+                            className={styles.selectItem}
+                          >
+                            {nat.libelle}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className={styles.inputGroup}>
@@ -700,18 +756,27 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
 
                   <div className={styles.inputGroup}>
                     <Label className={styles.label}>Pays *</Label>
-                    <select
-                      className={styles.select}
-                      value={actionnaire.pays}
-                      onChange={(e) => handleActionnaireChange(actionnaire.id, "pays", e.target.value)}
+                    <Select
+                      value={actionnaire.pays || undefined}
+                      onValueChange={(value) =>
+                        handleActionnaireChange(actionnaire.id, "pays", value)
+                      }
                     >
-                      <option value="">Selectionner</option>
-                      {paysOptions.map((p) => (
-                        <option key={p.id_pays} value={p.nom_pays}>
-                          {p.nom_pays}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className={styles.select}>
+                        <SelectValue className={styles.selectValue} placeholder="Selectionner" />
+                      </SelectTrigger>
+                      <SelectContent className={styles.selectContent}>
+                        {paysOptions.map((p) => (
+                          <SelectItem
+                            key={p.id_pays}
+                            value={p.nom_pays}
+                            className={styles.selectItem}
+                          >
+                            {p.nom_pays}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>

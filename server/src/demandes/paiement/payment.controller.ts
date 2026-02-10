@@ -1,6 +1,6 @@
 // src/payments/payment.controller.ts
 
-import { Controller, Get, Post, Body, Param, HttpException, HttpStatus, NotFoundException, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, HttpException, HttpStatus, NotFoundException, HttpCode } from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import { CreatePaymentDto } from './create-payment.dto';
 import { ObligationResponseDto } from './obligation-response.dto';
@@ -153,6 +153,18 @@ async getPermis(@Param('permisId') permisId: string) {
 }
 
 
-
+////////////////
+@Patch('confirm-demande/:demandeId')
+async confirmDemandePayment(@Param('demandeId') demandeId: string) {
+  const parsed = parseInt(demandeId, 10);
+  if (!Number.isFinite(parsed)) {
+    throw new HttpException('Invalid demande id', HttpStatus.BAD_REQUEST);
+  }
+  const updated = await this.paymentService.confirmDemandePayment(parsed);
+  return {
+    success: true,
+    date_demande: updated?.date_demande,
+  };
+}
 
 }

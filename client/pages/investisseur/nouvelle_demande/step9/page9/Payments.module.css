@@ -133,7 +133,7 @@
 
 .title {
     display: flex;
-    color: var(--primary-color);
+    color: hsl(330 45% 32%);
     margin-bottom: 1.5rem 24px;
     padding-bottom: .5rem;
     font-size: 2rem;

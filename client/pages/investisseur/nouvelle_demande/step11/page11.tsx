@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import router from "next/router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FileText,
   Building2,
@@ -32,7 +32,11 @@ type DemandeDisplay = {
   typePermis?: string | null;
   societe?: string | null;
   commune?: string | null;
+  daira?: string | null;
   wilaya?: string | null;
+  communes?: string[] | null;
+  dairas?: string[] | null;
+  wilayas?: string[] | null;
   superficie?: number | null;
   substances?: string[] | null;
 };
@@ -57,6 +61,118 @@ const Facture = () => {
   const [downloadMessage, setDownloadMessage] = useState<string | null>(null);
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const coerceNumber = (value: any): number | null => {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+      const cleaned = value
+        .replace(/[\s\u00A0\u202F]/g, "")
+        .replace(",", ".");
+      const num = Number(cleaned);
+      if (Number.isFinite(num)) return num;
+    }
+    return null;
+  };
+
+  const pickName = (obj: any, keys: string[]): string | null => {
+    if (!obj) return null;
+    if (typeof obj === "string") return obj;
+    for (const key of keys) {
+      const val = obj?.[key];
+      if (typeof val === "string" && val.trim() !== "") return val;
+    }
+    return null;
+  };
+
+  const extractNames = (list: any[] | undefined | null, keys: string[]): string[] | null => {
+    if (!Array.isArray(list)) return null;
+    const names = list
+      .map((item) => pickName(item, keys) || (typeof item === "string" ? item : null))
+      .filter((v): v is string => !!v && v.trim() !== "");
+    return names.length ? Array.from(new Set(names)) : null;
+  };
+
+  const normalizeSubstances = (items: any[] = []): string[] => {
+    const sorted = [...items].sort((a, b) => {
+      const pa = String(a?.priorite || "").toLowerCase() === "principale" ? 0 : 1;
+      const pb = String(b?.priorite || "").toLowerCase() === "principale" ? 0 : 1;
+      return pa - pb;
+    });
+    const names = sorted
+      .map((item) => item?.nom_subFR || item?.nom_subAR || item?.nom_sub || item?.libelle || item?.nom)
+      .filter((v: any) => typeof v === "string" && v.trim() !== "");
+    return Array.from(new Set(names));
+  };
+
+  const normalizeLines = (rows: any[] = []): MontantRow[] => {
+    return rows.map((row: any) => ({
+      poste:
+        row?.poste ||
+        row?.libelle ||
+        row?.label ||
+        row?.designation ||
+        "Poste",
+      base:
+        row?.base ||
+        row?.base_calcul ||
+        row?.description ||
+        row?.regle ||
+        row?.note ||
+        "",
+      montant: coerceNumber(row?.montant) ?? coerceNumber(row?.total) ?? 0,
+      isTotal: Boolean(row?.isTotal || row?.is_total || row?.total),
+    }));
+  };
+
+  const formatPersonName = (obj: any): string | null => {
+    if (!obj) return null;
+    if (typeof obj === "string") return obj;
+    const company = pickName(obj, [
+      "nom_societeFR",
+      "nom_societeAR",
+      "nom_societe",
+      "raison_sociale",
+      "nom_entreprise",
+      "nomEntreprise",
+    ]);
+    if (company) return company;
+    const nom = pickName(obj, ["nom", "nom_fr", "nom_ar", "nom_responsable", "nom_gerant"]);
+    const prenom = pickName(obj, ["prenom", "prenom_fr", "prenom_ar"]);
+    if (nom && prenom) return `${nom} ${prenom}`.trim();
+    return nom || prenom || null;
+  };
+
+  const resolveTitulaire = (payload: any): string | null => {
+    const candidates = [
+      payload?.titulaire,
+      payload?.detenteur,
+      payload?.detenteurdemande?.[0]?.detenteur,
+      payload?.demandeur,
+      payload?.societe,
+      payload?.entreprise,
+      payload?.personne_morale,
+      payload?.personneMorale,
+      payload?.personne_physique,
+      payload?.personnePhysique,
+    ];
+    for (const candidate of candidates) {
+      const name = formatPersonName(candidate);
+      if (name) return name;
+    }
+    return null;
+  };
+
+  const mergeDemandeInfo = (next: Partial<DemandeDisplay>) => {
+    setDemandeInfo((prev) => {
+      const cleaned: Partial<DemandeDisplay> = {};
+      Object.entries(next).forEach(([key, value]) => {
+        if (value !== null && value !== undefined && value !== "") {
+          (cleaned as any)[key] = value;
+        }
+      });
+      return { ...prev, ...cleaned };
+    });
+  };
 
   // Récupération de l'id_proc depuis l'URL
   useEffect(() => {
@@ -139,39 +255,82 @@ const Facture = () => {
         if (res.data?.id_demande != null) {
           setIdDemande(res.data.id_demande.toString());
         }
-        const societe =
-          payload.detenteur?.nom_societeFR ||
-          payload.detenteur?.nom_societeAR ||
-          payload.detenteur?.nom_societe ||
-          null;
-        const commune =
-          payload.commune?.nom_commune ||
-          payload.commune?.lib_commune ||
-          payload.commune?.nom ||
-          null;
-        const wilaya =
-          payload.wilaya?.nom_wilaya ||
-          payload.wilaya?.lib_wilaya ||
-          payload.wilaya?.nom ||
-          null;
+        const societe = resolveTitulaire(payload);
+        const commune = pickName(payload.commune, [
+          "nom_communeFR",
+          "nom_commune",
+          "lib_commune",
+          "nom",
+        ]);
+        const daira = pickName(payload.daira, [
+          "nom_dairaFR",
+          "nom_daira",
+          "lib_daira",
+          "nom",
+        ]);
+        const wilaya = pickName(payload.wilaya, [
+          "nom_wilayaFR",
+          "nom_wilaya",
+          "lib_wilaya",
+          "nom",
+        ]);
+        const communes = extractNames(payload.communes, [
+          "nom_communeFR",
+          "nom_commune",
+          "lib_commune",
+          "nom",
+        ]);
+        const dairas = extractNames(payload.dairas, [
+          "nom_dairaFR",
+          "nom_daira",
+          "lib_daira",
+          "nom",
+        ]);
+        const wilayas = extractNames(payload.wilayas, [
+          "nom_wilayaFR",
+          "nom_wilaya",
+          "lib_wilaya",
+          "nom",
+        ]);
         const superficie =
-          typeof payload.superficie === "number"
-            ? payload.superficie
-            : payload.superficie
-            ? Number(payload.superficie)
-            : null;
+          coerceNumber(payload.superficie_cadastrale) ??
+          coerceNumber(payload.superficie_cadastrale_ha) ??
+          coerceNumber(payload.superficie_declaree) ??
+          coerceNumber(payload.superficieDeclaree) ??
+          coerceNumber(payload.superficie_calculee) ??
+          coerceNumber(payload.superficie_sig) ??
+          coerceNumber(payload.superficie_ha) ??
+          coerceNumber(payload.superficieHa) ??
+          coerceNumber(payload.superficie);
         const substances = Array.isArray(payload.substances)
           ? payload.substances.map((item: any) =>
               item?.libelle ?? item?.nom ?? String(item),
             )
           : null;
-        setDemandeInfo({
+        const typeProcedure =
+          payload.typeProcedure?.libelle ||
+          payload.typeProcedure?.label ||
+          payload.typeProcedure?.lib_type ||
+          payload.type_procedure ||
+          null;
+        const typePermis =
+          payload.typePermis?.lib_type ||
+          payload.typePermis?.libelle ||
+          payload.typePermis?.label ||
+          payload.typePermis?.code_type ||
+          null;
+
+        mergeDemandeInfo({
           codeDemande: payload.code_demande ?? null,
-          typeProcedure: payload.typeProcedure?.libelle ?? null,
-          typePermis: payload.typePermis?.lib_type ?? null,
+          typeProcedure,
+          typePermis,
           societe,
           commune,
+          daira,
           wilaya,
+          communes,
+          dairas,
+          wilayas,
           superficie,
           substances,
         });
@@ -197,6 +356,189 @@ const Facture = () => {
 
   useEffect(() => {
     if (!idDemande || !apiURL) return;
+    const controller = new AbortController();
+    const loadSummary = async () => {
+      try {
+        const res = await axios.get(`${apiURL}/api/demande/${idDemande}/summary`, {
+          signal: controller.signal,
+        });
+        const payload = res.data ?? {};
+        const societe = resolveTitulaire(payload);
+        const commune = pickName(payload.commune, [
+          "nom_communeFR",
+          "nom_commune",
+          "lib_commune",
+          "nom",
+        ]);
+        const daira = pickName(payload.daira, [
+          "nom_dairaFR",
+          "nom_daira",
+          "lib_daira",
+          "nom",
+        ]);
+        const wilaya = pickName(payload.wilaya, [
+          "nom_wilayaFR",
+          "nom_wilaya",
+          "lib_wilaya",
+          "nom",
+        ]);
+        const communes = extractNames(payload.communes, [
+          "nom_communeFR",
+          "nom_commune",
+          "lib_commune",
+          "nom",
+        ]);
+        const dairas = extractNames(payload.dairas, [
+          "nom_dairaFR",
+          "nom_daira",
+          "lib_daira",
+          "nom",
+        ]);
+        const wilayas = extractNames(payload.wilayas, [
+          "nom_wilayaFR",
+          "nom_wilaya",
+          "lib_wilaya",
+          "nom",
+        ]);
+        const superficie =
+          coerceNumber(payload.superficie_cadastrale) ??
+          coerceNumber(payload.superficie_cadastrale_ha) ??
+          coerceNumber(payload.superficie_declaree) ??
+          coerceNumber(payload.superficieDeclaree) ??
+          coerceNumber(payload.superficie_calculee) ??
+          coerceNumber(payload.superficie_sig) ??
+          coerceNumber(payload.superficie_ha) ??
+          coerceNumber(payload.superficieHa) ??
+          coerceNumber(payload.superficie);
+        const typeProcedure =
+          payload.typeProcedure?.libelle ||
+          payload.typeProcedure?.label ||
+          payload.typeProcedure?.lib_type ||
+          payload.type_procedure ||
+          null;
+        const typePermis =
+          payload.typePermis?.lib_type ||
+          payload.typePermis?.libelle ||
+          payload.typePermis?.label ||
+          payload.typePermis?.code_type ||
+          null;
+
+        mergeDemandeInfo({
+          codeDemande: payload.code_demande ?? payload.codeDemande ?? null,
+          typeProcedure,
+          typePermis,
+          societe,
+          commune,
+          daira,
+          wilaya,
+          communes,
+          dairas,
+          wilayas,
+          superficie,
+        });
+      } catch (error) {
+        if (!axios.isCancel(error)) {
+          console.warn("[Facture] summary fetch failed", error);
+        }
+      }
+    };
+    loadSummary();
+    return () => controller.abort();
+  }, [idDemande, apiURL]);
+
+  useEffect(() => {
+    if (!apiURL || demandeInfo?.societe) return;
+    const controller = new AbortController();
+    const loadEntrepriseProfile = async () => {
+      try {
+        const res = await axios.get(`${apiURL}/api/profil/entreprise`, {
+          signal: controller.signal,
+          withCredentials: true,
+        });
+        const societe = resolveTitulaire(res.data ?? {});
+        if (societe) {
+          mergeDemandeInfo({ societe });
+        }
+      } catch (error) {
+        if (!axios.isCancel(error)) {
+          console.warn("[Facture] profil entreprise fetch failed", error);
+        }
+      }
+    };
+    loadEntrepriseProfile();
+    return () => controller.abort();
+  }, [apiURL, demandeInfo?.societe]);
+
+  useEffect(() => {
+    if (!idProc || !apiURL) return;
+    const controller = new AbortController();
+    const loadProvisional = async () => {
+      try {
+        const res = await axios.get(`${apiURL}/inscription-provisoire/procedure/${idProc}`, {
+          signal: controller.signal,
+        });
+        const superficie =
+          coerceNumber(res.data?.superficie_declaree) ??
+          coerceNumber(res.data?.superficie);
+        if (superficie != null) {
+          mergeDemandeInfo({ superficie });
+        }
+      } catch (error) {
+        if (!axios.isCancel(error)) {
+          console.warn("[Facture] provisional fetch failed", error);
+        }
+      }
+    };
+    loadProvisional();
+    return () => controller.abort();
+  }, [idProc, apiURL]);
+
+  useEffect(() => {
+    if (!idDemande || !apiURL) return;
+    const controller = new AbortController();
+    const loadSubstances = async () => {
+      try {
+        const res = await axios.get(`${apiURL}/api/substances/demande/${idDemande}`, {
+          signal: controller.signal,
+        });
+        const list = normalizeSubstances(Array.isArray(res.data) ? res.data : []);
+        if (list.length) {
+          mergeDemandeInfo({ substances: list });
+        }
+      } catch (error) {
+        if (!axios.isCancel(error)) {
+          console.warn("[Facture] substances fetch failed", error);
+        }
+      }
+    };
+    loadSubstances();
+    return () => controller.abort();
+  }, [idDemande, apiURL]);
+
+  useEffect(() => {
+    if (!idDemande || !apiURL) return;
+    const controller = new AbortController();
+    const loadVerification = async () => {
+      try {
+        const res = await axios.get(`${apiURL}/verification-geo/demande/${idDemande}`, {
+          signal: controller.signal,
+        });
+        const superficie = coerceNumber(res.data?.superficie_cadastrale);
+        if (superficie != null) {
+          mergeDemandeInfo({ superficie });
+        }
+      } catch (error) {
+        if (!axios.isCancel(error)) {
+          console.warn("[Facture] verification fetch failed", error);
+        }
+      }
+    };
+    loadVerification();
+    return () => controller.abort();
+  }, [idDemande, apiURL]);
+
+  useEffect(() => {
+    if (!idDemande || !apiURL) return;
 
     const controller = new AbortController();
     const loadFacture = async () => {
@@ -208,7 +550,7 @@ const Facture = () => {
         console.log("[Facture] facture get", res.data);
         if (res.data?.facture) {
           setFactureData(res.data.facture);
-          setFactureLines(res.data.lignes ?? []);
+          setFactureLines(normalizeLines(res.data.lignes ?? []));
         } else {
           const generated = await axios.post(
             `${apiURL}/api/facture/investisseur/generer`,
@@ -217,7 +559,7 @@ const Facture = () => {
           );
           console.log("[Facture] facture generated", generated.data);
           setFactureData(generated.data?.facture ?? null);
-          setFactureLines(generated.data?.lignes ?? []);
+          setFactureLines(normalizeLines(generated.data?.lignes ?? []));
         }
       } catch (error) {
         if (axios.isCancel(error)) return;
@@ -349,6 +691,47 @@ const Facture = () => {
     return new Intl.NumberFormat("fr-DZ").format(value) + " DA";
   };
 
+  const formatDateDisplay = (value: any) => {
+    if (!value) return "--";
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return date.toLocaleDateString("fr-DZ");
+  };
+
+  const factureNumber = factureData?.numero_facture ?? factureData?.numeroFacture ?? "--";
+  const factureDate = formatDateDisplay(
+    factureData?.date_emission ?? factureData?.dateEmission ?? factureData?.created_at ?? null,
+  );
+
+  const formatListShort = (items?: string[] | null) => {
+    const list = (items ?? []).filter((v) => typeof v === "string" && v.trim() !== "");
+    if (!list.length) return null;
+    if (list.length === 1) return list[0];
+    return `${list[0]} et ${list.length - 1} autres`;
+  };
+
+  const locationText = useMemo(() => {
+    const communeText = formatListShort(demandeInfo?.communes) ?? demandeInfo?.commune ?? null;
+    const dairaText = formatListShort(demandeInfo?.dairas) ?? demandeInfo?.daira ?? null;
+    const wilayaText = formatListShort(demandeInfo?.wilayas) ?? demandeInfo?.wilaya ?? null;
+    const parts = [communeText, dairaText, wilayaText].filter(Boolean) as string[];
+    return parts.length ? parts.join(", ") : "--";
+  }, [demandeInfo]);
+
+  const substancesText = useMemo(() => {
+    if (demandeInfo?.substances && demandeInfo.substances.length > 0) {
+      return demandeInfo.substances.join(", ");
+    }
+    return "--";
+  }, [demandeInfo]);
+
+  const superficieText = useMemo(() => {
+    if (demandeInfo?.superficie != null && Number.isFinite(demandeInfo.superficie)) {
+      return `${demandeInfo.superficie.toFixed(2)} ha`;
+    }
+    return "--";
+  }, [demandeInfo]);
+
   const handleDownloadPDF = async () => {
     if (!apiURL) {
       setDownloadMessage("API non configuree");
@@ -368,7 +751,7 @@ const Facture = () => {
           setFactureData(generated.data.facture);
         }
         if (Array.isArray(generated.data?.lignes)) {
-          setFactureLines(generated.data.lignes);
+          setFactureLines(normalizeLines(generated.data.lignes));
         }
       }
 
@@ -387,9 +770,9 @@ const Facture = () => {
 
   const handleBack = () => {
     if (idProc) {
-      router.push(`/investisseur/nouvelle_demande/step5/page5?id=${idProc}`);
+      router.push(`/investisseur/nouvelle_demande/step1/page1?id=${idProc}`);
     } else {
-      router.push(`/investisseur/nouvelle_demande/step5/page5`);
+      router.push(`/investisseur/nouvelle_demande/step1/page1`);
     }
   };
 
@@ -426,7 +809,7 @@ const Facture = () => {
           setFactureData(generated.data.facture);
         }
         if (Array.isArray(generated.data?.lignes)) {
-          setFactureLines(generated.data.lignes);
+          setFactureLines(normalizeLines(generated.data.lignes));
         }
       }
 
@@ -500,6 +883,18 @@ const Facture = () => {
               )}
 
                 <header className={styles.header}>
+                  <div className={styles.headerTop}>
+                    <div className={styles.brandBlock}>
+                      <span className={styles.brandLogo}>SIGAM</span>
+                      <span className={styles.brandSubtitle}>
+                        Plateforme des demandes minières
+                      </span>
+                    </div>
+                    <div className={styles.invoiceMeta}>
+                      <span className={styles.invoiceNumber}>Facture {factureNumber}</span>
+                      <span className={styles.invoiceDate}>Émise le {factureDate}</span>
+                    </div>
+                  </div>
                   <h1 className={styles.title}>Facture à payer</h1>
                   <p className={styles.subtitle}>
                     Récapitulatif des droits et taxes avant paiement
@@ -514,7 +909,9 @@ const Facture = () => {
                   <div className={styles.infoGrid}>
                     <div className={styles.infoItem}>
                       <span className={styles.infoLabel}>Code demande</span>
-                      <span className={styles.infoValue}>{demandeInfo?.codeDemande ?? "--"}</span>
+                      <span className={`${styles.infoValue} ${styles.infoValueHighlight}`}>
+                        {demandeInfo?.codeDemande ?? "--"}
+                      </span>
                     </div>
                     <div className={styles.infoItem}>
                       <span className={styles.infoLabel}>Type de procédure</span>
@@ -535,28 +932,20 @@ const Facture = () => {
                       <span className={styles.infoLabel}>Localisation</span>
                       <span className={styles.infoValue}>
                         <MapPin size={14} style={{ display: "inline", marginRight: "0.25rem" }} />
-                        {demandeInfo?.commune || demandeInfo?.wilaya
-                          ? [demandeInfo?.commune, demandeInfo?.wilaya]
-                              .filter(Boolean)
-                              .join(", ")
-                          : "--"}
+                        {locationText}
                       </span>
                     </div>
                     <div className={styles.infoItem}>
                       <span className={styles.infoLabel}>Superficie</span>
                       <span className={styles.infoValue}>
-                        {demandeInfo?.superficie != null
-                          ? `${demandeInfo.superficie} hectares`
-                          : "--"}
+                        {superficieText}
                       </span>
                     </div>
                     <div className={styles.infoItem}>
                       <span className={styles.infoLabel}>Substances</span>
                       <span className={styles.infoValue}>
                         <Gem size={14} style={{ display: "inline", marginRight: "0.25rem" }} />
-                        {demandeInfo?.substances?.length
-                          ? demandeInfo.substances.join(", ")
-                          : "--"}
+                        {substancesText}
                       </span>
                     </div>
                   </div>

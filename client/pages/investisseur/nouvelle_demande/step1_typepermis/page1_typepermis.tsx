@@ -13,6 +13,13 @@ import { useViewNavigator } from '../../../../src/hooks/useViewNavigator';
 import { useAuthReady } from '../../../../src/hooks/useAuthReady';
 import { useLoading } from '@/components/globalspinner/LoadingContext';
 import ProgressStepper from '../../../../components/ProgressStepper';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 import 'react-datepicker/dist/react-datepicker.css';
 import { useAuthStore } from '@/src/store/useAuthStore';
@@ -30,7 +37,7 @@ interface TypePermis {
 }
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL ?? '';
-const SIMPLE_STEPS = ['Type & Cadastre', 'Localisation', 'Documents', 'Facture', 'Paiement'];
+const SIMPLE_STEPS = ['Type & Cadastre', 'Localisation', 'Capacités',  'Documents', 'Facture', 'Paiement'];
 
 export default function DemandeStart() {
   const router = useRouter();
@@ -236,19 +243,29 @@ console.log('auth in start procedure', auth);
             <label className={styles.label}>
               Type de permis <span className={styles.requiredMark}>*</span>
             </label>
-            <select
-              className={styles.select}
-              onChange={(event) => handlePermisChange(event.target.value)}
-              value={selectedPermisId === '' ? '' : String(selectedPermisId)}
+            <Select
+              value={selectedPermisId === '' ? undefined : String(selectedPermisId)}
+              onValueChange={handlePermisChange}
               disabled={optionsLoading}
             >
-              <option value="">-- Selectionnez --</option>
-              {permisOptions.map((permis) => (
-                <option key={permis.id} value={permis.id}>
-                  {permis.lib_type} ({permis.code_type}) - {permis.regime}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className={styles.select}>
+                <SelectValue
+                  className={styles.selectValue}
+                  placeholder="-- Selectionnez --"
+                />
+              </SelectTrigger>
+              <SelectContent className={styles.selectContent}>
+                {permisOptions.map((permis) => (
+                  <SelectItem
+                    key={permis.id}
+                    value={String(permis.id)}
+                    className={styles.selectItem}
+                  >
+                    {permis.lib_type} ({permis.code_type}) - {permis.regime}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             {detailsLoading && (
               <div className={styles.loadingHint}>Chargement des details du permis...</div>

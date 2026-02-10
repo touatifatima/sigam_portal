@@ -59,7 +59,7 @@ export const GlobalSpinner = () => {
       open={isLoading}
     >
       <SigamLoaderContainer>
-        {['G', 'U', 'N', 'A', 'M'].map((letter, index) => (
+        {['P', 'O', 'M'].map((letter, index) => (
           <Letter key={index} delay={`${index * 0.15}s`}>
             {letter}
           </Letter>

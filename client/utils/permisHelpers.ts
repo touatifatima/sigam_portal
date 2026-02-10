@@ -99,6 +99,11 @@ export const getPermisCommuneName = (permis: any): string | null => {
   return demande?.commune?.nom_communeFR ?? null;
 };
 
+export const getPermisDairaName = (permis: any): string | null => {
+  const demande = getLatestDemande(permis);
+  return demande?.commune?.daira?.nom_dairaFR ?? null;
+};
+
 export const getPermisTitulaireName = (permis: any): string | null => {
   // Do not use the direct permis.detenteur relation.
   // Always derive the holder from demandes -> detenteurDemande.

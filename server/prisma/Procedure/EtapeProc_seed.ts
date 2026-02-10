@@ -23,7 +23,7 @@ type etapeProcCSV = {
 export async function main() {
   const etapeProcData: any[] = [];
   const manyEtapeData: any[] = [];
-  const csvFilePath = path.join('T:', 'Amina', 'BaseSicma_Urgence', 'df_EtapeProc.csv');
+  const csvFilePath = path.join('T:', 'cleaned_df', 'df_EtapeProc.csv');
 
   fs.createReadStream(csvFilePath)
     .pipe(

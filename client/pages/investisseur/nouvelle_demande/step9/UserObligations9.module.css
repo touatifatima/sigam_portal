@@ -43,7 +43,7 @@
 .title {
   font-size: 28px;
   font-weight: 700;
-  color: #1f2937;
+  color: hsl(330 45% 32%);
   margin-bottom: 8px;
   display: flex;
   justify-content: space-between;

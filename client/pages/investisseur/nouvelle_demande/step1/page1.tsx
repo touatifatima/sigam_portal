@@ -14,6 +14,7 @@ import styles from "./documents1.module.css";
 import Navbar from "../../../navbar/Navbar";
 import Sidebar from "../../../sidebar/Sidebar";
 import ProgressStepper from "../../../../components/ProgressStepper";
+import { useStepperPhases } from "@/src/hooks/useStepperPhases";
 import { useViewNavigator } from "../../../../src/hooks/useViewNavigator";
 import router from 'next/router';
 import { toast } from "react-toastify";
@@ -132,7 +133,14 @@ export default function Step5_Documents() {
       nextUrls[doc.id_doc] = hasFile ? incomingUrl : '';
     });
     setStatusMap(nextStatus);
-    setFileUrls(nextUrls);
+    setFileUrls((prev) => {
+      const merged = { ...prev };
+      Object.entries(nextUrls).forEach(([key, url]) => {
+        const id = Number(key);
+        merged[id] = url || merged[id] || '';
+      });
+      return merged;
+    });
   }, []);
 
 
@@ -382,26 +390,12 @@ export default function Step5_Documents() {
     };
   }, [idDemande, apiURL, refetchTrigger]);
 
-  useActivateEtape({
-    idProc,
-    etapeNum: 1, // kept for backward compatibility, actual id resolved in hook via page_route
-    shouldActivate: currentStep === 1 && !activatedSteps.has(1) && isPageReady,
-    onActivationSuccess: (stepStatus: string) => {
-      if (stepStatus === 'TERMINEE') {
-        setActivatedSteps(prev => new Set(prev).add(1));
-        setHasActivatedStep1(true);
-        return;
-      }
-
-      setActivatedSteps(prev => new Set(prev).add(1));
-      setHasActivatedStep1(true);
-
-      // Force a refetch so local procedureData matches backend
-      setTimeout(() => setRefetchTrigger(prev => prev + 1), 500);
-    }
-  });
-
-  const phases: Phase[] = procedureData?.ProcedurePhase 
+  const { phases: stepperPhases, etapeIdForRoute } = useStepperPhases(
+    procedureData,
+    apiURL,
+    'investisseur/nouvelle_demande/step1/page1',
+  );
+  const fallbackPhases: Phase[] = procedureData?.ProcedurePhase
     ? procedureData.ProcedurePhase
         .slice()
         .sort((a: ProcedurePhase, b: ProcedurePhase) => a.ordre - b.ordre)
@@ -410,19 +404,50 @@ export default function Step5_Documents() {
           ordre: pp.ordre,
         }))
     : [];
+  const phases: Phase[] = stepperPhases.length > 0 ? stepperPhases : fallbackPhases;
 
   // Resolve the backend etape id for this page using page_route
   const etapeIdForThisPage = useMemo(() => {
+    if (etapeIdForRoute) return etapeIdForRoute;
     if (!procedureData) return null;
-    const pathname = 'investisseur/nouvelle_demande/step1/page1';//doc page
+    const pathname = 'investisseur/nouvelle_demande/step1/page1'; // doc page
+    const normalize = (value: string) => value.replace(/^\/+/, '').toLowerCase();
+    const target = normalize(pathname);
     const phasesList = (procedureData.ProcedurePhase || []) as ProcedurePhase[];
     for (const pp of phasesList) {
       const etapes = pp.phase?.etapes || [];
-      const match = etapes.find((e: any) => e.page_route === pathname);
+      const match = etapes.find((e: any) => normalize(e.page_route || '') === target);
       if (match) return match.id_etape;
     }
     return null;
-  }, [procedureData]);
+  }, [procedureData, etapeIdForRoute]);
+  const resolvedEtapeId = etapeIdForThisPage ?? currentEtape?.id_etape ?? null;
+
+  useEffect(() => {
+    if (etapeIdForThisPage && currentStep !== etapeIdForThisPage) {
+      setCurrentStep(etapeIdForThisPage);
+    }
+  }, [etapeIdForThisPage, currentStep]);
+
+  useActivateEtape({
+    idProc,
+    etapeNum: resolvedEtapeId ?? 0,
+    shouldActivate: !!resolvedEtapeId && !activatedSteps.has(resolvedEtapeId) && isPageReady,
+    onActivationSuccess: (stepStatus: string) => {
+      if (!resolvedEtapeId) return;
+      if (stepStatus === 'TERMINEE') {
+        setActivatedSteps(prev => new Set(prev).add(resolvedEtapeId));
+        setHasActivatedStep1(true);
+        return;
+      }
+
+      setActivatedSteps(prev => new Set(prev).add(resolvedEtapeId));
+      setHasActivatedStep1(true);
+
+      // Force a refetch so local procedureData matches backend
+      setTimeout(() => setRefetchTrigger(prev => prev + 1), 500);
+    }
+  });
 
   const handleOpenCahierForm = (doc: DocumentWithStatus) => {
     setSelectedCahierDoc(doc);
@@ -671,6 +696,10 @@ export default function Step5_Documents() {
         setEtapeMessage("ID de procédure manquant.");
         return;
       }
+      if (!resolvedEtapeId) {
+        setEtapeMessage("Etape introuvable pour la page Documents.");
+        return;
+      }
 
       if (statutProc === 'TERMINEE') {
         setEtapeMessage("Procédure déjé terminée.");
@@ -687,9 +716,9 @@ export default function Step5_Documents() {
           setEtapeMessage("Erreur lors de l'enregistrement de l'étape.");
           return;
         }
-        const etapeId = etapeIdForThisPage ?? 1;
+        const etapeId = resolvedEtapeId;
         await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`);
-        await router.push(`/investisseur/nouvelle_demande/step3/page3?id=${idProc}`);
+        await router.push(`/investisseur/nouvelle_demande/step11/page11?id=${idProc}`);
       } catch (err) {
         console.error('Erreur lors de la navigation vers l\'étape suivante', err);
         setEtapeMessage("Erreur lors de l'enregistrement de l'étape.");
@@ -707,14 +736,16 @@ export default function Step5_Documents() {
       savingEtape,
       submitDossier,
       etapeIdForThisPage,
+      currentEtape,
+      resolvedEtapeId,
       apiURL,
       statutProc,
     ]
   );
 
-  const handleBack =async () => {
-      router.push(`/investisseur/nouvelle_demande/type_permis/page1_type?id=${idProc}`)
-  }
+  const handleBack = async () => {
+    router.push(`/investisseur/nouvelle_demande/step3/page3?id=${idProc}`);
+  };
 
 
   // Afficher les documents manquants obligatoires
@@ -752,7 +783,7 @@ export default function Step5_Documents() {
                   <ProgressStepper
                     phases={phases}
                     currentProcedureId={idProc}
-                    currentEtapeId={currentStep}
+                    currentEtapeId={etapeIdForThisPage ?? currentEtape?.id_etape ?? currentStep}
                     procedurePhases={procedureData.ProcedurePhase || []}
                     procedureTypeId={procedureTypeId}
                     procedureEtapes={procedureData.ProcedureEtape || []}
@@ -816,7 +847,13 @@ export default function Step5_Documents() {
                   <div className={styles.documentsGrid}>
                     {documents.map((doc) => {
                       const status: DocStatus = statusMap[doc.id_doc] ?? 'manquant';
-                      const rawFileUrl = fileUrls[doc.id_doc];
+                      const rawFileUrl =
+                        fileUrls[doc.id_doc] ||
+                        doc.file_url ||
+                        (doc as any).fileUrl ||
+                        (doc as any).path ||
+                        (doc as any).url ||
+                        '';
                       const resolvedFileUrl =
                         rawFileUrl && rawFileUrl.startsWith('http')
                           ? rawFileUrl

@@ -9,7 +9,10 @@ export class DemandesDashboardController {
 
   @Get('en-cours')
   @ApiOperation({ summary: 'Get pending demandes' })
-  @ApiResponse({ status: 200, description: 'Pending demandes retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Pending demandes retrieved successfully',
+  })
   async getPendingDemandes() {
     return this.demandesService.findPending();
   }

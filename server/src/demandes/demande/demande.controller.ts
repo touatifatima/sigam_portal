@@ -6,16 +6,22 @@ import {
   Param,
   Get,
   ParseIntPipe,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { DemandeService } from './demande.service';
 import { RequirePermissions } from 'src/auth/require-permissions.dto';
 import { UpdateDemandeDto } from './update-demande.dto';
 import { Req } from '@nestjs/common';
+import { SessionService } from 'src/session/session.service';
 
 
 @Controller('demandes')
 export class DemandesController {
-  constructor(private readonly demandeService: DemandeService) {}
+  constructor(
+    private readonly demandeService: DemandeService,
+    private readonly sessionService: SessionService,
+  ) {}
 
   @Put(':id')
   async updateDemande(
@@ -23,6 +29,19 @@ export class DemandesController {
     @Body() updateDemandeDto: UpdateDemandeDto,
   ) {
     return this.demandeService.update(+id, updateDemandeDto);
+  }
+////////////// Get demandes for the currently authenticated user
+  @Get('mes-demandes')
+  async getMesDemandes(@Req() req: any) {
+    const token = req.cookies?.auth_token;
+    if (!token) {
+      throw new HttpException('Non authentifie', HttpStatus.UNAUTHORIZED);
+    }
+    const session = await this.sessionService.validateSession(token);
+    if (!session?.user?.id) {
+      throw new HttpException('Session invalide', HttpStatus.UNAUTHORIZED);
+    }
+    return this.demandeService.findByUserId(session.user.id);
   }
 
   @Get(':id')

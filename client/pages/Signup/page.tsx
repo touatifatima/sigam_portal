@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import axios from 'axios';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -13,6 +14,7 @@ export default function Register() {
     prenom: '',
     username: '',                                    
     email: '',
+    telephone: '',
     password: '',
     confirmPassword: '',
     role: '',
@@ -20,7 +22,9 @@ export default function Register() {
                          
   const [roles, setRoles] = useState<{ id: number; name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
+  const router = useRouter();
 
   // Exactement comme votre ancien code qui fonctionnait
   useEffect(() => {
@@ -42,6 +46,20 @@ export default function Register() {
 
   const handleChange = (field: string, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
+    if (field === 'telephone') {
+      setPhoneError(null);
+    }
+  };
+
+  const normalizePhone = (value: string) =>
+    value.replace(/[\s()-]/g, '');
+
+  const isValidPhone = (value: string) => {
+    const cleaned = normalizePhone(value);
+    if (!cleaned) return false;
+    if (/^0\d{9}$/.test(cleaned)) return true;
+    if (/^\+\d{8,15}$/.test(cleaned)) return true;
+    return false;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -49,6 +67,11 @@ export default function Register() {
     
     if (form.password !== form.confirmPassword) {
       alert('Les mots de passe ne correspondent pas.');
+      return;
+    }
+
+    if (!isValidPhone(form.telephone)) {
+      setPhoneError('Veuillez entrer un numéro de téléphone valide (10 chiffres)');
       return;
     }
 
@@ -61,8 +84,10 @@ export default function Register() {
         nom: form.nom,
         prenom: form.prenom,
         username: form.username,
+        telephone: normalizePhone(form.telephone),
       });
-      alert('✅ Compte créé avec succès !');
+      alert('✅ Code envoyé à votre email. Vérifiez votre boîte de réception.');
+      router.push(`/Signup/verify_email?email=${encodeURIComponent(form.email)}`);
       
       // Réinitialiser le formulaire
       setForm({
@@ -70,6 +95,7 @@ export default function Register() {
         prenom: '',
         username: '',
         email: '',
+        telephone: '',
         password: '',
         confirmPassword: '',
         role: roles.length > 0 ? roles[0].name : '',
@@ -155,6 +181,23 @@ export default function Register() {
                 disabled={isLoading}
                 required
               />
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label htmlFor="telephone">Téléphone *</label>
+              <input
+                id="telephone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                value={form.telephone}
+                onChange={e => handleChange('telephone', e.target.value)}
+                placeholder="Ex: 0XXXXXXXXX"
+                disabled={isLoading}
+                className={phoneError ? styles.inputError : ''}
+                required
+              />
+              {phoneError && <span className={styles.errorText}>{phoneError}</span>}
             </div>
 
             {/* EXACTEMENT COMME VOTRE ANCIEN CODE */}

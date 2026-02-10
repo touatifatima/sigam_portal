@@ -6,102 +6,106 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 220 25% 10%;
+    --background: 340 20% 98%;
+    --foreground: 330 30% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 25% 10%;
+    --card-foreground: 330 30% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 25% 10%;
+    --popover-foreground: 330 30% 15%;
 
-    --primary: 160 65% 45%; /* brighter green for CTAs */
-    --primary-foreground: 210 20% 12%;
+    --primary: 335 45% 45%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 25% 15%;
+    --secondary: 330 25% 20%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 20% 94%;
-    --muted-foreground: 220 15% 45%;
+    --muted: 340 20% 94%;
+    --muted-foreground: 330 20% 45%;
 
-    --accent: 35 95% 55%;
-    --accent-foreground: 220 25% 10%;
+    --accent: 195 35% 62%;
+    --accent-foreground: 330 30% 15%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 210 20% 88%;
-    --input: 210 20% 88%;
-    --ring: 160 70% 40%;
+    --border: 340 20% 88%;
+    --input: 340 20% 88%;
+    --ring: 335 45% 45%;
 
     --radius: 0.75rem;
     
-    /* Mining theme colors */
-    --mining-green: 160 70% 40%;
-    --mining-dark: 220 25% 12%;
-    --mining-gold: 35 95% 55%;
-    --mining-slate: 210 20% 25%;
+    /* Mining theme colors - Now mauve/pink palette */
+    --mining-primary: 335 45% 45%;
+    --mining-primary-light: 335 40% 55%;
+    --mining-dark: 330 30% 15%;
+    --mining-accent: 195 35% 62%;
+    --mining-slate: 330 15% 35%;
+    --mining-soft-pink: 340 30% 88%;
+    --mining-soft-blue: 195 40% 85%;
     
-    /* Gradients */
-    --gradient-hero: linear-gradient(135deg, hsl(220 25% 8% / 0.85) 0%, hsl(220 25% 15% / 0.7) 50%, transparent 100%);
-    --gradient-dark: linear-gradient(180deg, hsl(220 25% 8%) 0%, hsl(220 25% 15%) 100%);
-    --gradient-green: linear-gradient(135deg, hsl(160 70% 40%) 0%, hsl(160 60% 30%) 100%);
+    /* Gradients - Pink/Mauve theme */
+    --gradient-hero: linear-gradient(135deg, hsl(330 30% 10% / 0.85) 0%, hsl(330 25% 18% / 0.7) 50%, transparent 100%);
+    --gradient-dark: linear-gradient(180deg, hsl(330 30% 10%) 0%, hsl(330 25% 18%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(335 45% 45%) 0%, hsl(335 40% 55%) 100%);
+    --gradient-soft: linear-gradient(135deg, hsl(340 30% 88%) 0%, hsl(195 40% 85%) 50%, hsl(195 35% 82%) 100%);
     
     /* Shadows */
-    --shadow-card: 0 4px 30px -2px hsl(220 25% 10% / 0.08);
-    --shadow-hover: 0 20px 40px -8px hsl(220 25% 10% / 0.15);
-    --shadow-glow: 0 0 60px hsl(160 70% 40% / 0.3);
+    --shadow-card: 0 4px 30px -2px hsl(330 30% 15% / 0.08);
+    --shadow-hover: 0 20px 40px -8px hsl(330 30% 15% / 0.15);
+    --shadow-glow: 0 0 60px hsl(335 45% 45% / 0.3);
     
     /* Transitions */
     --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 
     --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-foreground: 330 20% 30%;
+    --sidebar-primary: 335 45% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 340 20% 96%;
+    --sidebar-accent-foreground: 330 30% 15%;
+    --sidebar-border: 340 15% 91%;
+    --sidebar-ring: 335 45% 45%;
   }
 
   .dark {
-    --background: 220 25% 8%;
-    --foreground: 210 40% 98%;
+    --background: 330 25% 8%;
+    --foreground: 340 20% 98%;
 
-    --card: 220 25% 12%;
-    --card-foreground: 210 40% 98%;
+    --card: 330 25% 12%;
+    --card-foreground: 340 20% 98%;
 
-    --popover: 220 25% 12%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 330 25% 12%;
+    --popover-foreground: 340 20% 98%;
 
-    --primary: 160 70% 45%;
-    --primary-foreground: 220 25% 8%;
+    --primary: 335 50% 55%;
+    --primary-foreground: 330 25% 8%;
 
-    --secondary: 210 20% 94%;
-    --secondary-foreground: 220 25% 10%;
+    --secondary: 340 20% 94%;
+    --secondary-foreground: 330 30% 15%;
 
-    --muted: 220 25% 18%;
-    --muted-foreground: 210 20% 65%;
+    --muted: 330 25% 18%;
+    --muted-foreground: 340 20% 65%;
 
-    --accent: 35 95% 55%;
-    --accent-foreground: 220 25% 10%;
+    --accent: 195 40% 65%;
+    --accent-foreground: 330 30% 15%;
 
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 340 20% 98%;
 
-    --border: 220 25% 20%;
-    --input: 220 25% 20%;
-    --ring: 160 70% 45%;
+    --border: 330 25% 20%;
+    --input: 330 25% 20%;
+    --ring: 335 50% 55%;
 
-    --sidebar-background: 220 25% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 160 70% 45%;
+    --sidebar-background: 330 25% 10%;
+    --sidebar-foreground: 340 15% 96%;
+    --sidebar-primary: 335 50% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 25% 15%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 220 25% 18%;
-    --sidebar-ring: 160 70% 45%;
+    --sidebar-accent: 330 25% 15%;
+    --sidebar-accent-foreground: 340 15% 96%;
+    --sidebar-border: 330 25% 18%;
+    --sidebar-ring: 335 50% 55%;
   }
 }
 
@@ -115,26 +119,9 @@
     font-family: 'Poppins', 'Cairo', sans-serif;
   }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Poppins', 'Cairo', sans-serif;
-}
-
-/* Global link styling for dark hero/nav contexts */
-a {
-  color: hsl(var(--foreground));
-  font-weight: 700;
-  text-decoration: none;
-  transition: color 0.2s ease, opacity 0.2s ease;
-}
-
-a:hover {
-  color: hsl(var(--primary));
-  opacity: 0.9;
-}
-
-a:active {
-  opacity: 0.8;
-}
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', 'Cairo', sans-serif;
+  }
 }
 
 @layer utilities {

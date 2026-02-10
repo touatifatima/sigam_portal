@@ -1,4 +1,4 @@
-// pages/permis-list/index.tsx
+// pages/permis-list/index.tsx         --listing all permis for admiiiinnnnn
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';

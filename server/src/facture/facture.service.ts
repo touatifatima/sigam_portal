@@ -5,7 +5,7 @@ import {
   Prisma,
   StatutFacture,
 } from '@prisma/client';
-import { PDFDocument, PDFFont, StandardFonts } from 'pdf-lib';
+import { PDFDocument, PDFFont, StandardFonts, rgb } from 'pdf-lib';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 const FIXED_AMOUNT = 215000;
@@ -200,7 +200,31 @@ export class FactureService {
   }
 
   async generateFacturePdf(id_facture: number) {
-    let facture = await this.prisma.facture.findUnique({
+    type FactureWithDemande = Prisma.FactureGetPayload<{
+      include: {
+        demande: {
+          include: {
+            typeProcedure: true;
+            typePermis: true;
+            commune: true;
+            daira: true;
+            wilaya: true;
+            demInitial: true;
+            verificationGeo: true;
+            inscriptionProvisoire: true;
+            utilisateur: { include: { detenteur: true } };
+            detenteurdemande: { include: { detenteur: true } };
+            communes: {
+              include: {
+                commune: { include: { daira: { include: { wilaya: true } } } };
+              };
+            };
+          };
+        };
+      };
+    }>;
+
+    let facture: FactureWithDemande | null = await this.prisma.facture.findUnique({
       where: { id_facture },
       include: {
         demande: {
@@ -208,9 +232,16 @@ export class FactureService {
             typeProcedure: true,
             typePermis: true,
             commune: true,
+            daira: true,
             wilaya: true,
             demInitial: true,
+            verificationGeo: true,
+            inscriptionProvisoire: true,
+            utilisateur: { include: { detenteur: true } },
             detenteurdemande: { include: { detenteur: true } },
+            communes: {
+              include: { commune: { include: { daira: { include: { wilaya: true } } } } },
+            },
           },
         },
       },
@@ -238,55 +269,231 @@ export class FactureService {
       facture = { ...facture, numero_facture: numeroFacture };
     }
 
+    const formatDate = (date: Date | null) => {
+      if (!date) return '--';
+      try {
+        return new Intl.DateTimeFormat('fr-DZ').format(date);
+      } catch {
+        return date.toISOString().slice(0, 10);
+      }
+    };
+
+    const sanitizeText = (value: string) => {
+      return String(value ?? '')
+        .replace(/[\u00A0\u202F]/g, ' ')
+        .replace(/[“”]/g, '"')
+        .replace(/[’]/g, "'");
+    };
+
+    const formatMoney = (value: number | null) => {
+      if (value == null || Number.isNaN(value)) return '--';
+      try {
+        const formatted = new Intl.NumberFormat('fr-DZ', {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        }).format(value);
+        return sanitizeText(formatted);
+      } catch {
+        return sanitizeText(String(value));
+      }
+    };
+
+    const pickName = (obj: any, keys: string[]) => {
+      if (!obj) return null;
+      if (typeof obj === 'string') return obj;
+      for (const key of keys) {
+        const val = obj?.[key];
+        if (typeof val === 'string' && val.trim() !== '') return val;
+      }
+      return null;
+    };
+
+    const formatPersonName = (obj: any) => {
+      if (!obj) return null;
+      if (typeof obj === 'string') return obj;
+      const company = pickName(obj, [
+        'nom_societeFR',
+        'nom_societeAR',
+        'nom_societe',
+        'raison_sociale',
+        'nom_entreprise',
+      ]);
+      if (company) return company;
+      const nom = pickName(obj, ['nom', 'nom_fr', 'nom_ar']);
+      const prenom = pickName(obj, ['prenom', 'prenom_fr', 'prenom_ar']);
+      if (nom && prenom) return `${nom} ${prenom}`.trim();
+      return nom || prenom || null;
+    };
+
+    const demande = facture.demande;
+    const detenteur =
+      demande.detenteurdemande?.[0]?.detenteur ??
+      demande.utilisateur?.detenteur ??
+      null;
+    const userName =
+      [demande.utilisateur?.Prenom, demande.utilisateur?.nom]
+        .filter(Boolean)
+        .join(' ')
+        .trim() || null;
+    const titulaire =
+      formatPersonName(detenteur) || userName || '--';
+
+    const communeNames = new Set<string>();
+    const dairaNames = new Set<string>();
+    const wilayaNames = new Set<string>();
+    if (Array.isArray(demande.communes) && demande.communes.length > 0) {
+      demande.communes.forEach((item: any) => {
+        const c = item?.commune;
+        const cName =
+          pickName(c, ['nom_communeFR', 'nom_communeAR', 'nom_commune']) ??
+          null;
+        if (cName) communeNames.add(cName);
+        const dName = pickName(c?.daira, ['nom_dairaFR', 'nom_dairaAR', 'nom_daira']);
+        if (dName) dairaNames.add(dName);
+        const wName = pickName(
+          c?.daira?.wilaya ?? c?.wilaya,
+          ['nom_wilayaFR', 'nom_wilayaAR', 'nom_wilaya'],
+        );
+        if (wName) wilayaNames.add(wName);
+      });
+    } else {
+      const cName = pickName(demande.commune, [
+        'nom_communeFR',
+        'nom_communeAR',
+        'nom_commune',
+      ]);
+      const dName = pickName(demande.daira, [
+        'nom_dairaFR',
+        'nom_dairaAR',
+        'nom_daira',
+      ]);
+      const wName = pickName(demande.wilaya, [
+        'nom_wilayaFR',
+        'nom_wilayaAR',
+        'nom_wilaya',
+      ]);
+      if (cName) communeNames.add(cName);
+      if (dName) dairaNames.add(dName);
+      if (wName) wilayaNames.add(wName);
+    }
+
+    const localisationParts = [
+      Array.from(communeNames).join(', '),
+      Array.from(dairaNames).join(', '),
+      Array.from(wilayaNames).join(', '),
+    ].filter((v) => v && v.trim() !== '');
+    const localisation = localisationParts.length
+      ? localisationParts.join(' - ')
+      : '--';
+
+    let substancesText = '--';
+    if (demande.id_proc) {
+      const subs = await this.prisma.substanceAssocieeDemande.findMany({
+        where: { id_proc: demande.id_proc },
+        include: { substance: true },
+      });
+      const sorted = subs.sort((a, b) => {
+        const pa = String(a?.priorite || '').toLowerCase() === 'principale' ? 0 : 1;
+        const pb = String(b?.priorite || '').toLowerCase() === 'principale' ? 0 : 1;
+        return pa - pb;
+      });
+      const names = sorted
+        .map((s) => s.substance?.nom_subFR || s.substance?.nom_subAR)
+        .filter((v): v is string => typeof v === 'string' && v.trim() !== '');
+      const unique = Array.from(new Set(names));
+      if (unique.length) {
+        substancesText = unique.join(', ');
+      }
+    }
+
+    const superficie =
+      demande.verificationGeo?.superficie_cadastrale ??
+      demande.inscriptionProvisoire?.superficie_declaree ??
+      demande.superficie ??
+      null;
+    const superficieText =
+      superficie != null && Number.isFinite(superficie)
+        ? `${superficie.toFixed(2)} ha`
+        : '--';
+
+    const devise = facture.devise === DeviseFacture.DZD ? 'DA' : facture.devise;
+
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([595, 842]);
     const { height, width } = page.getSize();
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-    const fontSize = 11;
-    const lineHeight = 16;
-    let y = height - 60;
-    const left = 50;
+    const marginX = 50;
+    const contentWidth = width - marginX * 2;
+    const brand = rgb(0.49, 0.23, 0.82);
+    const brandSoft = rgb(0.96, 0.94, 0.99);
+    const textColor = rgb(0.12, 0.12, 0.16);
+    const muted = rgb(0.4, 0.4, 0.45);
+    const tableHeader = rgb(0.94, 0.94, 0.97);
+    const border = rgb(0.86, 0.86, 0.9);
 
-    page.drawText('FACTURE', { x: left, y, size: 18, font: fontBold });
-    y -= 28;
+    page.drawRectangle({
+      x: 0,
+      y: height - 110,
+      width,
+      height: 110,
+      color: brandSoft,
+    });
 
-    const drawLine = (label: string, value: string) => {
-      page.drawText(`${label}: ${value}`, { x: left, y, size: fontSize, font });
-      y -= lineHeight;
+    page.drawText('SIGAM', {
+      x: marginX,
+      y: height - 62,
+      size: 22,
+      font: fontBold,
+      color: brand,
+    });
+
+    const drawRight = (
+      text: string,
+      y: number,
+      size: number,
+      currentFont: PDFFont,
+      color = textColor,
+    ) => {
+      const safeText = sanitizeText(text);
+      const textWidth = currentFont.widthOfTextAtSize(safeText, size);
+      page.drawText(safeText, {
+        x: width - marginX - textWidth,
+        y,
+        size,
+        font: currentFont,
+        color,
+      });
     };
 
-    const formatDate = (date: Date | null) => {
-      if (!date) return '--';
-      return date.toISOString().slice(0, 10);
-    };
+    drawRight('FACTURE', height - 62, 18, fontBold, brand);
+    drawRight(`N° ${numeroFacture ?? facture.id_facture}`, height - 82, 10, font, muted);
+    drawRight(
+      `Date émission : ${formatDate(facture.date_emission ?? null)}`,
+      height - 98,
+      10,
+      font,
+      muted,
+    );
 
-    const detenteur =
-      facture.demande.detenteurdemande?.[0]?.detenteur ?? null;
-    const societe =
-      detenteur?.nom_societeFR ||
-      detenteur?.nom_societeAR ||
-      '--';
-    const commune =
-      facture.demande.commune?.nom_communeFR ||
-      facture.demande.commune?.nom_communeAR ||
-      '--';
-    const wilaya =
-      facture.demande.wilaya?.nom_wilayaFR ||
-      facture.demande.wilaya?.nom_wilayaAR ||
-      '--';
+    let y = height - 140;
 
-    drawLine('Numero', numeroFacture ?? String(facture.id_facture));
-    drawLine('Date emission', formatDate(facture.date_emission ?? null));
-    drawLine('Demande', facture.demande.code_demande ?? '--');
-    drawLine('Type procedure', facture.demande.typeProcedure?.libelle ?? '--');
-    drawLine('Type permis', facture.demande.typePermis?.lib_type ?? '--');
-    drawLine('Societe', societe);
-    drawLine('Localisation', [commune, wilaya].filter(Boolean).join(', '));
-    y -= 8;
-
-    page.drawText('Montants', { x: left, y, size: 13, font: fontBold });
-    y -= 18;
+    page.drawText('Informations de la demande', {
+      x: marginX,
+      y,
+      size: 13,
+      font: fontBold,
+      color: brand,
+    });
+    y -= 12;
+    page.drawRectangle({
+      x: marginX,
+      y,
+      width: contentWidth,
+      height: 1,
+      color: border,
+    });
+    y -= 16;
 
     const wrapText = (
       text: string,
@@ -294,7 +501,7 @@ export class FactureService {
       currentFont: PDFFont,
       size: number,
     ) => {
-      const words = String(text ?? '').split(' ');
+      const words = sanitizeText(text).split(' ');
       const lines: string[] = [];
       let line = '';
       for (const word of words) {
@@ -310,32 +517,223 @@ export class FactureService {
       return lines.length ? lines : [''];
     };
 
-    const lines = this.buildLines();
-    for (const row of lines) {
-      const posteLines = wrapText(row.poste, width - 200, font, fontSize);
-      const baseLines = wrapText(row.base, width - 200, font, fontSize);
-      const maxLines = Math.max(posteLines.length, baseLines.length);
-      for (let i = 0; i < maxLines; i += 1) {
-        page.drawText(posteLines[i] ?? '', { x: left, y, size: fontSize, font });
-        page.drawText(baseLines[i] ?? '', { x: left + 200, y, size: fontSize, font });
-        if (i === 0) {
-          page.drawText(String(row.montant), {
-            x: width - 90,
+    const labelSize = 9;
+    const valueSize = 11;
+    const valueLineHeight = 14;
+    const colGap = 22;
+    const colWidth = (contentWidth - colGap) / 2;
+
+    const drawField = (
+      x: number,
+      yPos: number,
+      label: string,
+      value: string,
+      maxWidth: number,
+    ) => {
+      page.drawText(sanitizeText(label.toUpperCase()), {
+        x,
+        y: yPos,
+        size: labelSize,
+        font: font,
+        color: muted,
+      });
+      const lines = wrapText(value || '--', maxWidth, font, valueSize);
+      let currentY = yPos - labelSize - 4;
+      lines.forEach((line) => {
+        page.drawText(sanitizeText(line), {
+          x,
+          y: currentY,
+          size: valueSize,
+          font,
+          color: textColor,
+        });
+        currentY -= valueLineHeight;
+      });
+      return labelSize + 4 + lines.length * valueLineHeight + 6;
+    };
+
+    const rows = [
+      {
+        left: {
+          label: 'Code demande',
+          value: demande.code_demande ?? '--',
+        },
+        right: {
+          label: 'Type de procédure',
+          value: demande.typeProcedure?.libelle ?? '--',
+        },
+      },
+      {
+        left: {
+          label: 'Type de permis',
+          value: demande.typePermis?.lib_type ?? '--',
+        },
+        right: {
+          label: 'Titulaire',
+          value: titulaire,
+        },
+      },
+      {
+        left: {
+          label: 'Localisation',
+          value: localisation,
+        },
+        right: {
+          label: 'Superficie',
+          value: superficieText,
+        },
+      },
+    ];
+
+    for (const row of rows) {
+      const leftHeight = row.left
+        ? drawField(marginX, y, row.left.label, row.left.value, colWidth)
+        : 0;
+      const rightHeight = row.right
+        ? drawField(
+            marginX + colWidth + colGap,
             y,
-            size: fontSize,
-            font,
-          });
-        }
-        y -= lineHeight;
-      }
-      y -= 4;
+            row.right.label,
+            row.right.value,
+            colWidth,
+          )
+        : 0;
+      const rowHeight = Math.max(leftHeight, rightHeight);
+      y -= rowHeight + 4;
     }
 
-    page.drawText(`Total: ${String(facture.montant_total)} ${facture.devise}`, {
-      x: left,
+    const substanceHeight = drawField(
+      marginX,
       y,
-      size: 12,
+      'Substances',
+      substancesText,
+      contentWidth,
+    );
+    y -= substanceHeight + 8;
+
+    page.drawText('Détail des montants', {
+      x: marginX,
+      y,
+      size: 13,
       font: fontBold,
+      color: brand,
+    });
+    y -= 18;
+
+    const tableX = marginX;
+    const tableWidth = contentWidth;
+    const col1 = tableWidth * 0.42;
+    const col2 = tableWidth * 0.38;
+    const col3 = tableWidth - col1 - col2;
+    const headerHeight = 22;
+
+    page.drawRectangle({
+      x: tableX,
+      y: y - headerHeight,
+      width: tableWidth,
+      height: headerHeight,
+      color: tableHeader,
+    });
+    page.drawText('Poste', {
+      x: tableX + 8,
+      y: y - 15,
+      size: 9,
+      font: fontBold,
+      color: muted,
+    });
+    page.drawText('Base de calcul', {
+      x: tableX + col1 + 8,
+      y: y - 15,
+      size: 9,
+      font: fontBold,
+      color: muted,
+    });
+    drawRight('Montant', y - 15, 9, fontBold, muted);
+
+    y -= headerHeight + 6;
+
+    const lines = this.buildLines();
+    for (const row of lines) {
+      const posteLines = wrapText(row.poste, col1 - 12, font, valueSize);
+      const baseLines = wrapText(row.base, col2 - 12, font, valueSize);
+      const maxLines = Math.max(posteLines.length, baseLines.length, 1);
+      const rowHeight = maxLines * valueLineHeight + 8;
+
+      const rowRect = {
+        x: tableX,
+        y: y - rowHeight + 2,
+        width: tableWidth,
+        height: rowHeight,
+        borderColor: border,
+        borderWidth: 0.5,
+        ...(row.isTotal ? { color: brandSoft } : {}),
+      };
+      page.drawRectangle(rowRect);
+
+      let textY = y - valueSize;
+      for (let i = 0; i < maxLines; i += 1) {
+        page.drawText(sanitizeText(posteLines[i] ?? ''), {
+          x: tableX + 8,
+          y: textY,
+          size: valueSize,
+          font,
+          color: textColor,
+        });
+        page.drawText(sanitizeText(baseLines[i] ?? ''), {
+          x: tableX + col1 + 8,
+          y: textY,
+          size: valueSize,
+          font,
+          color: textColor,
+        });
+        if (i === 0) {
+          drawRight(
+            `${formatMoney(row.montant)} ${devise}`,
+            textY,
+            valueSize,
+            fontBold,
+            row.isTotal ? brand : textColor,
+          );
+        }
+        textY -= valueLineHeight;
+      }
+      y -= rowHeight + 4;
+    }
+
+    const totalText = `${formatMoney(facture.montant_total)} ${devise}`;
+    page.drawRectangle({
+      x: tableX,
+      y: y - 26,
+      width: tableWidth,
+      height: 26,
+      color: brandSoft,
+    });
+    page.drawText('TOTAL', {
+      x: tableX + 8,
+      y: y - 18,
+      size: 11,
+      font: fontBold,
+      color: brand,
+    });
+    drawRight(totalText, y - 18, 11, fontBold, brand);
+    y -= 40;
+
+    const footerLines = wrapText(
+      `Cette facture est un récapitulatif des droits et taxes applicables à votre demande. ${totalText} sera exigible après validation de votre dossier. Paiement sécurisé SIGAM.`,
+      contentWidth,
+      font,
+      8,
+    );
+    let footerY = 52;
+    footerLines.forEach((line) => {
+      page.drawText(line, {
+        x: marginX,
+        y: footerY,
+        size: 8,
+        font,
+        color: muted,
+      });
+      footerY -= 10;
     });
 
     const buffer = Buffer.from(await pdfDoc.save());
@@ -354,7 +752,7 @@ export class FactureService {
   private buildLines(): FactureLine[] {
     return [
       {
-        poste: "Frais d'inscription et d'etude de dossier",
+        poste: "Frais d'inscription et d'étude de dossier",
         base: 'Montant fixe pour nouvelle demande de permis',
         montant: FIXED_AMOUNT,
         isTotal: true,

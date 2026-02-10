@@ -1,6 +1,6 @@
 import { BadRequestException, Body, Controller, Get, Headers, Param, Post } from '@nestjs/common';
 import { GisPointInput, GisService } from './gis.service';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Controller('gis')
 export class GisController {
@@ -63,7 +63,7 @@ export class GisController {
       code_demande: string | null;
       typeProcedure: { libelle: string | null } | null;
     }> = procIds.length
-      ? await this.prisma.demande.findMany({
+      ? await this.prisma.demandePortail.findMany({
           where: { id_proc: { in: procIds } },
           select: {
             id_proc: true,

@@ -9,7 +9,12 @@ import { ProcedureEtapeService } from '../procedure_etape/procedure-etape.servic
 
 @Module({
   controllers: [ProcedureRenouvellementController],
-  providers: [ProcedureRenouvellementService, PaymentService,ProcedureEtapeService
-,PrismaService,DemandeService],
+  providers: [
+    ProcedureRenouvellementService,
+    PaymentService,
+    ProcedureEtapeService,
+    PrismaService,
+    DemandeService,
+  ],
 })
 export class ProcedureRenouvellementModule {}

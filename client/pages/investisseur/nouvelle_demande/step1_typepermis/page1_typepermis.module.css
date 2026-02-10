@@ -138,7 +138,13 @@
   font-size: 14px;
   transition: var(--transition);
 }
+.select:hover,
+.datepicker-wrapper input:hover {
+  border-color: rgba(155, 44, 88, 0.45);
+}
 .select:focus,
+.select:focus-visible,
+.select[data-state="open"],
 .datepicker-wrapper input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(155, 44, 88, 0.18);
@@ -147,6 +153,56 @@
 .selectSelected {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(155, 44, 88, 0.1);
+}
+.select svg {
+  color: var(--accent-strong);
+  opacity: 0.9;
+}
+
+.selectValue[data-placeholder] {
+  color: var(--text-muted);
+}
+
+.selectContent {
+  border-radius: 12px;
+  border: 1px solid rgba(155, 44, 88, 0.2);
+  background: #fff;
+  box-shadow: 0 18px 40px rgba(44, 32, 42, 0.18);
+  padding: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.selectContent::-webkit-scrollbar {
+  width: 8px;
+}
+
+.selectContent::-webkit-scrollbar-thumb {
+  background: rgba(155, 44, 88, 0.35);
+  border-radius: 999px;
+}
+
+.selectContent::-webkit-scrollbar-track {
+  background: rgba(155, 44, 88, 0.08);
+  border-radius: 999px;
+}
+
+.selectItem {
+  border-radius: 8px;
+  padding: 8px 12px 8px 32px;
+  color: var(--text-main);
+  font-size: 14px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.selectItem[data-highlighted] {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.selectItem[data-state="checked"] {
+  background: rgba(155, 44, 88, 0.14);
+  color: var(--accent-strong);
+  font-weight: 600;
 }
 
 /* Info/error */

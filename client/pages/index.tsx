@@ -38,6 +38,15 @@ export default function LoginPage() {
         }
       );
 
+      if (response.data?.error) {
+        const msg =
+          response.data.error === 'Email non vérifié'
+            ? 'Veuillez vérifier votre email avant de vous connecter.'
+            : 'Email ou mot de passe invalide';
+        setError(msg);
+        return;
+      }
+
       login(response.data);
 
       const user = response.data?.user;

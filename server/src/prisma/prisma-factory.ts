@@ -10,7 +10,7 @@ loadEnv({ path: path.resolve(process.cwd(), '.env') });
 
 // Reusable PrismaClient options using the Postgres adapter.
 export function createPrismaClientOptions(): any {
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString = process.env.DATABASE_URL_PORTAIL;
 
   if (!connectionString) {
     throw new Error(

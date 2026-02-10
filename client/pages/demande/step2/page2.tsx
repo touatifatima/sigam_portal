@@ -915,7 +915,7 @@ export default function Step2() {
             )}
             <div className={styles.contentWrapper}>
               <h2 className={styles.pageTitle}>
-                <span className={styles.stepNumber}>?tape 2</span>
+                <span className={styles.stepNumber}>étape 2</span>
                 Identification de la société
               </h2>
               <p className={styles.pageSubtitle}>

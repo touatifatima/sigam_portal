@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -33,6 +34,9 @@ model UtilisateurPortail {
   userGroups            UserGroup[]
   detenteur             DetenteurMoralePortail? @relation(fields: [detenteurId], references: [id_detenteur])
   role                  Role?                   @relation(fields: [roleId], references: [id])
+  emailVerified          Boolean   @default(false)  ///////////
+  verificationCode       String?   // stocke le code hashé ou en clair (hashé = mieux)  ////////////
+  verificationCodeExpires DateTime? // date d’expiration   ///////////////
 
   @@map("utilisateurs_portail")
 }
@@ -751,51 +755,56 @@ model demandeMin {
   ordre_mineral String?
   demande       demandePortail @relation(fields: [id_demande], references: [id_demande])
 }
-
-model PermisPortail {
-  id                     Int                     @id @default(autoincrement())
-  id_typePermis          Int
-  id_antenne             Int?
-  id_detenteur           Int?
-  id_statut              Int?
-  code_permis            String?
-  date_adjudication      DateTime?
-  date_octroi            DateTime?
-  date_expiration        DateTime?
-  duree_validite         Int?
-  lieu_ditFR             String?
-  lieu_ditAR             String?
-  mode_attribution       String?
-  utilisation            String?
-  montant_offre          String?
-  statut_activites       String?
-  nombre_renouvellements Int?
-  hypothec               String?
-  date_conversion_permis DateTime?
-  commentaires           String?
-  validation             Boolean?
-  is_signed              Boolean?                @default(false)
-  date_remise_titre      DateTime?
-  nom_remise_titre       String?
-  qr_code                String?
-  date_heure_systeme     DateTime?
-  qr_inserer_par         String?
-  code_wilaya            String?
-  superficie             Float?
-  CahierCharge           CahierChargePortail[]
-  codeAssimilation       codeAssimilation[]
-  demFusion              demFusion?
-  fusionPermisSource     fusionPermisSource[]
-  ObligationFiscale      ObligationFiscale[]
-  antenne                Antenne?                @relation(fields: [id_antenne], references: [id_antenne])
-  detenteur              DetenteurMoralePortail? @relation(fields: [id_detenteur], references: [id_detenteur])
-  statut                 StatutPermis?           @relation(fields: [id_statut], references: [id])
-  typePermis             TypePermis              @relation(fields: [id_typePermis], references: [id])
-  permisProcedure        permisProcedure[]
-  PermisTemplate         PermisTemplate[]
-  RapportActivite        RapportActivite[]
-
-  @@map("permis")
+  model PermisPortail {
+    id                       Int       @id @default(autoincrement())
+    id_typePermis            Int
+    id_antenne               Int?
+    id_detenteur             Int?
+    id_statut                Int?
+    code_permis              String?   
+    date_adjudication        DateTime?
+    date_octroi              DateTime?
+    date_signature           DateTime?
+    date_expiration          DateTime?
+    duree_validite           Int? // in years
+    lieu_ditFR               String?
+    lieu_ditAR               String?
+    mode_attribution         String?
+    superficie               Float?
+    utilisation              String?
+    montant_offre            String?
+    statut_activites         String?
+    nombre_renouvellements   Int?
+    hypothec                 String?
+    date_conversion_permis   DateTime?
+    date_option_permis       DateTime?
+    commentaires             String?
+    validation               Boolean?
+      is_signed                Boolean?  @default(false)
+        date_remise_titre        DateTime?
+        nom_remise_titre         String?
+        qr_code                  String?
+        date_heure_systeme       DateTime?
+        qr_inserer_par           String?
+        code_wilaya              String?
+        // Relations
+      typePermis         TypePermis           @relation(fields: [id_typePermis], references: [id])
+      antenne            Antenne?             @relation(fields: [id_antenne], references: [id_antenne])
+      detenteur          DetenteurMoralePortail?     @relation(fields: [id_detenteur], references: [id_detenteur])
+    statut             StatutPermis?        @relation(fields: [id_statut], references: [id])
+    permisProcedure    permisProcedure[]
+    RapportActivite    RapportActivite[]
+    CahierCharge       CahierChargePortail[]
+    ObligationFiscale  ObligationFiscale[]
+    demFusion          demFusion?
+    fusionPermisSource fusionPermisSource[]
+    codeAssimilation codeAssimilation[]
+    PermisTemplate     PermisTemplate[]
+    @@index([date_octroi(sort: Desc)], map: "idx_permis_date_octroi")
+    @@index([id_statut, date_octroi(sort: Desc)], map: "idx_permis_id_statut_date_octroi")
+    @@index([id_statut, date_expiration(sort: Desc)], map: "idx_permis_id_statut_date_expiration")
+    @@index([code_permis], map: "idx_permis_code_permis")
+    @@map("PermisPortail") 
 }
 
 model fusionPermisSource {
@@ -1140,6 +1149,7 @@ model permisProcedure {
   id_proc            Int
   permis             PermisPortail    @relation(fields: [id_permis], references: [id])
   procedure          ProcedurePortail @relation(fields: [id_proc], references: [id_proc])
+  date_octroi_proc   DateTime?
 
   @@unique([id_permis, id_proc])
   @@map("permis_procedure")

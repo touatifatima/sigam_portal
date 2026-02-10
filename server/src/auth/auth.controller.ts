@@ -15,12 +15,15 @@ export class AuthController {
     @Body() body: { email: string; password: string },
     @Res({ passthrough: true }) res: Response
   ) {
-    const user = await this.authService.validateUser(body.email, body.password);
-    if (!user) {
+    const result = await this.authService.validateUser(body.email, body.password);
+    if (!result.user) {
+      if (result.error === 'EMAIL_NOT_VERIFIED') {
+        return { error: 'Email non vérifié' };
+      }
       return { error: 'Invalid credentials' };
     }
 
-    const { token, user: userData } = await this.authService.login(user);
+    const { token, user: userData } = await this.authService.login(result.user);
 
     res.cookie('auth_token', token, {
       httpOnly: true,
@@ -60,6 +63,30 @@ export class AuthController {
   @Post('register')
   async register(@Body() body) {
     return this.authService.register(body);
+  }
+
+  @Post('verify-email')
+  async verifyEmail(
+    @Body() body: { email: string; code: string },
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const { token, user } = await this.authService.verifyEmail(body.email, body.code);
+    res.cookie('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000,
+      path: '/',
+      ...(process.env.NODE_ENV === 'production'
+        ? { domain: '.yourdomain.com' }
+        : {}),
+    });
+    return { user };
+  }
+
+  @Post('resend-verification')
+  async resendVerification(@Body() body: { email: string }) {
+    return this.authService.resendVerification(body.email);
   }
 
   // ✅ New endpoint: get session from cookie
