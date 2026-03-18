@@ -485,7 +485,7 @@ console.log('Procedure fetched:', detenteur?.data);
       <Sidebar currentView={currentView} navigateTo={navigateTo} />
       <main className={styles.mainContent}>
         <div className={styles.breadcrumb}>
-          <span>SIGAM</span>
+          <span>POM</span>
           <FiChevronRight className={styles.breadcrumbArrow} />
           <span>Capacitiés</span>
         </div>

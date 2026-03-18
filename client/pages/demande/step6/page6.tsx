@@ -570,7 +570,7 @@ const latestEnvoi = interactions
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles.mainContent}>
           <div className={styles.breadcrumb}>
-            <span>SIGAM</span>
+            <span>POM</span>
             <FiChevronRight className={styles.breadcrumbArrow} />
             <span>Avis du Wali</span>
           </div>

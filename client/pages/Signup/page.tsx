@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
@@ -25,20 +25,38 @@ export default function Register() {
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
   const router = useRouter();
+  const toRoleList = (payload: any): { id: number; name: string }[] => {
+    const candidates = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload?.roles)
+      ? payload.roles
+      : Array.isArray(payload?.data)
+      ? payload.data
+      : [];
+
+    return candidates
+      .map((item: any, index: number) => {
+        const id = Number(item?.id);
+        const name = typeof item?.name === 'string' ? item.name.trim() : '';
+        if (!name) return null;
+        return { id: Number.isFinite(id) ? id : index + 1, name };
+      })
+      .filter(Boolean) as { id: number; name: string }[];
+  };
 
   // Exactement comme votre ancien code qui fonctionnait
   useEffect(() => {
     const fetchRoles = async () => {
       try {
         const response = await axios.get(`${apiURL}/admin/roles`);
-        const fetchedRoles = response.data;
+        const fetchedRoles = toRoleList(response.data);
         setRoles(fetchedRoles);
-        // Sélectionner automatiquement le premier rôle
+        // SÃ©lectionner automatiquement le premier rÃ´le
         if (fetchedRoles.length > 0) {
           setForm((prev) => ({ ...prev, role: fetchedRoles[0].name }));
         }
       } catch (error) {
-        console.error('❌ Failed to fetch roles:', error);
+        console.error(' Failed to fetch roles:', error);
       }
     };
     fetchRoles();
@@ -86,10 +104,10 @@ export default function Register() {
         username: form.username,
         telephone: normalizePhone(form.telephone),
       });
-      alert('✅ Code envoyé à votre email. Vérifiez votre boîte de réception.');
+      alert('votre… Code envoyé à votre email. Vérifiez votre boîte de réception.');
       router.push(`/Signup/verify_email?email=${encodeURIComponent(form.email)}`);
       
-      // Réinitialiser le formulaire
+      // RÃ©initialiser le formulaire
       setForm({
         nom: '',
         prenom: '',
@@ -101,7 +119,7 @@ export default function Register() {
         role: roles.length > 0 ? roles[0].name : '',
       });
     } catch (error: any) {
-      alert(error?.response?.data?.detail || '❌ Erreur lors de l\'inscription');
+      alert(error?.response?.data?.detail || 'une Erreur lors de l\'inscription');
     } finally {
       setIsLoading(false);
     }
@@ -116,9 +134,9 @@ export default function Register() {
         </div>
         <h1 className={styles.title}>
           AGENCE NATIONALE DES <br />
-          ACTIVITÉS MINIÈRES
+          ACTIVITEES MINIAIRES
         </h1>
-        <p className={styles.subtitle}>Rejoignez la plateforme SIGAM</p>
+        <p className={styles.subtitle}>Rejoignez la plateforme POM</p>
       </div>
 
       {/* SECTION DROITE */}
@@ -210,11 +228,17 @@ export default function Register() {
                 disabled={isLoading}
                 required
               >
-                {roles.map((role) => (
-                  <option key={role.id} value={role.name}>
-                    {role.name.charAt(0).toUpperCase() + role.name.slice(1)}
+                {roles.length === 0 ? (
+                  <option value="" disabled>
+                    Aucun role disponible
                   </option>
-                ))}
+                ) : (
+                  roles.map((role) => (
+                    <option key={role.id} value={role.name}>
+                      {role.name.charAt(0).toUpperCase() + role.name.slice(1)}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 
@@ -225,7 +249,7 @@ export default function Register() {
                 type="password"
                 value={form.password}
                 onChange={e => handleChange('password', e.target.value)}
-                placeholder="Au moins 6 caractères"
+                placeholder="Au moins 6 caractaires"
                 disabled={isLoading}
                 minLength={6}
                 required
@@ -258,3 +282,4 @@ export default function Register() {
     </div>
   );
 }
+

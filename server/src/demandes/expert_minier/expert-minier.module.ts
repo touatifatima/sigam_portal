@@ -1,16 +1,13 @@
-import { Module } from '@nestjs/common';
+﻿import { Module } from '@nestjs/common';
 import { ExpertMinierService } from './expert-minier.service';
 import { ExpertMinierController } from './expert-minier.controller';
-import { PrismaService } from '../../prisma/prisma.service';
-import { NotificationsService } from 'src/notifications/notifications.service';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Notification } from 'src/notifications/notification.entity';
-import { Expert } from 'src/notifications/expertminier';
+import { PrismaModule } from '../../prisma/prisma.module';
+import { NotificationsModule } from '../../notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Notification, Expert])],  // 👈 add this
+  imports: [PrismaModule, NotificationsModule],
   controllers: [ExpertMinierController],
-  providers: [ExpertMinierService, PrismaService, NotificationsService],
-  exports: [TypeOrmModule], // 👈 optional: if other modules need these repos
+  providers: [ExpertMinierService],
 })
 export class ExpertMinierModule {}
+

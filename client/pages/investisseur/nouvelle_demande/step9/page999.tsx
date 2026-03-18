@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import PaymentForm from './PaymentForm';
 import PaymentsTable from './PaymentsTable';
-import styles from './UserObligations.module.css';
+import styles from './UserObligations9.module.css';
 import { useSearchParams } from '@/src/hooks/useSearchParams';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import Sidebar from '../../../sidebar/Sidebar';
@@ -237,7 +237,7 @@ console.log('Updated obligations after payment:', obligationsResponse.data);
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles['main-content']}>
           <div className={styles['breadcrumb']}>
-            <span>SIGAM</span>
+            <span>POM</span>
             <FiChevronRight className={styles['breadcrumb-arrow']} />
             <span>Paiements</span>
           </div>

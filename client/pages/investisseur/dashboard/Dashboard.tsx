@@ -13,6 +13,7 @@ import {
   Clock,
   ShieldCheck,
   ChevronDown,
+  ArrowRight,
   User,
   Settings,
 } from "lucide-react";
@@ -57,9 +58,9 @@ const cards: CardConfig[] = [
     icon: <Gem size={26} />,
   },
   {
-    title: "Procedures",
-    description: "Suivre l'avancement de vos procedures en cours",
-    route: "/investisseur/procedures",
+    title: "Statistiques",
+    description: "Consulter les statistiques de vos activites",
+    route: "/investisseur/statistiques",
     tone: "amber",
     icon: <ListChecks size={26} />,
   },
@@ -71,9 +72,9 @@ const cards: CardConfig[] = [
     icon: <CreditCard size={26} />,
   },
   {
-    title: "Documents",
-    description: "Consulter et telecharger vos documents officiels",
-    route: "/investisseur/documents",
+    title: "notifications",
+    description: "Consulter vos notifications et messages importants",
+    route: "/investisseur/notifications",
     tone: "violet",
     icon: <FolderOpen size={26} />,
   },
@@ -175,7 +176,7 @@ export default function Dashboard() {
       <header className={styles.header}>
         <div className={styles.headerInner}>
           <div className={styles.logo}>
-            <span className={styles.logoMark}>SIGAM</span>
+            <span className={styles.logoMark}>POM</span>
             <span className={styles.logoText}>Portail</span>
           </div>
           <div className={styles.headerRight}>
@@ -299,7 +300,12 @@ export default function Dashboard() {
         </section>
 
         <section className={styles.quickAccess}>
-          <h2 className={styles.sectionTitle}>Acces rapide</h2>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>Acces rapide</h2>
+            <p className={styles.sectionSubtitle}>
+              Outils operationnels pour piloter vos demandes, permis et documents.
+            </p>
+          </div>
           <div className={styles.cardsGrid}>
             {cards.map((card, index) => (
               <div
@@ -318,6 +324,7 @@ export default function Dashboard() {
                   onClick={() => navigate(card.route)}
                 >
                   Acceder
+                  <ArrowRight size={16} />
                 </button>
               </div>
             ))}

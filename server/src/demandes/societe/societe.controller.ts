@@ -11,6 +11,8 @@ import {
   HttpStatus,
   Query,
   Req,
+  ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { SocieteService } from './societe.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -27,6 +29,30 @@ export class SocieteController {
     private readonly sessionService: SessionService,
   ) {}
 
+  private async assertAdminAccess(req: Request) {
+    const token = req.cookies?.auth_token;
+    if (!token) {
+      throw new UnauthorizedException('Unauthorized');
+    }
+    const session = await this.sessionService.validateSession(token);
+    const user = session?.user;
+    if (!user) {
+      throw new UnauthorizedException('Unauthorized');
+    }
+
+    const roleName = String(user?.role?.name || '').toLowerCase();
+    const hasAdminPermission = Array.isArray(user?.role?.rolePermissions)
+      ? user.role.rolePermissions.some(
+          (rp: any) => String(rp?.permission?.name || '') === 'Admin-Panel',
+        )
+      : false;
+
+    if (!roleName.includes('admin') && !hasAdminPermission) {
+      throw new ForbiddenException('Acces refuse');
+    }
+    return Number(user.id);
+  }
+
   @Get('statuts-juridiques')
   async getAllStatutsJuridiques() {
     return this.prisma.statutJuridiquePortail.findMany({
@@ -40,6 +66,55 @@ export class SocieteController {
     const session = token ? await this.sessionService.validateSession(token) : null;
     const userId = session?.userId ?? null;
     return this.societeService.saveInvestisseurIdentification(data, userId);
+  }
+
+  @Get('admin/identifications-entreprises')
+  async listEntrepriseIdentificationRequests(
+    @Req() req: Request,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    await this.assertAdminAccess(req);
+    return this.societeService.listEntrepriseIdentificationRequests({
+      status,
+      search,
+      page: page ? Number(page) : undefined,
+      pageSize: pageSize ? Number(pageSize) : undefined,
+    });
+  }
+
+  @Get('admin/identifications-entreprises/:userId')
+  async getEntrepriseIdentificationDetail(
+    @Req() req: Request,
+    @Param('userId', ParseIntPipe) userId: number,
+  ) {
+    await this.assertAdminAccess(req);
+    return this.societeService.getEntrepriseIdentificationDetail(userId);
+  }
+
+  @Post('admin/identifications-entreprises/:userId/confirm')
+  async confirmEntrepriseIdentification(
+    @Req() req: Request,
+    @Param('userId', ParseIntPipe) userId: number,
+  ) {
+    const adminUserId = await this.assertAdminAccess(req);
+    return this.societeService.confirmEntrepriseIdentification(userId, adminUserId);
+  }
+
+  @Post('admin/identifications-entreprises/:userId/reject')
+  async rejectEntrepriseIdentification(
+    @Req() req: Request,
+    @Param('userId', ParseIntPipe) userId: number,
+    @Body() body?: { reason?: string },
+  ) {
+    const adminUserId = await this.assertAdminAccess(req);
+    return this.societeService.rejectEntrepriseIdentification(
+      userId,
+      body?.reason,
+      adminUserId,
+    );
   }
 
   @Get('profil/entreprise')

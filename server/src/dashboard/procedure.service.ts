@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { CessionService } from '../cession/cession.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { GisService } from '../gis/gis.service';
 
@@ -7,6 +8,7 @@ export class ProcedureService {
   constructor(
     private prisma: PrismaService,
     private readonly gisService: GisService,
+    private readonly cessionService: CessionService,
   ) {}
 
   async getAllProcedures() {
@@ -535,6 +537,10 @@ export class ProcedureService {
         },
       }),
     ]);
+
+    await this.cessionService.applyAcceptedCessionByDemandeId(
+      demande.id_demande,
+    );
 
     return { success: true };
   }

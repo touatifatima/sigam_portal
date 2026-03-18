@@ -19,7 +19,7 @@
 }
 
 .label {
-  color: #1fb072;
+  color: #b14680;
   font-weight: 700;
   font-size: 0.9rem;
   text-transform: uppercase;
@@ -41,14 +41,14 @@
 }
 
 .viewAll {
-  border-color: #e1e8f0;
-  color: #0f1724;
-  background: #ffffff;
+  width: fit-content;
+  align-self: flex-start;
 }
 
-.viewAll:hover {
-  border-color: #cbd8e6;
-  background: #f8fbff;
+@media (min-width: 768px) {
+  .viewAll {
+    align-self: center;
+  }
 }
 
 .grid {
@@ -78,7 +78,7 @@
 }
 
 .article:hover {
-  border-color: rgba(31, 176, 114, 0.25);
+  border-color: rgba(177, 70, 128, 0.25);
   box-shadow: 0 26px 70px -30px rgba(15, 23, 42, 0.28);
   transform: translateY(-4px);
 }
@@ -87,6 +87,12 @@
   position: relative;
   height: 13.5rem;
   overflow: hidden;
+}
+
+.imagePicture {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .image {
@@ -106,11 +112,11 @@
   left: 1rem;
   padding: 0.35rem 0.85rem;
   border-radius: 9999px;
-  background-color: #1fb072;
+  background-color: #b14680;
   color: #ffffff;
   font-size: 0.78rem;
   font-weight: 700;
-  box-shadow: 0 10px 20px -12px rgba(31, 176, 114, 0.9);
+  box-shadow: 0 10px 20px -12px rgba(177, 70, 128, 0.9);
 }
 
 .content {
@@ -144,7 +150,7 @@
 }
 
 .article:hover .articleTitle {
-  color: #1fb072;
+  color: #b14680;
 }
 
 .articleDescription {
@@ -161,7 +167,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  color: #1fb072;
+  color: #b14680;
   font-weight: 700;
   font-size: 0.92rem;
 }
@@ -175,3 +181,6 @@
 .readMore:hover .readMoreIcon {
   transform: translate(2px, -2px);
 }
+
+
+

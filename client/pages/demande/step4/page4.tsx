@@ -1311,7 +1311,7 @@ const checkButtonConditions = () => {
             </div>
           )}
           <div className={styles['breadcrumb']}>
-            <span>SIGAM</span>
+            <span>POM</span>
             <FiChevronRight className={styles['breadcrumb-arrow']} />
             <span>Substances & Coordonnées</span>
           </div>

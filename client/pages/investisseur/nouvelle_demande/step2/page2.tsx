@@ -529,7 +529,7 @@ export default function Step2() {
     }));
   };
 
-  const saveIdentification = async () => {
+  async function saveIdentification() {
     if (!idDemande) throw new Error('ID demande manquant.');
 
     const infosPayload = {
@@ -623,7 +623,7 @@ export default function Step2() {
         await axios.delete(`${apiURL}/api/actionnaires/${detId}`);
       } catch {}
     }
-  };
+  }
 
 
   if (!isPageReady) {
@@ -648,7 +648,7 @@ export default function Step2() {
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={layoutStyles.mainContent}>
           <div className={layoutStyles.breadcrumb}>
-            <span>SIGAM</span>
+            <span>POM</span>
             <FiChevronRight className={layoutStyles.breadcrumbArrow} />
             <span>Identification</span>
           </div>

@@ -8,7 +8,7 @@
 .backgroundGradient {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 20% 20%, rgba(32, 165, 102, 0.05), transparent 30%),
+  background: radial-gradient(circle at 20% 20%, rgba(139, 58, 98, 0.05), transparent 30%),
               radial-gradient(circle at 80% 10%, rgba(56, 189, 248, 0.05), transparent 28%),
               #f6f9fc;
 }
@@ -24,7 +24,7 @@
 }
 
 .label {
-  color: #1fb072;
+  color: #b14680;
   font-weight: 700;
   font-size: 0.9rem;
   text-transform: uppercase;
@@ -48,7 +48,7 @@
 }
 
 .titleHighlight {
-  color: #1fb072;
+  color: #b14680;
 }
 
 .description {
@@ -82,7 +82,7 @@
 }
 
 .stepCard:hover {
-  border-color: rgba(31, 176, 114, 0.35);
+  border-color: rgba(177, 70, 128, 0.35);
   box-shadow: 0 22px 50px -26px rgba(15, 23, 42, 0.35);
   transform: translateY(-3px);
 }
@@ -94,14 +94,14 @@
   width: 4rem;
   height: 4rem;
   border-radius: 1rem;
-  background-color: #1fb072;
+  background-color: #b14680;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.35rem;
   font-weight: 800;
   color: #ffffff;
-  box-shadow: 0 12px 24px -12px rgba(31, 176, 114, 0.4);
+  box-shadow: 0 12px 24px -12px rgba(177, 70, 128, 0.4);
 }
 
 .stepContent {
@@ -142,10 +142,13 @@
 .featureIcon {
   width: 1rem;
   height: 1rem;
-  color: #1fb072;
+  color: #b14680;
   flex-shrink: 0;
 }
 
 .cta {
   text-align: center;
 }
+
+
+

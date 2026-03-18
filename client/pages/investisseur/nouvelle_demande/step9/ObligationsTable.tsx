@@ -1,6 +1,6 @@
 // components/payments/ObligationsTable.tsx
 
-import styles from './UserObligations.module.css';
+import styles from './UserObligations9.module.css';
 
 interface TypePaiement {
   id: number;

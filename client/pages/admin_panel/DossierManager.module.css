@@ -152,6 +152,41 @@
   grid-template-columns: repeat(1, 1fr);
 }
 @media (min-width: 768px) { .formGrid { grid-template-columns: repeat(2, 1fr); } }
+
+/* Specific spacing for "Ajouter un document" form */
+.documentFormGrid {
+  row-gap: 1.75rem;
+  column-gap: 1.75rem;
+  align-items: start;
+  margin-top: 0.2rem;
+}
+
+.documentFormGrid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.62rem;
+}
+
+.documentFieldFull textarea.formControl {
+  min-height: 132px;
+}
+
+.documentFormActions {
+  margin-top: 0.9rem;
+  padding-top: 0.35rem;
+}
+
+@media (max-width: 768px) {
+  .documentFormGrid {
+    row-gap: 1.25rem;
+    column-gap: 1rem;
+  }
+
+  .documentFormActions {
+    margin-top: 0.45rem;
+  }
+}
+
 .formLabel {
   display: block;
   margin-bottom: 0.5rem;
@@ -404,4 +439,113 @@
   .mainContent { padding: 1rem; }
   .cardBody { padding: 1rem; }
   .td, .th { padding: 0.75rem; }
+}
+
+/* Premium Dossier Dashboard Refresh */
+.appContainer {
+  background:
+    radial-gradient(circle at 8% -8%, rgba(139, 58, 98, 0.2) 0%, rgba(139, 58, 98, 0) 42%),
+    radial-gradient(circle at 104% 4%, rgba(15, 118, 110, 0.11) 0%, rgba(15, 118, 110, 0) 40%),
+    linear-gradient(180deg, #f7f2f8 0%, #f2f6fb 52%, #f4f8fb 100%);
+}
+
+.mainContent {
+  width: min(1760px, 100%);
+  margin: 0 auto;
+  padding: 1.35rem 1.7rem 2.35rem;
+  background: transparent;
+}
+
+.container {
+  border-radius: 20px;
+  border: 1px solid #eadbe7;
+  background: linear-gradient(180deg, #fff 0%, #fefcff 100%);
+  box-shadow: 0 18px 36px rgba(56, 18, 45, 0.12);
+}
+
+.header {
+  border-radius: 18px;
+  border: 1px solid rgba(139, 58, 98, 0.26);
+  background:
+    linear-gradient(125deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 42%),
+    linear-gradient(135deg, #8b3a62 0%, #6f2f4f 54%, #4f2439 100%);
+  box-shadow:
+    0 20px 38px rgba(54, 22, 39, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  padding: 1.12rem 1.18rem;
+}
+
+.headerTitle {
+  color: #fff;
+  font-size: clamp(1.46rem, 1.1rem + 1vw, 1.96rem);
+}
+
+.headerSubtitle {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.searchContainer {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 24px rgba(42, 18, 33, 0.18);
+}
+
+.searchInput {
+  border-radius: 11px;
+  border-color: #e5d4e1;
+  background: linear-gradient(180deg, #fff 0%, #fcf9fc 100%);
+}
+
+.tabsContainer {
+  gap: 0.6rem;
+  padding: 0.2rem;
+  border-radius: 999px;
+  background: #f5eaf1;
+  border: 1px solid #e6d3df;
+  width: fit-content;
+  margin-bottom: 1.3rem;
+}
+
+.tab {
+  border-radius: 999px;
+}
+
+.tabActive {
+  box-shadow: 0 10px 22px rgba(111, 46, 79, 0.28);
+}
+
+.card,
+.tableContainer {
+  border-radius: 16px;
+  border-color: #e8d9e5;
+  box-shadow: 0 14px 30px rgba(56, 18, 45, 0.1);
+}
+
+.cardHeader,
+.tableHeader {
+  background: linear-gradient(180deg, #fff 0%, #fdf8fc 100%);
+}
+
+.tableHead {
+  background: linear-gradient(180deg, #fbf2f9 0%, #f8edf5 100%);
+}
+
+.tr:hover {
+  background: #fcf6fc;
+}
+
+.actionButton {
+  border-radius: 10px;
+}
+
+@media (max-width: 768px) {
+  .mainContent {
+    padding: 1.02rem 0.88rem 1.45rem;
+  }
+
+  .header {
+    border-radius: 16px;
+    padding: 0.95rem;
+  }
 }

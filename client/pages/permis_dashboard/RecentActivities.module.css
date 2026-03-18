@@ -1,10 +1,15 @@
 /* RecentActivities.module.css */
 .recentActivities {
-  background: white;
-  border-radius: 16px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(139, 58, 98, 0.08), transparent 42%),
+    radial-gradient(circle at 100% 0%, rgba(14, 165, 233, 0.08), transparent 40%),
+    linear-gradient(155deg, #ffffff 0%, #f8f9fc 100%);
+  border-radius: 18px;
   padding: 24px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-  border: 1px solid #e5e7eb;
+  box-shadow:
+    0 16px 34px rgba(33, 18, 28, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(139, 58, 98, 0.18);
   height: 100%;
 }
 
@@ -13,36 +18,51 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #f3f4f6;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.24);
 }
 
 .header h3 {
   font-size: 18px;
-  font-weight: 600;
-  color: #1f2937;
+  font-weight: 700;
+  color: #3f1f33;
+  letter-spacing: 0.01em;
   margin: 0;
 }
 
 .badge {
-  background: #3b82f6;
+  background: linear-gradient(135deg, #8b3a62 0%, #a65279 100%);
   color: white;
-  padding: 4px 10px;
+  padding: 4px 11px;
   border-radius: 20px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 700;
+  box-shadow: 0 8px 16px rgba(139, 58, 98, 0.3);
 }
 
 .activitiesList {
   max-height: 600px;
   overflow-y: auto;
+  padding-right: 4px;
 }
 
 .activityItem {
-    display: flex;
-    gap: 16px;
-    padding: 16px 16px;
-    position: relative;
+  display: flex;
+  gap: 16px;
+  padding: 14px 14px;
+  position: relative;
+  border-radius: 13px;
+  border: 1px solid transparent;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.92), rgba(248, 250, 252, 0.96));
+  margin-bottom: 8px;
+  transition: transform 0.2s ease, box-shadow 0.22s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.activityItem:hover {
+  transform: translateY(-1px);
+  border-color: rgba(148, 163, 184, 0.38);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+  background: linear-gradient(160deg, #ffffff, #f4f7fb);
 }
 
 .activityIcon {
@@ -52,9 +72,11 @@
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  background: #f8fafc;
+  background: linear-gradient(135deg, #fdf2f8 0%, #eef2ff 100%);
+  border: 1px solid #e5d7e2;
   flex-shrink: 0;
   font-size: 18px;
+  box-shadow: 0 8px 16px rgba(100, 116, 139, 0.14);
 }
 
 .activityContent {
@@ -71,24 +93,29 @@
 
 .activityTitle {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   color: #1f2937;
   margin: 0;
   line-height: 1.4;
 }
 
 .activityTime {
-  font-size: 12px;
-  color: #6b7280;
+  font-size: 11px;
+  color: #64748b;
   white-space: nowrap;
   margin-left: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 3px 9px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
 }
 
 .activityDescription {
   font-size: 13px;
-  color: #4b5563;
+  color: #475569;
   margin: 0 0 8px 0;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .activityMeta {
@@ -100,35 +127,41 @@
 
 .activityCode {
   font-size: 12px;
-  padding: 4px 8px;
-  background: #f1f5f9;
-  border-radius: 6px;
-  color: #475569;
+  padding: 4px 10px;
+  background: #f8f2f6;
+  border-radius: 999px;
+  color: #7b3255;
   font-family: 'Monaco', 'Menlo', monospace;
+  border: 1px solid #ead0de;
+  font-weight: 700;
 }
 
 .activityUser {
   font-size: 12px;
-  color: #6b7280;
+  color: #64748b;
+  font-weight: 500;
 }
 
 .activityDivider {
   position: absolute;
   bottom: 0;
-  left: 28px;
+  left: 72px;
   right: 0;
   height: 1px;
-  background: #f3f4f6;
+  background: rgba(226, 232, 240, 0.85);
 }
 
 .emptyState {
   text-align: center;
   padding: 40px 20px;
-  color: #6b7280;
+  color: #64748b;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.72), rgba(255, 255, 255, 0.84));
+  border: 1px dashed #d8dee8;
+  border-radius: 14px;
 }
 
 .emptyIcon {
-  color: #d1d5db;
+  color: #b8c0ce;
   margin-bottom: 16px;
 }
 
@@ -148,17 +181,17 @@
 }
 
 .activitiesList::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: #edf2f7;
   border-radius: 3px;
 }
 
 .activitiesList::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #c2ccda;
   border-radius: 3px;
 }
 
 .activitiesList::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #9eacc0;
 }
 
 .headerActions {
@@ -168,18 +201,21 @@
 }
 
 .refreshButton {
-  background: none;
-  border: none;
-  color: #6b7280;
+  background: #ffffff;
+  border: 1px solid #d6dde8;
+  color: #7b3255;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
+  padding: 5px;
+  border-radius: 8px;
   transition: all 0.2s ease;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.06);
 }
 
 .refreshButton:hover {
-  color: #3b82f6;
-  background: #f8fafc;
+  color: #5f2442;
+  border-color: #caa4b8;
+  background: #fff7fb;
+  box-shadow: 0 8px 14px rgba(139, 58, 98, 0.18);
 }
 
 .loadingSpinner {
@@ -197,10 +233,10 @@
 
 .loadingItem {
   height: 60px;
-  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background: linear-gradient(90deg, #f5f7fb 25%, #eceff5 50%, #f5f7fb 75%);
   background-size: 200% 100%;
   animation: loading 1.5s infinite;
-  border-radius: 8px;
+  border-radius: 10px;
   margin-bottom: 16px;
 }
 
@@ -220,4 +256,21 @@
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+@media (max-width: 700px) {
+  .recentActivities {
+    padding: 18px 16px;
+    border-radius: 15px;
+  }
+
+  .activityHeader {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .activityTime {
+    margin-left: 0;
+  }
 }

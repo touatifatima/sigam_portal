@@ -1513,7 +1513,7 @@ export default function ConvertisseurPage() {
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
     <Placemark>
-      <name>Sigam Export</name>
+      <name>POMExport</name>
       <Style>
         <LineStyle><color>ff2a5ad0</color><width>3</width></LineStyle>
         <PolyStyle><color>332a5ad0</color></PolyStyle>

@@ -18,7 +18,7 @@ export class InscriptionProvisoireController {
     body: {
       id_proc: number;
       id_demande?: number;
-      points: {
+      points?: {
         x: number;
         y: number;
         z?: number;

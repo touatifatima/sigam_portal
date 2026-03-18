@@ -10,7 +10,7 @@ import {
   FiChevronRight,
   FiAlertCircle,
 } from "react-icons/fi";
-import styles from "./documents1.module.css";
+import styles from "@/pages/investisseur/nouvelle_demande/step1/documents1.module.css";
 import Navbar from "../../../navbar/Navbar";
 import Sidebar from "../../../sidebar/Sidebar";
 import ProgressStepper from "../../../../components/ProgressStepper";
@@ -636,12 +636,12 @@ export default function Step5_Documents() {
   const progressPercent = total > 0 ? Math.round((presents / total) * 100) : 0;
   const progressFill =
     progressPercent >= 100
-      ? "linear-gradient(90deg, #7c3aed, #6d28d9)"
+      ? "linear-gradient(90deg, #16a34a, #15803d)"
       : progressPercent >= 70
-      ? "linear-gradient(90deg, #a78bfa, #7c3aed)"
+      ? "linear-gradient(90deg, #22c55e, #16a34a)"
       : progressPercent >= 40
-      ? "linear-gradient(90deg, #c4b5fd, #8b5cf6)"
-      : "linear-gradient(90deg, #ddd6fe, #c4b5fd)";
+      ? "linear-gradient(90deg, #86efac, #22c55e)"
+      : "linear-gradient(90deg, #dcfce7, #86efac)";
   const progressMessage =
     progressPercent >= 100
       ? "Dossier complet !"
@@ -779,7 +779,7 @@ export default function Step5_Documents() {
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles['main-content']}>
           <div className={styles['breadcrumb']}>
-            <span>SIGAM</span>
+            <span>POM</span>
             <FiChevronRight className={styles['breadcrumb-arrow']} />
             <span>Documents</span>
           </div>
@@ -820,7 +820,7 @@ export default function Step5_Documents() {
                           width: `${progressPercent}%`,
                           background: progressFill,
                           boxShadow:
-                            progressPercent > 0 ? "0 0 10px rgba(124, 58, 237, 0.25)" : "none",
+                            progressPercent > 0 ? "0 0 10px rgba(16, 185, 129, 0.28)" : "none",
                         }}
                         aria-hidden="true"
                       />
@@ -880,12 +880,30 @@ export default function Step5_Documents() {
                       return (
                         <Card
                           key={doc.id_doc}
-                          className={`${styles.documentCard} ${isRequired ? styles.required : ''}`}
+                          className={`${styles.documentCard} ${isRequired ? styles.required : ''} ${
+                            status === 'present'
+                              ? styles.documentCardPresent
+                              : status === 'manquant'
+                              ? styles.documentCardMissing
+                              : ''
+                          }`}
                         >
                           <CardContent className={styles.documentBody}>
                             <div className={styles.documentHeader}>
                               <div>
                                 <div className={styles.documentTitleRow}>
+                                  {status === 'present' && (
+                                    <FiCheck
+                                      className={`${styles.docStateIcon} ${styles.docStateIconPresent}`}
+                                      aria-hidden="true"
+                                    />
+                                  )}
+                                  {status === 'manquant' && (
+                                    <FiAlertCircle
+                                      className={`${styles.docStateIcon} ${styles.docStateIconMissing}`}
+                                      aria-hidden="true"
+                                    />
+                                  )}
                                   <h3 className={styles.documentTitle}>{doc.nom_doc}</h3>
                                   {isRequired && (
                                     <Badge className={styles.requiredBadge} variant="destructive">
@@ -964,6 +982,12 @@ export default function Step5_Documents() {
                                 <Progress
                                   value={uploadProgress[doc.id_doc] ?? 0}
                                   className={styles.uploadProgressBar}
+                                  style={
+                                    {
+                                      "--progress-fill": "#22c55e",
+                                      "--progress-track": "#dcfce7",
+                                    } as any
+                                  }
                                 />
                                 <span className={styles.uploadProgressText}>
                                   {(uploadProgress[doc.id_doc] ?? 0)}%

@@ -1,6 +1,13 @@
 /* AdminPanel.module.css */
 
 /* App Layout */
+:root {
+  --anam-primary: #8b3a62;
+  --anam-primary-dark: #6f2f4f;
+  --anam-primary-soft: #f8edf3;
+  --anam-accent: #10B981;
+}
+
 .app-container {
   display: flex;
   flex-direction: column;
@@ -15,7 +22,7 @@
 .main-content {
   flex: 1;
   padding: 1.5rem 2rem;
-  background-color: #fff;
+  background-color: #f8f9fa;
 }
 
 /* Breadcrumb */
@@ -39,6 +46,10 @@
   padding: 2rem;
   color: #333;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 10px 24px rgba(56, 18, 45, 0.08);
 }
 
 /* Notification */
@@ -114,14 +125,14 @@
 }
 
 .admin-tabs-button:hover {
-  background-color: #EDF2F7;
-  color: #2D3748;
+  background-color: #f8edf3;
+  color: var(--anam-primary);
 }
 
 .active {
-  background-color: #3B82F6;
+  background: linear-gradient(135deg, var(--anam-primary) 0%, var(--anam-primary-dark) 100%);
   color: white;
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 2px 10px rgba(139, 58, 98, 0.24);
 }
 
 /* Cards */
@@ -177,10 +188,12 @@
 .form-scope textarea {
   width: 83%;
   padding: 0.75rem 1rem;
-  border: 1px solid #ddd;
+  border: 1px solid #e2e8f0;
   border-radius: 6px;
   font-size: 1rem;
-  transition: border-color 0.2s ease;
+  color: #374151;
+  background: #ffffff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
   margin-bottom: 15px;
 }
 
@@ -188,8 +201,8 @@
 .form-scope select:focus,
 .form-scope textarea:focus {
   outline: none;
-  border-color: #3B82F6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  border-color: var(--anam-primary);
+  box-shadow: 0 0 0 3px rgba(139, 58, 98, 0.16);
 }
 
 .full-width {
@@ -203,7 +216,7 @@
   border-radius: 8px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.18s ease, box-shadow 0.2s ease, filter 0.2s ease;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -212,50 +225,55 @@
 }
 
 .primary {
-  background-color: #3B82F6;
+  background:   linear-gradient(135deg, #10b981 0%, #16a34a 100%);
+
   color: white;
 }
 
 .primary:hover {
-  background-color: #2563EB;
-  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2);
+  background: linear-gradient(135deg, #16a34a 0%, #16a34a 100%);
+  box-shadow: 0 8px 18px rgba(47, 101, 173, 0.3);
+  transform: translateY(-1px) scale(1.03);
 }
 
 .primary:disabled {
-  background-color: #BFDBFE;
-  color: #666;
+  background-color: #d7b9c8;
+  color: white;
   cursor: not-allowed;
   box-shadow: none;
 }
 
 .danger {
-  background-color: #EF4444;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   color: white;
 }
 
 .danger:hover {
-  background-color: #DC2626;
-  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.2);
+  background: linear-gradient(135deg, #f87171 0%, #dc2626 100%);
+  box-shadow: 0 8px 18px rgba(248, 113, 113, 0.32);
+  transform: translateY(-1px) scale(1.03);
 }
 
 .warning {
-  background-color: #F59E0B;
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
   color: white;
 }
 
 .warning:hover {
-  background-color: #D97706;
-  box-shadow: 0 4px 8px rgba(245, 158, 11, 0.2);
+  background: linear-gradient(135deg, #22b4ea 0%, #0284c7 100%);
+  box-shadow: 0 8px 18px rgba(14, 165, 233, 0.3);
+  transform: translateY(-1px) scale(1.03);
 }
 
 .success {
-  background-color: #10B981;
+  background: linear-gradient(135deg, #10b981 0%, #16a34a 100%);
   color: white;
 }
 
 .success:hover {
-  background-color: #059669;
-  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.2);
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  box-shadow: 0 8px 18px rgba(34, 197, 94, 0.32);
+  transform: translateY(-1px) scale(1.03);
 }
 
 /* Form Inline */
@@ -270,12 +288,13 @@
   flex: 1;
   padding: 8px 12px;
   font-size: 14px;
-  border: 1px solid #ccc;
+  border: 1px solid #e2e8f0;
   border-radius: 6px;
 }
 
 .form-inline input:focus {
-  border-color: #3B82F6;
+  border-color: var(--anam-primary);
+  box-shadow: 0 0 0 3px rgba(139, 58, 98, 0.16);
   outline: none;
 }
 
@@ -443,7 +462,7 @@
   width: 50px;
   height: 50px;
   border: 4px solid #f3f3f3;
-  border-top: 4px solid #3B82F6;
+  border-top: 4px solid var(--anam-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 2rem auto;
@@ -515,4 +534,128 @@
   margin-top: 0.5rem;
   font-size: 0.85rem;
   color: #666;
+}
+
+/* Premium Admin Dashboard Refresh */
+.app-container {
+  background:
+    radial-gradient(circle at 8% -8%, rgba(139, 58, 98, 0.2) 0%, rgba(139, 58, 98, 0) 42%),
+    radial-gradient(circle at 103% 2%, rgba(15, 118, 110, 0.1) 0%, rgba(15, 118, 110, 0) 40%),
+    linear-gradient(180deg, #f7f2f8 0%, #f2f6fb 52%, #f4f8fb 100%);
+}
+
+.main-content {
+  width: min(1760px, 100%);
+  margin: 0 auto;
+  padding: 1.35rem 1.7rem 2.3rem;
+  background: transparent;
+}
+
+.admin-container {
+  max-width: none;
+  border-radius: 20px;
+  border-color: #e8d9e6;
+  background: linear-gradient(180deg, #fff 0%, #fefcff 100%);
+  box-shadow: 0 18px 36px rgba(56, 18, 45, 0.12);
+  padding: 1.35rem 1.4rem 1.45rem;
+}
+
+.admin-header {
+  border-bottom: none;
+  margin-bottom: 1.5rem;
+}
+
+.admin-header h1 {
+  border-radius: 18px;
+  border: 1px solid rgba(139, 58, 98, 0.26);
+  background:
+    linear-gradient(125deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 42%),
+    linear-gradient(135deg, #8b3a62 0%, #6f2f4f 54%, #4f2439 100%);
+  box-shadow:
+    0 20px 38px rgba(54, 22, 39, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  color: #fff;
+  margin: 0;
+  padding: 1rem 1.1rem;
+  width: 100%;
+}
+
+.admin-tabs {
+  margin-top: 0.95rem;
+  width: fit-content;
+  padding: 0.25rem;
+  border-radius: 999px;
+  border: 1px solid #e5d3de;
+  background: #f6ecf3;
+}
+
+.admin-tabs-button {
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.active {
+  box-shadow: 0 10px 22px rgba(111, 46, 79, 0.28);
+}
+
+.admin-card {
+  border-radius: 16px;
+  border: 1px solid #e7d9e5;
+  background: linear-gradient(180deg, #fff 0%, #fefcff 100%);
+  box-shadow: 0 14px 30px rgba(56, 18, 45, 0.1);
+}
+
+.admin-card h2 {
+  border-bottom-color: #eddfea;
+}
+
+.form-scope input,
+.form-scope select,
+.form-scope textarea,
+.form-inline input {
+  border-color: #e4d3df;
+  border-radius: 11px;
+  background: linear-gradient(180deg, #fff 0%, #fcf9fc 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+.form-scope button {
+  border-radius: 11px;
+  font-weight: 700;
+}
+
+.users-table-container {
+  border-radius: 14px;
+  border: 1px solid #eadce8;
+  box-shadow: 0 12px 26px rgba(56, 18, 45, 0.08);
+}
+
+.table-header {
+  background: linear-gradient(180deg, #fbf2f9 0%, #f8edf5 100%);
+  border-bottom-color: #eadce8;
+}
+
+.table-row {
+  border-bottom-color: #f0e4ed;
+  background: linear-gradient(180deg, #fff 0%, #fff 64%, #fefcfe 100%);
+}
+
+.table-row:hover {
+  background: #fcf6fc;
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    padding: 1.02rem 0.88rem 1.45rem;
+  }
+
+  .admin-container {
+    border-radius: 16px;
+    padding: 0.95rem;
+  }
+
+  .admin-header h1 {
+    border-radius: 14px;
+    padding: 0.85rem 0.9rem;
+  }
 }

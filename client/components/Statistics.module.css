@@ -1,6 +1,6 @@
 .section {
   padding: 6rem 0;
-  background: radial-gradient(circle at 20% 10%, rgba(32, 165, 102, 0.05), transparent 25%),
+  background: radial-gradient(circle at 20% 10%, rgba(139, 58, 98, 0.05), transparent 25%),
               radial-gradient(circle at 80% 20%, rgba(53, 162, 255, 0.05), transparent 22%),
               #f6f9fc;
   position: relative;
@@ -32,7 +32,7 @@
 }
 
 .label {
-  color: #1fb072;
+  color: #b14680;
   font-weight: 700;
   font-size: 0.875rem;
   text-transform: uppercase;
@@ -56,7 +56,7 @@
 }
 
 .titleHighlight {
-  color: #1fb072;
+  color: #b14680;
 }
 
 .description {
@@ -88,17 +88,6 @@
 
 .statItem {
   position: relative;
-  transition: all 0.5s ease;
-}
-
-.statItemHidden {
-  opacity: 0;
-  transform: translateY(40px);
-}
-
-.statItemVisible {
-  opacity: 1;
-  transform: translateY(0);
 }
 
 .statCard {
@@ -115,7 +104,7 @@
 }
 
 .statCard:hover {
-  border-color: rgba(31, 176, 114, 0.3);
+  border-color: rgba(177, 70, 128, 0.3);
   box-shadow: 0 24px 60px -28px rgba(31, 41, 55, 0.45);
   transform: translateY(-6px);
 }
@@ -124,7 +113,7 @@
   width: 4rem;
   height: 4rem;
   border-radius: 1rem;
-  background-color: rgba(31, 176, 114, 0.12);
+  background-color: rgba(177, 70, 128, 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -133,11 +122,11 @@
 }
 
 .statCard:hover .iconWrapper {
-  background-color: rgba(31, 176, 114, 0.18);
+  background-color: rgba(177, 70, 128, 0.18);
 }
 
 .icon {
-  color: #1fb072;
+  color: #b14680;
 }
 
 .value {
@@ -154,7 +143,7 @@
 }
 
 .valueSuffix {
-  color: #1fb072;
+  color: #b14680;
   font-weight: 800;
   margin-left: 0.35rem;
 }

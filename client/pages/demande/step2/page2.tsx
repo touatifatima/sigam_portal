@@ -897,7 +897,7 @@ export default function Step2() {
             </div>
           )}
           <div className={styles.breadcrumb}>
-            <span>SIGAM</span>
+            <span>POM</span>
             <FiChevronRight className={styles.breadcrumbArrow} />
             <span>Identification</span>
           </div>

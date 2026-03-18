@@ -92,6 +92,24 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
   const [paysOptions, setPaysOptions] = useState<Pays[]>([]);
   const [nationalitesOptions, setNationalitesOptions] = useState<Nationalite[]>([]);
 
+  const toList = <T,>(payload: unknown): T[] => {
+    if (Array.isArray(payload)) return payload as T[];
+    if (payload && typeof payload === "object") {
+      const record = payload as Record<string, unknown>;
+      const candidates = [
+        record.data,
+        record.items,
+        record.results,
+        record.rows,
+        record.options,
+      ];
+      for (const candidate of candidates) {
+        if (Array.isArray(candidate)) return candidate as T[];
+      }
+    }
+    return [];
+  };
+
   useEffect(() => {
     onUpdate({ identification: { ...identification, actionnaires } });
   }, [identification, actionnaires, onUpdate]);
@@ -109,9 +127,9 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
         ]);
 
         if (!mounted) return;
-        setPaysOptions(paysRes.data || []);
-        setStatutsJuridiques(statutsRes.data || []);
-        setNationalitesOptions(natRes.data || []);
+        setPaysOptions(toList<Pays>(paysRes.data));
+        setStatutsJuridiques(toList<StatutJuridique>(statutsRes.data));
+        setNationalitesOptions(toList<Nationalite>(natRes.data));
       } catch (error) {
         console.error("Erreur chargement options identification:", error);
       }

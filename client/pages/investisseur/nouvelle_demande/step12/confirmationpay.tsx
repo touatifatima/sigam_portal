@@ -31,6 +31,7 @@ interface ConfirmationData {
 const ConfirmationPaiement = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const SUCCESS_TOAST_ID = "investisseur-confirm-payment-success";
   
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
   const stateData = (location.state as Partial<ConfirmationData> & { idProc?: number | string }) || {};
@@ -38,6 +39,7 @@ const ConfirmationPaiement = () => {
   const [idDemande, setIdDemande] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const confirmToastRef = useRef(false);
+  const successToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [data, setData] = useState<ConfirmationData>(() => ({
     codedemande: stateData.codedemande || "--",
@@ -245,6 +247,7 @@ const ConfirmationPaiement = () => {
       } catch (error) {
         console.warn("[ConfirmationPay] failed to confirm paiement date", error);
       } finally {
+        toast.dismiss(SUCCESS_TOAST_ID);
         toast.success(
           <div className={styles.successToastContent}>
             <div className={styles.successToastTitle}>Paiement confirmé avec succès !</div>
@@ -255,14 +258,34 @@ const ConfirmationPaiement = () => {
           {
             position: "top-center",
             autoClose: 7000,
+            closeButton: true,
             closeOnClick: true,
-            pauseOnHover: true,
-          className: styles.successToast,
-        });
+            pauseOnHover: false,
+            pauseOnFocusLoss: false,
+            draggable: true,
+            className: styles.successToast,
+            toastId: SUCCESS_TOAST_ID,
+          },
+        );
+        if (successToastTimerRef.current) {
+          clearTimeout(successToastTimerRef.current);
+        }
+        successToastTimerRef.current = setTimeout(() => {
+          toast.dismiss(SUCCESS_TOAST_ID);
+        }, 7000);
       }
     };
     confirmPayment();
   }, [idDemande, apiURL]);
+
+  useEffect(() => {
+    return () => {
+      if (successToastTimerRef.current) {
+        clearTimeout(successToastTimerRef.current);
+      }
+      toast.dismiss(SUCCESS_TOAST_ID);
+    };
+  }, []);
 
 
   useEffect(() => {
@@ -345,7 +368,7 @@ const ConfirmationPaiement = () => {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
-    doc.text("SIGAM - Confirmation de Paiement", pageWidth / 2, 25, { align: "center" });
+    doc.text("POM- Confirmation de Paiement", pageWidth / 2, 25, { align: "center" });
     
     doc.setFontSize(11);
     doc.setFont("helvetica", "normal");
@@ -421,7 +444,7 @@ const ConfirmationPaiement = () => {
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
     doc.text(
-      "SIGAM - Système Intégré de Gestion des Activités Minières",
+      "POM- Système Intégré de Gestion des Activités Minières",
       pageWidth / 2,
       280,
       { align: "center" }

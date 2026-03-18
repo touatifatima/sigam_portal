@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Globe } from "lucide-react";
 import styles from "./Header.module.css";
-const logo = "/logo.jpg";
+const logoJpg = "/logo.jpg";
+const logoWebp = "/logo.webp";
 
 export const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -10,18 +11,19 @@ export const Header = () => {
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
+      setIsScrolled(window.scrollY > 0);
     };
-    window.addEventListener("scroll", handleScroll);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const navLinks = [
     { label: "Accueil", href: "/" },
-    { label: "Services", href: "#services" },
-    { label: "Carte Minière", href: "#carte" },
-    { label: "Actualités", href: "#actualites" },
-    { label: "Contact", href: "#contact" },
+    { label: "Services", href: "/auth/login" },
+    { label: "Carte Minière", href: "/carte/carte_public" },
+    { label: "Actualités", href: "/auth/login" },
+    { label: "Contact", href: "/auth/login" },
   ];
 
   return (
@@ -32,14 +34,21 @@ export const Header = () => {
     >
       <div className={`container ${styles.container}`}>
         {/* Logo */}
-        <a href="/acceuil/Home" className={styles.logoLink}>
-          <img 
-            src={logo} 
-            alt="ANAM Logo" 
-            className={styles.logoImage} 
-          />
+        <a href="/" className={styles.logoLink}>
+          <picture>
+            <source srcSet={logoWebp} type="image/webp" />
+            <img
+              src={logoJpg}
+              alt="ANAM Logo"
+              className={styles.logoImage}
+              width={96}
+              height={48}
+              decoding="async"
+              fetchPriority="high"
+            />
+          </picture>
           <div className={styles.logoText}>
-            <span className={styles.logoTitle}>SIGAM</span>
+            <span className={styles.logoTitle}>POM</span>
             <span className={styles.logoSubtitle}>Portail Minier</span>
           </div>
         </a>
@@ -65,13 +74,13 @@ export const Header = () => {
           </button>
           <Button 
             variant="ghost" 
-            className="text-primary-foreground/90 hover:text-primary hover:bg-primary/10"
+            className={styles.loginButton}
             asChild
           >
-            <a href="/">Connexion</a>
+            <a href="/auth/login">Connexion</a>
           </Button>
           <Button 
-            className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 shadow-lg hover:shadow-xl transition-all"
+            className={styles.signupButton}
             asChild
           >
             <a href="/Signup/page">Créer un compte</a>
@@ -103,7 +112,7 @@ export const Header = () => {
             ))}
             <div className={styles.mobileActions}>
               <Button variant="outline" className="w-full border-primary/30 text-primary-foreground" asChild>
-                <a href="/">Connexion</a>
+                <a href="/auth/login">Connexion</a>
               </Button>
               <Button className="w-full bg-primary" asChild>
                 <a href="/Signup/page">Créer un compte</a>

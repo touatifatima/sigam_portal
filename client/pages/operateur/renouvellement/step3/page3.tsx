@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { useDemandeInfo } from '../../../../utils/useDemandeInfo';
-import { FiChevronLeft, FiChevronRight, FiUser, FiDollarSign, FiTool, FiFileText, FiCalendar } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiUser, FiDollarSign, FiTool, FiFileText, FiCalendar, FiAlertCircle, FiCheck } from 'react-icons/fi';
 import styles from './capacities3.module.css';
 import { useSearchParams } from '@/src/hooks/useSearchParams';
 import Navbar from '../../../navbar/Navbar';
@@ -25,6 +25,13 @@ interface DataStatus {
   idDemande: boolean;
   allDataReady: boolean;
 }
+
+type ProcedureDeclarationItem = {
+  id: number;
+  ordre: number;
+  texte: string;
+  actif: boolean;
+};
 
 export default function Capacites() {
   const [form, setForm] = useState({
@@ -75,6 +82,12 @@ export default function Capacites() {
     allDataReady: false
   });
   const [checkInterval, setCheckInterval] = useState<NodeJS.Timeout | null>(null);
+  const [showDeclarationModal, setShowDeclarationModal] = useState(false);
+  const [declarations, setDeclarations] = useState<ProcedureDeclarationItem[]>([]);
+  const [declarationChecks, setDeclarationChecks] = useState<Record<number, boolean>>({});
+  const [isDeclarationsLoading, setIsDeclarationsLoading] = useState(false);
+  const [declarationsError, setDeclarationsError] = useState<string | null>(null);
+  const [declarationsValidationError, setDeclarationsValidationError] = useState<string | null>(null);
   // Check if all required data is available
   const checkRequiredData = useCallback(() => {
     const newStatus = {
@@ -304,22 +317,54 @@ export default function Capacites() {
     }));
   };
 
+  const fetchProcedureDeclarations = async () => {
+    if (!apiURL) {
+      throw new Error('API non configuree');
+    }
+    const typeProcedure = procedureTypeId;
+    if (!typeProcedure) {
+      throw new Error('Type de procedure introuvable');
+    }
 
+    const response = await axios.get(
+      `${apiURL}/api/procedure-declarations/${typeProcedure}`,
+      { withCredentials: true },
+    );
 
-  const handleNext = async () => {
+    const items: ProcedureDeclarationItem[] =
+      response.data?.declarations ?? response.data ?? [];
+
+    const activeSorted = (Array.isArray(items) ? items : [])
+      .filter((item) => item?.actif !== false)
+      .sort((a, b) => (a.ordre ?? 0) - (b.ordre ?? 0));
+
+    if (!activeSorted.length) {
+      throw new Error(
+        "Aucune declaration active n'est configuree pour cette procedure.",
+      );
+    }
+
+    return activeSorted;
+  };
+
+  const persistStepAndGoToFacture = async () => {
     if (!idDemande) {
-      toast.error("ID de demande non disponible");
+      toast.error('ID de demande non disponible');
       return;
     }
-
     if (!idProc) {
-      toast.error("ID de proc?dure manquant");
+      toast.error('ID de procedure manquant');
       return;
     }
 
-    if (!isFormComplete && !isStepSaved) {
-      toast.warning("Veuillez remplir tous les champs obligatoires avant de continuer.");
-      return;
+    if (declarations.length > 0) {
+      const allChecked = declarations.every((item) => !!declarationChecks[item.id]);
+      if (!allChecked) {
+        setDeclarationsValidationError(
+          'Vous devez accepter toutes les declarations pour continuer.',
+        );
+        return;
+      }
     }
 
     setSavingEtape(true);
@@ -350,35 +395,216 @@ export default function Capacites() {
       });
 
       let etapeId = 3;
-
       try {
         if (procedureData?.ProcedurePhase) {
           const pathname = window.location.pathname.replace(/^\/+/, '');
           const phasesList = (procedureData.ProcedurePhase || []) as ProcedurePhase[];
-          const allEtapes = phasesList.flatMap(pp => pp.phase?.etapes ?? []);
+          const allEtapes = phasesList.flatMap((pp) => pp.phase?.etapes ?? []);
           const match = allEtapes.find((e: any) => e.page_route === pathname);
           if (match?.id_etape != null) {
             etapeId = match.id_etape;
           }
         }
       } catch {
-        // fallback to default etapeId
+        // keep default etapeId
       }
 
       etapeId = etapeIdForThisPage ?? etapeId;
       await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`);
       setRefetchTrigger((prev) => prev + 1);
-      toast.success("Capacit?s enregistr?es avec succ?s");
+      setShowDeclarationModal(false);
+      toast.success('Capacites enregistrees avec succes');
       const permisParam = searchParams?.get('permisId');
       router.push(
-        `/operateur/renouvellement/step2/page2?id=${idProc}${permisParam ? `&permisId=${permisParam}` : ''}`,
+        `/operateur/renouvellement/step4/page4?id=${idProc}${permisParam ? `&permisId=${permisParam}` : ''}`,
       );
     } catch (err) {
       console.error(err);
       toast.error("Erreur lors de l'enregistrement");
-      setEtapeMessage("Erreur lors de l'enregistrement de l'?tape.");
+      setEtapeMessage("Erreur lors de l'enregistrement de l'etape.");
     } finally {
       setSavingEtape(false);
+    }
+  };
+
+  const FinalDeclarationsModal = () => {
+    if (!showDeclarationModal) return null;
+
+    const allChecked =
+      declarations.length > 0 && declarations.every((item) => !!declarationChecks[item.id]);
+
+    return (
+      <div className={styles.finalDeclarationOverlay}>
+        <div className={styles.finalDeclarationModal}>
+          <div className={styles.finalDeclarationHeader}>
+            <div className={styles.finalDeclarationTitleRow}>
+              <FiAlertCircle className={styles.finalDeclarationWarningIcon} />
+              <div>
+                <h3 className={styles.finalDeclarationTitle}>
+                  Confirmation finale avant paiement
+                </h3>
+                <p className={styles.finalDeclarationSubtitle}>
+                  Declarations sur l&apos;honneur - Derniere etape
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setShowDeclarationModal(false);
+                setDeclarationsValidationError(null);
+                setDeclarationChecks({});
+              }}
+              className={styles.finalDeclarationClose}
+              aria-label="Fermer"
+            >
+              &times;
+            </button>
+          </div>
+
+          <div className={styles.finalDeclarationBody}>
+            <div className={styles.finalDeclarationCard}>
+              <p className={styles.finalDeclarationCardTitle}>
+                En cliquant sur "Accepter et continuer", je confirme et je m&apos;engage sur les points suivants :
+              </p>
+
+              {isDeclarationsLoading ? (
+                <p className={styles.finalDeclarationLoading}>Chargement des declarations...</p>
+              ) : declarationsError ? (
+                <p className={styles.finalDeclarationFetchError}>{declarationsError}</p>
+              ) : (
+                <div className={styles.finalDeclarationListWrap}>
+                  <ul className={styles.finalDeclarationList}>
+                    {declarations.map((item) => (
+                      <li key={item.id} className={styles.finalDeclarationItem}>
+                        <label className={styles.finalDeclarationItemLabel}>
+                          <input
+                            type="checkbox"
+                            checked={!!declarationChecks[item.id]}
+                            onChange={(event) => {
+                              const checked = event.target.checked;
+                              if (!checked) {
+                                setDeclarationsValidationError(
+                                  'Vous devez accepter toutes les declarations pour continuer.',
+                                );
+                              }
+                              setDeclarationChecks((prev) => {
+                                const next = {
+                                  ...prev,
+                                  [item.id]: checked,
+                                };
+                                const allNow =
+                                  declarations.length > 0 &&
+                                  declarations.every((decl) => !!next[decl.id]);
+                                if (allNow) {
+                                  setDeclarationsValidationError(null);
+                                }
+                                return next;
+                              });
+                            }}
+                          />
+                          <FiCheck className={styles.finalDeclarationItemIcon} />
+                          <span>{item.texte}</span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {declarationsValidationError && (
+              <p className={styles.finalDeclarationValidationError}>
+                {declarationsValidationError}
+              </p>
+            )}
+          </div>
+
+          <div className={styles.finalDeclarationActions}>
+            <button
+              type="button"
+              className={styles.finalDeclarationSecondaryBtn}
+              onClick={() => {
+                setShowDeclarationModal(false);
+                setDeclarationsValidationError(null);
+                setDeclarationChecks({});
+              }}
+            >
+              Fermer
+            </button>
+            <button
+              type="button"
+              className={`${styles.finalDeclarationPrimaryBtn} ${!allChecked ? styles.finalDeclarationPrimaryDisabled : ''}`}
+              disabled={
+                isDeclarationsLoading ||
+                !allChecked ||
+                declarations.length === 0 ||
+                savingEtape
+              }
+              onClick={() => {
+                if (!allChecked) {
+                  setDeclarationsValidationError(
+                    'Vous devez accepter toutes les declarations pour continuer.',
+                  );
+                  return;
+                }
+                void persistStepAndGoToFacture();
+              }}
+            >
+              Accepter et continuer vers la facture
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+
+
+  const handleNext = async () => {
+    if (showDeclarationModal || isDeclarationsLoading) return;
+
+    if (!idDemande) {
+      toast.error('ID de demande non disponible');
+      return;
+    }
+
+    if (!idProc) {
+      toast.error('ID de procedure manquant');
+      return;
+    }
+
+    if (!isFormComplete && !isStepSaved) {
+      toast.warning('Veuillez remplir tous les champs obligatoires avant de continuer.');
+      return;
+    }
+
+    setDeclarationsValidationError(null);
+    setDeclarationsError(null);
+    setDeclarations([]);
+    setDeclarationChecks({});
+    setShowDeclarationModal(true);
+    setIsDeclarationsLoading(true);
+    setEtapeMessage(null);
+
+    try {
+      const fetched = await fetchProcedureDeclarations();
+      setDeclarations(fetched);
+      setDeclarationChecks(
+        fetched.reduce<Record<number, boolean>>((acc, item) => {
+          acc[item.id] = false;
+          return acc;
+        }, {}),
+      );
+    } catch (err) {
+      console.error('Erreur lors du chargement des declarations finales', err);
+      setDeclarationsError(
+        err instanceof Error
+          ? err.message
+          : 'Impossible de charger les declarations de cette procedure.',
+      );
+    } finally {
+      setIsDeclarationsLoading(false);
     }
   };
 
@@ -389,7 +615,7 @@ export default function Capacites() {
     }
     const permisParam = searchParams?.get('permisId');
     router.push(
-      `/operateur/renouvellement/step4/page4?id=${idProc}${permisParam ? `&permisId=${permisParam}` : ''}`,
+      `/operateur/renouvellement/step2/page2?id=${idProc}${permisParam ? `&permisId=${permisParam}` : ''}`,
     );
   };
 
@@ -426,7 +652,7 @@ export default function Capacites() {
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles.mainContent}>
           <div className={styles.breadcrumb}>
-            <span>SIGAM</span>
+            <span>POM</span>
             <FiChevronRight className={styles.breadcrumbArrow} />
             <span>Capacitiés</span>
           </div>
@@ -747,7 +973,13 @@ export default function Capacites() {
                 <button
                   onClick={handleNext}
                   className={styles.btnNext}
-                  disabled={isLoading || savingEtape || (!isFormComplete && !isStepSaved)}
+                  disabled={
+                    isLoading ||
+                    savingEtape ||
+                    isDeclarationsLoading ||
+                    showDeclarationModal ||
+                    (!isFormComplete && !isStepSaved)
+                  }
                 >
                   Suivant
                   <FiChevronRight className={styles.btnIcon} />
@@ -760,6 +992,7 @@ export default function Capacites() {
                   </div>
                 )}
               </div>
+              <FinalDeclarationsModal />
             </div>
           </div>
         </main>

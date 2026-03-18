@@ -733,7 +733,7 @@ export default function ProjectionPage() {
             <div className={styles.headerText}>
               <h1 className={styles.title}>Outils professionnels de projection</h1>
               <p className={styles.subtitle}>
-                Centralisez vos coordonnees, analysez les couches SIGAM et verifiez les chevauchements en un clic.
+                Centralisez vos coordonnees, analysez les couches POMet verifiez les chevauchements en un clic.
               </p>
             </div>
             <div className={styles.headerSearch}>

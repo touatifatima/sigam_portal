@@ -256,7 +256,7 @@ export default function CadastrePage() {
 
   // When a title/perimeter polygon is clicked on the ArcGIS map:
   // - Extract `code_permis` from layer attributes
-  // - Resolve the permit in SIGAM (Postgres) and load all related procedures + their coordinates
+  // - Resolve the permit in POM(Postgres) and load all related procedures + their coordinates
   // - Populate the dropdown (historique) and show coordinates on the map
   const handleTitreSelected = useCallback(
     async (attrs: any) => {
@@ -344,7 +344,7 @@ export default function CadastrePage() {
         }
         setSelectedHistoryProcId(null);
       } catch (e) {
-        console.error('Failed to load SIGAM procedure history for permis', permisCode, e);
+        console.error('Failed to load POM procedure history for permis', permisCode, e);
         setExistingPolygons([]);
         setHistoryProcedures([]);
         setSelectedHistoryProcId(null);
@@ -1405,7 +1405,7 @@ export default function CadastrePage() {
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles['main-content']}>
           <div className={styles['breadcrumb']}>
-            <span>SIGAM</span>
+            <span>POM</span>
             <FiChevronRight className={styles['breadcrumb-arrow']} />
             <span>Cadastre</span>
           </div>

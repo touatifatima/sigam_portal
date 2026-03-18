@@ -38,6 +38,7 @@ try {
  // run('npx ts-node prisma/Procedure/procCoord_seed.ts');
   //run('npx ts-node prisma/Procedure/substanceAssocieDemande_seed.ts');
   run('npx ts-node prisma/Procedure/procedurePhaseEtapes_seed.ts');
+   run('npx ts-node prisma/Procedure/proceduredeclaration_seed.ts');
   //run('npx ts-node prisma/Procedure/interactionWali_seed.ts');
   run('npx ts-node prisma/seed_documents.ts');
   //run('npx ts-node prisma/Demande/demandeGeneral_seed.ts');

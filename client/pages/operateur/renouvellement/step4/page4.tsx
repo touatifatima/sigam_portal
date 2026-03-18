@@ -15,6 +15,7 @@ import styles from "./facture.module.css";
 import Navbar from "../../../navbar/Navbar";
 import Sidebar from "../../../sidebar/Sidebar";
 import { useViewNavigator } from "../../../../src/hooks/useViewNavigator";
+import { useSearchParams } from "@/src/hooks/useSearchParams";
 import { useActivateEtape } from "@/src/hooks/useActivateEtape";
 import ProgressStepper from "../../../../components/ProgressStepper";
 import { Phase, Procedure, ProcedureEtape, ProcedurePhase } from "@/src/types/procedure";
@@ -43,6 +44,7 @@ type DemandeDisplay = {
 
 const Facture = () => {
   const { currentView, navigateTo } = useViewNavigator("nouvelle-demande");
+  const searchParams = useSearchParams();
   const [idProc, setIdProc] = useState<number | undefined>(undefined);
   const [idDemande, setIdDemande] = useState<string | null>(null);
   const [demandeInfo, setDemandeInfo] = useState<DemandeDisplay | null>(null);
@@ -891,7 +893,7 @@ const Facture = () => {
                 <header className={styles.header}>
                   <div className={styles.headerTop}>
                     <div className={styles.brandBlock}>
-                      <span className={styles.brandLogo}>SIGAM</span>
+                      <span className={styles.brandLogo}>POM</span>
                       <span className={styles.brandSubtitle}>
                         Plateforme des demandes minières
                       </span>

@@ -1789,12 +1789,40 @@ const checkButtonConditions = () => {
     setError(null);
 
     try {
-      // Persist declared area into provisional record on Next
+      // Persist provisional perimeter + declared area on Next.
+      // Sending points here ensures immediate GIS sync (geom in sig_gis).
       try {
+        const provisionalPayloadPoints = (points || [])
+          .map((p) => ({
+            x: parseCoordinateValue(p.x),
+            y: parseCoordinateValue(p.y),
+            z: parseCoordinateValue(p.z || '0') || 0,
+            system: p.system || coordinateSystem,
+            zone:
+              p.system === 'UTM'
+                ? (p.zone ?? utmZone)
+                : p.zone,
+            hemisphere:
+              p.system === 'UTM'
+                ? (p.hemisphere ?? utmHemisphere)
+                : p.hemisphere,
+          }))
+          .filter(
+            (p) =>
+              Number.isFinite(p.x) &&
+              Number.isFinite(p.y),
+          );
+
         await axios.post(`${apiURL}/inscription-provisoire`, {
           id_proc: idProc,
           id_demande: idDemande,
-          points: [],
+          points:
+            provisionalPayloadPoints.length >= 3
+              ? provisionalPayloadPoints
+              : undefined,
+          system: coordinateSystem,
+          zone: coordinateSystem === 'UTM' ? utmZone : undefined,
+          hemisphere: coordinateSystem === 'UTM' ? utmHemisphere : undefined,
           superficie_declaree:
             superficieDeclaree && superficieDeclaree.trim() !== ''
               ? parseFloat(
@@ -1804,6 +1832,9 @@ const checkButtonConditions = () => {
                 )
               : undefined,
         });
+        if (provisionalPayloadPoints.length >= 3) {
+          toast.success('Votre perimetre a ete enregistre avec succes.');
+        }
       } catch (e) {
         // non-blocking for Demande save
       }

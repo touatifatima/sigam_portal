@@ -13,6 +13,7 @@ export type GisPointInput = {
 export type GisOverlapLayerKey =
   | 'titres'
   | 'perimetresSig'
+  | 'provisoire'
   | 'promotion'
   | 'modifications'
   | 'exclusions';
@@ -217,6 +218,7 @@ export class GisService {
           sigam_permis_id,
           source,
           type_code,
+          code_demande,
           detenteur,
           permis_code,
           permis_type_code,
@@ -225,8 +227,6 @@ export class GisService {
           permis_area_ha,
           geom
         )
-        // VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-        //   ST_Multi(ST_SetSRID(ST_GeomFromText($12), 4326))
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
           ST_Multi(ST_SetSRID(ST_GeomFromText($13), 4326))
         )
@@ -321,9 +321,6 @@ export class GisService {
           permis_area_ha
         )
         VALUES (
-          // $1, $2, $3, $4, $5, $6, $7,
-          // ST_Multi(ST_SetSRID(ST_GeomFromText($8), 4326)),
-          // $9, $10, $11, $12, $13
           $1, $2, $3, $4, $5, $6, $7, $8,
           ST_Multi(ST_SetSRID(ST_GeomFromText($9), 4326)),
           $10, $11, $12, $13, $14
@@ -977,6 +974,7 @@ export class GisService {
       const selection: Record<GisOverlapLayerKey, boolean> = {
         titres: false,
         perimetresSig: false,
+        provisoire: false,
         promotion: false,
         modifications: false,
         exclusions: false,
@@ -1079,60 +1077,150 @@ export class GisService {
       }
 
       if (selection.perimetresSig) {
-        const res = await client.query(
-          `
-          WITH poly AS (
+        try {
+          const res = await client.query(
+            `
+            WITH poly AS (
+              SELECT
+                ST_Multi(
+                  ST_CollectionExtract(
+                    ST_MakeValid(ST_SetSRID(ST_GeomFromText($1), 4326)),
+                    3
+                  )
+                ) AS geom4326,
+                ST_Transform(
+                  ST_Multi(
+                    ST_CollectionExtract(
+                      ST_MakeValid(ST_SetSRID(ST_GeomFromText($1), 4326)),
+                      3
+                    )
+                  ),
+                  3857
+                ) AS geom3857
+            ), gp_norm AS (
+              SELECT
+                gp.id,
+                gp.sigam_proc_id,
+                gp.sigam_permis_id,
+                gp.source,
+                gp.type_code,
+                gp.status,
+                gp.permis_code,
+                gp.permis_type_code,
+                gp.permis_type_label,
+                gp.permis_titulaire,
+                gp.permis_area_ha,
+                ST_Multi(
+                  ST_CollectionExtract(
+                    ST_MakeValid(
+                      CASE
+                        WHEN ST_SRID(gp.geom) = 0 THEN ST_SetSRID(gp.geom, 4326)
+                        WHEN ST_SRID(gp.geom) = 4326 THEN gp.geom
+                        ELSE ST_Transform(gp.geom, 4326)
+                      END
+                    ),
+                    3
+                  )
+                ) AS geom4326
+              FROM gis_perimeters gp
+              WHERE gp.geom IS NOT NULL
+                AND NOT ST_IsEmpty(gp.geom)
+            ), inter AS (
+              SELECT
+                gp.id,
+                gp.sigam_proc_id,
+                gp.sigam_permis_id,
+                gp.source,
+                gp.type_code,
+                gp.status,
+                gp.permis_code,
+                gp.permis_type_code,
+                gp.permis_type_label,
+                gp.permis_titulaire,
+                gp.permis_area_ha,
+                ST_Intersection(
+                  ST_MakeValid(ST_Transform(gp.geom4326, 3857)),
+                  ST_MakeValid((SELECT geom3857 FROM poly))
+                ) AS inter_geom
+              FROM gp_norm gp, poly
+              WHERE gp.geom4326 IS NOT NULL
+                AND NOT ST_IsEmpty(gp.geom4326)
+                AND gp.geom4326 && (SELECT geom4326 FROM poly)
+                AND ST_Intersects(gp.geom4326, (SELECT geom4326 FROM poly))
+                AND NOT ST_Touches(gp.geom4326, (SELECT geom4326 FROM poly))
+            )
             SELECT
-              ST_SetSRID(ST_GeomFromText($1), 4326) AS geom4326,
-              ST_Transform(ST_SetSRID(ST_GeomFromText($1), 4326), 3857) AS geom3857
-          ), inter AS (
+              'perimetresSig' AS layer_type,
+              id,
+              sigam_proc_id,
+              sigam_permis_id,
+              source,
+              type_code,
+              status,
+              permis_code,
+              permis_type_code,
+              permis_type_label,
+              permis_titulaire,
+              permis_area_ha,
+              ST_Area(inter_geom) AS overlap_area_m2,
+              ST_Area(inter_geom) / 10000 AS overlap_area_ha
+            FROM inter
+            WHERE inter_geom IS NOT NULL
+              AND NOT ST_IsEmpty(inter_geom)
+              AND ST_Dimension(inter_geom) = 2
+              AND ST_Area(inter_geom) > $2
+          `,
+            [wkt, overlapEpsilonM2],
+          );
+          overlaps.push(...(res.rows || []));
+        } catch (err) {
+          this.logger.warn(
+            'Skipping perimetresSig overlap query: geometry normalization failed.',
+          );
+        }
+      }
+
+      if (selection.provisoire) {
+        try {
+          const res = await client.query(
+            `
+            WITH poly AS (
+              SELECT
+                ST_SetSRID(ST_GeomFromText($1), 4326) AS geom4326,
+                ST_Transform(ST_SetSRID(ST_GeomFromText($1), 4326), 3857) AS geom3857
+            ), inter AS (
+              SELECT
+                p.*,
+                ST_Intersection(
+                  ST_Transform(ST_MakeValid(p.geom), 3857),
+                  (SELECT geom3857 FROM poly)
+                ) AS inter_geom
+              FROM provisoire p, poly
+              WHERE p.geom IS NOT NULL
+                AND NOT ST_IsEmpty(p.geom)
+                AND p.geom && (SELECT geom4326 FROM poly)
+                AND ST_Intersects(p.geom, (SELECT geom4326 FROM poly))
+                AND NOT ST_Touches(p.geom, (SELECT geom4326 FROM poly))
+            )
             SELECT
-              gp.id,
-              gp.sigam_proc_id,
-              gp.sigam_permis_id,
-              gp.source,
-              gp.type_code,
-              gp.status,
-              gp.permis_code,
-              gp.permis_type_code,
-              gp.permis_type_label,
-              gp.permis_titulaire,
-              gp.permis_area_ha,
-              ST_Intersection(
-                ST_Transform(ST_MakeValid(gp.geom), 3857),
-                (SELECT geom3857 FROM poly)
-              ) AS inter_geom
-            FROM gis_perimeters gp, poly
-            WHERE gp.geom IS NOT NULL
-              AND NOT ST_IsEmpty(gp.geom)
-              AND gp.geom && (SELECT geom4326 FROM poly)
-              AND ST_Intersects(gp.geom, (SELECT geom4326 FROM poly))
-              AND NOT ST_Touches(gp.geom, (SELECT geom4326 FROM poly))
-          )
-          SELECT
-            'perimetresSig' AS layer_type,
-            id,
-            sigam_proc_id,
-            sigam_permis_id,
-            source,
-            type_code,
-            status,
-            permis_code,
-            permis_type_code,
-            permis_type_label,
-            permis_titulaire,
-            permis_area_ha,
-            ST_Area(inter_geom) AS overlap_area_m2,
-            ST_Area(inter_geom) / 10000 AS overlap_area_ha
-          FROM inter
-          WHERE inter_geom IS NOT NULL
-            AND NOT ST_IsEmpty(inter_geom)
-            AND ST_Dimension(inter_geom) = 2
-            AND ST_Area(inter_geom) > $2
-        `,
-          [wkt, overlapEpsilonM2],
-        );
-        overlaps.push(...(res.rows || []));
+              'provisoire' AS layer_type,
+              inter.*,
+              ST_Area(inter_geom) AS overlap_area_m2,
+              ST_Area(inter_geom) / 10000 AS overlap_area_ha
+            FROM inter
+            WHERE inter_geom IS NOT NULL
+              AND NOT ST_IsEmpty(inter_geom)
+              AND ST_Dimension(inter_geom) = 2
+              AND ST_Area(inter_geom) > $2
+          `,
+            [wkt, overlapEpsilonM2],
+          );
+          overlaps.push(...(res.rows || []));
+        } catch (err) {
+          this.logger.warn(
+            'Skipping provisoire overlap query: source table unavailable or invalid.',
+          );
+        }
       }
 
       if (selection.promotion) {

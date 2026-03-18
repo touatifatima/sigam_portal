@@ -115,6 +115,111 @@
   font-size: 0.95rem;
 }
 
+.verificationNotice {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+}
+
+.verificationNoticeSuccess {
+  background: #ecfdf3;
+  border-color: #86efac;
+}
+
+.verificationNoticeWarning {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.verificationNoticeBlocking {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+
+.verificationNoticeIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.2rem;
+}
+
+.verificationNoticeSuccess .verificationNoticeIcon {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.verificationNoticeWarning .verificationNoticeIcon {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.verificationNoticeBlocking .verificationNoticeIcon {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.verificationNoticeBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.verificationNoticeTitle {
+  font-size: 1.02rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #111827;
+}
+
+.verificationNoticeText {
+  margin: 0 0 4px 0;
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.verificationNoticeList {
+  margin: 8px 0 0 18px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  color: #1f2937;
+  font-size: 0.85rem;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.verificationNoticeActions {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.verificationNoticeClose {
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #6b7280;
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.verificationNoticeClose:hover {
+  background: #f8fafc;
+}
+
 .resetBtn {
   background: #fff;
   border: 1px solid #e5e7eb;
@@ -245,6 +350,10 @@
   font-size: 0.9rem;
 }
 
+.primaryBtn:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
 .startBtn {
   display: inline-flex;
   align-items: center;
@@ -263,6 +372,19 @@
 .secondaryBtn:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+.spinIcon {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .statusBadge {
@@ -587,6 +709,15 @@
 }
 
 @media (max-width: 900px) {
+  .verificationNotice {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .verificationNoticeClose {
+    align-self: flex-end;
+  }
+
   .headerSearch {
     flex-direction: column;
     align-items: stretch;

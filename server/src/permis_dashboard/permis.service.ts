@@ -1,10 +1,15 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { GisService } from '../gis/gis.service';
+import { NotificationsService } from 'src/notifications/notifications.service';
 
 @Injectable()
 export class Permisdashboard2Service {
-  constructor(private prisma: PrismaService, private gisService: GisService) {}
+  constructor(
+    private prisma: PrismaService,
+    private gisService: GisService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async findAll(antenneId?: number) {
     // Reuse the richer include tree so list views
@@ -325,71 +330,227 @@ export class Permisdashboard2Service {
    * If the direct relation is null, fall back to the latest demande's holder.
    */
   private enrichPermisWithDerivedHolder(permis: any) {
+    this.applyOfficialSnapshot(permis);
     this.applyEffectiveOctroi(permis);
-    if (permis?.detenteur) {
-      return permis;
+    if (!permis?.detenteur) {
+      const officialDemande = this.getLatestOfficialDemande(permis);
+      const fallbackDemande = this.getLatestDemande(permis);
+      const sourceDemande = officialDemande ?? fallbackDemande;
+      const detRel = Array.isArray(sourceDemande?.detenteurdemande)
+        ? sourceDemande.detenteurdemande[0]
+        : null;
+      if (detRel?.detenteur) {
+        permis.detenteur = detRel.detenteur;
+      }
     }
 
-    const demandes: any[] = [];
+    return permis;
+  }
 
+  private normalizeStatus(value: unknown): string {
+    return String(value ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toUpperCase();
+  }
+
+  private toValidDate(value: unknown): Date | null {
+    if (!value) return null;
+    const date = value instanceof Date ? value : new Date(value as any);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  private isProcedureFinished(procedure: any): boolean {
+    return this.normalizeStatus(procedure?.statut_proc) === 'TERMINEE';
+  }
+
+  private isDemandeAccepted(demande: any): boolean {
+    const status = this.normalizeStatus(demande?.statut_demande);
+    return (
+      status === 'ACCEPTEE' ||
+      status === 'ACCEPTE' ||
+      status === 'VALIDEE' ||
+      status === 'VALIDE'
+    );
+  }
+
+  private getDemandeSortScore(demande: any): number {
+    const date = this.toValidDate(demande?.date_demande);
+    if (date) {
+      return date.getTime();
+    }
+    const id = Number(demande?.id_demande ?? 0);
+    return Number.isFinite(id) ? id : 0;
+  }
+
+  private getProcedureSortScore(procedure: any, link?: any): number {
+    const fromDates =
+      this.toValidDate(procedure?.date_fin_proc) ??
+      this.toValidDate(procedure?.date_debut_proc) ??
+      this.toValidDate(procedure?.created_at) ??
+      this.toValidDate(link?.date_octroi_proc);
+    if (fromDates) {
+      return fromDates.getTime();
+    }
+    const idProc = Number(link?.id_proc ?? procedure?.id_proc ?? procedure?.id ?? 0);
+    return Number.isFinite(idProc) ? idProc : 0;
+  }
+
+  private getLatestDemande(permis: any): any | null {
+    const demandes: any[] = [];
     if (Array.isArray(permis?.permisProcedure)) {
       permis.permisProcedure.forEach((relation: any) => {
-        if (Array.isArray(relation.procedure?.demandes)) {
-          relation.procedure.demandes.forEach((d: any) => demandes.push(d));
-        }
+        const list = Array.isArray(relation?.procedure?.demandes)
+          ? relation.procedure.demandes
+          : [];
+        list.forEach((demande: any) => demandes.push(demande));
       });
     }
-
     if (Array.isArray(permis?.demandes)) {
-      demandes.push(...permis.demandes);
+      permis.demandes.forEach((demande: any) => demandes.push(demande));
+    }
+    if (!demandes.length) return null;
+    const sorted = [...demandes].sort(
+      (a, b) => this.getDemandeSortScore(b) - this.getDemandeSortScore(a),
+    );
+    return sorted[0] ?? null;
+  }
+
+  private getLatestAcceptedDemandeFromProcedure(procedure: any): any | null {
+    const demandes = Array.isArray(procedure?.demandes) ? procedure.demandes : [];
+    const accepted = demandes.filter((demande: any) => this.isDemandeAccepted(demande));
+    if (!accepted.length) return null;
+    const sorted = [...accepted].sort(
+      (a, b) => this.getDemandeSortScore(b) - this.getDemandeSortScore(a),
+    );
+    return sorted[0] ?? null;
+  }
+
+  private getLatestOfficialProcedureLink(permis: any): any | null {
+    const linksFromRelations = Array.isArray(permis?.permisProcedure)
+      ? permis.permisProcedure
+      : [];
+    const linksFromProcedures =
+      !linksFromRelations.length && Array.isArray(permis?.procedures)
+        ? permis.procedures.map((procedure: any) => ({
+            id_proc: procedure?.id_proc ?? procedure?.id ?? null,
+            date_octroi_proc: null,
+            procedure,
+          }))
+        : [];
+    const links = [...linksFromRelations, ...linksFromProcedures];
+    const officialLinks = links.filter((link: any) => {
+      const procedure = link?.procedure;
+      if (!procedure || !this.isProcedureFinished(procedure)) {
+        return false;
+      }
+      return !!this.getLatestAcceptedDemandeFromProcedure(procedure);
+    });
+
+    if (!officialLinks.length) {
+      return null;
     }
 
-    if (!demandes.length) {
-      return permis;
+    const sorted = [...officialLinks].sort(
+      (a, b) =>
+        this.getProcedureSortScore(b?.procedure, b) -
+        this.getProcedureSortScore(a?.procedure, a),
+    );
+    return sorted[0] ?? null;
+  }
+
+  private getLatestOfficialDemande(permis: any): any | null {
+    if (permis?.demande_officielle) {
+      return permis.demande_officielle;
     }
+    const officialLink = this.getLatestOfficialProcedureLink(permis);
+    if (!officialLink?.procedure) {
+      return null;
+    }
+    return this.getLatestAcceptedDemandeFromProcedure(officialLink.procedure);
+  }
 
-    const withDates = demandes
-      .filter((d: any) => d && d.date_demande)
-      .sort(
-        (a: any, b: any) =>
-          new Date(b.date_demande).getTime() -
-          new Date(a.date_demande).getTime(),
-      );
+  private applyOfficialSnapshot(permis: any) {
+    if (!permis) return permis;
 
-    const latest = withDates[0] ?? demandes[0];
-
-    const detRel = Array.isArray(latest.detenteurdemande)
-      ? latest.detenteurdemande[0]
+    const officialLink = this.getLatestOfficialProcedureLink(permis);
+    const officialProcedure = officialLink?.procedure ?? null;
+    const officialDemande = officialProcedure
+      ? this.getLatestAcceptedDemandeFromProcedure(officialProcedure)
       : null;
 
-    if (detRel?.detenteur && !permis.detenteur) {
-      permis.detenteur = detRel.detenteur;
+    permis.procedure_officielle_id =
+      officialLink?.id_proc ??
+      officialProcedure?.id_proc ??
+      officialProcedure?.id ??
+      null;
+    permis.procedure_officielle = officialProcedure;
+    permis.demande_officielle = officialDemande;
+    permis.has_official_snapshot = !!officialProcedure;
+
+    const officialSurface =
+      typeof officialDemande?.superficie === 'number' &&
+      Number.isFinite(officialDemande.superficie)
+        ? officialDemande.superficie
+        : null;
+    permis.superficie_officielle = officialSurface;
+
+    const substances = new Set<string>();
+    if (Array.isArray(officialProcedure?.SubstanceAssocieeDemande)) {
+      officialProcedure.SubstanceAssocieeDemande.forEach((assoc: any) => {
+        const name =
+          assoc?.substance?.nom_subFR ??
+          assoc?.substance?.nom_subAR ??
+          null;
+        if (name) substances.add(name);
+      });
     }
+    permis.substances_officielles = Array.from(substances);
+
+    const officialCoordinates = Array.isArray(officialProcedure?.coordonnees)
+      ? officialProcedure.coordonnees
+          .map((item: any) => item?.coordonnee ?? item)
+          .filter((item: any) => !!item)
+      : [];
+    permis.coordonnees_officielles = officialCoordinates;
+
+    const localisation = officialDemande
+      ? {
+          wilaya:
+            officialDemande?.wilaya ??
+            officialDemande?.commune?.daira?.wilaya ??
+            null,
+          daira: officialDemande?.commune?.daira ?? null,
+          commune: officialDemande?.commune ?? null,
+        }
+      : {
+          wilaya: null,
+          daira: null,
+          commune: null,
+        };
+    permis.localisation_officielle = localisation;
 
     return permis;
   }
 
   private applyEffectiveOctroi(permis: any) {
     if (!permis) return permis;
-    const links = Array.isArray(permis?.permisProcedure) ? permis.permisProcedure : [];
-    const dates = links
-      .map((link: any) => link?.date_octroi_proc)
-      .filter((d: any) => d != null)
-      .map((d: any) => (d instanceof Date ? d : new Date(d)))
-      .filter((d: Date) => !isNaN(d.getTime()));
+    const officialLink = this.getLatestOfficialProcedureLink(permis);
     const latest =
-      dates.length > 0
-        ? new Date(Math.max(...dates.map((d: Date) => d.getTime())))
-        : null;
+      this.toValidDate(officialLink?.date_octroi_proc) ??
+      this.toValidDate(officialLink?.procedure?.date_fin_proc) ??
+      this.toValidDate(officialLink?.procedure?.date_debut_proc) ??
+      null;
     const fallback =
-      permis?.date_octroi && !isNaN(new Date(permis.date_octroi).getTime())
+      permis?.date_octroi && !Number.isNaN(new Date(permis.date_octroi).getTime())
         ? new Date(permis.date_octroi)
         : null;
-    const effective = latest ?? fallback ?? null;
+    const effective = latest ?? fallback;
     if (latest) {
       permis.date_octroi_proc = latest;
     }
-    permis.date_octroi_effective = effective;
+    permis.date_octroi_effective = effective ?? null;
     if (effective) {
       permis.date_octroi = effective;
     }
@@ -768,6 +929,26 @@ export class Permisdashboard2Service {
     if (!utilisateurId) {
       throw new BadRequestException('utilisateurId manquant pour creer la demande');
     }
+    const toPositiveInt = (value: any): number | null => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    };
+    let resolvedDetenteurId = toPositiveInt(permis?.id_detenteur);
+    if (!resolvedDetenteurId && latestDemande?.id_demande) {
+      const sourceDetenteur = await this.prisma.detenteurDemandePortail.findFirst({
+        where: { id_demande: latestDemande.id_demande },
+        select: { id_detenteur: true },
+        orderBy: { id_detenteurDemande: 'asc' },
+      });
+      resolvedDetenteurId = toPositiveInt(sourceDetenteur?.id_detenteur);
+    }
+    if (!resolvedDetenteurId) {
+      const user = await this.prisma.utilisateurPortail.findUnique({
+        where: { id: utilisateurId },
+        select: { detenteurId: true },
+      });
+      resolvedDetenteurId = toPositiveInt(user?.detenteurId);
+    }
 
     const demandePayload = {
       id_proc: procedureId,
@@ -780,8 +961,38 @@ export class Permisdashboard2Service {
       ...(idWilaya ? { id_wilaya: idWilaya } : {}),
       ...(idDaira ? { id_daira: idDaira } : {}),
       ...(idCommune ? { id_commune: idCommune } : {}),
+      ...(resolvedDetenteurId
+        ? {
+            detenteurdemande: {
+              create: {
+                id_detenteur: resolvedDetenteurId,
+                role_detenteur: 'principal',
+              },
+            },
+          }
+        : {}),
     };
-    await this.prisma.demandePortail.create({ data: demandePayload });
+    const createdDemande = await this.prisma.demandePortail.create({
+      data: demandePayload,
+      select: {
+        id_demande: true,
+        code_demande: true,
+        utilisateurId: true,
+      },
+    });
+
+    try {
+      await this.notificationsService.createAdminNewDemandeNotification({
+        demandeId: createdDemande.id_demande,
+        demandeCode: createdDemande.code_demande ?? null,
+        requesterUserId: createdDemande.utilisateurId,
+      });
+    } catch (error) {
+      console.warn(
+        'Failed to create admin notification for permit procedure demande',
+        error,
+      );
+    }
   }
 
   async startExpiration(permisId: number, typeProcedureId?: number) {

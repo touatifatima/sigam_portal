@@ -63,7 +63,7 @@ export class DocumentsController {
     @Param('id_demande', ParseIntPipe) id_demande: number,
     @Body()
     body: {
-      statut_demande: 'ACCEPTEE' | 'REJETEE';
+      statut_demande: 'ACCEPTEE' | 'REJETEE' | 'EN_COMPLEMENT';
       rejectionReason?: string;
       motif_rejet?: string;
     },

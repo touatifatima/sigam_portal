@@ -1,4 +1,5 @@
 import styles from "./Partners.module.css";
+import { ScrollReveal } from "./ScrollReveal";
 
 const partners = [
   { name: "Ministere de l'Energie et des Mines", short: "Mdl" },
@@ -12,23 +13,27 @@ export const Partners = () => {
   return (
     <section className={styles.section}>
       <div className="container">
-        <div className={styles.header}>
-          <span className={styles.label}>
-            Organismes gouvernementaux de soutien
-          </span>
-          <h2 className={styles.title}>Partenaires du secteur minier</h2>
-        </div>
+        <ScrollReveal>
+          <div className={styles.header}>
+            <span className={styles.label}>
+              Organismes gouvernementaux de soutien
+            </span>
+            <h2 className={styles.title}>Partenaires du secteur minier</h2>
+          </div>
+        </ScrollReveal>
 
         <div className={styles.grid}>
-          {partners.map((partner) => (
-            <div key={partner.name} className={styles.partnerItem}>
-              <div className={styles.partnerContent}>
-                <div className={styles.partnerLogo}>
-                  <span className={styles.partnerInitials}>{partner.short}</span>
+          {partners.map((partner, i) => (
+            <ScrollReveal key={partner.name} delay={i * 100}>
+              <div className={styles.partnerItem}>
+                <div className={styles.partnerContent}>
+                  <div className={styles.partnerLogo}>
+                    <span className={styles.partnerInitials}>{partner.short}</span>
+                  </div>
+                  <span className={styles.partnerName}>{partner.name}</span>
                 </div>
-                <span className={styles.partnerName}>{partner.name}</span>
               </div>
-            </div>
+            </ScrollReveal>
           ))}
         </div>
       </div>

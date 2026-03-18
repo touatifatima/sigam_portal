@@ -70,11 +70,11 @@
 }
 
 .tab:hover {
-  color: #2563eb;
+  color: #8b3a62;
 }
 
 .tab.active {
-  color: #2563eb;
+  color: #8b3a62;
   font-weight: 600;
 }
 
@@ -85,7 +85,7 @@
   left: 0;
   right: 0;
   height: 2px;
-  background-color: #2563eb;
+  background-color: #8b3a62;
 }
 
 .actions {
@@ -99,7 +99,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background-color: #2563eb;
+  background-color: #8b3a62;
   color: white;
   border: none;
   border-radius: 6px;
@@ -109,7 +109,7 @@
 }
 
 .addButton:hover {
-  background-color: #1d4ed8;
+  background-color: #8b3a68;
 }
 
 .content {
@@ -172,7 +172,7 @@
 
 .editButton {
   background-color: #dbeafe;
-  color: #2563eb;
+  color: #067647;
 }
 
 .editButton:hover {
@@ -375,13 +375,13 @@
 }
 
 .saveButton {
-  background-color: #2563eb;
+  background-color: #8b3a62;
   color: white;
   border: none;
 }
 
 .saveButton:hover {
-  background-color: #1d4ed8;
+  background-color: #8b3a68;
 }
 
 /* Responsive styles */

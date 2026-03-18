@@ -15,6 +15,7 @@ export type GisPointInput = {
 export type GisOverlapLayerKey =
   | 'titres'
   | 'perimetresSig'
+  | 'provisoire'
   | 'promotion'
   | 'modifications'
   | 'exclusions';
@@ -31,6 +32,17 @@ export type GisPerimeterMeta = {
   permis_type_label?: string | null;
   permis_titulaire?: string | null;
   permis_area_ha?: number | null;
+};
+
+export type GisInscriptionProvisoireMeta = {
+  id_demande?: number | null;
+  code_demande?: string | null;
+  detenteur?: string | null;
+  superficie_ha?: number | null;
+  substance_principale?: string | null;
+  substances?: string | null;
+  createdAt?: Date | string | null;
+  updatedAt?: Date | string | null;
 };
 
 @Injectable()
@@ -893,6 +905,244 @@ export class GisService {
     return `POLYGON((${coordStrings.join(', ')}))`;
   }
 
+  async upsertInscriptionProvisoirePerimeter(params: {
+    id_proc: number;
+    points: GisPointInput[];
+    id_demande?: number | null;
+    code_demande?: string | null;
+    detenteur?: string | null;
+    superficie_ha?: number | null;
+    substance_principale?: string | null;
+    substances?: string | null;
+    createdAt?: Date | string | null;
+    updatedAt?: Date | string | null;
+  }): Promise<void> {
+    const idProc = Number(params.id_proc);
+    if (!Number.isFinite(idProc)) return;
+
+    const wkt = this.buildPolygonWkt(params.points);
+    if (!wkt) {
+      this.logger.warn(
+        `Inscription provisoire perimeter skipped (not enough points) proc=${idProc}`,
+      );
+      return;
+    }
+
+    const parseDate = (value?: Date | string | null): Date | null => {
+      if (!value) return null;
+      const parsed = value instanceof Date ? value : new Date(value);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    };
+
+    const client = await this.pool.connect();
+    try {
+      const tableName = 'public.inscription_provisoire';
+      const exists = await client.query('SELECT to_regclass($1) AS tbl', [tableName]);
+      if (!exists.rows?.[0]?.tbl) {
+        this.logger.warn(
+          'Inscription provisoire layer table not found in sig_gis (inscription_provisoire)',
+        );
+        return;
+      }
+
+      const colsRes = await client.query(
+        `
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'inscription_provisoire'
+        `,
+      );
+      const columnMap = new Map<string, string>();
+      for (const row of colsRes.rows || []) {
+        if (!row?.column_name) continue;
+        columnMap.set(String(row.column_name).toLowerCase(), row.column_name);
+      }
+
+      if (!columnMap.has('geom')) {
+        this.logger.warn(
+          'Inscription provisoire layer missing geom column; insert skipped',
+        );
+        return;
+      }
+
+      const getColumn = (name: string) => columnMap.get(name.toLowerCase());
+      const usedColumns = new Set<string>();
+      const insertCols: string[] = [];
+      const selectExprs: string[] = [];
+      const values: any[] = [wkt];
+      let paramIndex = 2;
+
+      const addColumn = (name: string, expr?: string, value?: any) => {
+        const col = getColumn(name);
+        if (!col || usedColumns.has(col)) return;
+        usedColumns.add(col);
+        insertCols.push(col);
+        if (expr) {
+          selectExprs.push(expr);
+          return;
+        }
+        selectExprs.push(`$${paramIndex++}`);
+        values.push(value ?? null);
+      };
+
+      const keyColumn =
+        getColumn('sigam_proc_id') ||
+        getColumn('id_proc') ||
+        getColumn('proc_id');
+
+      await client.query('BEGIN');
+
+      if (keyColumn) {
+        await client.query(
+          `DELETE FROM public.inscription_provisoire WHERE ${keyColumn} = $1`,
+          [idProc],
+        );
+      }
+
+      addColumn('geom', 'g.geom');
+      addColumn('shape_length', 'ST_Perimeter(g.geom)');
+      addColumn('shape_area', 'ST_Area(g.geom)');
+      addColumn('sig_area', 'ST_Area(g.geom::geography) / 10000');
+      if (keyColumn === getColumn('sigam_proc_id')) {
+        addColumn('sigam_proc_id', undefined, idProc);
+      }
+      if (keyColumn === getColumn('id_proc')) {
+        addColumn('id_proc', undefined, idProc);
+      }
+      if (keyColumn === getColumn('proc_id')) {
+        addColumn('proc_id', undefined, idProc);
+      }
+
+      const demandeId = Number(params.id_demande);
+      if (Number.isFinite(demandeId)) {
+        addColumn('sigam_demande_id', undefined, demandeId);
+        addColumn('id_demande', undefined, demandeId);
+      }
+
+      const codeDemande = params.code_demande ? String(params.code_demande).trim() : '';
+      if (codeDemande) {
+        addColumn('code_demande', undefined, codeDemande);
+        addColumn('permis_code', undefined, codeDemande);
+      }
+
+      const detenteur = params.detenteur ? String(params.detenteur).trim() : '';
+      if (detenteur) {
+        addColumn('detenteur', undefined, detenteur);
+        addColumn('titulaire', undefined, detenteur);
+        addColumn('permis_titulaire', undefined, detenteur);
+        addColumn('tnom', undefined, detenteur);
+      }
+
+      const superficieHa = Number(params.superficie_ha);
+      if (Number.isFinite(superficieHa)) {
+        addColumn('superficie_ha', undefined, superficieHa);
+        addColumn('permis_area_ha', undefined, superficieHa);
+      }
+
+      if (params.substance_principale) {
+        addColumn('substance_principale', undefined, params.substance_principale);
+        addColumn('substance1', undefined, params.substance_principale);
+      }
+      if (params.substances) {
+        addColumn('substances', undefined, params.substances);
+      }
+
+      addColumn('source', undefined, 'INSCRIPTION_PROVISOIRE');
+      addColumn('type_code', undefined, 'INSCRIPTION_PROVISOIRE');
+      addColumn('codetype', undefined, 'INSCRIPTION_PROVISOIRE');
+      addColumn('permis_type_code', undefined, 'INSCRIPTION_PROVISOIRE');
+      addColumn('permis_type_label', undefined, 'Inscription provisoire');
+
+      const createdAt = parseDate(params.createdAt);
+      const updatedAt = parseDate(params.updatedAt);
+      if (createdAt) {
+        addColumn('created_at', undefined, createdAt);
+        addColumn('createdat', undefined, createdAt);
+      }
+      if (updatedAt) {
+        addColumn('updated_at', undefined, updatedAt);
+        addColumn('updatedat', undefined, updatedAt);
+      }
+
+      if (!insertCols.length) {
+        await client.query('ROLLBACK');
+        this.logger.warn('Inscription provisoire insert skipped (no matching columns)');
+        return;
+      }
+
+      await client.query(
+        `
+        WITH g AS (
+          SELECT ST_Multi(ST_SetSRID(ST_GeomFromText($1), 4326)) AS geom
+        )
+        INSERT INTO public.inscription_provisoire (${insertCols.join(', ')})
+        SELECT ${selectExprs.join(', ')} FROM g
+        `,
+        values,
+      );
+
+      await client.query('COMMIT');
+    } catch (err) {
+      try {
+        await client.query('ROLLBACK');
+      } catch {}
+      this.logger.error(
+        `Failed to upsert inscription provisoire perimeter for proc=${idProc}`,
+        err as Error,
+      );
+    } finally {
+      client.release();
+    }
+  }
+
+  async deleteInscriptionProvisoirePerimeter(procId: number): Promise<void> {
+    if (!Number.isFinite(procId)) return;
+
+    const client = await this.pool.connect();
+    try {
+      const tableName = 'public.inscription_provisoire';
+      const exists = await client.query('SELECT to_regclass($1) AS tbl', [tableName]);
+      if (!exists.rows?.[0]?.tbl) return;
+
+      const colsRes = await client.query(
+        `
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'inscription_provisoire'
+        `,
+      );
+      const columns = new Set<string>(
+        (colsRes.rows || []).map((r) => String(r.column_name || '').toLowerCase()),
+      );
+      const keyColumn = columns.has('sigam_proc_id')
+        ? 'sigam_proc_id'
+        : columns.has('id_proc')
+          ? 'id_proc'
+          : columns.has('proc_id')
+            ? 'proc_id'
+            : null;
+
+      if (!keyColumn) {
+        this.logger.warn(
+          'Inscription provisoire delete skipped: no procedure key column found',
+        );
+        return;
+      }
+
+      await client.query(
+        `DELETE FROM public.inscription_provisoire WHERE ${keyColumn} = $1`,
+        [procId],
+      );
+    } catch (err) {
+      this.logger.error(
+        `Failed to delete inscription provisoire perimeter for proc=${procId}`,
+        err as Error,
+      );
+    } finally {
+      client.release();
+    }
+  }
+
   async upsertAxwPerimeter(params: {
     id_proc: number;
     points: GisPointInput[];
@@ -1404,6 +1654,7 @@ export class GisService {
       const selection: Record<GisOverlapLayerKey, boolean> = {
         titres: false,
         perimetresSig: false,
+        provisoire: false,
         promotion: false,
         modifications: false,
         exclusions: false,
@@ -1560,6 +1811,49 @@ export class GisService {
           [wkt, overlapEpsilonM2],
         );
         overlaps.push(...(res.rows || []));
+      }
+
+      if (selection.provisoire) {
+        try {
+          const res = await client.query(
+            `
+            WITH poly AS (
+              SELECT
+                ST_SetSRID(ST_GeomFromText($1), 4326) AS geom4326,
+                ST_Transform(ST_SetSRID(ST_GeomFromText($1), 4326), 3857) AS geom3857
+            ), inter AS (
+              SELECT
+                p.*,
+                ST_Intersection(
+                  ST_Transform(ST_MakeValid(CASE WHEN ST_SRID(p.geom)=0 THEN ST_SetSRID(p.geom, 4326) WHEN ST_SRID(p.geom)=4326 THEN p.geom ELSE ST_Transform(p.geom, 4326) END), 3857),
+                  (SELECT geom3857 FROM poly)
+                ) AS inter_geom
+              FROM provisoire p, poly
+              WHERE p.geom IS NOT NULL
+                AND NOT ST_IsEmpty(p.geom)
+                AND CASE WHEN ST_SRID(p.geom)=0 THEN ST_SetSRID(p.geom, 4326) WHEN ST_SRID(p.geom)=4326 THEN p.geom ELSE ST_Transform(p.geom, 4326) END && (SELECT geom4326 FROM poly)
+                AND ST_Intersects(CASE WHEN ST_SRID(p.geom)=0 THEN ST_SetSRID(p.geom, 4326) WHEN ST_SRID(p.geom)=4326 THEN p.geom ELSE ST_Transform(p.geom, 4326) END, (SELECT geom4326 FROM poly))
+                AND NOT ST_Touches(CASE WHEN ST_SRID(p.geom)=0 THEN ST_SetSRID(p.geom, 4326) WHEN ST_SRID(p.geom)=4326 THEN p.geom ELSE ST_Transform(p.geom, 4326) END, (SELECT geom4326 FROM poly))
+            )
+            SELECT
+              'provisoire' AS layer_type,
+              inter.*,
+              ST_Area(inter_geom) AS overlap_area_m2,
+              ST_Area(inter_geom) / 10000 AS overlap_area_ha
+            FROM inter
+            WHERE inter_geom IS NOT NULL
+              AND NOT ST_IsEmpty(inter_geom)
+              AND ST_Dimension(inter_geom) = 2
+              AND ST_Area(inter_geom) > $2
+          `,
+            [wkt, overlapEpsilonM2],
+          );
+          overlaps.push(...(res.rows || []));
+        } catch (err) {
+          this.logger.warn(
+            'Skipping provisoire overlap query: source table unavailable or invalid.',
+          );
+        }
       }
 
       if (selection.promotion) {

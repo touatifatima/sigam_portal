@@ -1,11 +1,15 @@
 // src/procedure/procedure.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { CessionService } from '../../cession/cession.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class ProcedureService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly cessionService: CessionService,
+  ) {}
 
   private readonly demandeInclude: Prisma.demandePortailInclude = {
     typeProcedure: true, // directement depuis Demande
@@ -413,6 +417,10 @@ export class ProcedureService {
         },
       }),
     ]);
+
+    await this.cessionService.applyAcceptedCessionByDemandeId(
+      demande.id_demande,
+    );
 
     return { success: true };
   }

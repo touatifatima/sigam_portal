@@ -1,94 +1,246 @@
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Play, ChevronDown } from "lucide-react";
-import heroImage from "@/src/assets/hero-mining.jpg";
+import { ArrowRight, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import heroSlide1Jpg from "@/src/assets/hero-slide-1.jpg";
+import heroSlide2Jpg from "@/src/assets/hero-slide-2.jpg";
+import heroSlide3Jpg from "@/src/assets/hero-slide-3.jpg";
+import heroSlide4Jpg from "@/src/assets/hero-slide-4.jpg";
+import heroSlide5Jpg from "@/src/assets/hero-slide-5.jpg";
+import heroSlide1Webp from "@/src/assets/hero-slide-1.webp";
+import heroSlide2Webp from "@/src/assets/hero-slide-2.webp";
+import heroSlide3Webp from "@/src/assets/hero-slide-3.webp";
+import heroSlide4Webp from "@/src/assets/hero-slide-4.webp";
+import heroSlide5Webp from "@/src/assets/hero-slide-5.webp";
 import styles from "./Hero.module.css";
 
+type Slide = {
+  image: string;
+  imageWebp: string;
+  title: string;
+  highlight: string;
+  subtitle: string;
+  cta: string;
+  ctaLink: string;
+};
+
+const slides: Slide[] = [
+  {
+    image: heroSlide1Jpg,
+    imageWebp: heroSlide1Webp,
+    title: "Bienvenue sur le Portail des",
+    highlight: "Activites Minieres",
+    subtitle:
+      "Plateforme nationale de gestion des permis et licences minieres de l'Algerie. Simplifiez vos demarches en toute transparence.",
+    cta: "Deposer une demande",
+    ctaLink: "/Signup/page",
+  },
+  {
+    image: heroSlide2Jpg,
+    imageWebp: heroSlide2Webp,
+    title: "Explorez les richesses",
+    highlight: "geologiques de l'Algerie",
+    subtitle:
+      "Des montagnes du Hoggar aux plaines du Tell, decouvrez un patrimoine minier exceptionnel a travers notre carte interactive.",
+    cta: "Explorer la carte",
+    ctaLink: "/auth/login",
+  },
+  {
+    image: heroSlide3Jpg,
+    imageWebp: heroSlide3Webp,
+    title: "Technologie au service de",
+    highlight: "l'investissement minier",
+    subtitle:
+      "POM: une plateforme moderne de suivi en temps reel, d'analyse geologique et de gestion numerique de vos permis.",
+    cta: "Decouvrir SIGAM",
+    ctaLink: "/auth/login",
+  },
+  {
+    image: heroSlide4Jpg,
+    imageWebp: heroSlide4Webp,
+    title: "Des ressources minerales",
+    highlight: "d'une richesse inestimable",
+    subtitle:
+      "Or, fer, phosphate, zinc et bien plus. L'Algerie dispose d'un potentiel minier considerable qui n'attend que votre investissement.",
+    cta: "Voir les opportunites",
+    ctaLink: "/Signup/page",
+  },
+  {
+    image: heroSlide5Jpg,
+    imageWebp: heroSlide5Webp,
+    title: "Exportez vers le monde avec",
+    highlight: "confiance et efficacite",
+    subtitle:
+      "Des infrastructures portuaires modernes et des procedures simplifiees pour accompagner vos projets miniers a l'international.",
+    cta: "Commencer maintenant",
+    ctaLink: "/Signup/page",
+  },
+];
+
 export const Hero = () => {
-  const sideStats = [
-    { value: "2380+", label: "Licences" },
-    { value: "89Mrd", label: "Investissements" },
-    { value: "48", label: "Wilayas" },
-  ];
+  const [current, setCurrent] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [loadedSlides, setLoadedSlides] = useState<Set<number>>(new Set([0, 1]));
+
+  const goTo = useCallback(
+    (index: number) => {
+      if (isTransitioning) return;
+      setIsTransitioning(true);
+      setCurrent(index);
+      setTimeout(() => setIsTransitioning(false), 800);
+    },
+    [isTransitioning],
+  );
+
+  const next = useCallback(() => goTo((current + 1) % slides.length), [current, goTo]);
+  const prev = useCallback(
+    () => goTo((current - 1 + slides.length) % slides.length),
+    [current, goTo],
+  );
+
+  useEffect(() => {
+    const preload = document.createElement("link");
+    preload.rel = "preload";
+    preload.as = "image";
+    preload.href = slides[0].imageWebp;
+    preload.type = "image/webp";
+    (preload as HTMLLinkElement & { fetchPriority?: string }).fetchPriority = "high";
+    document.head.appendChild(preload);
+
+    return () => {
+      if (preload.parentNode) {
+        preload.parentNode.removeChild(preload);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(next, 7000);
+    return () => clearInterval(timer);
+  }, [next]);
+
+  useEffect(() => {
+    const nextIndex = (current + 1) % slides.length;
+    setLoadedSlides((previous) => {
+      const updated = new Set(previous);
+      updated.add(current);
+      updated.add(nextIndex);
+      return updated;
+    });
+
+    const preload = new Image();
+    preload.src = slides[nextIndex].imageWebp;
+  }, [current]);
 
   return (
     <section className={styles.hero}>
-      {/* Background Image */}
-      <div
-        className={styles.background}
-        style={{ backgroundImage: `url(${heroImage})` }}
-      >
-        <div className={`${styles.gradientOverlay} ${styles.gradientLeft}`} />
-        <div className={`${styles.gradientOverlay} ${styles.gradientBottom}`} />
-      </div>
+      {slides.map((slide, i) => (
+        <picture
+          key={i}
+          className={`${styles.slideBg} ${i === current ? styles.slideBgActive : ""}`}
+        >
+          {loadedSlides.has(i) ? (
+            <>
+              <source type="image/webp" srcSet={slide.imageWebp} />
+              <img
+                src={slide.image}
+                alt=""
+                className={styles.slideBgImage}
+                loading={i === 0 ? "eager" : "lazy"}
+                fetchPriority={i === 0 ? "high" : "auto"}
+                decoding="async"
+                aria-hidden="true"
+              />
+            </>
+          ) : null}
+        </picture>
+      ))}
 
-      {/* Animated Background Elements */}
-      <div className={styles.animatedElements}>
-        <div className={`${styles.floatingOrb} ${styles.floatingOrb1}`} />
-        <div className={`${styles.floatingOrb} ${styles.floatingOrb2}`} />
-      </div>
+      <div className={styles.overlay} />
 
-      {/* Content */}
       <div className={`container ${styles.content}`}>
         <div className={styles.contentInner}>
-          {/* Badge */}
           <div className={styles.badge}>
             <span className={styles.badgeDot} />
-            <span className={styles.badgeText}>Portail National des Activités Minières</span>
+            <span className={styles.badgeText}>Portail National ANAM</span>
           </div>
 
-          {/* Main Heading */}
-          <h1 className={styles.heading}>
-            Explorez les{" "}
-            <span className={styles.headingHighlight}>richesses</span>{" "}
-            minières de l'Algérie
-          </h1>
-
-          {/* Subtitle */}
-          <p className={styles.subtitle}>
-            Découvrez les opportunités d'investissement minier. Cartes interactives, 
-            licences et demandes, disponibilité des minéraux en détail.
-          </p>
-
-          {/* CTAs */}
-          <div className={styles.ctas}>
-            <Button 
-              size="lg" 
-              className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-7 text-lg shadow-lg hover:shadow-xl transition-all group"
-              asChild
-            >
-              <a href="/Signup/page">
-                Commencer maintenant
-                <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-              </a>
-            </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
-              className="border-2 border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10 px-8 py-7 text-lg transition-all group"
-            >
-              <Play className="mr-2 h-5 w-5" />
-              Découvrir SIGAM
-            </Button>
+          <div className={styles.textWrapper}>
+            {slides.map((slide, i) => (
+              <div
+                key={i}
+                className={`${styles.slideText} ${i === current ? styles.slideTextActive : ""}`}
+              >
+                <h1 className={styles.heading}>
+                  {slide.title}{" "}
+                  <span className={styles.headingHighlight}>{slide.highlight}</span>
+                </h1>
+                <p className={styles.subtitle}>{slide.subtitle}</p>
+                <div className={styles.ctas}>
+                  <Button size="lg" className="homePremiumSignupButton homePremiumButtonLg" asChild>
+                    <a href={slide.ctaLink}>
+                      {slide.cta}
+                      <ArrowRight className="h-5 w-5" />
+                    </a>
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="homePremiumGhostButton homePremiumButtonLg"
+                    asChild
+                  >
+                    <a href="/auth/login">Se connecter</a>
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Scroll Indicator */}
+      <button
+        className={`${styles.navArrow} ${styles.navArrowLeft}`}
+        onClick={prev}
+        aria-label="Precedent"
+      >
+        <ChevronLeft className="h-6 w-6" />
+      </button>
+      <button
+        className={`${styles.navArrow} ${styles.navArrowRight}`}
+        onClick={next}
+        aria-label="Suivant"
+      >
+        <ChevronRight className="h-6 w-6" />
+      </button>
+
+      <div className={styles.dots}>
+        {slides.map((_, i) => (
+          <button
+            key={i}
+            className={`${styles.dot} ${i === current ? styles.dotActive : ""}`}
+            onClick={() => goTo(i)}
+            aria-label={`Slide ${i + 1}`}
+          />
+        ))}
+      </div>
+
+      <div className={styles.progressBar}>
+        <div className={styles.progressFill} key={current} />
+      </div>
+
       <div className={styles.scrollIndicator}>
-        <a href="#stats" className={styles.scrollLink}>
-          <span className={styles.scrollText}>Défiler</span>
+        <a href="/auth/login" className={styles.scrollLink}>
+          <span className={styles.scrollText}>Defiler</span>
           <ChevronDown className="h-5 w-5" />
         </a>
       </div>
 
-      {/* Side Stats Preview */}
       <div className={styles.sideStats}>
-        {sideStats.map((stat, index) => (
-          <div 
-            key={stat.label}
-            className={styles.sideStatItem}
-            style={{ animationDelay: `${0.8 + index * 0.2}s` }}
-          >
+        {[
+          { value: "2380+", label: "Licences" },
+          { value: "89Mrd", label: "Investissements" },
+          { value: "48", label: "Wilayas" },
+        ].map((stat) => (
+          <div key={stat.label} className={styles.sideStatItem}>
             <div className={styles.sideStatValue}>{stat.value}</div>
             <div className={styles.sideStatLabel}>{stat.label}</div>
           </div>

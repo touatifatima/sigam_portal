@@ -16,6 +16,7 @@ import {
   Award,
   Search,
   Filter,
+  ArrowLeft,
   MapPin,
   Calendar,
   SquareIcon,
@@ -197,25 +198,38 @@ const MesPermisOperateur = () => {
               </div>
               <h1 className={styles.heroTitle}>Mes Permis Miniers</h1>
               <p className={styles.heroSubtitle}>
-                Consultez et gÃ©rez tous vos permis d'exploitation, d'exploration et de prospection
+                Consultez et gérez tous vos permis d'exploitation, d'exploration et de prospection
               </p>
             </div>
 
-            <div className={styles.viewToggle}>
-              <button
-                className={`${styles.toggleBtn} ${viewMode === "grid" ? styles.active : ""}`}
-                onClick={() => setViewMode("grid")}
-                title="Vue grille"
+            <div className={styles.heroActions}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate("/investisseur/InvestorDashboard")}
+                className={styles.dashboardButton}
+                size="lg"
               >
-                <LayoutGrid className="w-5 h-5" />
-              </button>
-              <button
-                className={`${styles.toggleBtn} ${viewMode === "list" ? styles.active : ""}`}
-                onClick={() => setViewMode("list")}
-                title="Vue liste"
-              >
-                <List className="w-5 h-5" />
-              </button>
+                <ArrowLeft className="w-5 h-5" />
+                Retour au dashboard
+              </Button>
+
+              <div className={styles.viewToggle}>
+                <button
+                  className={`${styles.toggleBtn} ${viewMode === "grid" ? styles.active : ""}`}
+                  onClick={() => setViewMode("grid")}
+                  title="Vue grille"
+                >
+                  <LayoutGrid className="w-5 h-5" />
+                </button>
+                <button
+                  className={`${styles.toggleBtn} ${viewMode === "list" ? styles.active : ""}`}
+                  onClick={() => setViewMode("list")}
+                  title="Vue liste"
+                >
+                  <List className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -244,7 +258,7 @@ const MesPermisOperateur = () => {
               </div>
               <div className={styles.statInfo}>
                 <span className={styles.statValue}>{stats.expires}</span>
-                <span className={styles.statLabel}>ExpirÃ©s</span>
+                <span className={styles.statLabel}>Expirés</span>
               </div>
             </div>
             <div className={styles.statCard}>
@@ -282,7 +296,7 @@ const MesPermisOperateur = () => {
                 <SelectContent className={styles.selectContent}>
                   <SelectItem value="all" className={styles.selectItem}>Tous les statuts</SelectItem>
                   <SelectItem value="ACTIF" className={styles.selectItem}>Actif</SelectItem>
-                  <SelectItem value="EXPIRE" className={styles.selectItem}>ExpirÃ©</SelectItem>
+                  <SelectItem value="EXPIRE" className={styles.selectItem}>Expiré</SelectItem>
                   <SelectItem value="SUSPENDU" className={styles.selectItem}>Suspendu</SelectItem>
                   <SelectItem value="EN_RENOUVELLEMENT" className={styles.selectItem}>En renouvellement</SelectItem>
                 </SelectContent>
@@ -306,7 +320,7 @@ const MesPermisOperateur = () => {
 
         <div className={styles.resultsInfo}>
           <span className={styles.resultsCount}>
-            {filteredPermis.length} permis trouvÃ©{filteredPermis.length > 1 ? "s" : ""}
+            {filteredPermis.length} permis trouvé{filteredPermis.length > 1 ? "s" : ""}
           </span>
         </div>
 
@@ -440,7 +454,7 @@ const MesPermisOperateur = () => {
             <div className={styles.emptyIcon}>
               <Award className="w-10 h-10" />
             </div>
-            <h3>Aucun permis trouvÃ©</h3>
+            <h3>Aucun permis trouvé</h3>
             <p>Modifiez vos filtres ou revenez plus tard.</p>
             <Button onClick={fetchPermis}>Recharger</Button>
           </div>
@@ -451,4 +465,3 @@ const MesPermisOperateur = () => {
 };
 
 export default MesPermisOperateur;
-

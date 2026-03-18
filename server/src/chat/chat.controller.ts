@@ -1,13 +1,20 @@
 // src/chat/chat.controller.ts
-import { Controller, Get, Post, Body, Param, Req, UnauthorizedException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Query,
+  Req,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { CreateMessageDto } from './create-message.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
 
 @Controller('api/chat')
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
-    private prisma: PrismaService
 
   private extractUserIdFromRequest(req: any): number {
     // Check for custom header first
@@ -43,9 +50,13 @@ export class ChatController {
   }
 
   @Get('conversations')
-  async getConversations(@Req() req: any) {
+  async getConversations(
+    @Req() req: any,
+    @Query('entityType') entityType?: string,
+    @Query('entityCode') entityCode?: string,
+  ) {
     const userId = this.extractUserIdFromRequest(req);
-    return this.chatService.getConversations(userId);
+    return this.chatService.getConversations(userId, entityType, entityCode);
   }
 
   @Get('conversation/:id/messages')

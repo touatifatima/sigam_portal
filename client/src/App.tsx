@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import { BrowserRouter, useLocation, useNavigate } from 'react-router-dom'
 import AutoRoutes from './router/AutoRoutes'
 import { __setNavigate } from './next-compat/router'
+import { useAuthStore } from './store/useAuthStore'
 
 // Providers from the original Next app
 import { StepGuardProvider } from '@/src/hooks/StepGuardContext'
@@ -14,6 +15,44 @@ import '@/styles/globals.css'
 import 'react-toastify/dist/ReactToastify.css'
 import setupApiInterceptors from '@/src/hooks/api-interceptor'
 import { useLoading } from '@/components/globalspinner/LoadingContext'
+
+function PendingIdentificationGuard() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const isLoaded = useAuthStore((s) => s.isLoaded)
+  const auth = useAuthStore((s) => s.auth)
+
+  useEffect(() => {
+    if (!isLoaded) return
+    const isPending = auth?.identificationStatus === 'EN_ATTENTE'
+    const onPendingPage = location.pathname === '/auth/account-pending'
+    const authPages = ['/', '/Signup/page', '/Signup/verify_email', '/forgot-password']
+    const onAuthPage = authPages.includes(location.pathname)
+
+    if (isPending && !onPendingPage) {
+      navigate('/auth/account-pending', { replace: true })
+      return
+    }
+
+    if (!isPending && onPendingPage && auth?.id && auth?.isEntrepriseVerified) {
+      navigate('/investisseur/InvestorDashboard', { replace: true })
+      return
+    }
+
+    if (isPending && onAuthPage) {
+      navigate('/auth/account-pending', { replace: true })
+    }
+  }, [
+    auth?.id,
+    auth?.identificationStatus,
+    auth?.isEntrepriseVerified,
+    isLoaded,
+    location.pathname,
+    navigate,
+  ])
+
+  return null
+}
 
 function RouteEventsBridge() {
   const location = useLocation()
@@ -191,6 +230,7 @@ function AppShell() {
           <PopstateStartBridge />
           <NavigatorBinder />
           <RouteEventsBridge />
+          <PendingIdentificationGuard />
           <ClientLayout>
             <GlobalSpinner />
             <RemountOnRouteChange>

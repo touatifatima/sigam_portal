@@ -423,7 +423,7 @@ export default function Capacites() {
             </div>
           )}
           <div className={styles.breadcrumb}>
-            <span>SIGAM</span>
+            <span>POM</span>
             <FiChevronRight className={styles.breadcrumbArrow} />
             <span>Capacitiés</span>
           </div>

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -13,12 +14,26 @@ export class ExtensionSubstanceController {
   constructor(private readonly service: ExtensionSubstanceService) {}
 
   @Post('start')
-  async start(@Body('permisId', ParseIntPipe) permisId: number) {
-    return this.service.start(permisId);
+  async start(
+    @Body() body: { permisId?: number; date_demande?: string | null },
+  ) {
+    if (!Number.isFinite(Number(body?.permisId))) {
+      throw new BadRequestException('permisId invalide');
+    }
+    return this.service.start(Number(body.permisId), body.date_demande ?? undefined);
   }
 
   @Get(':id/substances')
-  async list(@Param('id', ParseIntPipe) id_proc: number) {
-    return this.service.listSubstances(id_proc);
+  async getSubstances(@Param('id', ParseIntPipe) id_proc: number) {
+    return this.service.getSubstancesForStep1(id_proc);
+  }
+
+  @Post(':id/substances')
+  async saveSubstances(
+    @Param('id', ParseIntPipe) id_proc: number,
+    @Body() body: { substances?: Array<{ id_substance?: number; priorite?: 'principale' | 'secondaire' }> },
+  ) {
+    return this.service.saveAddedSubstances(id_proc, body?.substances ?? []);
   }
 }
+

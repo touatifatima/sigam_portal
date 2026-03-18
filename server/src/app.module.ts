@@ -30,6 +30,12 @@ import { CahierChargeModule } from './cahiercharge/cahier-charge.module';
 import { PaymentModule } from './demandes/paiement/payement.module';
 import { FactureModule } from './facture/facture.module';
 import { ProcedureRenouvellementModule } from './renouvellement/procedure_renouvellement.module';
+import { ProcedureExtensionPerimetreModule } from './extention_périmètre/procedure-extension-perimetre.module';
+
+import { ExtensionSubstanceModule } from './extension_substance/extension-substance.module';
+import { FusionPermisModule } from './fusion_permis/fusion-permis.module';
+import { CessionModule } from './cession/cession.module';
+import { ProcedureDeclarationsModule } from './procedure_declarations/procedure-declarations.module';
 import { ConfigModule } from '@nestjs/config';
 import { TimelineModule } from './demandes/timeline of procedure/timeline.module';
 import { AuditLogModule } from './audit-log/audit-log.module';
@@ -59,7 +65,7 @@ import { Permis_confModule } from './configurations/gestion_permis/permis_conf.m
 import { StatutPermis_confModule } from './configurations/gestion_permis/statut-permis.module';
 import { TypePermis_confModule } from './configurations/gestion_permis/type-permis.module';
 import { DemandesDashboardModule } from './demande_dashboard/demandes.module';
-//import { TransfertModule } from './transfert/transfert.module';
+import { TransfertModule } from './transfert/transfert.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { GisModule } from './gis/gis.module';
@@ -88,15 +94,15 @@ import { PhasesEtapesConfigModule } from './configurations/phases-etapes/phases-
       synchronize: false,
     }),DemandesModule,PaymentModule,ConfigModule.forRoot({
       isGlobal: true,
-    }),ProcedureRenouvellementModule,BaremProduitDroitModule,SuperficiaireBaremeModule,TypeProceduresconfModule,
+    }),ProcedureRenouvellementModule,ProcedureExtensionPerimetreModule,ExtensionSubstanceModule,FusionPermisModule,BaremProduitDroitModule,SuperficiaireBaremeModule,TypeProceduresconfModule,
     RedevancesconfModule,StatutPermisconfModule,TypePermisconfModule,DecisionTrackingModule,ComitenModule,DecisionModule,
     SeanceModule,ExpertMinierModule,SessionModule,AuditLogModule,PermisDashboardfModule,TimelineModule,CahierChargeModule,
     GeneratePdfModule,GeneratePermisModule,WilayaModule,DairaModule,CommuneModule,AdminDossierModule,CoordonneesModule,VerificationGeoModule,
     TypePermisModule,AuthModule,AdminModule,PrismaModule,ProcedureEtapeModule,ProcedureModule,ProcedureOperateurModule,ComiteDirectionModule,SocieteModule,
     InteractionWaliModule,CapacitesModule,SubstancesModule,DocumentsModule,DemandeSummaryControllerModule,SubstancesconfModule,
     StatutsJuridiquesconfconfModule,WilayasconfModule,DairasconfModule,CommunesconfModule,AntennesconfModule,DetenteurMorale_confModule,
-    TypePermis_confModule,StatutPermis_confModule,Permis_confModule,Antenne_confModule,DemandesDashboardModule,GisModule,VerificationGeoModule,
-    NotificationsModule,ArticleSetsModule,InscriptionProvisoireModule,PhasesEtapesConfigModule,ChatModule,FactureModule],
+    TypePermis_confModule,StatutPermis_confModule,Permis_confModule,Antenne_confModule,DemandesDashboardModule,TransfertModule,GisModule,VerificationGeoModule,
+    NotificationsModule,ArticleSetsModule,InscriptionProvisoireModule,PhasesEtapesConfigModule,ChatModule,FactureModule,CessionModule,ProcedureDeclarationsModule],
   controllers: [DemandesController],
   providers: [DemandeService,
     //{
@@ -108,3 +114,4 @@ import { PhasesEtapesConfigModule } from './configurations/phases-etapes/phases-
 })
 
 export class AppModule {}
+

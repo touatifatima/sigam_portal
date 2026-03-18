@@ -332,7 +332,7 @@ const ProgressStepper: React.FC<Props> = ({
         // Use stable page route if provided by backend, fallback to legacy pattern
         const route = etape.page_route && etape.page_route.trim().length > 0
           ? `/${etape.page_route.replace(/^\/+/, '')}`
-          : `/demande/step${etape.id_etape}/page${etape.id_etape}`;
+          : `/investisseur/nouvelle_demande/step${etape.id_etape}/page${etape.id_etape}`;
 
         const params = new URLSearchParams(); Object.entries(router.query ?? {}).forEach(([k,v])=>{ if(v==null)return; if(Array.isArray(v)){ if(v[0]!=null) params.set(k,String(v[0])); } else { params.set(k,String(v)); } }); if(!params.has("procId") && currentProcedureId!=null){ params.set("procId", String(currentProcedureId)); }
         const target = params.toString() ? `${route}?${params.toString()}` : route;

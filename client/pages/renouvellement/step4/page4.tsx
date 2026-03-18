@@ -1092,7 +1092,7 @@ useEffect(() => {
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles['main-content']}>
           <div className={styles['breadcrumb']}>
-            <span>SIGAM</span>
+            <span>POM</span>
             <FiChevronRight className={styles['breadcrumb-arrow']} />
             <span>Substances & Coordonnées</span>
           </div>

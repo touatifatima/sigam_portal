@@ -1,5 +1,5 @@
 ﻿'use client';
-//c la page princaipale de l'Ã©tape 1 (type de permis)
+//c la page princaipale de l'étape 1 (type de permis)
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import axios from 'axios';
@@ -38,6 +38,52 @@ interface TypePermis {
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL ?? '';
 const SIMPLE_STEPS = ['Type & Cadastre', 'Localisation', 'Capacités',  'Documents', 'Facture', 'Paiement'];
+
+const isTypePermis = (value: unknown): value is TypePermis => {
+  if (!value || typeof value !== 'object') return false;
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.id === 'number' &&
+    typeof record.lib_type === 'string' &&
+    typeof record.code_type === 'string' &&
+    typeof record.regime === 'string' &&
+    typeof record.duree_initiale === 'number' &&
+    typeof record.nbr_renouv_max === 'number' &&
+    typeof record.duree_renouv === 'number' &&
+    typeof record.delai_renouv === 'number'
+  );
+};
+
+const extractPermisArray = (value: unknown): TypePermis[] => {
+  if (!Array.isArray(value)) return [];
+  return value.filter(isTypePermis);
+};
+
+const toPermisList = (payload: unknown): TypePermis[] => {
+  if (Array.isArray(payload)) return extractPermisArray(payload);
+  if (payload && typeof payload === 'object') {
+    const record = payload as Record<string, unknown>;
+    if (Array.isArray(record.data)) return extractPermisArray(record.data);
+    if (Array.isArray(record.items)) return extractPermisArray(record.items);
+    if (Array.isArray(record.results)) return extractPermisArray(record.results);
+  }
+  return [];
+};
+
+const toPermisItem = (payload: unknown): TypePermis | null => {
+  if (!payload) return null;
+  if (Array.isArray(payload)) {
+    const first = payload[0];
+    return isTypePermis(first) ? first : null;
+  }
+  if (typeof payload === 'object') {
+    const record = payload as Record<string, unknown>;
+    if (isTypePermis(record.data)) return record.data;
+    if (isTypePermis(record)) return record;
+    return null;
+  }
+  return null;
+};
 
 export default function DemandeStart() {
   const router = useRouter();
@@ -82,7 +128,11 @@ export default function DemandeStart() {
         signal: controller.signal,
       })
       .then((response) => {
-        setPermisOptions(response.data ?? []);
+        const options = toPermisList(response.data);
+        setPermisOptions(options);
+        if (options.length === 0) {
+          setPageError('Aucun type de permis recu depuis le serveur.');
+        }
       })
       .catch((error) => {
         if (axios.isCancel(error)) {
@@ -145,7 +195,7 @@ export default function DemandeStart() {
       const response = await axios.get<TypePermis>(`${apiBase}/type-permis/${permisId}`, {
         withCredentials: true,
       });
-      setSelectedPermis(response.data ?? null);
+      setSelectedPermis(toPermisItem(response.data));
     } catch (error) {
       console.error('Failed to load permit details', error);
       setSelectedPermis(null);

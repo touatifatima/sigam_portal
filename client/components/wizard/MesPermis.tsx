@@ -15,6 +15,7 @@ import {
   Award,
   Search,
   Filter,
+  ArrowLeft,
   MapPin,
   Calendar,
   SquareIcon,
@@ -178,22 +179,35 @@ const MesPermis = () => {
               </p>
             </div>
 
-            {/* View Toggle */}
-            <div className={styles.viewToggle}>
-              <button
-                className={`${styles.toggleBtn} ${viewMode === "grid" ? styles.active : ""}`}
-                onClick={() => setViewMode("grid")}
-                title="Vue grille"
+            <div className={styles.heroActions}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate("/investisseur/InvestorDashboard")}
+                className={styles.dashboardButton}
+                size="lg"
               >
-                <LayoutGrid className="w-5 h-5" />
-              </button>
-              <button
-                className={`${styles.toggleBtn} ${viewMode === "list" ? styles.active : ""}`}
-                onClick={() => setViewMode("list")}
-                title="Vue liste"
-              >
-                <List className="w-5 h-5" />
-              </button>
+                <ArrowLeft className="w-5 h-5" />
+                Retour au dashboard
+              </Button>
+
+              {/* View Toggle */}
+              <div className={styles.viewToggle}>
+                <button
+                  className={`${styles.toggleBtn} ${viewMode === "grid" ? styles.active : ""}`}
+                  onClick={() => setViewMode("grid")}
+                  title="Vue grille"
+                >
+                  <LayoutGrid className="w-5 h-5" />
+                </button>
+                <button
+                  className={`${styles.toggleBtn} ${viewMode === "list" ? styles.active : ""}`}
+                  onClick={() => setViewMode("list")}
+                  title="Vue liste"
+                >
+                  <List className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -254,6 +268,14 @@ const MesPermis = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className={styles.searchInput}
                 />
+                <button
+                  type="button"
+                  className={styles.searchBtn}
+                  aria-label="Rechercher"
+                >
+                  <Search className="w-4 h-4" />
+                  <span>Rechercher</span>
+                </button>
               </div>
               <Select value={filterStatut} onValueChange={setFilterStatut}>
                 <SelectTrigger className={styles.selectTrigger}>

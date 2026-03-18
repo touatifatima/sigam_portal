@@ -1,0 +1,143 @@
+﻿.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f8f6f9;
+}
+
+.topBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e5d6e1;
+  background: linear-gradient(180deg, #ffffff 0%, #fbf8fb 100%);
+}
+
+.titleBlock {
+  min-width: 240px;
+}
+
+.title {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.2;
+  color: #5f2f52;
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #7f6478;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.connectedBadge,
+.publicBadge {
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 7px 10px;
+  border: 1px solid #e1c7d7;
+  color: #6b3d5f;
+  background: #fff7fc;
+}
+
+.publicBadge {
+  border-color: #d2e4ff;
+  color: #2c4e7b;
+  background: #f3f8ff;
+}
+
+.linkBtn,
+.linkBtnSecondary,
+.editBtn,
+.openBtn {
+  text-decoration: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  transition: 0.2s ease;
+}
+
+.linkBtn {
+  color: #fff;
+  background: #8b3f72;
+}
+
+.linkBtn:hover {
+  background: #7a355f;
+}
+
+.linkBtnSecondary {
+  color: #6f3f5f;
+  background: #fff;
+  border-color: #d8bdd0;
+}
+
+.linkBtnSecondary:hover {
+  background: #f8eff6;
+}
+
+.editBtn {
+  color: #fff;
+  background: #2d5ea8;
+}
+
+.editBtn:hover {
+  background: #244f8d;
+}
+
+.openBtn {
+  color: #3f2d3a;
+  background: #f3edf2;
+  border-color: #d9c2d0;
+}
+
+.openBtn:hover {
+  background: #e8dbe3;
+}
+
+.main {
+  flex: 1;
+  padding: 8px;
+}
+
+.iframe {
+  width: 100%;
+  height: calc(100vh - 108px);
+  border: none;
+  border-radius: 12px;
+  background: #fff;
+}
+
+@media (max-width: 900px) {
+  .topBar {
+    padding: 12px;
+  }
+
+  .title {
+    font-size: 18px;
+  }
+
+  .actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .iframe {
+    height: calc(100vh - 172px);
+    border-radius: 10px;
+  }
+}

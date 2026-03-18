@@ -107,7 +107,7 @@ export default function AvisWaliStep() {
   const [demandeSummary, setDemandeSummary] = useState<DemandeSummary | null>(null);
   const [activatedSteps, setActivatedSteps] = useState<Set<number>>(new Set());
   const [isPageReady, setIsPageReady] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState('Chargement des paramÃ©tres...');
+  const [loadingMessage, setLoadingMessage] = useState('Chargement des paramétres...');
 
   const fetchProcedureData = useCallback(async () => {
     if (!idProc) return;
@@ -182,16 +182,16 @@ export default function AvisWaliStep() {
     doc.setProperties({
       title: `Lettre pour Wali - ${demande.code_demande}`,
       subject: "Demande d'avis pour permis minier",
-      author: "MinistÃ©re de l'Ã©nergie et des Mines"
+      author: "Ministére de l'énergie et des Mines"
     });
 
     // Header
     doc.addImage("/logo.jpg", "PNG", 15, 10, 30, 30);
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text("MinistÃ©re de l'Ã©nergie et des Mines", 50, 15);
-    doc.text("Direction GÃ©nÃ©rale des Mines", 50, 20);
-    doc.text("Alger, AlgÃ©rie", 50, 25);
+    doc.text("Ministére de l'énergie et des Mines", 50, 15);
+    doc.text("Direction Générale des Mines", 50, 20);
+    doc.text("Alger, Algérie", 50, 25);
 
     doc.setDrawColor(200, 200, 200);
     doc.setLineWidth(0.5);
@@ -200,13 +200,13 @@ export default function AvisWaliStep() {
     // Ref Info
     doc.setFontSize(10);
     doc.setTextColor(0);
-    doc.text(`RÃ©fÃ©rence: ${demande.code_demande}`, 15, 45);
+    doc.text(`Référence: ${demande.code_demande}`, 15, 45);
     doc.text(`Date: ${format(new Date(), "dd/MM/yyyy")}`, 160, 45);
 
     // Recipient
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
-    doc.text("Ã€ Monsieur le Wali de la Wilaya de:", 15, 60);
+    doc.text("À Monsieur le Wali de la Wilaya de:", 15, 60);
     doc.setFont("helvetica", "normal");
     const wilaya = demande.detenteur?.RegistreCommerce?.[0]?.adresse_legale?.split(',')[1]?.trim() || 'Alger';
     doc.text(wilaya, 80, 60);
@@ -224,7 +224,7 @@ export default function AvisWaliStep() {
     doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
     const paragraph = `Monsieur le Wali,
-Par la prÃ©sente, nous avons l'honneur de vous soumettre la demande de permis minier dÃ©posÃ©e par la sociÃ©tÃ© ${demande.detenteur?.nom_societeFR || ''}, conformÃ©ment aux dispositions rÃ©glementaires en vigueur.`;
+Par la présente, nous avons l'honneur de vous soumettre la demande de permis minier déposée par la société ${demande.detenteur?.nom_societeFR || ''}, conformément aux dispositions réglementaires en vigueur.`;
     const lines = doc.splitTextToSize(paragraph, 165);
     doc.text(lines, marginLeft, y);
     y += lines.length * lineHeight + 5;
@@ -242,7 +242,7 @@ const companyFields = [
   { label: "Registre de Commerce", value: demande.detenteur?.RegistreCommerce?.[0]?.numero_rc },
   { label: "NIF", value: demande.detenteur?.RegistreCommerce?.[0]?.nif },
   { label: "Adresse", value: demande.detenteur?.RegistreCommerce?.[0]?.adresse_legale },
-  { label: "TÃ©lÃ©phone", value: demande.detenteur?.telephone },
+  { label: "Téléphone", value: demande.detenteur?.telephone },
 ];
 
 companyFields.forEach(({ label, value }) => {
@@ -250,7 +250,7 @@ companyFields.forEach(({ label, value }) => {
   doc.text(`${label}:`, labelX, y);
   doc.setFont("helvetica", "normal");
 
-  const wrapped = doc.splitTextToSize(value || "Non spÃ©cifiÃ©", 110);
+  const wrapped = doc.splitTextToSize(value || "Non spécifié", 110);
   doc.text(wrapped, valueX, y);
   y += wrapped.length * lineHeight;
 });
@@ -259,19 +259,19 @@ companyFields.forEach(({ label, value }) => {
    // Project Info
 y += 5;
 doc.setFont("helvetica", "bold");
-doc.text("DÃ©tails du projet:", marginLeft, y);
+doc.text("Détails du projet:", marginLeft, y);
 y += lineHeight;
 
 const substanceText = demande.procedure?.SubstanceAssocieeDemande
   ?.map((s: any) => s.substance.nom_subFR)
-  .join(', ') || "Non spÃ©cifiÃ©es";
+  .join(', ') || "Non spécifiées";
 
 const projectFields = [
   { label: "Type de permis", value: demande.procedure?.typeProcedure?.nom },
   { label: "Domaine", value: demande.procedure?.typeProcedure?.domaine },
-  { label: "Substances concernÃ©es", value: substanceText },
-  { label: "DurÃ©e estimÃ©e", value: `${demande.duree_travaux_estimee} mois` },
-  { label: "Budget prÃ©visionnel", value: demande.budget_prevu ? `${demande.budget_prevu.toLocaleString('fr-FR')} DZD` : 'Non spÃ©cifiÃ©' }
+  { label: "Substances concernées", value: substanceText },
+  { label: "Durée estimée", value: `${demande.duree_travaux_estimee} mois` },
+  { label: "Budget prévisionnel", value: demande.budget_prevu ? `${demande.budget_prevu.toLocaleString('fr-FR')} DZD` : 'Non spécifié' }
 ];
 
 projectFields.forEach(({ label, value }) => {
@@ -279,7 +279,7 @@ projectFields.forEach(({ label, value }) => {
   doc.text(`${label}:`, labelX, y);
   doc.setFont("helvetica", "normal");
 
-  const wrapped = doc.splitTextToSize(value || "Non spÃ©cifiÃ©", 110);
+  const wrapped = doc.splitTextToSize(value || "Non spécifié", 110);
   doc.text(wrapped, valueX, y);
   y += wrapped.length * lineHeight;
 });
@@ -293,7 +293,7 @@ projectFields.forEach(({ label, value }) => {
 
     if (demande.DemandeDocumentStatut?.length > 0) {
       demande.DemandeDocumentStatut.forEach((docItem: any) => {
-        const status = docItem.status === "present" ? "âœ” PrÃ©sent" : "Ã¢Å“Ëœ Manquant";
+        const status = docItem.status === "present" ? "✔ Présent" : "âœËœ Manquant";
         const color: [number, number, number] = docItem.status === "present" ? [0, 128, 0] : [200, 0, 0];
         const label = `- ${docItem.document.nom_doc}`;
         doc.setFont("helvetica", "normal");
@@ -310,7 +310,7 @@ projectFields.forEach(({ label, value }) => {
 
     // Conclusion
     y += 10;
-    const closing = "Dans l'attente de votre aimable retour, nous vous prions d'agrÃ©er, Monsieur le Wali, l'expression de notre haute considÃ©ration.";
+    const closing = "Dans l'attente de votre aimable retour, nous vous prions d'agréer, Monsieur le Wali, l'expression de notre haute considération.";
     const closingLines = doc.splitTextToSize(closing, 160);
     doc.text(closingLines, marginLeft, y);
     y += closingLines.length * lineHeight;
@@ -318,9 +318,9 @@ projectFields.forEach(({ label, value }) => {
     // Signature
     y += 15;
     doc.setFont("helvetica", "bold");
-    doc.text("Le Directeur GÃ©nÃ©ral des Mines", marginLeft + 80, y);
+    doc.text("Le Directeur Général des Mines", marginLeft + 80, y);
     doc.setFont("helvetica", "normal");
-    doc.text("MinistÃ©re de l'Ã©nergie et des Mines", marginLeft + 80, y + 7);
+    doc.text("Ministére de l'énergie et des Mines", marginLeft + 80, y + 7);
 
     if (preview) {
       const pdfBlob = doc.output("blob");
@@ -331,11 +331,11 @@ projectFields.forEach(({ label, value }) => {
       doc.save(`lettre_wali_${demande.code_demande}.pdf`);
     }
 
-    setSuccess("Lettre gÃ©nÃ©rÃ©e avec succÃ©s");
+    setSuccess("Lettre générée avec succés");
     setTimeout(() => setSuccess(null), 3000);
   } catch (err) {
-    console.error("Erreur gÃ©nÃ©ration PDF :", err);
-    setError("Erreur lors de la gÃ©nÃ©ration de la lettre");
+    console.error("Erreur génération PDF :", err);
+    setError("Erreur lors de la génération de la lettre");
   } finally {
     setIsGeneratingPdf(false);
   }
@@ -390,8 +390,8 @@ projectFields.forEach(({ label, value }) => {
       await fetchInteractions(idProc);
 
     } catch (err) {
-      console.error("Erreur rÃ©cupÃ©ration demande/wilaya :", err);
-      setError("Impossible de rÃ©cupÃ©rer la demande ou la wilaya");
+      console.error("Erreur récupération demande/wilaya :", err);
+      setError("Impossible de récupérer la demande ou la wilaya");
     }
   }, [idProc, apiURL]);
 
@@ -410,10 +410,10 @@ projectFields.forEach(({ label, value }) => {
 
     try {
       await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/6`);
-      setEtapeMessage("Ã©tape 6 enregistrÃ©e avec succÃ©s !");
+      setEtapeMessage("étape 6 enregistrée avec succés !");
     } catch (err) {
       console.error(err);
-      setEtapeMessage("Erreur lors de l'enregistrement de l'Ã©tape.");
+      setEtapeMessage("Erreur lors de l'enregistrement de l'étape.");
     } finally {
       setSavingEtape(false);
     }
@@ -441,11 +441,11 @@ projectFields.forEach(({ label, value }) => {
         fetchDemandeAndWilaya(),
         idProc && fetchInteractions(idProc)
       ]);
-      setSuccess("DonnÃ©es actualisÃ©es");
+      setSuccess("Données actualisées");
       setTimeout(() => setSuccess(null), 3000);
     } catch (error) {
       console.error("Erreur lors de l'actualisation", error);
-      setError("Erreur lors de l'actualisation des donnÃ©es");
+      setError("Erreur lors de l'actualisation des données");
     } finally {
       setIsRefreshing(false);
     }
@@ -457,7 +457,7 @@ projectFields.forEach(({ label, value }) => {
 
   const handleBack = () => {
     if (!idProc) {
-      setError("ID procÃ©dure manquant");
+      setError("ID procédure manquant");
       return;
     }
     router.push(`/demande/step5/page5?id=${idProc}`);
@@ -482,7 +482,7 @@ projectFields.forEach(({ label, value }) => {
         remarques: "Envoi initial au wali",
       });
       setShowEnvoiModal(false);
-      setSuccess("Demande envoyÃ©e au Wali");
+      setSuccess("Demande envoyée au Wali");
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error("Erreur envoi initial :", err);
@@ -494,12 +494,12 @@ projectFields.forEach(({ label, value }) => {
 
   const handleSubmit = async () => {
     if (!form.contenu) {
-      setError("Veuillez saisir le contenu de la rÃ©ponse");
+      setError("Veuillez saisir le contenu de la réponse");
       return;
     }
 
     if (!form.nom_responsable_reception) {
-      setError("Veuillez saisir le nom du responsable ayant reÃ§u la rÃ©ponse");
+      setError("Veuillez saisir le nom du responsable ayant reçu la réponse");
       return;
     }
 
@@ -524,7 +524,7 @@ projectFields.forEach(({ label, value }) => {
         contenu: "",
         nom_responsable_reception: "",
       });
-      setSuccess("RÃ©ponse enregistrÃ©e avec succÃ©s");
+      setSuccess("Réponse enregistrée avec succés");
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error("Erreur enregistrement :", err);
@@ -565,7 +565,7 @@ const latestEnvoi = interactions
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles.mainContent}>
           <div className={styles.breadcrumb}>
-            <span>SIGAM</span>
+            <span>POM</span>
             <FiChevronRight className={styles.breadcrumbArrow} />
             <span>Avis du Wali</span>
           </div>
@@ -583,7 +583,7 @@ const latestEnvoi = interactions
             <div className={styles.headerLeft}>
               <h1 className={styles.pageTitle}>
                 <BsFilePerson className={styles.titleIcon} />
-                Avis du Wali - Ã©tape 6
+                Avis du Wali - étape 6
               </h1>
               {codeDemande && (
                 <div className={styles.demandeInfo}>
@@ -607,7 +607,7 @@ const latestEnvoi = interactions
             {isLoading && !idProcedure && (
               <div className={styles.loadingState}>
                 <div className={styles.spinner}></div>
-                <p>Chargement de la procÃ©dure...</p>
+                <p>Chargement de la procédure...</p>
               </div>
             )}
             
@@ -661,20 +661,20 @@ const latestEnvoi = interactions
                   <div className={styles.actionGrid}>
                     <div className={styles.actionCard}>
                       <h4>Envoi au Wali</h4>
-                      <p>Marquer la demande comme envoyÃ©e au Wali</p>
+                      <p>Marquer la demande comme envoyée au Wali</p>
                       <button 
                         onClick={() => setShowEnvoiModal(true)} 
                         className={styles.primaryButton}
                         disabled={isLoading || isReadOnly}
                       >
                         <FiSend className={styles.btnIcon} />
-                        Marquer comme envoyÃ©
+                        Marquer comme envoyé
                       </button>
                     </div>
 
                     <div className={styles.actionCard}>
-                      <h4>GÃ©nÃ©ration de Lettre</h4>
-                      <p>GÃ©nÃ©rer la lettre officielle pour le Wali</p>
+                      <h4>Génération de Lettre</h4>
+                      <p>Générer la lettre officielle pour le Wali</p>
                       <button 
                         onClick={handleGenerateLetter} 
                         className={styles.secondaryButton}
@@ -683,12 +683,12 @@ const latestEnvoi = interactions
                         {isGeneratingPdf ? (
                           <span className={styles.btnLoading}>
                             <span className={styles.spinnerSmall}></span>
-                            GÃ©nÃ©ration...
+                            Génération...
                           </span>
                         ) : (
                           <>
                             <FiDownload className={styles.btnIcon} />
-                            GÃ©nÃ©rer lettre
+                            Générer lettre
                           </>
                         )}
                       </button>
@@ -698,7 +698,7 @@ const latestEnvoi = interactions
                       <div className={styles.delayCard}>
                         <div className={styles.delayHeader}>
                           <FiClock className={styles.delayIcon} />
-                          <span>DÃ©lai de rÃ©ponse</span>
+                          <span>Délai de réponse</span>
                         </div>
                         <div className={styles.delayContent}>
                           <span className={styles.daysLeft}>{daysLeft} jour{daysLeft === 1 ? "" : "s"}</span>
@@ -722,7 +722,7 @@ const latestEnvoi = interactions
                 {/* Response Form Section */}
                 <div className={styles.responseSection}>
                   <div className={styles.sectionHeader}>
-                    <h3>RÃ©ponse du Wali</h3>
+                    <h3>Réponse du Wali</h3>
                     <div className={styles.sectionActions}>
                       <button 
                         onClick={() => {
@@ -739,14 +739,14 @@ const latestEnvoi = interactions
                         disabled={isReadOnly}
                       >
                         <FiEdit className={styles.btnIcon} />
-                        RÃ©initialiser
+                        Réinitialiser
                       </button>
                     </div>
                   </div>
 
                   <div className={styles.formGrid}>
                     <div className={styles.formGroup}>
-                      <label>Date de rÃ©ponse</label>
+                      <label>Date de réponse</label>
                       <div className={styles.dateInputContainer}>
                         <FiCalendar className={styles.dateIcon} />
                         <input
@@ -781,7 +781,7 @@ const latestEnvoi = interactions
                             onChange={() => setForm({ ...form, avis_wali: 'defavorable' })}
                           />
                           <span className={styles.radioCustom}></span>
-                          DÃ©favorable
+                          Défavorable
                         </label>
                       </div>
                     </div>
@@ -791,7 +791,7 @@ const latestEnvoi = interactions
                       <input
                         disabled={isReadOnly}
                         type="text"
-                        placeholder="Nom du responsable ayant reÃ§u la rÃ©ponse"
+                        placeholder="Nom du responsable ayant reçu la réponse"
                         value={form.nom_responsable_reception}
                         onChange={(e) => setForm({ ...form, nom_responsable_reception: e.target.value })}
                       />
@@ -801,7 +801,7 @@ const latestEnvoi = interactions
                       <label>Contenu ou remarques</label>
                       <textarea
                         disabled={isReadOnly}
-                        placeholder="Saisissez les dÃ©tails de la rÃ©ponse du Wali..."
+                        placeholder="Saisissez les détails de la réponse du Wali..."
                         value={form.contenu}
                         onChange={(e) => setForm({ ...form, contenu: e.target.value })}
                         rows={5}
@@ -822,7 +822,7 @@ const latestEnvoi = interactions
                     ) : (
                       <>
                         <FiCheck className={styles.btnIcon} />
-                        Enregistrer la rÃ©ponse
+                        Enregistrer la réponse
                       </>
                     )}
                   </button>
@@ -838,7 +838,7 @@ const latestEnvoi = interactions
                   {interactions.length === 0 ? (
                     <div className={styles.emptyState}>
                       <FiFileText className={styles.emptyIcon} />
-                      <p>Aucune interaction enregistrÃ©e</p>
+                      <p>Aucune interaction enregistrée</p>
                     </div>
                   ) : (
                     <div className={styles.timeline}>
@@ -871,7 +871,7 @@ const latestEnvoi = interactions
                               {interaction.nom_responsable_reception && (
                                 <p><strong>Responsable:</strong> {interaction.nom_responsable_reception}</p>
                               )}
-                              <p>{interaction.remarques || interaction.contenu || "Aucun dÃ©tail fourni"}</p>
+                              <p>{interaction.remarques || interaction.contenu || "Aucun détail fourni"}</p>
                             </div>
                           </div>
                         </div>
@@ -887,7 +887,7 @@ const latestEnvoi = interactions
               <div className={styles.navigationButtons}>
                 <button className={styles.outlineButton} onClick={handleBack}>
                   <FiChevronLeft className={styles.btnIcon} />
-                  PrÃ©cÃ©dent
+                  Précédent
                 </button>
                 
                 <button
@@ -896,7 +896,7 @@ const latestEnvoi = interactions
                   disabled={savingEtape || isReadOnly}
                 >
                   <BsSave className={styles.btnIcon} />
-                  {savingEtape ? "Sauvegarde..." : "Sauvegarder l'Ã©tape"}
+                  {savingEtape ? "Sauvegarde..." : "Sauvegarder l'étape"}
                 </button>
                 
                 <button 
@@ -966,7 +966,7 @@ const latestEnvoi = interactions
                 <div className={styles.pdfPreviewContainer}>
                   <div className={styles.pdfPreviewHeader}>
                     <FiFileText className={styles.pdfIcon} />
-                    <h3>AperÃ§u de la Lettre Administrative</h3>
+                    <h3>Aperçu de la Lettre Administrative</h3>
                     <button onClick={() => setPdfPreviewVisible(false)} className={styles.closeButton}>
                       <FiX />
                     </button>
@@ -983,7 +983,7 @@ const latestEnvoi = interactions
                   <div className={styles.pdfPreviewActions}>
                     <button onClick={handleDownloadPdf} className={styles.primaryButton}>
                       <FiDownload className={styles.btnIcon} />
-                      TÃ©lÃ©charger le PDF
+                      Télécharger le PDF
                     </button>
                     <button onClick={() => setPdfPreviewVisible(false)} className={styles.outlineButton}>
                       Fermer

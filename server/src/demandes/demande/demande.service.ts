@@ -1,10 +1,35 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { NotificationsService } from 'src/notifications/notifications.service';
 import { UpdateDemandeDto } from './update-demande.dto';
 import { mergeTypeSpecificFields } from './demande-type-helpers';
 @Injectable()
 export class DemandeService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
+
+  private async resolveDetenteurIdForDemandeCreate(data: {
+    id_detenteur?: number;
+    utilisateurId: number;
+  }): Promise<number | null> {
+    const explicit = Number(data.id_detenteur);
+    if (Number.isFinite(explicit) && explicit > 0) {
+      return explicit;
+    }
+
+    const user = await this.prisma.utilisateurPortail.findUnique({
+      where: { id: data.utilisateurId },
+      select: { detenteurId: true },
+    });
+    const fromUser = Number(user?.detenteurId);
+    if (Number.isFinite(fromUser) && fromUser > 0) {
+      return fromUser;
+    }
+
+    return null;
+  }
 
   async findById(id_demande: number) {
     const demande = await this.prisma.demandePortail.findUnique({
@@ -136,6 +161,8 @@ if (!data.utilisateurId) {
 if (!createdProc?.id_proc) {
   throw new Error('La procédure n’a pas été créée (id_proc manquant)');
 }
+    const resolvedDetenteurId =
+      await this.resolveDetenteurIdForDemandeCreate(data);
     const isInitialDemande =
       (typeProcedure?.libelle || '').toLowerCase() === 'demande';
 
@@ -152,11 +179,11 @@ if (!createdProc?.id_proc) {
         statut_demande: 'EN_COURS',
         Nom_Prenom_Resp_Enregist: data.nom_responsable ?? null,
         ...(isInitialDemande ? { demInitial: { create: {} } } : {}),
-        ...(data.id_detenteur
+        ...(resolvedDetenteurId
           ? {
               detenteurdemande: {
                 create: {
-                  id_detenteur: data.id_detenteur,
+                  id_detenteur: resolvedDetenteurId,
                   role_detenteur: 'principal',
                 },
               },
@@ -171,6 +198,19 @@ if (!createdProc?.id_proc) {
     });
 
     const primaryDetenteur = demande.detenteurdemande?.[0]?.detenteur ?? null;
+    try {
+      await this.notificationsService.createAdminNewDemandeNotification({
+        demandeId: demande.id_demande,
+        demandeCode: demande.code_demande ?? null,
+        requesterUserId: demande.utilisateurId,
+      });
+    } catch (error) {
+      console.warn(
+        'Failed to create admin notification for created demande',
+        error,
+      );
+    }
+
     return {
       ...demande,
       detenteur: primaryDetenteur,
@@ -239,7 +279,7 @@ if (!createdProc?.id_proc) {
    * and set statut_demande to EN_ATTENTE. Wrapped in a transaction.
    */
   async deposerDemande(id_demande: number) {
-    return this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.$transaction(async (tx) => {
       const demande = await tx.demandePortail.findUnique({
         where: { id_demande },
         include: { typePermis: true },
@@ -272,6 +312,21 @@ if (!createdProc?.id_proc) {
 
       return updated;
     });
+
+    try {
+      await this.notificationsService.createAdminNewDemandeNotification({
+        demandeId: updated.id_demande,
+        demandeCode: updated.code_demande ?? null,
+        requesterUserId: updated.utilisateurId,
+      });
+    } catch (error) {
+      console.warn(
+        'Failed to create admin notification for submitted demande',
+        error,
+      );
+    }
+
+    return updated;
   }
 
   // demande.service.ts

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, ArrowRight, FileText, Map, BarChart3 } from "lucide-react";
@@ -7,8 +8,23 @@ import { useAuthStore } from "@/src/store/useAuthStore";
 
 const Bienvenue = () => {
   const navigate = useNavigate();
-  const { auth } = useAuthStore();
+  const auth = useAuthStore((state) => state.auth);
+  const isLoaded = useAuthStore((state) => state.isLoaded);
   const displayName = auth.username || auth.email || "Investisseur";
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (!auth?.id) return;
+
+    if (!auth.isEntrepriseVerified) {
+      navigate("/investisseur/InvestorDashboard", { replace: true });
+    }
+  }, [
+    auth?.id,
+    auth?.isEntrepriseVerified,
+    isLoaded,
+    navigate,
+  ]);
 
   const features = [
     {
@@ -100,3 +116,4 @@ const Bienvenue = () => {
 };
 
 export default Bienvenue;
+

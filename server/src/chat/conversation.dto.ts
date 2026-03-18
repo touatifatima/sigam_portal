@@ -4,6 +4,8 @@ export class ConversationDto {
   id: number;
   user1Id: number;
   user2Id: number;
+  entityType?: string;
+  entityCode?: string;
   lastMessage?: MessageDto;
   unreadCount: number;
   otherUser: {

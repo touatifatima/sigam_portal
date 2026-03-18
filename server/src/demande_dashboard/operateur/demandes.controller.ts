@@ -11,6 +11,7 @@ export class DemandesController {
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('search') search?: string,
+    @Query('societe') societe?: string,
     @Query('statut') statut?: string,
     @Query('wilayaId') wilayaId?: string,
     @Query('typePermisId') typePermisId?: string,
@@ -25,6 +26,7 @@ export class DemandesController {
       page: page ? +page : undefined,
       pageSize: pageSize ? +pageSize : undefined,
       search,
+      societe,
       statut,
       wilayaId: wilayaId ? +wilayaId : undefined,
       typePermisId: typePermisId ? +typePermisId : undefined,
@@ -39,6 +41,7 @@ export class DemandesController {
 
   @Get('stats')
   async stats(
+    @Query('societe') societe?: string,
     @Query('statut') statut?: string,
     @Query('wilayaId') wilayaId?: string,
     @Query('typePermisId') typePermisId?: string,
@@ -48,6 +51,7 @@ export class DemandesController {
     @Query('toDate') toDate?: string,
   ) {
     return this.service.stats({
+      societe,
       statut,
       wilayaId: wilayaId ? +wilayaId : undefined,
       typePermisId: typePermisId ? +typePermisId : undefined,
@@ -65,6 +69,7 @@ export class DemandesController {
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('search') search?: string,
+    @Query('societe') societe?: string,
     @Query('statut') statut?: string,
     @Query('wilayaId') wilayaId?: string,
     @Query('typePermisId') typePermisId?: string,
@@ -79,6 +84,7 @@ export class DemandesController {
       page: page ? +page : undefined,
       pageSize: pageSize ? +pageSize : undefined,
       search,
+      societe,
       statut,
       wilayaId: wilayaId ? +wilayaId : undefined,
       typePermisId: typePermisId ? +typePermisId : undefined,

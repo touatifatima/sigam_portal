@@ -28,8 +28,11 @@ import {
   Sparkles,
   Eye,
   Banknote,
+  MessageSquareText,
 } from "lucide-react";
 import { InvestorLayout } from "@/components/investor/InvestorLayout";
+import EntityMessagesPanel from "@/components/chat/EntityMessagesPanel";
+import PerimeterCoordinatesTable from "@/components/perimeter/PerimeterCoordinatesTable";
 import styles from "./DemandeDetails.module.css";
 
 type DemandeCommune = {
@@ -49,6 +52,9 @@ type DemandeDetail = {
   statut_demande?: string | null;
   date_demande?: string | null;
   superficie?: number | null;
+  superficie_ha?: number | string | null;
+  superficieHa?: number | string | null;
+  surface?: number | string | null;
   lieu_ditFR?: string | null;
   id_proc?: number | null;
   procedure?: { date_debut_proc?: string | null } | null;
@@ -100,10 +106,23 @@ const formatDate = (value?: string | null) => {
   });
 };
 
+const isTruthyQueryFlag = (value?: string | null) => {
+  const normalized = String(value || "").toLowerCase().trim();
+  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "oui";
+};
+
 const coerceNumber = (value: any): number | null => {
   if (value === null || value === undefined || value === "") return null;
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
+};
+
+const pickFirstNumber = (...values: any[]): number | null => {
+  for (const value of values) {
+    const coerced = coerceNumber(value);
+    if (coerced !== null) return coerced;
+  }
+  return null;
 };
 
 const pickName = (obj: any, keys: string[]) => {
@@ -169,6 +188,15 @@ const DemandeDetails = () => {
     const parsed = Number(raw);
     return Number.isFinite(parsed) ? parsed : null;
   }, [id, demandeId, code]);
+  const backPath = useMemo(() => {
+    if (typeof window === "undefined") return "/investisseur/demandes";
+    const pathname = window.location.pathname.toLowerCase();
+    if (pathname.includes("/demand_dashboard/")) return "/demand_dashboard";
+    if (pathname.includes("/admin_panel/gestion-demandes/")) {
+      return "/admin_panel/gestion-demandes";
+    }
+    return "/investisseur/demandes";
+  }, [demandeKey]);
 
   const [demande, setDemande] = useState<DemandeDetail | null>(null);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -189,7 +217,28 @@ const DemandeDetails = () => {
   >(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<
+    "general" | "documents" | "paiements" | "historique" | "messages"
+  >("general");
+  const [autoFocusMessagesComposer, setAutoFocusMessagesComposer] = useState(false);
   const mapRef = useRef<ArcGISMapRef | null>(null);
+  const messagesSectionRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const search = new URLSearchParams(window.location.search);
+    const requestedTab = (search.get("tab") || "").trim().toLowerCase();
+    if (
+      requestedTab === "general" ||
+      requestedTab === "documents" ||
+      requestedTab === "paiements" ||
+      requestedTab === "historique" ||
+      requestedTab === "messages"
+    ) {
+      setActiveTab(requestedTab);
+    }
+    setAutoFocusMessagesComposer(isTruthyQueryFlag(search.get("focusComposer")));
+  }, [demandeKey]);
 
   useEffect(() => {
     let active = true;
@@ -338,10 +387,12 @@ const DemandeDetails = () => {
           : [];
         setProcedureEtapes(steps);
 
-        const verifSurface =
-          typeof verificationRes?.data?.superficie_cadastrale === "number"
-            ? verificationRes?.data?.superficie_cadastrale
-            : null;
+        const verifSurface = pickFirstNumber(
+          verificationRes?.data?.superficie_cadastrale,
+          verificationRes?.data?.superficie_cadastrale_ha,
+          verificationRes?.data?.superficie,
+          verificationRes?.data?.surface,
+        );
 
         const coordsPayload = Array.isArray(coordsRes?.data) ? coordsRes?.data : [];
         const mappedPoints = coordsPayload
@@ -405,10 +456,19 @@ const DemandeDetails = () => {
           coerceNumber(inscriptionRes?.data?.superficie_declaree) ??
           coerceNumber(inscriptionRes?.data?.superficie);
 
-        const demandeSuperficie = coerceNumber(demandeData?.superficie);
+        const demandeSuperficie = pickFirstNumber(
+          demandeData?.superficie,
+          demandeData?.superficie_ha,
+          demandeData?.superficieHa,
+          demandeData?.surface,
+        );
 
-        const finalSuperficie =
-          verifSurface ?? extraSuperficie ?? inscriptionSuperficie ?? demandeSuperficie;
+        const finalSuperficie = pickFirstNumber(
+          verifSurface,
+          extraSuperficie,
+          inscriptionSuperficie,
+          demandeSuperficie,
+        );
 
         setSuperficieCadastrale(finalSuperficie);
       } catch (err) {
@@ -436,6 +496,18 @@ const DemandeDetails = () => {
     }, 0);
     return () => window.clearTimeout(timer);
   }, [perimetrePoints]);
+
+  useEffect(() => {
+    if (activeTab !== "messages") return;
+    if (!messagesSectionRef.current) return;
+    const timer = window.setTimeout(() => {
+      messagesSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [activeTab]);
 
   const getStatutConfig = (statut: string) => {
     const configs: Record<string, { label: string; icon: typeof Clock; className: string }> = {
@@ -525,7 +597,7 @@ const DemandeDetails = () => {
         <div className={styles.errorState}>
           <h2>Demande introuvable</h2>
           <p>{error || "Aucune information disponible pour cette demande."}</p>
-          <Button onClick={() => navigate("/investisseur/demandes")}>Retour a la liste</Button>
+          <Button onClick={() => navigate(backPath)}>Retour a la liste</Button>
         </div>
       </InvestorLayout>
     );
@@ -563,12 +635,13 @@ const DemandeDetails = () => {
     demande.communes?.[0]?.commune?.daira?.wilaya?.nom_wilayaFR ||
     "--";
 
-  const superficieValue =
-    typeof superficieCadastrale === "number"
-      ? superficieCadastrale
-      : typeof demande.superficie === "number"
-      ? demande.superficie
-      : null;
+  const superficieValue = pickFirstNumber(
+    superficieCadastrale,
+    demande.superficie,
+    demande.superficie_ha,
+    demande.superficieHa,
+    demande.surface,
+  );
   const superficieLabel =
     typeof superficieValue === "number" ? `${superficieValue.toFixed(2)} ha` : "--";
 
@@ -591,7 +664,7 @@ const DemandeDetails = () => {
           <div className={styles.heroNav}>
             <Button
               variant="ghost"
-              onClick={() => navigate("/investisseur/demandes")}
+              onClick={() => navigate(backPath)}
               className={styles.backButton}
             >
               <ArrowLeft className="w-4 h-4" />
@@ -636,7 +709,15 @@ const DemandeDetails = () => {
         </div>
 
         <div className={styles.mainContent}>
-          <Tabs defaultValue="general" className={styles.tabs}>
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) =>
+              setActiveTab(
+                value as "general" | "documents" | "paiements" | "historique" | "messages",
+              )
+            }
+            className={styles.tabs}
+          >
             <TabsList className={styles.tabsList}>
               <TabsTrigger value="general" className={styles.tabTrigger}>
                 <Eye className="w-4 h-4" />
@@ -654,43 +735,47 @@ const DemandeDetails = () => {
                 <History className="w-4 h-4" />
                 <span>Historique</span>
               </TabsTrigger>
+              <TabsTrigger value="messages" className={styles.tabTrigger}>
+                <MessageSquareText className="w-4 h-4" />
+                <span>Messages</span>
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="general" className={styles.tabContent}>
               <div className={styles.infoGrid}>
-                <Card className={styles.infoCard}>
-                  <CardHeader className={styles.cardHeader}>
+                <Card className={`${styles.infoCard} ${styles.summaryCard}`}>
+                  <CardHeader className={`${styles.cardHeader} ${styles.summaryHeader}`}>
                     <div className={styles.cardIcon}>
                       <Building2 className="w-5 h-5" />
                     </div>
                     <CardTitle className={styles.cardTitle}>Titulaire</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <p className={styles.infoValue}>{detenteurLabel}</p>
+                  <CardContent className={styles.summaryCardContent}>
+                    <p className={`${styles.infoValue} ${styles.summaryValue}`}>{detenteurLabel}</p>
                   </CardContent>
                 </Card>
 
-                <Card className={styles.infoCard}>
-                  <CardHeader className={styles.cardHeader}>
+                <Card className={`${styles.infoCard} ${styles.summaryCard}`}>
+                  <CardHeader className={`${styles.cardHeader} ${styles.summaryHeader}`}>
                     <div className={styles.cardIcon}>
                       <Calendar className="w-5 h-5" />
                     </div>
                     <CardTitle className={styles.cardTitle}>Date de depot</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <p className={styles.infoValue}>{dateDepotLabel}</p>
+                  <CardContent className={styles.summaryCardContent}>
+                    <p className={`${styles.infoValue} ${styles.summaryValue}`}>{dateDepotLabel}</p>
                   </CardContent>
                 </Card>
 
-                <Card className={styles.infoCard}>
-                  <CardHeader className={styles.cardHeader}>
+                <Card className={`${styles.infoCard} ${styles.summaryCard}`}>
+                  <CardHeader className={`${styles.cardHeader} ${styles.summaryHeader}`}>
                     <div className={styles.cardIcon}>
                       <Ruler className="w-5 h-5" />
                     </div>
                     <CardTitle className={styles.cardTitle}>Superficie</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <p className={styles.infoValue}>{superficieLabel}</p>
+                  <CardContent className={styles.summaryCardContent}>
+                    <p className={`${styles.infoValue} ${styles.summaryValue}`}>{superficieLabel}</p>
                   </CardContent>
                 </Card>
 
@@ -742,6 +827,11 @@ const DemandeDetails = () => {
                         </div>
                       )}
                     </div>
+                    <PerimeterCoordinatesTable
+                      points={perimetrePoints}
+                      emptyMessage="Aucun perimetre defini pour cette demande."
+                      className={styles.coordinatesBlock}
+                    />
                   </CardContent>
                 </Card>
 
@@ -953,6 +1043,20 @@ const DemandeDetails = () => {
                   })}
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent value="messages" className={styles.tabContent}>
+              <div id="messages-section" ref={messagesSectionRef}>
+                <Card className={`${styles.infoCard} ${styles.fullWidth}`}>
+                  <CardContent>
+                    <EntityMessagesPanel
+                      entityType="demande"
+                      entityCode={codeDemande}
+                      autoFocusComposer={autoFocusMessagesComposer}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
           </Tabs>
         </div>

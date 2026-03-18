@@ -12,10 +12,11 @@ import {
   FiChevronRight,
   FiChevronUp,
   FiChevronDown,
+  FiX,
   FiMapPin,
-  FiPlay,
   FiPlus,
   FiTrash2,
+  FiLoader,
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import proj4 from 'proj4';
@@ -25,7 +26,6 @@ import Navbar from '../../navbar/Navbar';
 import Sidebar from '../../sidebar/Sidebar';
 import { useViewNavigator } from '../../../src/hooks/useViewNavigator';
 import { useAuthStore } from '../../../src/store/useAuthStore';
-import { cleanLocalStorageForNewDemande } from '../../../utils/cleanLocalStorage';
 import type { ArcGISMapRef } from '@/components/arcgismap/ArcgisMap';
 
 import 'react-datepicker/dist/react-datepicker.css';
@@ -102,6 +102,15 @@ type MapPoint = {
 };
 
 type OverlapLayerKey = 'titres' | 'perimetresSig' | 'promotion' | 'exclusions';
+
+type VerificationNoticeVariant = 'warning' | 'blocking' | 'success';
+
+type VerificationNoticeData = {
+  variant: VerificationNoticeVariant;
+  title: string;
+  message: string;
+  details: string[];
+};
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL ?? '';
 const DRAFT_KEY = 'interactive_demande_draft_v1';
@@ -213,11 +222,6 @@ const normalizeDateTime = (value: Date | null) => {
   return normalized;
 };
 
-const formatDateTime = (value: Date) => {
-  const normalized = normalizeDateTime(value) ?? value;
-  return normalized.toISOString();
-};
-
 const convertWgs84ToUtm = (coords: [number, number][], zone: number) =>
   coords.map(([lon, lat]) => {
     const [x, y] = proj4('EPSG:4326', buildUtmProj(zone), [lon, lat]);
@@ -233,7 +237,7 @@ const convertUtmToWgs84 = (coords: [number, number][], zone: number) =>
 export default function InteractiveDemandePage() {
   const router = useRouter();
   const { currentView, navigateTo } = useViewNavigator('demande-interactive');
-  const { auth, hasPermission } = useAuthStore();
+  const { hasPermission } = useAuthStore();
   const canCreateAxw = hasPermission('create_axw');
   const mapRef = useRef<ArcGISMapRef | null>(null);
   const csvInputRef = useRef<HTMLInputElement | null>(null);
@@ -249,7 +253,6 @@ export default function InteractiveDemandePage() {
   const [dateSoumission, setDateSoumission] = useState<Date | null>(
     normalizeDateTime(new Date()),
   );
-  const [submitting, setSubmitting] = useState(false);
 
   const [priorModalOpen, setPriorModalOpen] = useState(false);
   const [priorLoading, setPriorLoading] = useState(false);
@@ -319,6 +322,8 @@ export default function InteractiveDemandePage() {
   const [overlapDetected, setOverlapDetected] = useState(false);
   const [hasOverlapCheck, setHasOverlapCheck] = useState(false);
   const [showAllOverlaps, setShowAllOverlaps] = useState(false);
+  const [noticeDismissed, setNoticeDismissed] = useState(false);
+  const [showPerimeterPreview, setShowPerimeterPreview] = useState(false);
 
   const effectivePermis = useMemo(() => {
     if (selectedPermis) return selectedPermis;
@@ -331,10 +336,28 @@ export default function InteractiveDemandePage() {
   const isTX = currentPermisCode.startsWith('TX');
   const isTXM = currentPermisCode === 'TXM';
   const isTXC = currentPermisCode === 'TXC';
-  const isAXW = currentPermisCode === 'AXW';
 
-  const resolveOverlapLayerType = (o: any) =>
-    String(o?.layer_type ?? o?.layerType ?? o?.__layerType ?? '').trim();
+  const resolveOverlapLayerType = (o: any) => {
+    const raw = String(o?.layer_type ?? o?.layerType ?? o?.__layerType ?? '')
+      .trim()
+      .toLowerCase();
+    if (!raw) return '';
+    if (raw === 'perimetressig' || raw === 'perimetres_sig' || raw === 'demande') {
+      return 'perimetresSig';
+    }
+    if (
+      raw === 'provisoire' ||
+      raw === 'inscription_provisoire' ||
+      raw === 'inscriptionprovisoire' ||
+      raw === 'inscriptions_provisoires'
+    ) {
+      return 'provisoire';
+    }
+    if (raw === 'titre') return 'titres';
+    if (raw === 'exclusion') return 'exclusions';
+    if (raw === 'modification') return 'modifications';
+    return raw;
+  };
 
   const overlapSelections = useMemo(
     () =>
@@ -345,75 +368,159 @@ export default function InteractiveDemandePage() {
     [overlapTitles],
   );
 
-  const blockingOverlapDetected = useMemo(() => {
-    if (!overlapTitles.length) return false;
+  const perimeterPreviewPolygons = useMemo<
+    { label?: string; coordinates: [number, number][]; color?: [number, number, number, number?] }[]
+  >(() => {
+    if (!showPerimeterPreview || !hasValidatedPerimeter || mapPoints.length < 3) return [];
+    const coords = mapPoints
+      .map((p) => [Number(p.x), Number(p.y)] as [number, number])
+      .filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
+    if (coords.length < 3) return [];
+    return [
+      {
+        label: 'Perimetre saisi',
+        coordinates: closeRing(normalizeRing(coords)),
+        color: [59, 130, 246, 0.4],
+      },
+    ];
+  }, [showPerimeterPreview, hasValidatedPerimeter, mapPoints]);
 
-    const sourceInfo = (() => {
-      if ((isTXC || isTXM) && selectedPrior) {
-        return {
-          id: selectedPrior.id,
-          code: selectedPrior.code_permis ?? null,
-          typeCode: selectedPrior.type_code ?? null,
-        };
+  const formatOverlapDate = (value: any) => {
+    if (value == null || value === '') return '';
+    try {
+      const date = value instanceof Date ? value : new Date(value);
+      if (!Number.isNaN(date.getTime())) {
+        return date.toLocaleDateString('fr-DZ');
       }
-      if (isTEM && temFromApm === 'yes' && selectedApm) {
-        return {
-          id: selectedApm.id,
-          code: selectedApm.code_permis ?? null,
-          typeCode: selectedApm.type_code ?? null,
-        };
-      }
-      return null;
-    })();
+    } catch {}
+    return String(value);
+  };
 
-    const shouldIgnoreSource = (() => {
-      if (!sourceInfo) return false;
-      const sourceType = String(sourceInfo.typeCode || '').toUpperCase();
-      if (isTXC) return sourceType === 'TEC';
-      if (isTXM) return sourceType === 'TEM';
-      if (isTEM) return sourceType === 'APM';
-      return false;
-    })();
+  const getOverlapDetailsLine = (item: any) => {
+    const layerType = resolveOverlapLayerType(item);
+    const code =
+      item?.permis_code ??
+      item?.permisCode ??
+      item?.code ??
+      item?.code_permis ??
+      item?.idtitre ??
+      item?.sigam_proc_id ??
+      item?.id_proc ??
+      item?.id ??
+      item?.objectid ??
+      item?.idzone ??
+      '';
+    const type =
+      item?.permis_type_label ??
+      item?.permisTypeLabel ??
+      item?.permis_type_code ??
+      item?.typetitre ??
+      item?.codetype ??
+      item?.type_code ??
+      '';
+    const holder =
+      item?.permis_titulaire ??
+      item?.permisTitulaire ??
+      [item?.tnom, item?.tprenom].filter(Boolean).join(' ').trim() ??
+      '';
+    const status = item?.status ?? item?.statut ?? '';
+    const depositDate = formatOverlapDate(
+      item?.date_depot ??
+      item?.date_declaration ??
+      item?.date_demande ??
+      item?.created_at ??
+      item?.createdAt,
+    );
+    const prefix =
+      layerType === 'perimetresSig'
+        ? 'Demande'
+        : layerType === 'provisoire'
+          ? 'Inscription provisoire'
+          : layerType === 'titres'
+            ? 'Titre minier'
+            : layerType === 'exclusions'
+              ? "Zone d'exclusion"
+              : 'Chevauchement';
+    const details = [type, holder, depositDate ? `Depot: ${depositDate}` : '', status ? `Statut: ${status}` : '']
+      .filter(Boolean)
+      .join(' - ');
+    return `${prefix}${code ? ` ${code}` : ''}${details ? ` - ${details}` : ''}`.trim();
+  };
 
-    const isSourceOverlap = (item: any) => {
-      if (!sourceInfo) return false;
-      const ignoreId = sourceInfo.id;
-      const ignoreCode = sourceInfo.code ? String(sourceInfo.code).trim() : '';
-      const rawId = item?.idtitre ?? item?.sigam_permis_id ?? item?.permisId ?? null;
-      if (ignoreId != null && rawId != null) {
-        const idNum = Number(rawId);
-        if (Number.isFinite(idNum) && idNum === Number(ignoreId)) return true;
-      }
-      if (ignoreCode) {
-        const candidates = [
-          item?.code,
-          item?.permis_code,
-          item?.permisCode,
-          item?.code_permis,
-        ].filter((v: any) => v != null);
-        for (const candidate of candidates) {
-          const cand = String(candidate).trim();
-          if (!cand) continue;
-          if (cand === ignoreCode) return true;
-          const candNum = Number(cand);
-          const ignoreNum = Number(ignoreCode);
-          if (Number.isFinite(candNum) && Number.isFinite(ignoreNum) && candNum === ignoreNum) {
-            return true;
-          }
-        }
-      }
-      return false;
+  const overlapBuckets = useMemo(() => {
+    const buckets = {
+      demandes: [] as any[],
+      provisoires: [] as any[],
+      titres: [] as any[],
+      exclusions: [] as any[],
+      others: [] as any[],
     };
-
-    const filtered = (shouldIgnoreSource
-      ? overlapTitles.filter((o) => !isSourceOverlap(o))
-      : overlapTitles).filter((o) => {
-      const layerType = String(resolveOverlapLayerType(o) || '').trim().toLowerCase();
-      return layerType !== 'promotion';
+    overlapTitles.forEach((item) => {
+      const layerType = resolveOverlapLayerType(item);
+      if (layerType === 'perimetresSig') {
+        buckets.demandes.push(item);
+        return;
+      }
+      if (layerType === 'provisoire') {
+        buckets.provisoires.push(item);
+        return;
+      }
+      if (layerType === 'titres') {
+        buckets.titres.push(item);
+        return;
+      }
+      if (layerType === 'exclusions') {
+        buckets.exclusions.push(item);
+        return;
+      }
+      buckets.others.push(item);
     });
-    if (!filtered.length) return false;
-    return true;
-  }, [isAXW, isTEM, isTXC, isTXM, overlapTitles, selectedApm, selectedPrior, temFromApm]);
+    return buckets;
+  }, [overlapTitles]);
+
+  const blockingOverlapDetected = useMemo(
+    () => overlapBuckets.titres.length > 0 || overlapBuckets.exclusions.length > 0,
+    [overlapBuckets],
+  );
+
+  const verificationNotice = useMemo<VerificationNoticeData | null>(() => {
+    if (!hasOverlapCheck) return null;
+    if (blockingOverlapDetected) {
+      const details = [...overlapBuckets.titres, ...overlapBuckets.exclusions]
+        .slice(0, 8)
+        .map(getOverlapDetailsLine);
+      return {
+        variant: 'blocking',
+        title: 'Conflit bloquant detecte',
+        message:
+          "Votre perimetre projete intersecte une zone d'exclusion ou un titre minier existant.\nIl est impossible de deposer une demande dans cette zone. Veuillez modifier votre perimetre pour eviter ce conflit.",
+        details,
+      };
+    }
+    if (overlapTitles.length > 0) {
+      const demandCount = overlapBuckets.demandes.length;
+      const provisoireCount = overlapBuckets.provisoires.length;
+      const otherCount = overlapBuckets.others.length;
+      const otherSuffix = otherCount > 0 ? ` et ${otherCount} autre(s) couche(s)` : '';
+      const details = [...overlapBuckets.demandes, ...overlapBuckets.provisoires, ...overlapBuckets.others]
+        .slice(0, 10)
+        .map(getOverlapDetailsLine);
+      return {
+        variant: 'warning',
+        title: 'Attention : chevauchement detecte',
+        message:
+          `Votre perimetre projete croise ${demandCount} demande(s) en cours et ${provisoireCount} inscription(s) provisoire(s)${otherSuffix}.\nCela n'empeche pas de deposer votre demande, mais l'administration examinera ces chevauchements lors de l'instruction.\nVous pouvez ajuster vos coordonnees ou continuer votre projet.`,
+        details,
+      };
+    }
+    return {
+      variant: 'success',
+      title: 'Verification reussie',
+      message:
+        "Aucun chevauchement detecte avec les demandes en cours, inscriptions provisoires, exclusions ou titres existants.\nVotre perimetre semble libre pour le moment. Vous pouvez passer a la creation de votre demande reelle.",
+      details: [],
+    };
+  }, [blockingOverlapDetected, hasOverlapCheck, overlapBuckets, overlapTitles.length]);
 
   const loadDraft = (): DraftState | null => {
     if (typeof window === 'undefined') return null;
@@ -522,6 +629,8 @@ export default function InteractiveDemandePage() {
     setOverlapDetected(false);
     setHasOverlapCheck(false);
     setShowAllOverlaps(false);
+    setNoticeDismissed(false);
+    setShowPerimeterPreview(false);
     clearDraft();
   };
 
@@ -785,6 +894,8 @@ export default function InteractiveDemandePage() {
     setHasOverlapCheck(false);
     setOverlapDetected(false);
     setShowAllOverlaps(false);
+    setNoticeDismissed(false);
+    setShowPerimeterPreview(false);
     const area = computeAreaHa(parsed);
     setSuperficie(area);
 
@@ -867,16 +978,19 @@ export default function InteractiveDemandePage() {
   };
 
   const checkOverlaps = async () => {
+    if (isCheckingOverlaps) return;
     if (!mapPoints.length) {
       toast.warning('Veuillez valider un perimetre avant la verification.');
       return;
     }
+    setShowPerimeterPreview(true);
+    mapRef.current?.zoomToCurrentPolygon?.();
     const selectedLayers = getSelectedOverlapLayers();
     const layersToCheck = {
       ...selectedLayers,
       titres: true,
-      promotion: true,
       perimetresSig: true,
+      promotion: false,
     };
 
     setIsCheckingOverlaps(true);
@@ -926,6 +1040,10 @@ export default function InteractiveDemandePage() {
       setOverlapDetected(unique.length > 0);
       setHasOverlapCheck(true);
       setShowAllOverlaps(false);
+      setNoticeDismissed(false);
+      if (!unique.length) {
+        toast.success('Aucun chevauchement detecte - votre perimetre semble libre.');
+      }
     } catch (err) {
       console.error('Overlap check failed', err);
       toast.error('Erreur lors de la verification des chevauchements.');
@@ -934,10 +1052,19 @@ export default function InteractiveDemandePage() {
     }
   };
 
+  const clearOverlapResults = () => {
+    setOverlapTitles([]);
+    setOverlapDetected(false);
+    setHasOverlapCheck(false);
+    setShowAllOverlaps(false);
+    setNoticeDismissed(false);
+    mapRef.current?.zoomToCurrentPolygon?.();
+  };
+
   const dedupeOverlaps = (list: any[]) => {
     const seen = new Set<string>();
     return list.filter((t) => {
-      const layer = String(t.layer_type ?? t.layerType ?? '');
+      const layer = resolveOverlapLayerType(t);
       const key = [
         layer,
         t.id ?? '',
@@ -945,6 +1072,8 @@ export default function InteractiveDemandePage() {
         t.code ?? '',
         t.objectid ?? '',
         t.permis_code ?? '',
+        t.id_proc ?? '',
+        t.sigam_proc_id ?? '',
         t.nom ?? '',
       ].join('|');
       if (seen.has(key)) return false;
@@ -985,23 +1114,45 @@ export default function InteractiveDemandePage() {
     return null;
   };
 
-  const handleOverlapItemClick = async (o: any) => {
+  const zoomToOverlapItem = async (o: any, silent = false) => {
     const target = getOverlapZoomTarget(o);
     if (!target) {
-      toast.info('Zoom indisponible pour cet element.');
-      return;
+      if (!silent) toast.info('Zoom indisponible pour cet element.');
+      return false;
     }
     if (!mapRef.current?.searchLayerFeature) {
-      toast.error('Carte indisponible pour le zoom.');
-      return;
+      if (!silent) toast.error('Carte indisponible pour le zoom.');
+      return false;
     }
     const ok = await mapRef.current.searchLayerFeature(
       target.layerKey,
       target.fieldName,
       target.value,
     );
-    if (!ok) {
+    if (!ok && !silent) {
       toast.warning('Polygone introuvable sur la carte.');
+    }
+    return ok;
+  };
+
+  const handleOverlapItemClick = async (o: any) => {
+    const ok = await zoomToOverlapItem(o);
+    if (!ok) {
+      const fallback = mapRef.current?.zoomToCurrentPolygon;
+      fallback?.();
+    }
+  };
+
+  const focusOnOverlaps = async () => {
+    if (!overlapTitles.length) {
+      toast.info('Aucun chevauchement a centrer.');
+      return;
+    }
+    const firstZoomable =
+      overlapTitles.find((item) => getOverlapZoomTarget(item)) ?? overlapTitles[0];
+    const ok = await zoomToOverlapItem(firstZoomable);
+    if (!ok) {
+      mapRef.current?.zoomToCurrentPolygon?.();
     }
   };
 
@@ -1013,7 +1164,7 @@ export default function InteractiveDemandePage() {
         : typeof o?.overlap_area_ha === 'number'
           ? o.overlap_area_ha * 10000
           : null;
-    const overlapText = overlapAreaM ? ` (~${overlapAreaM.toFixed(0)} m²)` : '';
+    const overlapText = overlapAreaM ? ` (~${overlapAreaM.toFixed(0)} m2)` : '';
 
     if (layerType === 'titres') {
       const typ = o.typetitre || o.codetype || 'Titre';
@@ -1025,6 +1176,11 @@ export default function InteractiveDemandePage() {
       const label = o.permis_type_label ?? o.permisTypeLabel ?? 'Demandes';
       return `Demandes: ${label}${code ? ` (${code})` : ''}${overlapText}`.replace(/\s+/g, ' ').trim();
     }
+    if (layerType === 'provisoire') {
+      const code = o.permis_code ?? o.permisCode ?? o.num_proc ?? o.id_proc ?? '';
+      const label = o.permis_type_label ?? o.permisTypeLabel ?? 'Inscriptions provisoires';
+      return `${label}${code ? ` (${code})` : ''}${overlapText}`.replace(/\s+/g, ' ').trim();
+    }
     if (layerType === 'promotion') {
       const name = o.nom || o.Nom || 'Promotion';
       const id = o.objectid ?? o.OBJECTID ?? '';
@@ -1035,206 +1191,10 @@ export default function InteractiveDemandePage() {
       return `Modifications: ${modType}${overlapText}`.replace(/\s+/g, ' ').trim();
     }
     if (layerType === 'exclusions') {
-      const name = o.nom || o.Nom || 'Zone d\'exclusion';
+      const name = o.nom || o.Nom || "Zone d'exclusion";
       return `Zones d'exclusion: ${name}${overlapText}`.replace(/\s+/g, ' ').trim();
     }
     return `Chevauchement${overlapText}`.trim();
-  };
-
-  const pickLatestProcedureWithCoords = (procedures: any[] = []) => {
-    return procedures
-      .filter((p: any) => (p.coordonnees?.length ?? 0) > 0)
-      .sort((a: any, b: any) => {
-        const da = new Date(b.date_debut_proc || b.createdAt || 0).getTime();
-        const db = new Date(a.date_debut_proc || a.createdAt || 0).getTime();
-        if (da !== db) return da - db;
-        return (b.id_proc ?? 0) - (a.id_proc ?? 0);
-      })[0];
-  };
-
-  const persistPriorSelection = (prior: PriorTitre) => {
-    try {
-      localStorage.setItem('prior_permis_id', String(prior.id));
-      localStorage.setItem('prior_code_permis', prior.code_permis || '');
-      if (prior.codeNumber) localStorage.setItem('prior_code_number', prior.codeNumber);
-      if (prior.type_code) localStorage.setItem('prior_type_code', prior.type_code);
-      if (prior.detenteur?.id_detenteur)
-        localStorage.setItem('prior_detenteur_id', String(prior.detenteur.id_detenteur));
-      if (prior.communeId != null)
-        localStorage.setItem('prior_commune_id', String(prior.communeId));
-    } catch {}
-  };
-
-  const persistApmSelection = (apm: PriorTitre) => {
-    try {
-      localStorage.setItem('apm_permis_id', String(apm.id));
-      localStorage.setItem('apm_code_permis', apm.code_permis || '');
-      if (apm.codeNumber) localStorage.setItem('apm_code_number', apm.codeNumber);
-      if (apm.type_code) localStorage.setItem('apm_type_code', apm.type_code);
-      if (apm.detenteur?.id_detenteur)
-        localStorage.setItem('apm_detenteur_id', String(apm.detenteur.id_detenteur));
-      if (apm.communeId != null)
-        localStorage.setItem('apm_commune_id', String(apm.communeId));
-      persistPriorSelection(apm);
-    } catch {}
-  };
-
-  const startProcedure = async () => {
-    if (!effectivePermis || !dateSoumission) {
-      toast.warning('Selectionnez un type de permis et une date de soumission.');
-      return;
-    }
-    if (!hasValidatedPerimeter) {
-      toast.warning('Veuillez valider un perimetre avant de demarrer.');
-      return;
-    }
-    if (!hasOverlapCheck || blockingOverlapDetected) {
-      toast.warning('Veuillez verifier les chevauchements avant de demarrer.');
-      return;
-    }
-    if (!apiBase) {
-      toast.error('Configuration API manquante.');
-      return;
-    }
-
-    const codeSel = (effectivePermis.code_type || '').toUpperCase();
-    if (codeSel === 'AXW' && !canCreateAxw) {
-      toast.error("Vous n'avez pas la permission de creer une demande AXW.");
-      return;
-    }
-    if (codeSel.startsWith('TX') && !selectedPrior) {
-      toast.warning('Veuillez selectionner le titre precedent TEM/TEC.');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      cleanLocalStorageForNewDemande();
-      const isExploitation = codeSel.startsWith('TX');
-      const isExplorationTEM = codeSel === 'TEM';
-      const isApm = codeSel === 'APM';
-      const isAxw = codeSel === 'AXW';
-      let id_detenteur: number | undefined = undefined;
-
-      if (isExploitation && selectedPrior?.detenteur?.id_detenteur) {
-        id_detenteur = selectedPrior.detenteur.id_detenteur;
-        persistPriorSelection(selectedPrior);
-      }
-
-      if (isExplorationTEM && selectedApm?.detenteur?.id_detenteur) {
-        id_detenteur = selectedApm.detenteur.id_detenteur;
-        persistApmSelection(selectedApm);
-      }
-
-      let id_sourceProc: number | undefined = undefined;
-      let designation_number: string | undefined = undefined;
-      if (isExploitation && selectedPrior?.id) {
-        designation_number = selectedPrior.codeNumber || undefined;
-        try {
-          const pr = await axios.get(`${apiBase}/Permisdashboard/${selectedPrior.id}`, { withCredentials: true });
-          const procedures = pr.data?.procedures || [];
-          const source = pickLatestProcedureWithCoords(procedures);
-          if (source?.id_proc) id_sourceProc = source.id_proc;
-        } catch {}
-      }
-
-      const submissionDate = normalizeDateTime(dateSoumission);
-      if (!submissionDate) {
-        toast.warning('Selectionnez une date de soumission valide.');
-        setSubmitting(false);
-        return;
-      }
-
-      const response = await axios.post(
-        `${apiBase}/demandes`,
-        {
-          id_typepermis: effectivePermis.id,
-          objet_demande: 'Instruction initialisee',
-          date_demande: formatDateTime(submissionDate),
-          nom_responsable: auth.username || undefined,
-          ...(id_detenteur ? { id_detenteur } : {}),
-          ...(id_sourceProc ? { id_sourceProc } : {}),
-          ...(designation_number ? { designation_number } : {})
-        },
-        { withCredentials: true },
-      );
-
-      const { procedure, code_demande: demandeCode, id_demande } = response.data ?? {};
-      if (id_demande) localStorage.setItem('id_demande', String(id_demande));
-      if (procedure?.id_proc) localStorage.setItem('id_proc', String(procedure.id_proc));
-      localStorage.setItem('code_demande', demandeCode ?? '');
-      localStorage.setItem('selected_permis', JSON.stringify(effectivePermis));
-      localStorage.setItem(
-        'permis_details',
-        JSON.stringify({
-          duree_initiale: effectivePermis.duree_initiale,
-          nbr_renouv_max: effectivePermis.nbr_renouv_max,
-          superficie_max: effectivePermis.superficie_max ?? null,
-          duree_renouv: effectivePermis.duree_renouv
-        }),
-      );
-
-      if (selectedPrior) persistPriorSelection(selectedPrior);
-      if (selectedApm) persistApmSelection(selectedApm);
-
-      if (procedure?.id_proc) {
-        const points = mapPoints.map((p) => ({
-          x: p.x,
-          y: p.y,
-          z: 0,
-          system: 'UTM',
-          zone: draftZone,
-          hemisphere: draftHemisphere
-        }));
-        try {
-          await axios.post(
-            `${apiBase}/inscription-provisoire`,
-            {
-              id_proc: procedure.id_proc,
-              id_demande,
-              points,
-              system: 'UTM',
-              zone: draftZone,
-              hemisphere: draftHemisphere,
-              superficie_declaree: superficie
-            },
-            { withCredentials: true },
-          );
-        } catch (err) {
-          console.warn('Inscription provisoire failed', err);
-        }
-      }
-
-      clearDraft();
-
-      if (procedure?.id_proc) {
-        if (isExploitation) {
-          const priorParam = selectedPrior?.id ? `&permisId=${selectedPrior.id}` : '';
-          await router.push(`/demande_exploitation/step1/page1?id=${procedure.id_proc}${priorParam}`);
-          return;
-        }
-        if (isExplorationTEM && selectedApm?.id) {
-          await router.push(`/demande_exploration_mines/step1/page1?id=${procedure.id_proc}&permisId=${selectedApm.id}`);
-          return;
-        }
-        if (isApm) {
-          await router.push(`/demande_apm/step1/page1?id=${procedure.id_proc}`);
-          return;
-        }
-        if (isAxw) {
-          await router.push(`/demande_axw/step1/page1?id=${procedure.id_proc}`);
-          return;
-        }
-        await router.push(`/demande/step1/page1?id=${procedure.id_proc}`);
-        return;
-      }
-      toast.info('Demande creee, mais identifiant de procedure indisponible.');
-    } catch (err) {
-      console.error('Failed to create demande', err);
-      toast.error('Erreur lors de la creation de la demande.');
-    } finally {
-      setSubmitting(false);
-    }
   };
 
   const exportCsv = () => {
@@ -1438,22 +1398,12 @@ export default function InteractiveDemandePage() {
       setOverlapTitles([]);
       setOverlapDetected(false);
       setHasOverlapCheck(false);
+      setShowAllOverlaps(false);
+      setNoticeDismissed(false);
     };
 
-  const importCsvFile = async (file: File) => {
-    const content = await file.text();
-    const lines = content
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean);
-
-    if (!lines.length) return { points: [], zone: undefined, hemisphere: undefined };
-
-    const delimiter = detectCsvDelimiter(lines[0]);
-    const rows = lines.map((line) =>
-      line.split(delimiter).map((cell) => parseCsvValue(cell)),
-    );
-
+  const parseImportedRows = (rows: string[][]) => {
+    if (!rows.length) return { points: [], zone: undefined, hemisphere: undefined };
     const header = rows[0].map(normalizeHeader);
     const hasHeader =
       header.includes('x') ||
@@ -1503,18 +1453,50 @@ export default function InteractiveDemandePage() {
         if (hemi === 'N') hemisphere = 'N';
       }
     }
-
     return { points, zone, hemisphere };
   };
 
-  const handleImportCsv = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const importSpreadsheetFile = async (file: File) => {
+    const lowerName = file.name.toLowerCase();
+    if (lowerName.endsWith('.csv')) {
+      const content = await file.text();
+      const lines = content
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+      if (!lines.length) return { points: [], zone: undefined, hemisphere: undefined };
+      const delimiter = detectCsvDelimiter(lines[0]);
+      const rows = lines.map((line) =>
+        line.split(delimiter).map((cell) => parseCsvValue(cell)),
+      );
+      return parseImportedRows(rows);
+    }
+
+    const XLSX = await import('xlsx');
+    const raw = await file.arrayBuffer();
+    const workbook = XLSX.read(raw, { type: 'array' });
+    const firstSheet = workbook.SheetNames[0];
+    if (!firstSheet) return { points: [], zone: undefined, hemisphere: undefined };
+    const sheet = workbook.Sheets[firstSheet];
+    const rows = XLSX.utils.sheet_to_json<Array<string | number | null>>(sheet, {
+      header: 1,
+      raw: false,
+      defval: '',
+    });
+    const normalizedRows = rows
+      .map((row) => row.map((cell) => String(cell ?? '').trim()))
+      .filter((row) => row.some((cell) => cell !== ''));
+    return parseImportedRows(normalizedRows);
+  };
+
+  const handleImportSpreadsheet = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     try {
-      const { points, zone, hemisphere } = await importCsvFile(file);
+      const { points, zone, hemisphere } = await importSpreadsheetFile(file);
       if (!points.length) {
-        toast.error('Aucune coordonnee valide trouvee dans le CSV.');
+        toast.error('Aucune coordonnee valide trouvee dans le fichier.');
         return;
       }
       setCoordSource('manual');
@@ -1525,13 +1507,26 @@ export default function InteractiveDemandePage() {
       setHasValidatedPerimeter(false);
       setMapPoints([]);
       setSuperficie(0);
+      setOverlapTitles([]);
+      setOverlapDetected(false);
+      setHasOverlapCheck(false);
+      setShowAllOverlaps(false);
+      setNoticeDismissed(false);
       toast.success(`${points.length} points importes avec succes.`);
     } catch (error) {
-      console.error('CSV import failed', error);
-      toast.error("Erreur lors de l'import CSV.");
+      console.error('Spreadsheet import failed', error);
+      toast.error("Erreur lors de l'import du fichier.");
     } finally {
       event.target.value = '';
     }
+  };
+
+  const handleReturnFromVerification = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    setNoticeDismissed(true);
   };
 
   return (
@@ -1541,16 +1536,16 @@ export default function InteractiveDemandePage() {
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles.mainContent}>
           <div className={styles.breadcrumb}>
-            <span>SIGAM</span>
+            <span>POM</span>
             <FiChevronRight className={styles.breadcrumbArrow} />
-            <span>Demande interactive</span>
+            <span>Verification prealable</span>
           </div>
 
           <div className={styles.headerRow}>
             <div className={styles.headerText}>
-              <h1 className={styles.title}>Assistant interactif de demande</h1>
+              <h1 className={styles.title}>Verification prealable interactive</h1>
               <p className={styles.subtitle}>
-                Choisissez un type de permis, saisissez le perimetre et verifiez les chevauchements avant demarrage.
+                Projetez vos coordonnees pour verifier les chevauchements avant de lancer la demande reelle.
               </p>
             </div>
             <div className={styles.headerSearch}>
@@ -1615,6 +1610,89 @@ export default function InteractiveDemandePage() {
           </div>
 
           {pageError && <div className={styles.errorBox}>{pageError}</div>}
+          {verificationNotice && !noticeDismissed && (
+            <div
+              className={`${styles.verificationNotice} ${
+                verificationNotice.variant === 'success'
+                  ? styles.verificationNoticeSuccess
+                  : verificationNotice.variant === 'blocking'
+                    ? styles.verificationNoticeBlocking
+                    : styles.verificationNoticeWarning
+              }`}
+            >
+              <div className={styles.verificationNoticeIcon}>
+                {verificationNotice.variant === 'success' ? (
+                  <FiCheckCircle />
+                ) : (
+                  <FiAlertTriangle />
+                )}
+              </div>
+              <div className={styles.verificationNoticeBody}>
+                <div className={styles.verificationNoticeTitle}>{verificationNotice.title}</div>
+                {verificationNotice.message.split('\n').map((line, idx) => (
+                  <p key={`notice-line-${idx}`} className={styles.verificationNoticeText}>
+                    {line}
+                  </p>
+                ))}
+                {verificationNotice.details.length > 0 && (
+                  <ul className={styles.verificationNoticeList}>
+                    {verificationNotice.details.map((item, idx) => (
+                      <li key={`notice-item-${idx}`}>{item}</li>
+                    ))}
+                  </ul>
+                )}
+                <div className={styles.verificationNoticeActions}>
+                  {verificationNotice.variant === 'success' ? (
+                    <>
+                      <button
+                        type="button"
+                        className={styles.secondaryBtn}
+                        onClick={handleReturnFromVerification}
+                      >
+                        Retour
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.primaryBtn}
+                        onClick={() =>
+                          router.push('/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis')
+                        }
+                      >
+                        Creer ma demande
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className={styles.primaryBtn}
+                        onClick={() => openManualEntry(false)}
+                      >
+                        {verificationNotice.variant === 'blocking'
+                          ? 'Modifier mon perimetre'
+                          : 'Ajuster mon perimetre'}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.secondaryBtn}
+                        onClick={() => setNoticeDismissed(true)}
+                      >
+                        Fermer
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                className={styles.verificationNoticeClose}
+                onClick={() => setNoticeDismissed(true)}
+                aria-label="Fermer la notification"
+              >
+                <FiX />
+              </button>
+            </div>
+          )}
 
           <div className={styles.contentGrid}>
             <section className={styles.leftPanel}>
@@ -1657,7 +1735,7 @@ export default function InteractiveDemandePage() {
                   )}
 
                   <label className={styles.label}>
-                    Date et heure de soumission de la demande <span className={styles.required}>*</span>
+                    Date et heure de verification <span className={styles.required}>*</span>
                   </label>
                   <div className={styles.datepickerWrapper}>
                     <DatePicker
@@ -1738,7 +1816,29 @@ export default function InteractiveDemandePage() {
                     onClick={checkOverlaps}
                     disabled={isCheckingOverlaps || !hasValidatedPerimeter}
                   >
-                    {isCheckingOverlaps ? 'Verification...' : 'Verifier les chevauchements'}
+                    {isCheckingOverlaps ? (
+                      <>
+                        <FiLoader className={styles.spinIcon} /> Verification...
+                      </>
+                    ) : (
+                      'Verifier les chevauchements'
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.secondaryBtn}
+                    onClick={focusOnOverlaps}
+                    disabled={!overlapTitles.length}
+                  >
+                    Centrer sur les chevauchements
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.secondaryBtn}
+                    onClick={clearOverlapResults}
+                    disabled={isCheckingOverlaps || (!overlapTitles.length && !hasOverlapCheck)}
+                  >
+                    <FiX /> Effacer chevauchements
                   </button>
                   {hasOverlapCheck && !overlapDetected && (
                     <div className={styles.statusBadge}>
@@ -1748,11 +1848,6 @@ export default function InteractiveDemandePage() {
                   {overlapDetected && (
                     <div className={styles.warningBadge}>
                       <FiAlertTriangle /> Empietements detectes ({overlapTitles.length})
-                    </div>
-                  )}
-                  {overlapDetected && isAXW && !blockingOverlapDetected && (
-                    <div className={styles.statusBadge}>
-                      Chevauchement sur zone de promotion: autorise pour AXW.
                     </div>
                   )}
                   {overlapTitles.length > 0 && (
@@ -1805,22 +1900,6 @@ export default function InteractiveDemandePage() {
                   )}
                 </div>
               </div>
-
-              <div className={styles.card}>
-                <div className={styles.cardHeader}>
-                  <h3>4. Demarrer</h3>
-                </div>
-                <div className={styles.cardBody}>
-                  <button
-                    type="button"
-                    className={styles.startBtn}
-                    disabled={submitting || !hasValidatedPerimeter || !hasOverlapCheck || blockingOverlapDetected}
-                    onClick={startProcedure}
-                  >
-                    <FiPlay /> {submitting ? 'Creation...' : 'Demarrer la procedure'}
-                  </button>
-                </div>
-              </div>
             </section>
 
             <section className={styles.mapPanel}>
@@ -1833,8 +1912,10 @@ export default function InteractiveDemandePage() {
                 utmZone={draftZone}
                 utmHemisphere={draftHemisphere}
                 showFuseaux
+                previewPolygons={perimeterPreviewPolygons}
                 overlapDetails={overlapTitles}
                 overlapSelections={overlapSelections}
+                overlapHighlightMode="strong"
                 enableSelectionTools
               />
             </section>
@@ -2032,15 +2113,15 @@ export default function InteractiveDemandePage() {
                         type="button"
                         onClick={() => csvInputRef.current?.click()}
                       >
-                        Importer CSV
+                        Importer Excel
                       </button>
                     </div>
                   </div>
                   <input
                     ref={csvInputRef}
                     type="file"
-                    accept=".csv"
-                    onChange={handleImportCsv}
+                    accept=".xlsx,.xls,.csv"
+                    onChange={handleImportSpreadsheet}
                     style={{ display: 'none' }}
                   />
 
@@ -2109,7 +2190,7 @@ export default function InteractiveDemandePage() {
                     </tbody>
                   </table>
                   <div className={styles.pasteHint}>
-                    Astuce: collez depuis Excel/CSV ou un texte UTM (Ctrl+V).
+                    Astuce: collez depuis Excel/CSV ou importez un fichier Excel/CSV (Ctrl+V).
                   </div>
                 </div>
                 <div className={styles.modalFooter}>
@@ -2125,3 +2206,4 @@ export default function InteractiveDemandePage() {
     </div>
   );
 }
+

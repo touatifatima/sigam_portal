@@ -9,7 +9,7 @@
 }
 
 .label {
-  color: #1fb072;
+  color: #b14680;
   font-weight: 700;
   font-size: 0.9rem;
   text-transform: uppercase;
@@ -64,7 +64,7 @@
 }
 
 .partnerItem:hover .partnerLogo {
-  border-color: rgba(31, 176, 114, 0.35);
+  border-color: rgba(177, 70, 128, 0.35);
   box-shadow: 0 18px 44px -28px rgba(15, 23, 42, 0.45);
   transform: translateY(-2px);
 }
@@ -79,3 +79,6 @@
   font-size: 0.9rem;
   color: #4b5568;
 }
+
+
+

@@ -315,7 +315,7 @@ const handleSaveTemplate = async (templateData: any): Promise<void> => {
 )}
           </div>
           <div className={styles['breadcrumb']}>
-            <span>SIGAM</span>
+            <span>POM</span>
             <FiChevronRight className={styles['breadcrumb-arrow']} />
             <span>Genaration Permis</span>
           </div>

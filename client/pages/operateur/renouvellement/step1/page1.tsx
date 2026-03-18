@@ -156,6 +156,7 @@ export default function CadastrePage() {
   const [comment, setComment] = useState('');
   const [overlapDetected, setOverlapDetected] = useState(false);
   const [overlapPermits, setOverlapPermits] = useState<string[]>([]);
+  const [warningOverlaps, setWarningOverlaps] = useState<any[]>([]);
   const [blockingOverlapLabels, setBlockingOverlapLabels] = useState<string[]>([]);
   const [miningTitleOverlaps, setMiningTitleOverlaps] = useState<any[]>([]);
   const [isCheckingOverlaps, setIsCheckingOverlaps] = useState(false);
@@ -234,6 +235,7 @@ export default function CadastrePage() {
       const map = mapRef.current as any;
       if (map?.setLayerActive) {
         map.setLayerActive('perimetresSig', true);
+        map.setLayerActive('provisoire', true);
         map.setLayerActive('exclusions', true);
         map.setLayerActive('titres', true);
         clearInterval(timer);
@@ -362,6 +364,13 @@ export default function CadastrePage() {
     const cleaned = String(raw || '').trim().toLowerCase();
     if (!cleaned) return '';
     if (cleaned === 'perimetressig' || cleaned === 'perimetres_sig') return 'perimetresSig';
+    if (
+      cleaned === 'inscription_provisoire' ||
+      cleaned === 'inscriptionprovisoire' ||
+      cleaned === 'provisoires'
+    ) {
+      return 'provisoire';
+    }
     return cleaned;
   };
 
@@ -384,6 +393,8 @@ export default function CadastrePage() {
   };
 
   const formatOverlapDemandLabel = (item: any, areaHa?: number | null) => {
+    const layerType = getOverlapLayerType(item);
+    const isProvisoire = layerType === 'provisoire';
     const code =
       item?.permis_code ??
       item?.permisCode ??
@@ -391,6 +402,12 @@ export default function CadastrePage() {
       item?.codeDemande ??
       item?.code ??
       '';
+    const typeLabel =
+      item?.permis_type_label ??
+      item?.permis_type_code ??
+      item?.type_code ??
+      item?.type ??
+      (isProvisoire ? 'Inscription provisoire' : 'Demande');
     const overlapAreaM2 =
       typeof item?.overlap_area_m2 === 'number'
         ? item.overlap_area_m2
@@ -402,8 +419,21 @@ export default function CadastrePage() {
         ? Math.round((overlapAreaM2 / (areaHa * 10000)) * 1000) / 10
         : null;
     const percentText = percent != null && Number.isFinite(percent) ? ` (${percent}%)` : '';
-    return `${code || 'Demande en cours'}${percentText}`;
+    const main = [typeLabel, code ? `(${code})` : ''].filter(Boolean).join(' ');
+    return `${main || (isProvisoire ? 'Inscription provisoire' : 'Demande en cours')}${percentText}`;
   };
+
+  const buildWarningOverlapKey = (item: any) =>
+    [
+      getOverlapLayerType(item),
+      item?.id ?? '',
+      item?.objectid ?? item?.OBJECTID ?? '',
+      item?.sigam_proc_id ?? '',
+      item?.sigam_permis_id ?? '',
+      item?.permis_code ?? item?.permisCode ?? '',
+      item?.code_demande ?? item?.codeDemande ?? '',
+      item?.code ?? '',
+    ].join('|');
 
   const formatBlockingOverlapLabel = (item: any) => {
     const layerType = getOverlapLayerType(item);
@@ -541,7 +571,7 @@ export default function CadastrePage() {
         }
         setSelectedHistoryProcId(null);
       } catch (e) {
-        console.error('Failed to load SIGAM procedure history for permis', permisCode, e);
+        console.error('Failed to load POMprocedure history for permis', permisCode, e);
         setExistingPolygons([]);
         setHistoryProcedures([]);
         setSelectedHistoryProcId(null);
@@ -1555,6 +1585,7 @@ export default function CadastrePage() {
           titres: true,
           exclusions: true,
           perimetresSig: true,
+          provisoire: true,
           promotion: true,
           modifications: true,
         },
@@ -1574,13 +1605,24 @@ export default function CadastrePage() {
         if (isSelfPermisOverlap(o)) return false;
         return true;
       });
-      const warnings = overlapsRaw.filter((o: any) => getOverlapLayerType(o) === 'perimetresSig');
+      const warningCandidates = overlapsRaw.filter((o: any) => {
+        const lt = getOverlapLayerType(o);
+        return lt === 'perimetresSig' || lt === 'provisoire';
+      });
+      const warningSeen = new Set<string>();
+      const warnings = warningCandidates.filter((o: any) => {
+        const key = buildWarningOverlapKey(o);
+        if (warningSeen.has(key)) return false;
+        warningSeen.add(key);
+        return true;
+      });
 
       const blockingLabels = blocking.map(formatBlockingOverlapLabel).filter(Boolean);
       const warningLabels = warnings.map((o: any) => formatOverlapDemandLabel(o, areaHa)).filter(Boolean);
 
       setBlockingOverlapLabels(blockingLabels);
       setOverlapPermits(Array.from(new Set(warningLabels)));
+      setWarningOverlaps(warnings);
       setMiningTitleOverlaps(blocking.filter((o: any) => getOverlapLayerType(o) === 'titres'));
       setOverlapDetected(overlapsRaw.length > 0);
       setOverlapChecked(true);
@@ -1701,6 +1743,7 @@ const handleMapClick = useCallback((x: number, y: number) => {
     if (points.length < 3) {
       setOverlapDetected(false);
       setOverlapPermits([]);
+      setWarningOverlaps([]);
       setBlockingOverlapLabels([]);
       setMiningTitleOverlaps([]);
       setMinDistanceM(null);
@@ -1730,7 +1773,19 @@ const handleMapClick = useCallback((x: number, y: number) => {
   );
 
   const hasBlockingOverlap = blockingOverlapLabels.length > 0;
-  const hasWarningOverlap = overlapPermits.length > 0 && !hasBlockingOverlap;
+  const hasWarningOverlap = warningOverlaps.length > 0 && !hasBlockingOverlap;
+  const warningOverlapSummary = useMemo(() => {
+    const demandesCount = warningOverlaps.filter(
+      (o: any) => getOverlapLayerType(o) === 'perimetresSig',
+    ).length;
+    const provisoiresCount = warningOverlaps.filter(
+      (o: any) => getOverlapLayerType(o) === 'provisoire',
+    ).length;
+    const parts: string[] = [];
+    if (demandesCount > 0) parts.push(`${demandesCount} demande(s)`);
+    if (provisoiresCount > 0) parts.push(`${provisoiresCount} inscription(s) provisoire(s)`);
+    return parts.join(' et ');
+  }, [warningOverlaps, getOverlapLayerType]);
   const perimeterReady = points.length >= 3 && allFilled && hasUniqueCoords && isPolygonValid;
   const pointsStatusLabel =
     points.length < 3
@@ -1749,6 +1804,7 @@ const handleMapClick = useCallback((x: number, y: number) => {
       setOverlapChecked(false);
       setIsCheckingOverlaps(false);
       setOverlapPermits([]);
+      setWarningOverlaps([]);
       setBlockingOverlapLabels([]);
       setMiningTitleOverlaps([]);
       return;
@@ -1775,7 +1831,7 @@ const handleMapClick = useCallback((x: number, y: number) => {
           <Sidebar currentView={currentView} navigateTo={navigateTo} />
           <main className={styles['main-content']}>
             <div className={styles['breadcrumb']}>
-              <span>SIGAM</span>
+              <span>POM</span>
               <FiChevronRight className={styles['breadcrumb-arrow']} />
               <span>Cadastre</span>
             </div>
@@ -1965,8 +2021,8 @@ const handleMapClick = useCallback((x: number, y: number) => {
                     <Alert className={styles.warningAlert}>
                       <AlertTitle>Attention</AlertTitle>
                       <AlertDescription>
-                        Chevauchement avec des demandes existantes : {overlapPermits.join(', ')}. Vous pouvez continuer,
-                        une decision de priorite sera prise plus tard.
+                        Votre perimetre chevauche {warningOverlapSummary || 'des demandes/provisoires'} :{' '}
+                        {overlapPermits.join(', ')}. Vous pouvez continuer, mais ajustez si necessaire.
                       </AlertDescription>
                     </Alert>
                   )}
@@ -2011,6 +2067,7 @@ const handleMapClick = useCallback((x: number, y: number) => {
                       utmZone={utmZone}
                       utmHemisphere={utmHemisphere}
                       overlapTitles={miningTitleOverlaps}
+                      overlapSelections={hasBlockingOverlap ? [] : warningOverlaps}
                       enableSelectionTools
                     />
                     {showLegend && (
@@ -2075,7 +2132,7 @@ const handleMapClick = useCallback((x: number, y: number) => {
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles['main-content']}>
           <div className={styles['breadcrumb']}>
-            <span>SIGAM</span>
+            <span>POM</span>
             <FiChevronRight className={styles['breadcrumb-arrow']} />
             <span>Cadastre</span>
           </div>
@@ -2298,6 +2355,7 @@ const handleMapClick = useCallback((x: number, y: number) => {
                           superfOk,
                         }}
                         overlapTitles={miningTitleOverlaps}
+                        overlapSelections={hasBlockingOverlap ? [] : warningOverlaps}
                         enableSelectionTools
                       />
                     </div>
@@ -2913,6 +2971,7 @@ const handleMapClick = useCallback((x: number, y: number) => {
                   superficie={superficie}
                   isDrawing={false}
                   overlapTitles={miningTitleOverlaps}
+                  overlapSelections={hasBlockingOverlap ? [] : warningOverlaps}
                   existingPolygons={existingPolygons}
                   selectedExistingProcId={selectedHistoryProcId}
                   coordinateSystem={coordinateSystem}

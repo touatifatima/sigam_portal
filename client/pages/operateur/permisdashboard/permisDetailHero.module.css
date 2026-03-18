@@ -1,0 +1,91 @@
+.heroHeader {
+  background:
+    radial-gradient(110% 180% at 0% 0%, hsl(335 62% 58% / 0.28), transparent 48%),
+    radial-gradient(120% 180% at 100% -10%, hsl(172 58% 42% / 0.2), transparent 42%),
+    linear-gradient(135deg, hsl(336 46% 34%) 0%, hsl(329 35% 24%) 52%, hsl(327 38% 20%) 100%);
+  border-bottom: 1px solid hsl(0 0% 100% / 0.12);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.16),
+    0 12px 30px hsl(330 45% 12% / 0.24);
+}
+
+.heroContent {
+  padding: 1.15rem 1.2rem;
+  border-radius: 18px;
+  border: 1px solid hsl(0 0% 100% / 0.16);
+  background:
+    radial-gradient(120% 200% at 0% -20%, hsl(0 0% 100% / 0.14), transparent 56%),
+    linear-gradient(180deg, hsl(0 0% 100% / 0.11), hsl(0 0% 100% / 0.05));
+  backdrop-filter: blur(10px);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.2),
+    0 14px 28px hsl(330 40% 12% / 0.22);
+}
+
+.heroNav {
+  margin-bottom: 1.25rem;
+}
+
+.backBtn {
+  border: 1px solid hsl(0 0% 100% / 0.3);
+  background: linear-gradient(135deg, hsl(0 0% 100% / 0.16), hsl(0 0% 100% / 0.08));
+  color: hsl(0 0% 100%);
+  font-weight: 700;
+  border-radius: 12px;
+  padding: 0.72rem 1.12rem;
+  gap: 0.5rem;
+  backdrop-filter: blur(12px) saturate(130%);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.25),
+    0 10px 22px hsl(0 0% 0% / 0.2);
+  transition: transform 0.2s ease, box-shadow 0.25s ease, background 0.25s ease;
+}
+
+.backBtn:hover {
+  border-color: hsl(0 0% 100% / 0.4);
+  background: linear-gradient(135deg, hsl(0 0% 100% / 0.24), hsl(0 0% 100% / 0.12));
+  color: hsl(0 0% 100%);
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.35),
+    0 14px 26px hsl(0 0% 0% / 0.24);
+}
+
+.downloadBtn {
+  border: 1px solid hsl(0 0% 100% / 0.3);
+  background: linear-gradient(135deg, #ffffff 0%, #f9f1f6 100%);
+  color: #8b3a62;
+  font-weight: 700;
+  border-radius: 12px;
+  padding: 0.72rem 1.12rem;
+  gap: 0.5rem;
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.9),
+    0 10px 22px hsl(330 35% 12% / 0.2);
+  transition: transform 0.2s ease, box-shadow 0.25s ease, filter 0.2s ease;
+}
+
+.downloadBtn:hover {
+  color: #7d2f59;
+  transform: translateY(-2px);
+  filter: brightness(1.02);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.98),
+    0 14px 28px hsl(330 35% 12% / 0.24);
+}
+
+@media (max-width: 768px) {
+  .heroContent {
+    padding: 1rem;
+  }
+
+  .heroNav {
+    margin-bottom: 1rem;
+  }
+
+  .backBtn,
+  .downloadBtn {
+    width: 100%;
+    justify-content: center;
+  }
+}

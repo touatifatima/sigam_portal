@@ -17,6 +17,7 @@ import styles from "./Paiement.module.css";
 import Navbar from "../../../navbar/Navbar";
 import Sidebar from "../../../sidebar/Sidebar";
 import { useViewNavigator } from "../../../../src/hooks/useViewNavigator";
+import { useSearchParams } from "@/src/hooks/useSearchParams";
 import { useActivateEtape } from "@/src/hooks/useActivateEtape";
 import ProgressStepper from "../../../../components/ProgressStepper";
 import { Phase, Procedure, ProcedureEtape, ProcedurePhase } from "@/src/types/procedure";
@@ -33,6 +34,7 @@ type DemandePaiement = {
 
 const Paiement = () => {
   const { currentView, navigateTo } = useViewNavigator("nouvelle-demande");
+  const searchParams = useSearchParams();
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(null);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [demandeInfo, setDemandeInfo] = useState<DemandePaiement>({

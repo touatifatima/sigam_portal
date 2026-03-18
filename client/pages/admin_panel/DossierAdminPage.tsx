@@ -239,7 +239,7 @@ export default function DossierManager() {
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles.mainContent}>
           <div className={styles.breadcrumb}>
-            <span>SIGAM</span>
+            <span>POM</span>
             <FiChevronRight className={styles.breadcrumbArrow} />
             <span>Manage Documents</span>
           </div>
@@ -384,7 +384,7 @@ export default function DossierManager() {
                               </div>
                             </div>
                           ) : (
-                            <div className={`${styles.formGrid} md:grid-cols-2`}>
+                            <div className={`${styles.formGrid} ${styles.documentFormGrid} md:grid-cols-2`}>
                               <div>
                                 <label className={styles.formLabel}>Nom du document</label>
                                 <input
@@ -411,7 +411,7 @@ export default function DossierManager() {
                                 </select>
                               </div>
 
-                              <div className="md:col-span-2">
+                              <div className={`${styles.documentFieldFull} md:col-span-2`}>
                                 <label className={styles.formLabel}>Description</label>
                                 <textarea
                                   className={styles.formControl}
@@ -433,7 +433,7 @@ export default function DossierManager() {
                                 />
                               </div>
 
-                              <div className={`${styles.flex} ${styles.justifyEnd} ${styles.itemsCenter} md:col-span-2`}>
+                              <div className={`${styles.flex} ${styles.justifyEnd} ${styles.itemsCenter} ${styles.documentFormActions} md:col-span-2`}>
                                 <button
                                   className={styles.button + ' ' + styles.buttonSuccess}
                                   onClick={handleCreateDocument}

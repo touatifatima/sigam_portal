@@ -9,8 +9,79 @@ type SortOrder = 'asc' | 'desc';
 export class DemandesService {
   constructor(private prisma: PrismaService) {}
 
+  private toFiniteNumber(value: unknown): number | null {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private computeMontantPayeTotal(demande: any): number | null {
+    const paiements = Array.isArray(demande?.facture?.paiements)
+      ? demande.facture.paiements
+      : [];
+    if (!paiements.length) return null;
+
+    const total = paiements.reduce((sum: number, p: any) => {
+      const montant = this.toFiniteNumber(p?.montant_paye);
+      return sum + (montant ?? 0);
+    }, 0);
+    return Number.isFinite(total) ? total : null;
+  }
+
+  private attachComputedFields(demande: any) {
+    const detenteur = this.extractDetenteur(demande);
+    const montantPayeTotal = this.computeMontantPayeTotal(demande);
+    return {
+      ...demande,
+      detenteur,
+      montant_paye_total: montantPayeTotal,
+    };
+  }
+
   private extractDetenteur(demande: any) {
-    return demande.detenteurdemande?.[0]?.detenteur ?? null;
+    const fromProcedurePermis =
+      demande.procedure?.permisProcedure?.find((link: any) => !!link?.permis?.detenteur)
+        ?.permis?.detenteur ?? null;
+    return (
+      demande.detenteurdemande?.[0]?.detenteur ??
+      demande.utilisateur?.detenteur ??
+      fromProcedurePermis ??
+      null
+    );
+  }
+
+  private applySocieteFilter(
+    where: Prisma.demandePortailWhereInput,
+    societe?: string,
+  ) {
+    if (!societe?.trim()) return;
+    const q = societe.trim();
+    const societeClause: Prisma.demandePortailWhereInput = {
+      OR: [
+        {
+          detenteurdemande: {
+            some: {
+              detenteur: {
+                nom_societeFR: { contains: q, mode: 'insensitive' },
+              },
+            },
+          },
+        },
+        {
+          utilisateur: {
+            detenteur: {
+              nom_societeFR: { contains: q, mode: 'insensitive' },
+            },
+          },
+        },
+      ],
+    };
+    const prevAnd = (where as any).AND;
+    const andClauses = Array.isArray(prevAnd)
+      ? prevAnd
+      : prevAnd
+      ? [prevAnd]
+      : [];
+    (where as any).AND = [...andClauses, societeClause];
   }
 
   private baseInclude = {
@@ -18,7 +89,31 @@ export class DemandesService {
     daira: { select: { id_daira: true, nom_dairaFR: true } },
     commune: { select: { id_commune: true, nom_communeFR: true } },
     procedure: {
-      select: { id_proc: true, statut_proc: true, date_fin_proc: true },
+      select: {
+        id_proc: true,
+        statut_proc: true,
+        date_fin_proc: true,
+        permisProcedure: {
+          take: 3,
+          orderBy: { id_procedurePermis: 'desc' },
+          select: {
+            permis: {
+              select: {
+                id: true,
+                id_detenteur: true,
+                detenteur: {
+                  select: {
+                    id_detenteur: true,
+                    nom_societeFR: true,
+                    nom_societeAR: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     },
     detenteurdemande: {
       include: {
@@ -36,8 +131,41 @@ export class DemandesService {
     expertMinier: {
       select: { id_expert: true, nom_expert: true, num_agrement: true },
     },
+    utilisateur: {
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        nom: true,
+        Prenom: true,
+        detenteur: {
+          select: {
+            id_detenteur: true,
+            nom_societeFR: true,
+            nom_societeAR: true,
+            email: true,
+          },
+        },
+      },
+    },
     typePermis: { select: { id: true, code_type: true, lib_type: true } },
     typeProcedure: { select: { id: true, libelle: true } },
+    facture: {
+      select: {
+        id_facture: true,
+        montant_total: true,
+        statut: true,
+        paiements: {
+          select: {
+            id: true,
+            montant_paye: true,
+            etat_paiement: true,
+            date_paiement: true,
+          },
+          orderBy: { date_paiement: 'desc' },
+        },
+      },
+    },
     demInitial: true,
     modification: true,
     renouvellement: true,
@@ -47,6 +175,7 @@ export class DemandesService {
     page?: number;
     pageSize?: number;
     search?: string;
+    societe?: string;
     statut?: string;
     wilayaId?: number;
     typePermisId?: number;
@@ -61,6 +190,7 @@ export class DemandesService {
       page = 1,
       pageSize = 20,
       search,
+      societe,
       statut,
       wilayaId,
       typePermisId,
@@ -91,6 +221,8 @@ export class DemandesService {
         { expertMinier: { nom_expert: { contains: q, mode: 'insensitive' } } },
       ];
     }
+
+    this.applySocieteFilter(where, societe);
 
     if (statut) where.statut_demande = statut;
     if (wilayaId) where.id_wilaya = wilayaId;
@@ -133,7 +265,7 @@ export class DemandesService {
     ]);
 
     const enrichedItems = items.map((demande) =>
-      mergeTypeSpecificFields(demande),
+      this.attachComputedFields(mergeTypeSpecificFields(demande)),
     );
 
     return {
@@ -146,6 +278,7 @@ export class DemandesService {
   }
 
   async stats(params: {
+    societe?: string;
     statut?: string;
     wilayaId?: number;
     typePermisId?: number;
@@ -155,6 +288,8 @@ export class DemandesService {
     toDate?: string;
   }) {
     const where: Prisma.demandePortailWhereInput = {};
+
+    this.applySocieteFilter(where, params.societe);
 
     if (params.statut) where.statut_demande = params.statut;
     if (params.wilayaId) where.id_wilaya = params.wilayaId;
@@ -238,11 +373,7 @@ export class DemandesService {
     });
 
     return items.map((demande) => {
-      const enriched = mergeTypeSpecificFields(demande);
-      return {
-        ...enriched,
-        detenteur: this.extractDetenteur(enriched),
-      };
+      return this.attachComputedFields(mergeTypeSpecificFields(demande));
     });
   }
   async getDemandeById(id: number) {
@@ -259,8 +390,41 @@ export class DemandesService {
             },
           },
           expertMinier: true,
+          utilisateur: {
+            select: {
+              id: true,
+              username: true,
+              email: true,
+              nom: true,
+              Prenom: true,
+              detenteur: {
+                select: {
+                  id_detenteur: true,
+                  nom_societeFR: true,
+                  nom_societeAR: true,
+                  email: true,
+                },
+              },
+            },
+          },
           typePermis: true,
           typeProcedure: true,
+          facture: {
+            select: {
+              id_facture: true,
+              montant_total: true,
+              statut: true,
+              paiements: {
+                select: {
+                  id: true,
+                  montant_paye: true,
+                  etat_paiement: true,
+                  date_paiement: true,
+                },
+                orderBy: { date_paiement: 'desc' },
+              },
+            },
+          },
           procedure: {
             include: {
               ProcedureEtape: {
@@ -276,9 +440,10 @@ export class DemandesService {
           renouvellement: true,
         },
       })
-      .then((demande) =>
-        demande ? mergeTypeSpecificFields(demande) : demande,
-      );
+      .then((demande) => {
+        if (!demande) return demande;
+        return this.attachComputedFields(mergeTypeSpecificFields(demande));
+      });
   }
   async findOne(id: number) {
     const demande = await this.prisma.demandePortail.findUnique({
@@ -286,13 +451,15 @@ export class DemandesService {
       include: this.baseInclude,
     });
 
-    return demande ? mergeTypeSpecificFields(demande) : demande;
+    if (!demande) return demande;
+    return this.attachComputedFields(mergeTypeSpecificFields(demande));
   }
 
   async exportCSV(params: {
     page?: number;
     pageSize?: number;
     search?: string;
+    societe?: string;
     statut?: string;
     wilayaId?: number;
     typePermisId?: number;

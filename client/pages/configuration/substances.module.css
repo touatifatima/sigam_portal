@@ -23,7 +23,7 @@
   color: #1e293b;
   font-size: 1.5rem;
   font-weight: 600;
-  background: linear-gradient(90deg, #2563eb 0%, #3b82f6 100%);
+   background: linear-gradient(135deg, #8b3a62, #a84968);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -47,8 +47,8 @@
 
 .searchBar input:focus {
   outline: none;
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+  border-color: #8b3a62;
+  box-shadow: 0 0 0 3px rgba(139, 58, 98, 0.2);
 }
 
 .searchIcon {
@@ -80,12 +80,12 @@
 }
 
 .tab:hover {
-  color: #2563eb;
+  color: #8b3a62;
   background-color: #f8fafc;
 }
 
 .tab.active {
-  color: #2563eb;
+  color: #8b3a62;
   font-weight: 600;
 }
 
@@ -96,7 +96,7 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
+  background: linear-gradient(90deg, #8b3a62 0%, #a84968 100%);
   border-radius: 2px 2px 0 0;
 }
 
@@ -114,19 +114,19 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.25rem;
-  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+  background: linear-gradient(135deg, #8b3a62 0%, #a84968 100%);
   color: white;
   border: none;
   border-radius: 8px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 2px 4px rgba(139, 58, 98, 0.2);
 }
 
 .addButton:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 4px 8px rgba(139, 58, 98, 0.3);
 }
 
 .content {
@@ -135,8 +135,8 @@
   overflow-y: auto;
   background-color: #f8fafc;
   background-image: 
-    radial-gradient(at top right, rgba(59, 130, 246, 0.03) 0%, transparent 50%),
-    radial-gradient(at bottom left, rgba(59, 130, 246, 0.03) 0%, transparent 50%);
+    radial-gradient(at top right, rgba(139, 58, 98, 0.03) 0%, transparent 50%),
+    radial-gradient(at bottom left, rgba(139, 58, 98, 0.03) 0%, transparent 50%);
 }
 
 .tableContainer {
@@ -196,7 +196,7 @@
 
 .editButton {
   background-color: #dbeafe;
-  color: #2563eb;
+  color: #067647;
 }
 
 .editButton:hover {
@@ -433,7 +433,7 @@
 }
 
 .saveButton {
-  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+ background: linear-gradient(135deg, #8b3a62, #a84968);
   color: white;
   border: none;
   box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);

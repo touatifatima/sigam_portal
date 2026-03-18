@@ -501,7 +501,7 @@ export default function CadastrePage() {
         }
         setSelectedHistoryProcId(null);
       } catch (e) {
-        console.error('Failed to load SIGAM procedure history for permis', permisCode, e);
+        console.error('Failed to load POMprocedure history for permis', permisCode, e);
         setExistingPolygons([]);
         setHistoryProcedures([]);
         setSelectedHistoryProcId(null);
@@ -1642,7 +1642,7 @@ const handleMapClick = useCallback((x: number, y: number) => {
           <Sidebar currentView={currentView} navigateTo={navigateTo} />
           <main className={styles['main-content']}>
             <div className={styles['breadcrumb']}>
-              <span>SIGAM</span>
+              <span>POM</span>
               <FiChevronRight className={styles['breadcrumb-arrow']} />
               <span>Cadastre</span>
             </div>
@@ -1929,7 +1929,7 @@ const handleMapClick = useCallback((x: number, y: number) => {
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles['main-content']}>
           <div className={styles['breadcrumb']}>
-            <span>SIGAM</span>
+            <span>POM</span>
             <FiChevronRight className={styles['breadcrumb-arrow']} />
             <span>Cadastre</span>
           </div>

@@ -40,7 +40,9 @@ export const useChat = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
   
-  const apiURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  const apiURLRaw = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  const apiURL = apiURLRaw.replace(/\/+$/, '');
+  const socketBaseUrl = apiURL.replace(/\/api$/, '');
   const { auth } = useAuthStore();
 const [availableUsers, setAvailableUsers] = useState<User[]>([]);
 
@@ -61,7 +63,8 @@ const loadAvailableUsers = useCallback(async () => {
   useEffect(() => {
     if (!auth.id) return;
 
-    const newSocket = io(apiURL, {
+    const newSocket = io(socketBaseUrl, {
+      path: '/api/socket.io',
       auth: {
         userId: auth.id,
         username: auth.username,
@@ -93,7 +96,7 @@ const loadAvailableUsers = useCallback(async () => {
     return () => {
       newSocket.disconnect();
     };
-  }, [apiURL, auth.id, auth.username]);
+  }, [socketBaseUrl, auth.id, auth.username]);
 
   const updateConversations = (conversations: Conversation[], message: Message): Conversation[] => {
     return conversations.map(conv => {

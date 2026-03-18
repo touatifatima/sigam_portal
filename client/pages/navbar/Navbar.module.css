@@ -1,10 +1,13 @@
 /* Navbar Styles */
 .navbar {
   --brand: #8b3a62;
-  --brand-dark: #4a2c3e;
-  --brand-soft: #f7e9ef;
-  --border: #eadfe4;
-  --text: #2d1b27;
+  --brand-rose: #a65279;
+  --brand-dark: #2c2a56;
+  --brand-soft: #f0f3ff;
+  --border: rgba(139, 58, 98, 0.24);
+  --text: #2e2942;
+  --brand-gradient: linear-gradient(135deg, #8b3a62 0%, #8b3a62 100%);
+  --brand-gradient-hover: linear-gradient(135deg, #a65279 0%, #a65279 100%);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -13,7 +16,7 @@
   color: var(--brand-dark);
   height: 64px;
   border-bottom: 1px solid var(--border);
-  box-shadow: 0 10px 24px rgba(74, 44, 62, 0.08);
+  box-shadow: 0 10px 24px rgba(139, 58, 98, 0.2);
 }
 
 .app-logo {
@@ -47,7 +50,7 @@
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: #9b7a88;
+  color: #8b3a62;
 }
 
 .navbar-search .search-input {
@@ -57,14 +60,14 @@
   border-radius: 12px;
   border: 1px solid var(--border);
   font-size: 0.9rem;
-  background: #fdf6f9;
+  background: #faf8ff;
   color: var(--text);
   transition: all 0.2s ease;
 }
 .navbar-search .search-input:focus {
   outline: none;
   border-color: var(--brand);
-  box-shadow: 0 0 0 3px rgba(139, 58, 98, 0.18);
+  box-shadow: 0 0 0 3px rgba(139, 58, 98, 0.24);
 }
 
 .navbar-user {
@@ -85,18 +88,41 @@
   justify-content: center;
   padding: 0.5rem 1rem;
   border-radius: 999px;
-  background: linear-gradient(135deg, #8b3a62 0%, #a84c72 100%);
+  background: var(--brand-gradient);
   color: #ffffff;
   font-size: 0.9rem;
   font-weight: 600;
   text-decoration: none;
-  box-shadow: 0 8px 18px rgba(139, 58, 98, 0.28);
+  box-shadow: 0 8px 18px rgba(139, 58, 98, 0.3);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.nav-map-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid rgba(139, 58, 98, 0.28);
+  background: #f8f0f4;
+  color: #8b3a62;
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.nav-map-link:hover {
+  border-color: #8b3a62;
+  background: #f5e8ef;
+  color: #6f2f4f;
+  box-shadow: 0 8px 18px rgba(139, 58, 98, 0.24);
 }
 
 .nav-cta:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 24px rgba(139, 58, 98, 0.35);
+  background: var(--brand-gradient-hover);
+  box-shadow: 0 10px 24px rgba(139, 58, 98, 0.34);
 }
 
 .nav-cta-disabled {
@@ -129,7 +155,7 @@
   position: absolute;
   top: -5px;
   right: -5px;
-  background-color: var(--brand);
+  background-color: #dc2626;
   color: white;
   border-radius: 50%;
   width: 18px;
@@ -161,7 +187,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #fdf6f9;
+  background: #f7f4ff;
 }
 
 .notifications-header h3 {
@@ -195,24 +221,45 @@
   border-bottom: 1px solid #f3ecef;
   cursor: pointer;
   display: flex;
+  gap: 10px;
   align-items: flex-start;
   transition: background-color 0.2s ease;
 }
 
 .notification-item:hover {
-  background-color: #fdf7f9;
+  background-color: #f8f6ff;
+}
+
+.notification-item.navigating {
+  opacity: 0.55;
+  transform: scale(0.99);
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
 .notification-item.unread {
-  background-color: #fdf0f5;
+  background-color: #f3efff;
 }
 
 .notification-item.unread:hover {
-  background-color: #f7dfe8;
+  background-color: #ece4ff;
 }
 
 .notification-content {
   flex: 1;
+}
+
+.notification-symbol {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5e8ef;
+  color: #8b3a62;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
 .notification-content h4 {
@@ -225,7 +272,7 @@
 .notification-content p {
   margin: 0 0 8px 0;
   font-size: 13px;
-  color: #6c5563;
+  color: #5e577d;
   line-height: 1.4;
 }
 
@@ -253,6 +300,31 @@
   margin: 0;
 }
 
+.notifications-footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: #faf8ff;
+}
+
+.see-all-link {
+  display: inline-flex;
+  width: 100%;
+  justify-content: center;
+  text-decoration: none;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(139, 58, 98, 0.28);
+  color: #8b3a62;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.see-all-link:hover {
+  background: #eceeff;
+  border-color: #8b3a62;
+}
+
 .user-avatar {
   width: 36px;
   height: 36px;
@@ -266,7 +338,7 @@
 }
 
 .user-email {
-  color: #9b7a88;
+  color: #6f6694;
   font-size: 0.9rem;
   margin-left: 0.5rem;
 }
@@ -280,7 +352,7 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  background: #f8f1f5;
+  background: #f7f4ff;
   border: 1px solid transparent;
   cursor: pointer;
   padding: 0.35rem 0.6rem;
@@ -289,9 +361,9 @@
 }
 
 .profile-button:hover {
-  background-color: #fdf5f8;
-  border-color: #eadfe4;
-  box-shadow: 0 6px 18px rgba(139, 58, 98, 0.12);
+  background-color: #f3efff;
+  border-color: rgba(139, 58, 98, 0.25);
+  box-shadow: 0 6px 18px rgba(139, 58, 98, 0.22);
 }
 
 .avatar-initials {
@@ -357,11 +429,11 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background-color: #f5e5ed;
+  background: var(--brand-gradient);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9b2c58;
+  color: #ffffff;
   font-weight: 600;
 }
 
@@ -390,7 +462,7 @@
   margin: 0.2rem 0.45rem;
   border-radius: 10px;
   text-decoration: none;
-  color: #4a2c3e;
+  color: #332a56;
   font-size: 0.875rem;
   transition: background-color 0.2s, color 0.2s;
   cursor: pointer;
@@ -401,8 +473,8 @@
 }
 
 .dropdown-item:hover {
-  background-color: #f7e9ef;
-  color: #6b2b4f;
+  background-color: #f5e8ef;
+  color: #8b3a62;
 }
 
 .dropdown-item.logout {
@@ -437,6 +509,19 @@
 @media (max-width: 992px) {
   .navbar-search {
     display: none;
+  }
+
+  .notifications-dropdown {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    top: 74px;
+    width: auto;
+    max-height: calc(100vh - 90px);
+  }
+
+  .notifications-list {
+    max-height: calc(100vh - 220px);
   }
 }
 /* Logout Overlay Styles */

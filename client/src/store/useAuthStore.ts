@@ -18,6 +18,8 @@ interface AuthData {
   role: string | null;
   permissions: string[];
   isEntrepriseVerified: boolean;
+  identificationStatus?: 'EN_ATTENTE' | 'CONFIRMEE' | 'REFUSEE' | null;
+  firstLoginAfterConfirmation?: boolean;
 }
 
 const emptyAuthState: AuthData = {
@@ -32,6 +34,8 @@ const emptyAuthState: AuthData = {
   role: null,
   permissions: [],
   isEntrepriseVerified: false,
+  identificationStatus: null,
+  firstLoginAfterConfirmation: false,
 };
 
 interface AuthStore {
@@ -68,6 +72,10 @@ function readAuthFromStorage(): AuthData | null {
         role: parsed.role ?? null,
         permissions: Array.isArray(parsed.permissions) ? parsed.permissions : [],
         isEntrepriseVerified: Boolean(parsed.isEntrepriseVerified),
+        identificationStatus: parsed.identificationStatus ?? null,
+        firstLoginAfterConfirmation: Boolean(
+          parsed.firstLoginAfterConfirmation ?? parsed.first_login_after_confirmation,
+        ),
       };
     }
 
@@ -88,6 +96,10 @@ function readAuthFromStorage(): AuthData | null {
         role: s.role ?? null,
         permissions: Array.isArray(s.permissions) ? s.permissions : [],
         isEntrepriseVerified: Boolean(s.isEntrepriseVerified),
+        identificationStatus: s.identificationStatus ?? null,
+        firstLoginAfterConfirmation: Boolean(
+          s.firstLoginAfterConfirmation ?? s.first_login_after_confirmation,
+        ),
       };
     }
 
@@ -127,6 +139,14 @@ function createAuthStore(): BoundStore {
           (data.user as any).entreprise_verified ??
           storedVerified ??
           false,
+        identificationStatus:
+          (data.user as any).identificationStatus ??
+          (data.user as any).identification_status ??
+          null,
+        firstLoginAfterConfirmation: Boolean(
+          (data.user as any).firstLoginAfterConfirmation ??
+            (data.user as any).first_login_after_confirmation,
+        ),
       };
 
       if (typeof window !== 'undefined') {
@@ -193,6 +213,14 @@ function createAuthStore(): BoundStore {
                 (response.data.user as any).entrepriseVerified ??
                 (response.data.user as any).entreprise_verified ??
                 authState.isEntrepriseVerified,
+              identificationStatus:
+                (response.data.user as any).identificationStatus ??
+                (response.data.user as any).identification_status ??
+                null,
+              firstLoginAfterConfirmation: Boolean(
+                (response.data.user as any).firstLoginAfterConfirmation ??
+                  (response.data.user as any).first_login_after_confirmation,
+              ),
             };
 
             if (typeof window !== 'undefined') {
@@ -233,6 +261,14 @@ function createAuthStore(): BoundStore {
             (response.data.user as any).entrepriseVerified ??
             (response.data.user as any).entreprise_verified ??
               authState.isEntrepriseVerified,
+          identificationStatus:
+            (response.data.user as any).identificationStatus ??
+            (response.data.user as any).identification_status ??
+            null,
+          firstLoginAfterConfirmation: Boolean(
+            (response.data.user as any).firstLoginAfterConfirmation ??
+              (response.data.user as any).first_login_after_confirmation,
+          ),
           };
 
           if (typeof window !== 'undefined') {
@@ -264,7 +300,11 @@ function createAuthStore(): BoundStore {
 
     setEntrepriseVerified: (value) => {
       const current = get().auth;
-      const nextAuth = { ...current, isEntrepriseVerified: value };
+      const nextAuth = {
+        ...current,
+        isEntrepriseVerified: value,
+        identificationStatus: value ? 'CONFIRMEE' : current.identificationStatus ?? null,
+      };
       if (typeof window !== 'undefined') {
         window.localStorage.setItem('auth', JSON.stringify(nextAuth));
       }

@@ -3,11 +3,11 @@
   width: 16rem;
   left: 0;
   top: 0;
-  background: #ffffff;
-  color: #4a2c3e;
+  background: linear-gradient(135deg, #8b3a62 0%, #8b3a62 100%);
+  color: #f8f8ff;
   display: flex;
   flex-direction: column;
-  box-shadow: 4px 0 18px rgba(74, 44, 62, 0.08);
+  box-shadow: 8px 0 28px rgba(44, 28, 90, 0.24);
   z-index: 100;
   transition: all 0.3s ease;
   transform: translateX(0);
@@ -29,7 +29,7 @@
   top: 1rem;
   width: 2rem;
   height: 2rem;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.95);
   border: none;
   border-radius: 50%;
   display: flex;
@@ -42,7 +42,7 @@
 }
 
 .sidebarToggle:hover {
-  background: #f7e9ef;
+  background: #ffffff;
 }
 
 .sidebarToggle svg {
@@ -62,7 +62,7 @@
   max-height: 0;
   overflow: hidden;
   transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 6px;
 }
 
@@ -80,7 +80,7 @@
   align-items: center;
   width: 100%;
   padding: 10px 16px 10px 36px;
-  color: #6b4d5e;
+  color: rgba(248, 248, 255, 0.88);
   text-decoration: none;
   border: none;
   background: transparent;
@@ -91,13 +91,13 @@
 }
 
 .subLink:hover {
-  background: #f7e9ef;
-  color: #8b3a62;
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
 }
 
 .subLink.active {
-  color: #8b3a62;
-  background: #f7e9ef;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .subIcon {
@@ -151,7 +151,7 @@
   display: flex;
   align-items: center;
   padding: 12px 20px;
-  color: #4a2c3e;
+  color: rgba(248, 248, 255, 0.9);
   text-decoration: none;
   border-left: 4px solid transparent;
   background: transparent;
@@ -168,14 +168,14 @@
 }
 
 .navLink:hover {
-  background: #f7e9ef;
-  color: #8b3a62;
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
 }
 
 .navLink.active {
-  background: #f7e9ef;
-  color: #8b3a62;
-  border-left: 4px solid #8b3a62;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border-left: 4px solid #ffffff;
 }
 
 .navIcon {
@@ -222,7 +222,7 @@
 /* Footer Section */
 .sidebarFooter {
   padding: 20px;
-  border-top: 1px solid #e5d5dd;
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
   transition: all 0.3s ease;
   /* Push footer to the bottom of the sidebar */
   margin-top: auto;
@@ -248,7 +248,8 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: #f5e5ed;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -275,11 +276,12 @@
 .userRole {
   font-size: 14px;
   font-weight: 500;
+  color: #ffffff;
 }
 
 .userStatus {
   font-size: 12px;
-  opacity: 0.7;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .logoutBtn {
@@ -288,7 +290,7 @@
   align-items: center;
   justify-content: center;
   padding: 10px;
-  background: #8b3a62;
+  background: linear-gradient(135deg, #8b3a62 0%, #8b3a62 100%);
   color: #ffffff;
   border: none;
   border-radius: 4px;
@@ -305,7 +307,8 @@
 }
 
 .logoutBtn:hover {
-  background: #a84968;
+  background: linear-gradient(135deg, #a65279 0%, #a65279 100%);
+  box-shadow: 0 8px 22px rgba(139, 58, 98, 0.34);
 }
 
 .logoutBtn svg {
@@ -341,7 +344,7 @@
     left: 1rem;
     top: 1rem;
     z-index: 99;
-    background: #8b3a62;
+    background: linear-gradient(135deg, #8b3a62 0%, #8b3a62 100%);
     color: white;
     border: none;
     border-radius: 4px;

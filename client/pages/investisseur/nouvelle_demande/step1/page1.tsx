@@ -10,7 +10,7 @@ import {
   FiChevronRight,
   FiAlertCircle,
 } from "react-icons/fi";
-import styles from "./documents1.module.css";
+import styles from "@/pages/investisseur/nouvelle_demande/step1/documents1.module.css";
 import Navbar from "../../../navbar/Navbar";
 import Sidebar from "../../../sidebar/Sidebar";
 import ProgressStepper from "../../../../components/ProgressStepper";
@@ -68,6 +68,13 @@ type MissingSummary = {
   }>;
 };
 
+type ProcedureDeclarationItem = {
+  id: number;
+  ordre: number;
+  texte: string;
+  actif: boolean;
+};
+
 type DocStatus = "present" | "manquant" | "attente" | "uploading";
 type DocumentWithStatus = Document & { statut: DocStatus };
 
@@ -106,6 +113,12 @@ export default function Step5_Documents() {
   const [missingSummary, setMissingSummary] = useState<MissingSummary | undefined>(undefined);
   const [deadlines, setDeadlines] = useState<{ miseEnDemeure: string | null; instruction: string | null } | null>(null);
   const [letterPreview, setLetterPreview] = useState<{ type: string; content: string; deadline?: string | null; numero_recepisse?: string | null } | null>(null);
+  const [showDeclarationModal, setShowDeclarationModal] = useState(false);
+  const [declarations, setDeclarations] = useState<ProcedureDeclarationItem[]>([]);
+  const [declarationChecks, setDeclarationChecks] = useState<Record<number, boolean>>({});
+  const [isDeclarationsLoading, setIsDeclarationsLoading] = useState(false);
+  const [declarationsError, setDeclarationsError] = useState<string | null>(null);
+  const [declarationsValidationError, setDeclarationsValidationError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Clear any stuck global spinner when landing here
@@ -498,6 +511,205 @@ export default function Step5_Documents() {
     );
   };
 
+  const fetchProcedureDeclarations = async () => {
+    if (!apiURL) {
+      throw new Error("API non configuree");
+    }
+    const typeProcedure = procedureTypeId ?? 1;
+
+    const response = await axios.get(
+      `${apiURL}/api/procedure-declarations/${typeProcedure}`,
+      { withCredentials: true },
+    );
+
+    const items: ProcedureDeclarationItem[] =
+      response.data?.declarations ?? response.data ?? [];
+
+    const activeSorted = (Array.isArray(items) ? items : [])
+      .filter((item) => item?.actif !== false)
+      .sort((a, b) => (a.ordre ?? 0) - (b.ordre ?? 0));
+
+    if (!activeSorted.length) {
+      throw new Error(
+        "Aucune declaration active n'est configuree pour cette procedure.",
+      );
+    }
+
+    return activeSorted;
+  };
+
+  const confirmDeclarationsAndContinue = async () => {
+    if (!idProc) {
+      setEtapeMessage("ID de procedure manquant.");
+      return;
+    }
+    if (statutProc === 'TERMINEE') {
+      setEtapeMessage("Procedure deja terminee.");
+      return;
+    }
+    if (declarations.length > 0) {
+      const allChecked = declarations.every((item) => !!declarationChecks[item.id]);
+      if (!allChecked) {
+        setDeclarationsValidationError(
+          "Vous devez accepter toutes les declarations pour continuer.",
+        );
+        return;
+      }
+    }
+
+    setSavingEtape(true);
+    setEtapeMessage(null);
+    setIsNavigating(true);
+
+    try {
+      const result = await submitDossier();
+      if (!result) {
+        setEtapeMessage("Erreur lors de l'enregistrement de l'etape.");
+        return;
+      }
+      const etapeId = resolvedEtapeId ?? currentStep;
+      await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`);
+      setShowDeclarationModal(false);
+      await router.push(`/investisseur/nouvelle_demande/step11/page11?id=${idProc}`);
+    } catch (err) {
+      console.error("Erreur lors de la navigation vers l'etape suivante", err);
+      setEtapeMessage("Erreur lors de l'enregistrement de l'etape.");
+    } finally {
+      setSavingEtape(false);
+      setIsNavigating(false);
+    }
+  };
+
+  const FinalDeclarationsModal = () => {
+    if (!showDeclarationModal) return null;
+
+    return (
+      <div className={styles.finalDeclarationOverlay}>
+        <div className={styles.finalDeclarationModal}>
+          <div className={styles.finalDeclarationHeader}>
+            <div className={styles.finalDeclarationTitleRow}>
+              <FiAlertCircle className={styles.finalDeclarationWarningIcon} />
+              <div>
+                <h3 className={styles.finalDeclarationTitle}>
+                  Confirmation finale avant paiement
+                </h3>
+                <p className={styles.finalDeclarationSubtitle}>
+                  Declarations sur l&apos;honneur - Derniere etape
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setShowDeclarationModal(false);
+                setDeclarationsValidationError(null);
+                setDeclarationChecks({});
+              }}
+              className={styles.finalDeclarationClose}
+              aria-label="Fermer"
+            >
+              &times;
+            </button>
+          </div>
+
+          <div className={styles.finalDeclarationBody}>
+            <div className={styles.finalDeclarationCard}>
+              <p className={styles.finalDeclarationCardTitle}>
+                En cliquant sur "Accepter et continuer", je confirme et je m&apos;engage sur les points suivants :
+              </p>
+
+              {isDeclarationsLoading ? (
+                <p className={styles.finalDeclarationLoading}>Chargement des declarations...</p>
+              ) : declarationsError ? (
+                <p className={styles.finalDeclarationFetchError}>{declarationsError}</p>
+              ) : (
+                <div className={styles.finalDeclarationListWrap}>
+                  <ul className={styles.finalDeclarationList}>
+                    {declarations.map((item) => (
+                      <li key={item.id} className={styles.finalDeclarationItem}>
+                        <label className={styles.finalDeclarationItemLabel}>
+                          <input
+                            type="checkbox"
+                            checked={!!declarationChecks[item.id]}
+                            onChange={(event) => {
+                              const checked = event.target.checked;
+                              if (!checked) {
+                                setDeclarationsValidationError(
+                                  "Vous devez accepter toutes les declarations pour continuer.",
+                                );
+                              }
+                              setDeclarationChecks((prev) => {
+                                const next = {
+                                  ...prev,
+                                  [item.id]: checked,
+                                };
+                                const allChecked =
+                                  declarations.length > 0 &&
+                                  declarations.every((decl) => !!next[decl.id]);
+                                if (allChecked) {
+                                  setDeclarationsValidationError(null);
+                                }
+                                return next;
+                              });
+                            }}
+                          />
+                          <FiCheck className={styles.finalDeclarationItemIcon} />
+                          <span>{item.texte}</span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {declarationsValidationError && (
+              <p className={styles.finalDeclarationValidationError}>
+                {declarationsValidationError}
+              </p>
+            )}
+          </div>
+
+          <div className={styles.finalDeclarationActions}>
+            <button
+              type="button"
+              className={`${styles['btn']} ${styles['btn-outline']}`}
+              onClick={() => {
+                setShowDeclarationModal(false);
+                setDeclarationsValidationError(null);
+                setDeclarationChecks({});
+              }}
+            >
+              Fermer
+            </button>
+            <button
+              type="button"
+              className={`${styles['btn']} ${styles['btn-primary']} ${!(declarations.length > 0 && declarations.every((item) => !!declarationChecks[item.id])) ? styles.finalDeclarationPrimaryDisabled : ''}`}
+              disabled={
+                isDeclarationsLoading ||
+                !(declarations.length > 0 && declarations.every((item) => !!declarationChecks[item.id])) ||
+                declarations.length === 0 ||
+                savingEtape ||
+                isNavigating
+              }
+              onClick={() => {
+                if (!(declarations.length > 0 && declarations.every((item) => !!declarationChecks[item.id]))) {
+                  setDeclarationsValidationError(
+                    "Vous devez accepter toutes les declarations pour continuer.",
+                  );
+                  return;
+                }
+                void confirmDeclarationsAndContinue();
+              }}
+            >
+              Accepter et continuer vers la facture
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const submitDossier = async () => {
     setIsSubmitting(true);
     setError(null);
@@ -634,12 +846,12 @@ export default function Step5_Documents() {
   const progressPercent = total > 0 ? Math.round((presents / total) * 100) : 0;
   const progressFill =
     progressPercent >= 100
-      ? "linear-gradient(90deg, #7c3aed, #6d28d9)"
+      ? "linear-gradient(90deg, #16a34a, #15803d)"
       : progressPercent >= 70
-      ? "linear-gradient(90deg, #a78bfa, #7c3aed)"
+      ? "linear-gradient(90deg, #22c55e, #16a34a)"
       : progressPercent >= 40
-      ? "linear-gradient(90deg, #c4b5fd, #8b5cf6)"
-      : "linear-gradient(90deg, #ddd6fe, #c4b5fd)";
+      ? "linear-gradient(90deg, #86efac, #22c55e)"
+      : "linear-gradient(90deg, #dcfce7, #86efac)";
   const progressMessage =
     progressPercent >= 100
       ? "Dossier complet !"
@@ -678,69 +890,58 @@ export default function Step5_Documents() {
     debounce(async () => {
       if (isNavigating || savingEtape) return;
 
-      // Bloquer la navigation si au moins un document obligatoire est manquant
       const hasRequiredMissing = documents.some((doc) => {
         if (!doc.is_required) return false;
         const status = statusMap[doc.id_doc];
-        return status !== 'present';
+        return status !== "present";
       });
 
       if (hasRequiredMissing) {
         toast.warning(
-          "Des documents obligatoires sont manquants. Impossible de passer à l'étape suivante.",
+          "Des documents obligatoires sont manquants. Impossible de passer a l'etape suivante.",
         );
         return;
       }
 
       if (!idProc) {
-        setEtapeMessage("ID de procédure manquant.");
-        return;
-      }
-      if (!resolvedEtapeId) {
-        setEtapeMessage("Etape introuvable pour la page Documents.");
+        setEtapeMessage("ID de procedure manquant.");
         return;
       }
 
-      if (statutProc === 'TERMINEE') {
-        setEtapeMessage("Procédure déjé terminée.");
+      if (statutProc === "TERMINEE") {
+        setEtapeMessage("Procedure deja terminee.");
         return;
       }
 
-      setSavingEtape(true);
+      setDeclarationsValidationError(null);
+      setDeclarationsError(null);
+      setDeclarations([]);
+      setDeclarationChecks({});
+      setShowDeclarationModal(true);
+      setIsDeclarationsLoading(true);
       setEtapeMessage(null);
-      setIsNavigating(true);
 
       try {
-        const result = await submitDossier();
-        if (!result) {
-          setEtapeMessage("Erreur lors de l'enregistrement de l'étape.");
-          return;
-        }
-        const etapeId = resolvedEtapeId;
-        await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`);
-        await router.push(`/investisseur/nouvelle_demande/step11/page11?id=${idProc}`);
+        const fetched = await fetchProcedureDeclarations();
+        setDeclarations(fetched);
+        setDeclarationChecks(
+          fetched.reduce<Record<number, boolean>>((acc, item) => {
+            acc[item.id] = false;
+            return acc;
+          }, {}),
+        );
       } catch (err) {
-        console.error('Erreur lors de la navigation vers l\'étape suivante', err);
-        setEtapeMessage("Erreur lors de l'enregistrement de l'étape.");
+        console.error("Erreur lors du chargement des declarations finales", err);
+        setDeclarationsError(
+          err instanceof Error
+            ? err.message
+            : "Impossible de charger les declarations de cette procedure.",
+        );
       } finally {
-        setSavingEtape(false);
-        setIsNavigating(false);
+        setIsDeclarationsLoading(false);
       }
     }, 300),
-    [
-      documents,
-      statusMap,
-      router,
-      idProc,
-      isNavigating,
-      savingEtape,
-      submitDossier,
-      etapeIdForThisPage,
-      currentEtape,
-      resolvedEtapeId,
-      apiURL,
-      statutProc,
-    ]
+    [documents, statusMap, idProc, isNavigating, savingEtape, statutProc, procedureTypeId, apiURL]
   );
 
   const handleBack = async () => {
@@ -812,7 +1013,7 @@ export default function Step5_Documents() {
                           width: `${progressPercent}%`,
                           background: progressFill,
                           boxShadow:
-                            progressPercent > 0 ? "0 0 10px rgba(124, 58, 237, 0.25)" : "none",
+                            progressPercent > 0 ? "0 0 10px rgba(16, 185, 129, 0.28)" : "none",
                         }}
                         aria-hidden="true"
                       />
@@ -872,12 +1073,30 @@ export default function Step5_Documents() {
                       return (
                         <Card
                           key={doc.id_doc}
-                          className={`${styles.documentCard} ${isRequired ? styles.required : ''}`}
+                          className={`${styles.documentCard} ${isRequired ? styles.required : ''} ${
+                            status === 'present'
+                              ? styles.documentCardPresent
+                              : status === 'manquant'
+                              ? styles.documentCardMissing
+                              : ''
+                          }`}
                         >
                           <CardContent className={styles.documentBody}>
                             <div className={styles.documentHeader}>
                               <div>
                                 <div className={styles.documentTitleRow}>
+                                  {status === 'present' && (
+                                    <FiCheck
+                                      className={`${styles.docStateIcon} ${styles.docStateIconPresent}`}
+                                      aria-hidden="true"
+                                    />
+                                  )}
+                                  {status === 'manquant' && (
+                                    <FiAlertCircle
+                                      className={`${styles.docStateIcon} ${styles.docStateIconMissing}`}
+                                      aria-hidden="true"
+                                    />
+                                  )}
                                   <h3 className={styles.documentTitle}>{doc.nom_doc}</h3>
                                   {isRequired && (
                                     <Badge className={styles.requiredBadge} variant="destructive">
@@ -956,6 +1175,12 @@ export default function Step5_Documents() {
                                 <Progress
                                   value={uploadProgress[doc.id_doc] ?? 0}
                                   className={styles.uploadProgressBar}
+                                  style={
+                                    {
+                                      "--progress-fill": "#22c55e",
+                                      "--progress-track": "#dcfce7",
+                                    } as any
+                                  }
                                 />
                                 <span className={styles.uploadProgressText}>
                                   {(uploadProgress[doc.id_doc] ?? 0)}%
@@ -1005,6 +1230,7 @@ export default function Step5_Documents() {
             </div>
             {showCahierForm && <CahierFormModal />}
             {letterPreview && <LetterPreviewModal />}
+            <FinalDeclarationsModal />
           </div>
         </main>
       </div>

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap');
+/* Performance: rely on system font stack to avoid render-blocking remote font CSS. */
 
 @tailwind base;
 @tailwind components;
@@ -15,16 +15,16 @@
     --popover: 0 0% 100%;
     --popover-foreground: 330 30% 15%;
 
-    --primary: 335 45% 45%;
+    --primary: 331 41% 39%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 330 25% 20%;
+    --secondary: 329 35% 30%;
     --secondary-foreground: 0 0% 100%;
 
     --muted: 340 20% 94%;
     --muted-foreground: 330 20% 45%;
 
-    --accent: 195 35% 62%;
+    --accent: 204 64% 47%;
     --accent-foreground: 330 30% 15%;
 
     --destructive: 0 84.2% 60.2%;
@@ -32,41 +32,42 @@
 
     --border: 340 20% 88%;
     --input: 340 20% 88%;
-    --ring: 335 45% 45%;
+    --ring: 331 41% 39%;
 
     --radius: 0.75rem;
     
     /* Mining theme colors - Now mauve/pink palette */
-    --mining-primary: 335 45% 45%;
-    --mining-primary-light: 335 40% 55%;
-    --mining-dark: 330 30% 15%;
-    --mining-accent: 195 35% 62%;
-    --mining-slate: 330 15% 35%;
-    --mining-soft-pink: 340 30% 88%;
-    --mining-soft-blue: 195 40% 85%;
+    --mining-primary: 331 41% 39%;
+    --mining-primary-light: 334 38% 53%;
+    --mining-dark: 331 27% 20%;
+    --mining-accent: 334 38% 53%;
+    --mining-slate: 327 18% 42%;
+    --mining-soft-pink: 320 100% 95%;
+    --mining-soft-blue: 206 72% 95%;
     
-    /* Gradients - Pink/Mauve theme */
-    --gradient-hero: linear-gradient(135deg, hsl(330 30% 10% / 0.85) 0%, hsl(330 25% 18% / 0.7) 50%, transparent 100%);
-    --gradient-dark: linear-gradient(180deg, hsl(330 30% 10%) 0%, hsl(330 25% 18%) 100%);
-    --gradient-primary: linear-gradient(135deg, hsl(335 45% 45%) 0%, hsl(335 40% 55%) 100%);
-    --gradient-soft: linear-gradient(135deg, hsl(340 30% 88%) 0%, hsl(195 40% 85%) 50%, hsl(195 35% 82%) 100%);
+    /* Brand gradient palette */
+    --gradient-hero: linear-gradient(135deg, hsl(331 33% 18% / 0.9) 0%, hsl(332 30% 28% / 0.72) 52%, transparent 100%);
+    --gradient-dark: linear-gradient(180deg, hsl(331 33% 20%) 0%, hsl(333 30% 28%) 100%);
+    --gradient-primary: linear-gradient(135deg, #8b3a62 0%, #a84968 100%);
+    --gradient-primary-hover: linear-gradient(135deg, #9f456a 0%, #b85878 100%);
+    --gradient-soft: linear-gradient(135deg, hsl(320 100% 95%) 0%, hsl(280 48% 95%) 52%, hsl(206 74% 95%) 100%);
     
     /* Shadows */
-    --shadow-card: 0 4px 30px -2px hsl(330 30% 15% / 0.08);
-    --shadow-hover: 0 20px 40px -8px hsl(330 30% 15% / 0.15);
-    --shadow-glow: 0 0 60px hsl(335 45% 45% / 0.3);
+    --shadow-card: 0 8px 30px -8px hsl(331 30% 25% / 0.22);
+    --shadow-hover: 0 20px 40px -10px hsl(331 35% 24% / 0.32);
+    --shadow-glow: 0 0 54px hsl(334 38% 53% / 0.32);
     
     /* Transitions */
     --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 330 20% 30%;
-    --sidebar-primary: 335 45% 45%;
+    --sidebar-primary: 331 41% 39%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 340 20% 96%;
+    --sidebar-accent: 282 48% 96%;
     --sidebar-accent-foreground: 330 30% 15%;
-    --sidebar-border: 340 15% 91%;
-    --sidebar-ring: 335 45% 45%;
+    --sidebar-border: 278 30% 86%;
+    --sidebar-ring: 331 41% 39%;
   }
 
   .dark {
@@ -79,16 +80,15 @@
     --popover: 330 25% 12%;
     --popover-foreground: 340 20% 98%;
 
-    --primary: 335 50% 55%;
+    --primary: 325 100% 68%;
     --primary-foreground: 330 25% 8%;
-
     --secondary: 340 20% 94%;
     --secondary-foreground: 330 30% 15%;
 
     --muted: 330 25% 18%;
     --muted-foreground: 340 20% 65%;
 
-    --accent: 195 40% 65%;
+    --accent: 204 70% 58%;
     --accent-foreground: 330 30% 15%;
 
     --destructive: 0 62.8% 30.6%;
@@ -96,16 +96,16 @@
 
     --border: 330 25% 20%;
     --input: 330 25% 20%;
-    --ring: 335 50% 55%;
+    --ring: 325 100% 68%;
 
     --sidebar-background: 330 25% 10%;
     --sidebar-foreground: 340 15% 96%;
-    --sidebar-primary: 335 50% 55%;
+    --sidebar-primary: 325 100% 68%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 330 25% 15%;
     --sidebar-accent-foreground: 340 15% 96%;
     --sidebar-border: 330 25% 18%;
-    --sidebar-ring: 335 50% 55%;
+    --sidebar-ring: 325 100% 68%;
   }
 }
 
@@ -127,6 +127,30 @@
 @layer utilities {
   .text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
+  }
+
+  .anam-gradient-bg {
+    background: var(--gradient-primary);
+    color: #ffffff;
+  }
+
+  .anam-gradient-text {
+    background-image: var(--gradient-primary);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .btn-anam {
+    background: var(--gradient-primary);
+    color: #ffffff;
+    border: 1px solid transparent;
+    box-shadow: 0 8px 22px hsl(331 41% 39% / 0.32);
+  }
+
+  .btn-anam:hover {
+    background: var(--gradient-primary-hover);
+    box-shadow: 0 12px 28px hsl(331 41% 39% / 0.38);
   }
   
   .glass {
@@ -174,4 +198,189 @@
 .parallax-bg {
   transform: translateZ(0);
   will-change: transform;
+}
+
+/* Reusable admin button styles */
+:where(button, a, input[type="button"], input[type="submit"]).btn-primary,
+:where(button, a, input[type="button"], input[type="submit"])[class*="btn-primary"],
+:where(button, a, input[type="button"], input[type="submit"]).btn-secondary,
+:where(button, a, input[type="button"], input[type="submit"])[class*="btn-secondary"],
+:where(button, a, input[type="button"], input[type="submit"]).btn-success,
+:where(button, a, input[type="button"], input[type="submit"])[class*="btn-success"],
+:where(button, a, input[type="button"], input[type="submit"]).btn-danger,
+:where(button, a, input[type="button"], input[type="submit"])[class*="btn-danger"] {
+  transition: transform 0.18s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  font-weight: 700;
+}
+
+:where(button, a, input[type="button"], input[type="submit"]).btn-primary,
+:where(button, a, input[type="button"], input[type="submit"])[class*="btn-primary"] {
+  background: linear-gradient(135deg, #8b3a62 0%, #a84968 100%) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+  box-shadow: 0 8px 22px rgba(139, 58, 98, 0.32) !important;
+}
+
+:where(button, a, input[type="button"], input[type="submit"]).btn-primary:not(:disabled):hover,
+:where(button, a, input[type="button"], input[type="submit"])[class*="btn-primary"]:not(:disabled):hover {
+  background: linear-gradient(135deg, #a65279 0%, #bb5e7f 100%) !important;
+  box-shadow: 0 12px 28px rgba(139, 58, 98, 0.4) !important;
+  transform: translateY(-1px) scale(1.03);
+}
+
+:where(button, a, input[type="button"], input[type="submit"]).btn-secondary,
+:where(button, a, input[type="button"], input[type="submit"])[class*="btn-secondary"] {
+  background: #ffffff !important;
+  color: #6f3f5f !important;
+  border-color: #d8bdd0 !important;
+  box-shadow: 0 6px 14px rgba(73, 30, 54, 0.12) !important;
+}
+
+:where(button, a, input[type="button"], input[type="submit"]).btn-secondary:not(:disabled):hover,
+:where(button, a, input[type="button"], input[type="submit"])[class*="btn-secondary"]:not(:disabled):hover {
+  background: #f8eff6 !important;
+  color: #6f3f5f !important;
+  border-color: #d8bdd0 !important;
+  box-shadow: 0 10px 20px rgba(94, 35, 66, 0.2) !important;
+  transform: translateY(-1px) scale(1.03);
+}
+
+:where(button, a, input[type="button"], input[type="submit"]).btn-success,
+:where(button, a, input[type="button"], input[type="submit"])[class*="btn-success"] {
+  background: linear-gradient(135deg, #10b981 0%, #16a34a 100%) !important;
+  color: #ffffff !important;
+  border-color: #0f9f67 !important;
+  box-shadow: 0 8px 22px rgba(16, 185, 129, 0.26) !important;
+}
+
+:where(button, a, input[type="button"], input[type="submit"]).btn-success:not(:disabled):hover,
+:where(button, a, input[type="button"], input[type="submit"])[class*="btn-success"]:not(:disabled):hover {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+  box-shadow: 0 12px 28px rgba(34, 197, 94, 0.34) !important;
+  transform: translateY(-1px) scale(1.03);
+}
+
+:where(button, a, input[type="button"], input[type="submit"]).btn-danger,
+:where(button, a, input[type="button"], input[type="submit"])[class*="btn-danger"] {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  color: #ffffff !important;
+  border-color: #c51f1f !important;
+  box-shadow: 0 8px 22px rgba(239, 68, 68, 0.25) !important;
+}
+
+:where(button, a, input[type="button"], input[type="submit"]).btn-danger:not(:disabled):hover,
+:where(button, a, input[type="button"], input[type="submit"])[class*="btn-danger"]:not(:disabled):hover {
+  background: linear-gradient(135deg, #f87171 0%, #dc2626 100%) !important;
+  box-shadow: 0 12px 28px rgba(248, 113, 113, 0.33) !important;
+  transform: translateY(-1px) scale(1.03);
+}
+
+:where(button, a, input[type="button"], input[type="submit"]).btn-primary:disabled,
+:where(button, a, input[type="button"], input[type="submit"])[class*="btn-primary"]:disabled,
+:where(button, a, input[type="button"], input[type="submit"]).btn-secondary:disabled,
+:where(button, a, input[type="button"], input[type="submit"])[class*="btn-secondary"]:disabled,
+:where(button, a, input[type="button"], input[type="submit"]).btn-success:disabled,
+:where(button, a, input[type="button"], input[type="submit"])[class*="btn-success"]:disabled,
+:where(button, a, input[type="button"], input[type="submit"]).btn-danger:disabled,
+:where(button, a, input[type="button"], input[type="submit"])[class*="btn-danger"]:disabled {
+  opacity: 0.65;
+  box-shadow: none !important;
+  transform: none;
+}
+
+/* Home premium buttons aligned with navbar action style */
+.homePremiumSignupButton,
+.homePremiumGhostButton,
+.homePremiumGhostButtonLight {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.55rem !important;
+  border-radius: 999px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em !important;
+  text-decoration: none !important;
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    border-color 0.22s ease,
+    background 0.22s ease,
+    color 0.22s ease !important;
+}
+
+.homePremiumButtonMd {
+  min-height: 2.75rem !important;
+  padding: 0.58rem 1.26rem !important;
+}
+
+.homePremiumButtonLg {
+  min-height: 3.1rem !important;
+  padding: 0.72rem 1.58rem !important;
+  font-size: 1rem !important;
+}
+
+.homePremiumSignupButton {
+  background: linear-gradient(135deg, #b14680 0%, #a13b73 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 10px 24px rgba(177, 70, 128, 0.35) !important;
+}
+
+.homePremiumSignupButton:hover {
+  background: linear-gradient(135deg, #c55592 0%, #ab3f7a 100%) !important;
+  box-shadow: 0 14px 30px rgba(177, 70, 128, 0.44) !important;
+  transform: translateY(-1px);
+}
+
+.homePremiumGhostButton {
+  color: rgba(255, 255, 255, 0.95) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  box-shadow: 0 8px 20px rgba(10, 12, 18, 0.28) !important;
+}
+
+.homePremiumGhostButton:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 12px 24px rgba(10, 12, 18, 0.34) !important;
+  transform: translateY(-1px);
+}
+
+.homePremiumGhostButtonLight {
+  color: #1f2937 !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(177, 70, 128, 0.28) !important;
+  box-shadow: 0 12px 24px -16px rgba(15, 23, 42, 0.34) !important;
+}
+
+.homePremiumGhostButtonLight:hover {
+  color: #7d2f59 !important;
+  background: #fff7fb !important;
+  border-color: rgba(177, 70, 128, 0.52) !important;
+  box-shadow: 0 16px 28px -16px rgba(177, 70, 128, 0.3) !important;
+  transform: translateY(-1px);
+}
+
+.homePremiumSignupButton svg,
+.homePremiumGhostButton svg,
+.homePremiumGhostButtonLight svg {
+  transition: transform 0.22s ease;
+}
+
+.homePremiumSignupButton:hover svg,
+.homePremiumGhostButton:hover svg,
+.homePremiumGhostButtonLight:hover svg {
+  transform: translateX(3px);
+}
+
+.homePremiumSignupButton:focus-visible,
+.homePremiumGhostButton:focus-visible,
+.homePremiumGhostButtonLight:focus-visible {
+  outline: 2px solid rgba(177, 70, 128, 0.8) !important;
+  outline-offset: 2px !important;
 }

@@ -188,6 +188,7 @@ export type CoordinateSystem = 'WGS84' | 'UTM' | 'LAMBERT' | 'MERCATOR';
 
 export type SigamLayerKey =
   | 'perimetresSig'
+  | 'provisoire'
   | 'titres'
   | 'promotion'
   | 'exclusions'
@@ -316,6 +317,8 @@ export interface ArcGISMapProps {
   overlapDetails?: any[];
   // Optional: selected overlap features to highlight on the map (typically titres).
   overlapSelections?: any[];
+  // Optional: highlight preset for overlap rendering.
+  overlapHighlightMode?: 'default' | 'strong';
   enableSelectionTools?: boolean;
   selectionRequiresModifier?: boolean;
   enableBoxSelection?: boolean;
@@ -364,6 +367,7 @@ export interface ArcGISMapRef {
     overlapTitles,
     overlapDetails,
     overlapSelections,
+    overlapHighlightMode = 'default',
     onAdminDetected,
     enableSelectionTools = false,
     selectionRequiresModifier = true,
@@ -379,6 +383,7 @@ export interface ArcGISMapRef {
   const fuseauxLayerRef = useRef<GraphicsLayer | null>(null);
   const titresLayerRef = useRef<FeatureLayer | null>(null);
   const perimetresSigLayerRef = useRef<FeatureLayer | null>(null);
+  const provisoireLayerRef = useRef<FeatureLayer | null>(null);
   const promotionLayerRef = useRef<FeatureLayer | null>(null);
   const searchHighlightLayerRef = useRef<GraphicsLayer | null>(null);
   const selectionLayerRef = useRef<GraphicsLayer | null>(null);
@@ -415,8 +420,9 @@ export interface ArcGISMapRef {
   // Persist layer toggles so fullscreen (2nd map instance) and refresh keep the same selection.
   const ACTIVE_LAYERS_KEY = 'sigam_arcgis_active_layers';
   const defaultActiveLayers: { [key: string]: boolean } = {
+     perimetresSig: true,   // layer 0
     titres: true,          // layer 1
-    perimetresSig: true,   // layer 0
+    provisoire: true,     // layer 1
     promotion: true,       // layer 2
     exclusions: true,      // layer 3
     wilayas: false,        // layer 4
@@ -577,8 +583,9 @@ export interface ArcGISMapRef {
   // Guard to avoid duplicate MapView initialization in React StrictMode (dev)
 
   const layerToggleOptions = [
-    { key: 'titres', label: 'Titres miniers' },
     { key: 'perimetresSig', label: 'Demandes' },
+    { key: 'titres', label: 'Titres miniers' },
+    { key: 'provisoire', label: 'provisoire' },
     { key: 'promotion', label: 'Promotion' },
     { key: 'exclusions', label: "Zones d'exclusion" },
     { key: 'wilayas', label: 'Wilayas' },
@@ -621,19 +628,20 @@ export interface ArcGISMapRef {
   const SIGAM_SERVICE_BASE =
     (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SIGAM_ARCGIS_BASE) ||
     (typeof process !== 'undefined' && (process as any).env?.NEXT_PUBLIC_SIGAM_ARCGIS_BASE) ||
-    "https://sig.anam.dz/server/rest/services/sigam_cadastre/MapServer";
+    "https://sig.anam.dz/server/rest/services/POM_Public/FeatureServer";
 
   // Individual layer URLs for sigam_final (all couches)
   const SIGAM_LAYERS = {
     perimetresSig: `${SIGAM_SERVICE_BASE}/0`, // sig_gis.public.gis_perimeters
-    titres: `${SIGAM_SERVICE_BASE}/1`,        // sig_gis.public.cmasig_titres
-    promotion: `${SIGAM_SERVICE_BASE}/2`,     // sig_gis.public.cmasig_promotion
-    exclusions: `${SIGAM_SERVICE_BASE}/3`,    // sig_gis.public.cmasig_exclusion
-    wilayas: `${SIGAM_SERVICE_BASE}/4`,       // sig_gis.public.cmasig_wilayas
-    communes: `${SIGAM_SERVICE_BASE}/5`,      // sig_gis.public.cmasig_communes
-    villes: `${SIGAM_SERVICE_BASE}/6`,        // sig_gis.public.cmasig_villes
-    pays: `${SIGAM_SERVICE_BASE}/7`,          // sig_gis.public.cmasig_pays
-
+    titres: `${SIGAM_SERVICE_BASE}/1`,        // sig_gis.public.cmasig_titres 
+    provisoire: `${SIGAM_SERVICE_BASE}/2`,     // sig_gis.public.provisoire
+    promotion: `${SIGAM_SERVICE_BASE}/3`,     // sig_gis.public.cmasig_promotion
+    exclusions: `${SIGAM_SERVICE_BASE}/4`,    // sig_gis.public.cmasig_exclusion
+    wilayas: `${SIGAM_SERVICE_BASE}/5`,       // sig_gis.public.cmasig_wilayas
+    communes: `${SIGAM_SERVICE_BASE}/6`,      // sig_gis.public.cmasig_communes
+    villes: `${SIGAM_SERVICE_BASE}/7`,        // sig_gis.public.cmasig_villes
+    pays: `${SIGAM_SERVICE_BASE}/8`,          // sig_gis.public.cmasig_pays
+   
   } as const;
   
   // Allow disabling enterprise layers entirely in local/dev via env
@@ -1081,6 +1089,7 @@ export interface ArcGISMapRef {
       const layersToQuery = {
         titres: !!activeLayers.titres,
         perimetresSig: !!activeLayers.perimetresSig,
+        provisoire: !!activeLayers.provisoire,
         promotion: !!activeLayers.promotion,
         exclusions: !!activeLayers.exclusions,
         pays: !!activeLayers.pays,
@@ -1144,6 +1153,16 @@ export interface ArcGISMapRef {
           : [];
         results.push(...attrsPerims);
         try { console.log('Périmètres SIG - attributs reçus (query):', attrsPerims); } catch {}
+      }
+
+      if (layersToQuery.provisoire) {
+        const respProv = await fetch(`${SIGAM_LAYERS.provisoire}/query?${params.toString()}`, { credentials: 'include' });
+        const jsonProv = await respProv.json();
+        const attrsProv = Array.isArray(jsonProv?.features)
+          ? jsonProv.features.map((f: any) => ({ ...(f?.attributes || {}), __layerType: 'provisoire' })).filter(Boolean)
+          : [];
+        results.push(...attrsProv);
+        try { console.log('Provisoire - attributs reçus (query):', attrsProv); } catch {}
       }
 
       if (layersToQuery.promotion) {
@@ -2039,7 +2058,36 @@ export interface ArcGISMapRef {
         console.warn("Skipped Périmètres SIG layer: service unreachable.", e);
       }
 
-      // Promotion (layer 2)
+      // Provisoire (layer 2)
+      const provisoireLayer = new FeatureLayer({
+        url: SIGAM_LAYERS.provisoire,
+        title: "Provisoire",
+        outFields: ["*"],
+        renderer: {
+          type: "simple",
+          symbol: {
+            type: "simple-fill",
+            color: [245, 158, 11, 0.2],
+            outline: { color: [217, 119, 6, 0.95], width: 1.2 }
+          }
+        } as any
+      });
+      const provisoireOpacity = 0.45;
+      (provisoireLayer as any).__sigamKey = 'provisoire';
+      (provisoireLayer as any).__defaultOpacity = provisoireOpacity;
+      provisoireLayer.opacity = activeLayers.provisoire ? provisoireOpacity : 0;
+      provisoireLayer.visible = !!activeLayers.provisoire;
+      try {
+        await provisoireLayer.load();
+        try { provisoireLayer.popupTemplate = buildAllFieldsPopup(provisoireLayer, "Provisoire"); } catch {}
+        map.add(provisoireLayer);
+        layers.push(provisoireLayer);
+        provisoireLayerRef.current = provisoireLayer;
+      } catch (e) {
+        console.warn("Skipped Provisoire layer: service unreachable.", e);
+      }
+
+      // Promotion (layer 3)
       const promotionRenderer = buildPromotionRenderer(overlapClarityEnabled);
       const promotionLayer = new FeatureLayer({
         url: SIGAM_LAYERS.promotion,
@@ -2661,12 +2709,20 @@ export interface ArcGISMapRef {
       const cleaned = String(raw || '').trim().toLowerCase();
       if (!cleaned) return 'titres';
       if (cleaned === 'perimetressig' || cleaned === 'perimetres_sig') return 'perimetresSig';
+      if (
+        cleaned === 'inscription_provisoire' ||
+        cleaned === 'inscriptionprovisoire' ||
+        cleaned === 'provisoires'
+      ) {
+        return 'provisoire';
+      }
       return cleaned;
     };
 
     const resolveLayerRef = (layerKey: string) => {
       if (layerKey === 'titres') return titresLayerRef.current;
       if (layerKey === 'perimetresSig') return perimetresSigLayerRef.current;
+      if (layerKey === 'provisoire') return provisoireLayerRef.current;
       const match = enterpriseLayersRef.current.find(
         (layer: any) => String(layer?.__sigamKey || '').toLowerCase() === layerKey.toLowerCase(),
       );
@@ -2681,6 +2737,11 @@ export interface ArcGISMapRef {
       try {
         await layerRef.load();
       } catch {}
+
+      const layerFieldNames = new Set(
+        (layerRef.fields || []).map((field: any) => String(field?.name || '').toLowerCase()),
+      );
+      const hasField = (name: string) => layerFieldNames.has(String(name || '').toLowerCase());
 
       const objectId =
         toNumber(selection?.objectid) ??
@@ -2717,6 +2778,37 @@ export interface ArcGISMapRef {
         if (permisCode) {
           clauses.push(`UPPER(permis_code::text) = UPPER('${escapeWhere(permisCode)}')`);
         }
+      } else if (layerKey === 'provisoire') {
+        const idVal =
+          toNumber(selection?.id) ??
+          toNumber(selection?.gid) ??
+          toNumber(selection?.id_inscription) ??
+          null;
+        const procId = toNumber(selection?.sigam_proc_id);
+        const permisId = toNumber(selection?.sigam_permis_id);
+        if (idVal != null && hasField('id')) clauses.push(`id = ${idVal}`);
+        if (idVal != null && hasField('gid')) clauses.push(`gid = ${idVal}`);
+        if (idVal != null && hasField('id_inscription')) clauses.push(`id_inscription = ${idVal}`);
+        if (procId != null && hasField('sigam_proc_id')) clauses.push(`sigam_proc_id = ${procId}`);
+        if (permisId != null && hasField('sigam_permis_id')) clauses.push(`sigam_permis_id = ${permisId}`);
+        const permisCode =
+          selection?.permis_code ??
+          selection?.permisCode ??
+          selection?.code_demande ??
+          selection?.codeDemande ??
+          selection?.code ??
+          null;
+        if (permisCode) {
+          if (hasField('permis_code')) {
+            clauses.push(`UPPER(permis_code) = UPPER('${escapeWhere(permisCode)}')`);
+          }
+          if (hasField('code_demande')) {
+            clauses.push(`UPPER(code_demande) = UPPER('${escapeWhere(permisCode)}')`);
+          }
+          if (hasField('code')) {
+            clauses.push(`UPPER(code) = UPPER('${escapeWhere(permisCode)}')`);
+          }
+        }
       } else if (layerKey === 'promotion' || layerKey === 'exclusions') {
         const idZone = toNumber(selection?.idzone);
         const name = selection?.nom ?? selection?.Nom ?? null;
@@ -2745,27 +2837,126 @@ export interface ArcGISMapRef {
         if (codeText && typeText) return `${codeText} / ${typeText}`;
         return codeText || typeText;
       }
+      if (layerKey === 'perimetresSig' || layerKey === 'provisoire') {
+        const code =
+          attrs.permis_code ??
+          attrs.code_demande ??
+          attrs.code ??
+          attrs.id ??
+          attrs.objectid ??
+          '';
+        const type =
+          attrs.permis_type_label ??
+          attrs.permis_type_code ??
+          attrs.type_code ??
+          attrs.type ??
+          (layerKey === 'provisoire' ? 'Provisoire' : 'Demande');
+        const codeText = String(code || '').trim();
+        const typeText = String(type || '').trim();
+        if (typeText && codeText) return `${typeText} ${codeText}`.trim();
+        return codeText || typeText;
+      }
       return '';
+    };
+
+    const strongHighlight = overlapHighlightMode === 'strong';
+
+    const resolveHighlightColors = (layerKey: string, index: number) => {
+      if (strongHighlight) {
+        return {
+          fill: [249, 115, 22, 0.4] as [number, number, number, number],
+          outline: [220, 38, 38] as [number, number, number],
+        };
+      }
+      if (layerKey === 'perimetresSig' || layerKey === 'provisoire') {
+        return {
+          fill: [239, 68, 68, 0.18] as [number, number, number, number],
+          outline: [220, 38, 38] as [number, number, number],
+        };
+      }
+      const paletteEntry = OVERLAP_HIGHLIGHT_PALETTE[index % OVERLAP_HIGHLIGHT_PALETTE.length];
+      return {
+        fill: paletteEntry.fill,
+        outline: paletteEntry.outline as [number, number, number],
+      };
+    };
+
+    const buildOverlapPopupTemplate = (layerKey: string) => {
+      const commonFields = [
+        { fieldName: 'permis_code', label: 'Code demande/procedure' },
+        { fieldName: 'code_demande', label: 'Code demande/procedure' },
+        { fieldName: 'code', label: 'Code demande/procedure' },
+        { fieldName: 'permis_type_label', label: 'Type' },
+        { fieldName: 'permis_type_code', label: 'Type' },
+        { fieldName: 'type_code', label: 'Type' },
+        { fieldName: 'type', label: 'Type' },
+        { fieldName: 'permis_titulaire', label: 'Titulaire' },
+        { fieldName: 'tnom', label: 'Titulaire' },
+        { fieldName: 'tprenom', label: 'Prenom titulaire' },
+        { fieldName: 'created_at', label: 'Date depot', format: { dateFormat: 'short-date' } as any },
+        { fieldName: 'date_depot', label: 'Date depot', format: { dateFormat: 'short-date' } as any },
+        { fieldName: 'dateDepot', label: 'Date depot', format: { dateFormat: 'short-date' } as any },
+        { fieldName: 'status', label: 'Statut' },
+      ];
+      const title =
+        layerKey === 'provisoire'
+          ? 'Chevauchement - Inscription provisoire'
+          : layerKey === 'perimetresSig'
+            ? 'Chevauchement - Demande'
+            : 'Chevauchement';
+      return {
+        title,
+        content: [{ type: 'fields', fieldInfos: commonFields }] as any,
+      } as any;
     };
 
     const applyHighlights = async () => {
       const graphics: Graphic[] = [];
       let unionExtent: any = null;
+      const currentExtent = (currentPolygonRef.current as any)?.extent;
+      if (currentExtent) {
+        unionExtent = currentExtent.clone ? currentExtent.clone() : currentExtent;
+      }
       const selectionCount = selections.length;
-      const highlightFillAlpha = selectionCount >= 60 ? 0 : selectionCount >= 30 ? 0.04 : 0.08;
-      const highlightStyle = overlapClarityEnabled
-      ? (selectionCount >= 60 ? 'none' : 'diagonal-cross')
-      : 'solid';
-      const highlightOutlineWidth = selectionCount >= 60 ? 3 : selectionCount >= 30 ? 2.6 : 2.4;
+      const highlightFillAlpha = strongHighlight
+        ? 0.4
+        : selectionCount >= 60
+          ? 0
+          : selectionCount >= 30
+            ? 0.04
+            : 0.08;
+      const highlightStyle = strongHighlight
+        ? 'solid'
+        : overlapClarityEnabled
+          ? (selectionCount >= 60 ? 'none' : 'diagonal-cross')
+          : 'solid';
+      const highlightOutlineWidth = strongHighlight
+        ? 2.6
+        : selectionCount >= 60
+          ? 3
+          : selectionCount >= 30
+            ? 2.6
+            : 2.4;
 
-      for (let i = 0; i < selections.length; i++) {
-        const selection = selections[i];
-        const feature = await querySelectionFeature(selection);
-        if (requestId !== overlapHighlightRequestRef.current) return;
+      const queriedSelections = await Promise.all(
+        selections.map(async (selection, index) => {
+          try {
+            const feature = await querySelectionFeature(selection);
+            return { selection, index, feature };
+          } catch {
+            return { selection, index, feature: null };
+          }
+        }),
+      );
+      if (requestId !== overlapHighlightRequestRef.current) return;
+
+      for (const queried of queriedSelections) {
+        const { selection, index, feature } = queried;
+        const layerKey = resolveLayerKey(selection);
         if (!feature?.geometry) continue;
 
-        const paletteEntry = OVERLAP_HIGHLIGHT_PALETTE[i % OVERLAP_HIGHLIGHT_PALETTE.length];
-        const baseFill = paletteEntry.fill;
+        const colors = resolveHighlightColors(layerKey, index);
+        const baseFill = colors.fill;
         const fill = [
           baseFill[0],
           baseFill[1],
@@ -2774,18 +2965,19 @@ export interface ArcGISMapRef {
         ] as [number, number, number, number];
         const symbol = new SimpleFillSymbol({
           color: fill,
-          outline: { color: paletteEntry.outline, width: highlightOutlineWidth, style: 'dash' },
+          outline: { color: colors.outline, width: highlightOutlineWidth, style: 'dash' },
           style: highlightStyle,
         });
         const graphic = new Graphic({
           geometry: feature.geometry,
           symbol,
           attributes: feature.attributes || selection,
+          popupTemplate: buildOverlapPopupTemplate(layerKey),
         });
         graphics.push(graphic);
 
         const labelText = resolveOverlapLabelText(
-          resolveLayerKey(selection),
+          layerKey,
           feature.attributes || selection,
         );
         const labelCenter = (feature.geometry as any).centroid ?? (feature.geometry as any).extent?.center;
@@ -2826,7 +3018,7 @@ export interface ArcGISMapRef {
     };
 
     void applyHighlights();
-  }, [overlapSelections, overlapClarityEnabled, isMapReady]);
+  }, [overlapSelections, overlapClarityEnabled, overlapHighlightMode, isMapReady]);
 
   // Update drawing mode
   useEffect(() => {
@@ -3081,6 +3273,77 @@ export interface ArcGISMapRef {
         })
         .filter((p): p is Coordinate => !!p);
       const wgs84Points = normalizedPoints.map(point => convertToWGS84(point));
+      const uniqueInputCount = new Set(
+        normalizedPoints.map((point) => `${Number(point.x).toFixed(6)}|${Number(point.y).toFixed(6)}`),
+      ).size;
+      const uniqueWgsCount = new Set(
+        wgs84Points.map(([lng, lat]) => `${Number(lng).toFixed(6)}|${Number(lat).toFixed(6)}`),
+      ).size;
+      const computeBBox = (coords: Array<[number, number]>) => {
+        const valid = coords.filter(
+          (coord) => Array.isArray(coord) && Number.isFinite(coord[0]) && Number.isFinite(coord[1]),
+        );
+        if (!valid.length) return null;
+        const xs = valid.map((coord) => coord[0]);
+        const ys = valid.map((coord) => coord[1]);
+        return {
+          minX: Math.min(...xs),
+          maxX: Math.max(...xs),
+          minY: Math.min(...ys),
+          maxY: Math.max(...ys),
+        };
+      };
+      const bboxInput = computeBBox(
+        normalizedPoints.map((point) => [point.x, point.y] as [number, number]),
+      );
+      const bboxWgs84 = computeBBox(wgs84Points);
+      const outOfRangeWgsPoints = wgs84Points.filter(
+        ([lng, lat]) => !Number.isFinite(lng) || !Number.isFinite(lat) || Math.abs(lng) > 180 || Math.abs(lat) > 90,
+      ).length;
+      const systemsSummary = Array.from(
+        new Set(normalizedPoints.map((point) => String(point.system || '').toUpperCase()).filter(Boolean)),
+      );
+      const zonesSummary = Array.from(
+        new Set(
+          normalizedPoints
+            .map((point) => Number(point.zone))
+            .filter((zone) => Number.isFinite(zone)),
+        ),
+      );
+      const hemispheresSummary = Array.from(
+        new Set(
+          normalizedPoints
+            .map((point) => point.hemisphere)
+            .filter((hemisphere) => typeof hemisphere === 'string' && hemisphere.length > 0),
+        ),
+      );
+
+      console.groupCollapsed('[ArcGISMap] Polygon diagnostics');
+      console.log('input', {
+        receivedPoints: points.length,
+        normalizedPoints: normalizedPoints.length,
+        uniqueInputCount,
+        systems: systemsSummary,
+        zones: zonesSummary,
+        hemispheres: hemispheresSummary,
+        inputBBox: bboxInput,
+      });
+      console.log('wgs84', {
+        wgs84Points: wgs84Points.length,
+        uniqueWgsCount,
+        outOfRangeWgsPoints,
+        wgs84BBox: bboxWgs84,
+      });
+      if (wgs84Points.length < 3) {
+        console.warn(`[ArcGISMap] Polygon not drawn: ${wgs84Points.length} valid points after conversion.`);
+      } else if (uniqueWgsCount < 3) {
+        console.warn(`[ArcGISMap] Polygon may be degenerate: ${uniqueWgsCount} unique WGS84 points.`);
+      }
+      if (outOfRangeWgsPoints > 0) {
+        console.warn(`[ArcGISMap] ${outOfRangeWgsPoints} WGS84 points are out of lon/lat range.`);
+      }
+      console.groupEnd();
+
       const zoomKey =
         wgs84Points.length >= 3
           ? wgs84Points.map(([lng, lat]) => `${lng.toFixed(6)},${lat.toFixed(6)}`).join('|')
@@ -3252,6 +3515,13 @@ export interface ArcGISMapRef {
     const cleaned = String(value ?? '').trim().toLowerCase();
     if (!cleaned) return '';
     if (cleaned === 'perimetressig' || cleaned === 'perimetres_sig') return 'perimetresSig';
+    if (
+      cleaned === 'inscription_provisoire' ||
+      cleaned === 'inscriptionprovisoire' ||
+      cleaned === 'provisoires'
+    ) {
+      return 'provisoire';
+    }
     return cleaned;
   };
 
@@ -3273,6 +3543,8 @@ export interface ArcGISMapRef {
       item.sigam_permis_id ?? '',
       item.permis_code ?? '',
       item.permisCode ?? '',
+      item.code_demande ?? '',
+      item.codeDemande ?? '',
     ].join('|');
   };
 
@@ -3434,6 +3706,44 @@ export interface ArcGISMapRef {
       if (location) obsParts.push(`Source: ${location}`);
       if (areaLabel) obsParts.push(areaLabel);
       observation = obsParts.join(' - ');
+    } else if (lt === 'provisoire') {
+      typeLabel = 'Inscriptions provisoires';
+      const label =
+        o.permis_type_label ??
+        o.permisTypeLabel ??
+        o.type_code ??
+        o.type ??
+        'Inscription provisoire';
+      const rawCode =
+        o.permis_code ??
+        o.permisCode ??
+        o.code_demande ??
+        o.codeDemande ??
+        o.code ??
+        o.sigam_proc_id ??
+        o.id ??
+        '';
+      code = rawCode ? String(rawCode) : '';
+      name = code ? `${label} (${code})` : String(label || '');
+      holder = String(
+        o.permis_titulaire ??
+          o.permisTitulaire ??
+          [o.tnom, o.tprenom].filter(Boolean).join(' ').trim() ??
+          '',
+      ).trim();
+      location = String(o.source ?? '').trim();
+      const obsParts: string[] = [];
+      const areaHa = resolveAreaHa(o);
+      if (areaHa != null) obsParts.push(`Superficie: ${formatNumber(areaHa)} ha`);
+      if (holder) obsParts.push(`Titulaire: ${holder}`);
+      if (location) obsParts.push(`Source: ${location}`);
+      const dateDepot = formatDateValue(
+        o.created_at ?? o.date_depot ?? o.dateDepot ?? o.depot_at,
+      );
+      if (dateDepot) obsParts.push(`Date depot: ${dateDepot}`);
+      if (o.status) obsParts.push(`Statut: ${o.status}`);
+      if (areaLabel) obsParts.push(areaLabel);
+      observation = obsParts.join(' - ');
     } else if (lt === 'promotion') {
       typeLabel = 'Promotion';
       const rawName = o.nom || o.Nom || 'Promotion';
@@ -3497,6 +3807,7 @@ export interface ArcGISMapRef {
     const lt = normalizeOverlapLayerKey(getOverlapLayerType(o)) || '';
     if (lt === 'titres') return [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]];
     if (lt === 'perimetresSig') return [COLOR_DEMANDES[0], COLOR_DEMANDES[1], COLOR_DEMANDES[2]];
+    if (lt === 'provisoire') return [COLOR_DEMANDES[0], COLOR_DEMANDES[1], COLOR_DEMANDES[2]];
     if (lt === 'promotion') return [COLOR_DEMANDES[0], COLOR_DEMANDES[1], COLOR_DEMANDES[2]];
     if (lt === 'modifications') return [COLOR_DEMANDES[0], COLOR_DEMANDES[1], COLOR_DEMANDES[2]];
     if (lt === 'exclusions') return [COLOR_EXCLUSION[0], COLOR_EXCLUSION[1], COLOR_EXCLUSION[2]];

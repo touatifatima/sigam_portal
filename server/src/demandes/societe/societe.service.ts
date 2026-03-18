@@ -12,6 +12,16 @@ import {
   EnumTypeFonction,
   Prisma,
 } from '@prisma/client';
+import { NotificationsService } from 'src/notifications/notifications.service';
+
+type IdentificationStatus = 'EN_ATTENTE' | 'CONFIRMEE' | 'REFUSEE';
+
+const IDENTIFICATION_EVENT_TYPES = [
+  'entreprise_identification_request',
+  'entreprise_identification_request_resubmitted',
+  'entreprise_identification_confirmed',
+  'entreprise_identification_rejected',
+] as const;
 
 @Injectable()
 export class SocieteService {
@@ -332,7 +342,86 @@ export class SocieteService {
     });
   }
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
+
+  private resolveIdentificationStatus(
+    entrepriseVerified: boolean,
+    latestEventType?: string | null,
+  ): IdentificationStatus {
+    if (entrepriseVerified) return 'CONFIRMEE';
+    if (String(latestEventType || '').toLowerCase() === 'entreprise_identification_rejected') {
+      return 'REFUSEE';
+    }
+    return 'EN_ATTENTE';
+  }
+
+  private extractRejectionReason(message?: string | null) {
+    const value = String(message || '').trim();
+    if (!value) return '';
+    const marker = 'Motif:';
+    const idx = value.toLowerCase().indexOf(marker.toLowerCase());
+    if (idx < 0) return '';
+    return value.slice(idx + marker.length).trim();
+  }
+
+  private async getIdentificationEventMaps(userIds: number[]) {
+    const ids = Array.from(
+      new Set(
+        (userIds || [])
+          .map((id) => Number(id))
+          .filter((id) => Number.isFinite(id) && id > 0),
+      ),
+    );
+    const latestEvents = new Map<
+      number,
+      { type: string; message: string; createdAt: Date }
+    >();
+    const latestRequests = new Map<
+      number,
+      { type: string; message: string; createdAt: Date }
+    >();
+    if (!ids.length) return { latestEvents, latestRequests };
+
+    const rows = await this.prisma.notificationPortail.findMany({
+      where: {
+        relatedEntityId: { in: ids },
+        relatedEntityType: { in: [...IDENTIFICATION_EVENT_TYPES] },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        relatedEntityId: true,
+        relatedEntityType: true,
+        message: true,
+        createdAt: true,
+      },
+    });
+
+    for (const row of rows) {
+      const userId = Number(row.relatedEntityId || 0);
+      if (!userId) continue;
+      const event = {
+        type: String(row.relatedEntityType || ''),
+        message: String(row.message || ''),
+        createdAt: row.createdAt,
+      };
+      if (!latestEvents.has(userId)) {
+        latestEvents.set(userId, event);
+      }
+      if (
+        !latestRequests.has(userId) &&
+        (event.type === 'entreprise_identification_request' ||
+          event.type === 'entreprise_identification_request_resubmitted')
+      ) {
+        latestRequests.set(userId, event);
+      }
+    }
+
+    return { latestEvents, latestRequests };
+  }
+
 
   async createPersonne(data: any): Promise<PersonnePhysiquePortail> {
     let existing: PersonnePhysiquePortail | null = null;
@@ -1292,14 +1381,35 @@ export class SocieteService {
       detenteur = await this.createDetenteur(createPayload);
     }
 
+    let requesterUser: { email: string | null; username: string | null } | null = null;
     if (userId && detenteur?.id_detenteur) {
-      await this.prisma.utilisateurPortail.update({
+      const updatedUser = await this.prisma.utilisateurPortail.update({
         where: { id: userId },
         data: {
-          entreprise_verified: true,
+          entreprise_verified: false,
+          first_login_after_confirmation: false,
           detenteurId: detenteur.id_detenteur,
         },
+        select: {
+          email: true,
+          username: true,
+        },
       });
+      requesterUser = {
+        email: updatedUser.email,
+        username: updatedUser.username,
+      };
+
+      try {
+        await this.notificationsService.createEntrepriseIdentificationRequestNotification({
+          requesterUserId: userId,
+          requesterEmail: updatedUser.email,
+          requesterUsername: updatedUser.username,
+          companyName: nomSocieteFr,
+        });
+      } catch (error) {
+        console.warn('Failed to create admin identification notification', error);
+      }
     }
 
     let representant: PersonnePhysiquePortail | null = null;
@@ -1398,7 +1508,9 @@ export class SocieteService {
       representant,
       registre,
       actionnaires,
-      isEntrepriseVerified: true,
+      isEntrepriseVerified: false,
+      verificationStatus: 'EN_ATTENTE',
+      requester: requesterUser,
     };
   }
 
@@ -1427,6 +1539,282 @@ export class SocieteService {
       representant,
       registre: registres?.[0] ?? null,
       actionnaires,
+    };
+  }
+
+  async listEntrepriseIdentificationRequests(params: {
+    status?: string;
+    search?: string;
+    page?: number;
+    pageSize?: number;
+  }) {
+    const pageSize = Math.min(
+      100,
+      Math.max(1, Number.isFinite(Number(params.pageSize)) ? Number(params.pageSize) : 20),
+    );
+    const requestedPage = Math.max(
+      1,
+      Number.isFinite(Number(params.page)) ? Number(params.page) : 1,
+    );
+    const normalizedStatus = String(params.status || 'ALL').trim().toUpperCase();
+    const statusFilter: IdentificationStatus | 'ALL' =
+      normalizedStatus === 'EN_ATTENTE' ||
+      normalizedStatus === 'CONFIRMEE' ||
+      normalizedStatus === 'REFUSEE'
+        ? (normalizedStatus as IdentificationStatus)
+        : 'ALL';
+    const search = this.normalizeLabel(params.search);
+
+    const where: Prisma.UtilisateurPortailWhereInput = {
+      detenteurId: { not: null },
+    };
+
+    if (search) {
+      where.OR = [
+        { username: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { nom: { contains: search, mode: 'insensitive' } },
+        { Prenom: { contains: search, mode: 'insensitive' } },
+        {
+          detenteur: {
+            is: {
+              nom_societeFR: { contains: search, mode: 'insensitive' },
+            },
+          },
+        },
+        {
+          detenteur: {
+            is: {
+              nom_societeAR: { contains: search, mode: 'insensitive' },
+            },
+          },
+        },
+        {
+          detenteur: {
+            is: {
+              registreCommerce: {
+                some: {
+                  OR: [
+                    { nif: { contains: search, mode: 'insensitive' } },
+                    { nis: { contains: search, mode: 'insensitive' } },
+                    { numero_rc: { contains: search, mode: 'insensitive' } },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      ];
+    }
+
+    const users = await this.prisma.utilisateurPortail.findMany({
+      where,
+      orderBy: [{ modifieLe: 'desc' }, { createdAt: 'desc' }],
+      include: {
+        detenteur: {
+          include: {
+            registreCommerce: true,
+          },
+        },
+      },
+    });
+
+    const userIds = users
+      .map((user) => Number(user.id))
+      .filter((id) => Number.isFinite(id) && id > 0);
+    const { latestEvents, latestRequests } = await this.getIdentificationEventMaps(userIds);
+
+    const rows = users
+      .map((user) => {
+        const latestEvent = latestEvents.get(user.id);
+        const latestRequest = latestRequests.get(user.id);
+        const status = this.resolveIdentificationStatus(
+          Boolean(user.entreprise_verified),
+          latestEvent?.type,
+        );
+        const fullName = [this.normalizeLabel(user.nom), this.normalizeLabel(user.Prenom)]
+          .filter(Boolean)
+          .join(' ')
+          .trim();
+        const firstRegistre = user.detenteur?.registreCommerce?.[0] ?? null;
+        const dateDemande =
+          latestRequest?.createdAt ||
+          latestEvent?.createdAt ||
+          user.modifieLe ||
+          user.createdAt;
+        const decisionAt =
+          status === 'EN_ATTENTE' ? null : latestEvent?.createdAt || null;
+
+        return {
+          id: user.id,
+          userId: user.id,
+          utilisateur: {
+            username: user.username,
+            email: user.email,
+            fullName: fullName || null,
+          },
+          nomEntreprise:
+            user.detenteur?.nom_societeFR ||
+            user.detenteur?.nom_societeAR ||
+            null,
+          nif: firstRegistre?.nif || null,
+          email: user.email || user.detenteur?.email || null,
+          telephone: user.detenteur?.telephone || user.telephone || null,
+          dateDemande,
+          statut: status,
+          decisionAt,
+        };
+      })
+      .filter((row) => (statusFilter === 'ALL' ? true : row.statut === statusFilter));
+
+    const total = rows.length;
+    const pages = Math.max(1, Math.ceil(total / pageSize));
+    const page = Math.min(requestedPage, pages);
+    const start = (page - 1) * pageSize;
+    const items = rows.slice(start, start + pageSize);
+
+    return {
+      items,
+      total,
+      page,
+      pageSize,
+      pages,
+    };
+  }
+
+  async getEntrepriseIdentificationDetail(userId: number) {
+    const user = await this.prisma.utilisateurPortail.findUnique({
+      where: { id: userId },
+      include: {
+        detenteur: {
+          include: {
+            pays: true,
+            nationaliteRef: true,
+            FormeJuridiqueDetenteur: {
+              include: {
+                statutJuridique: true,
+              },
+            },
+            registreCommerce: true,
+          },
+        },
+      },
+    });
+
+    if (!user || !user.detenteurId || !user.detenteur) {
+      throw new HttpException('Demande identification introuvable', HttpStatus.NOT_FOUND);
+    }
+
+    const { latestEvents, latestRequests } = await this.getIdentificationEventMaps([userId]);
+    const latestEvent = latestEvents.get(userId);
+    const latestRequest = latestRequests.get(userId);
+    const status = this.resolveIdentificationStatus(
+      Boolean(user.entreprise_verified),
+      latestEvent?.type,
+    );
+    const rejectionReason = status === 'REFUSEE' ? this.extractRejectionReason(latestEvent?.message) : '';
+    const representant = await this.getRepresentantLegal(user.detenteurId);
+    const actionnaires = await this.getActionnaires(user.detenteurId);
+
+    return {
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        nom: user.nom,
+        Prenom: user.Prenom,
+        telephone: user.telephone,
+        createdAt: user.createdAt,
+        modifieLe: user.modifieLe,
+      },
+      status,
+      dateDemande:
+        latestRequest?.createdAt ||
+        latestEvent?.createdAt ||
+        user.modifieLe ||
+        user.createdAt,
+      decisionAt: status === 'EN_ATTENTE' ? null : latestEvent?.createdAt || null,
+      rejectionReason: rejectionReason || null,
+      detenteur: user.detenteur,
+      registre: user.detenteur.registreCommerce,
+      representant,
+      actionnaires,
+    };
+  }
+
+  async confirmEntrepriseIdentification(userId: number, adminUserId?: number) {
+    const user = await this.prisma.utilisateurPortail.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        detenteurId: true,
+      },
+    });
+
+    if (!user || !user.detenteurId) {
+      throw new HttpException('Demande identification introuvable', HttpStatus.NOT_FOUND);
+    }
+
+    await this.prisma.utilisateurPortail.update({
+      where: { id: userId },
+      data: {
+        entreprise_verified: true,
+        first_login_after_confirmation: true,
+      },
+    });
+
+    await this.notificationsService.createEntrepriseIdentificationDecisionNotification({
+      userId,
+      status: 'CONFIRMEE',
+    });
+
+    return {
+      success: true,
+      status: 'CONFIRMEE',
+      userId,
+      adminUserId: adminUserId ?? null,
+    };
+  }
+
+  async rejectEntrepriseIdentification(
+    userId: number,
+    reason?: string,
+    adminUserId?: number,
+  ) {
+    const user = await this.prisma.utilisateurPortail.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        detenteurId: true,
+      },
+    });
+
+    if (!user || !user.detenteurId) {
+      throw new HttpException('Demande identification introuvable', HttpStatus.NOT_FOUND);
+    }
+
+    const rejectionReason = this.normalizeLabel(reason);
+
+    await this.prisma.utilisateurPortail.update({
+      where: { id: userId },
+      data: {
+        entreprise_verified: false,
+        first_login_after_confirmation: false,
+      },
+    });
+
+    await this.notificationsService.createEntrepriseIdentificationDecisionNotification({
+      userId,
+      status: 'REFUSEE',
+      reason: rejectionReason,
+    });
+
+    return {
+      success: true,
+      status: 'REFUSEE',
+      reason: rejectionReason || null,
+      userId,
+      adminUserId: adminUserId ?? null,
     };
   }
 

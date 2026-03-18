@@ -308,9 +308,9 @@
 }
 
 .btnPrimary {
-  background: linear-gradient(120deg, #2563eb, #1d4ed8);
+ background: linear-gradient(135deg, #8b3a62 0%, #a84968 100%);
   color: #fff;
-  border: 1px solid #1e3a8a;
+  border: 1px solid #8b3a62;
 }
 
 .muted {

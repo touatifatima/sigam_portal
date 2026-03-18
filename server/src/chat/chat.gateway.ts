@@ -73,7 +73,12 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   @SubscribeMessage('send_message')
   async handleMessage(
     client: AuthenticatedSocket,
-    payload: { content: string; receiverId: number },
+    payload: {
+      content: string;
+      receiverId: number;
+      entityType?: 'DEMANDE' | 'PERMIS' | 'GENERAL' | string;
+      entityCode?: string;
+    },
   ) {
     try {
       this.logger.log(`Message from user ${client.data.userId} to ${payload.receiverId}: ${payload.content}`);
@@ -81,6 +86,8 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       const message = await this.chatService.sendMessage(client.data.userId, {
         content: payload.content,
         receiverId: payload.receiverId,
+        entityType: payload.entityType,
+        entityCode: payload.entityCode,
       });
 
       // Send to sender

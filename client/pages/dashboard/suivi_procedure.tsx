@@ -141,18 +141,18 @@ const LIB_PHASES = STEP_LABELS;
 
 const STATUS_CONFIG = {
   'Identification': { bg: styles['bg-blue-100'], text: styles['text-blue-800'], icon: <FiClock className={styles['text-blue-500']} /> },
-  'Capacités': { bg: styles['bg-blue-100'], text: styles['text-blue-800'], icon: <FiClock className={styles['text-blue-500']} /> },
+  'Capacitï¿½s': { bg: styles['bg-blue-100'], text: styles['text-blue-800'], icon: <FiClock className={styles['text-blue-500']} /> },
   'Substances & Travaux': { bg: styles['bg-blue-100'], text: styles['text-blue-800'], icon: <FiClock className={styles['text-blue-500']} /> },
   'Documents': { bg: styles['bg-yellow-100'], text: styles['text-yellow-800'], icon: <FiAlertTriangle className={styles['text-yellow-500']} /> },
   'Cadastre': { bg: styles['bg-orange-300'], text: styles['text-orange-800'], icon: <FiClock className={styles['text-orange-500']} /> },
   'Avis Wali': { bg: styles['bg-orange-100'], text: styles['text-orange-800'], icon: <FiClock className={styles['text-orange-500']} /> },
-  'Comité de direction': { bg: styles['bg-purple-100'], text: styles['text-purple-800'], icon: <FiClock className={styles['text-purple-500']} /> },
-  'Génération du permis': { bg: styles['bg-green-100'], text: styles['text-green-800'], icon: <FiCheck className={styles['text-green-500']} /> },
+  'Comitï¿½ de direction': { bg: styles['bg-purple-100'], text: styles['text-purple-800'], icon: <FiClock className={styles['text-purple-500']} /> },
+  'Gï¿½nï¿½ration du permis': { bg: styles['bg-green-100'], text: styles['text-green-800'], icon: <FiCheck className={styles['text-green-500']} /> },
   'Paiement': { bg: styles['bg-green-100'], text: styles['text-green-800'], icon: <FiClock className={styles['text-green-500']} /> },
   'en_instruction': { bg: styles['bg-blue-100'], text: styles['text-blue-800'], icon: <FiClock className={styles['text-blue-500']} /> },
   'avis_wilaya': { bg: styles['bg-orange-100'], text: styles['text-orange-800'], icon: <FiClock className={styles['text-orange-500']} /> },
   'retard': { bg: styles['bg-red-100'], text: styles['text-red-800'], icon: <FiAlertTriangle className={styles['text-red-500']} /> },
-  'acceptée': { bg: styles['bg-green-100'], text: styles['text-green-800'], icon: <FiCheck className={styles['text-green-500']} /> },
+  'acceptï¿½e': { bg: styles['bg-green-100'], text: styles['text-green-800'], icon: <FiCheck className={styles['text-green-500']} /> },
   'rejete': { bg: styles['bg-red-100'], text: styles['text-red-800'], icon: <FiX className={styles['text-red-500']} /> },
   'default': { bg: styles['bg-gray-100'], text: styles['text-gray-800'], icon: <FiClock className={styles['text-gray-500']} /> }
 };
@@ -337,7 +337,7 @@ const toggleDropdown = (demandeId: number) => {
       setError(null);
       
       if (isBackgroundRefresh) {
-        toast.success('Données actualisées avec succès');
+        toast.success('Donnï¿½es actualisï¿½es avec succï¿½s');
       }
     } catch (err: unknown) {
       if (axios.isCancel(err)) {
@@ -346,7 +346,7 @@ const toggleDropdown = (demandeId: number) => {
         const error = err as AxiosError<{ message?: string }>;
         console.error("Erreur de chargement des demandes :", error);
         setError(error.response?.data?.message || "Erreur lors du chargement des demandes");
-        toast.error(error.response?.data?.message || 'Erreur lors du chargement des données');
+        toast.error(error.response?.data?.message || 'Erreur lors du chargement des donnï¿½es');
       }
     } finally {
       setIsLoading(false);
@@ -531,19 +531,19 @@ const toggleDropdown = (demandeId: number) => {
       if (backendLink) {
         router.push(backendLink);
       } else {
-        setError("Lien de l'étape introuvable");
+        setError("Lien de l'ï¿½tape introuvable");
       }
     } catch (err) {
       if (startLink) {
         console.error(
-          'Erreur lors de la récupération de la prochaine étape, utilisation du fallback :',
+          'Erreur lors de la rï¿½cupï¿½ration de la prochaine ï¿½tape, utilisation du fallback :',
           err,
         );
         router.push(startLink);
         return;
       }
-      console.error("Erreur lors de la récupération de l'étape :", err);
-      setError("Impossible de récupérer l'étape actuelle");
+      console.error("Erreur lors de la rï¿½cupï¿½ration de l'ï¿½tape :", err);
+      setError("Impossible de rï¿½cupï¿½rer l'ï¿½tape actuelle");
     } finally {
       setIsLoading(false);
     }
@@ -772,13 +772,13 @@ const toggleDropdown = (demandeId: number) => {
       );
       
       if (response.status === 200) {
-        toast.success('Procédure supprimée avec succès');
+        toast.success('Procï¿½dure supprimï¿½e avec succï¿½s');
         
         // Refresh data to ensure consistency
         const controller = axios.CancelToken.source();
         fetchDemandes(controller, true);
       } else {
-        throw new Error("Échec de la suppression");
+        throw new Error("ï¿½chec de la suppression");
       }
     } catch (error) {
       console.error("Erreur lors de la suppression:", error);
@@ -787,7 +787,7 @@ const toggleDropdown = (demandeId: number) => {
       const controller = axios.CancelToken.source();
       fetchDemandes(controller, true);
       
-      toast.error('Erreur lors de la suppression de la procédure');
+      toast.error('Erreur lors de la suppression de la procï¿½dure');
     }
   };
 
@@ -802,7 +802,7 @@ const toggleDropdown = (demandeId: number) => {
       // In a real application, this would call a server endpoint
       // For now, we'll create a client-side export
       const csvContent = [
-        ['Code Procédure', 'Titulaire', 'Type de Procédure', 'Type Permis', 'Date Demande', 'Statut', 'Phase Actuelle'],
+        ['Code Procï¿½dure', 'Titulaire', 'Type de Procï¿½dure', 'Type Permis', 'Date Demande', 'Statut', 'Phase Actuelle'],
         ...filteredDemandes.map(d => [
           d.procedure.num_proc,
           getSocieteName(d),
@@ -810,7 +810,7 @@ const toggleDropdown = (demandeId: number) => {
           getPermisTypeLabel(d),
           new Date(d.date_demande).toLocaleDateString('fr-FR'),
           d.procedure.statut_proc,
-          getCurrentPhase(d.procedure.ProcedureEtape)?.etape?.lib_etape || 'Non démarrée'
+          getCurrentPhase(d.procedure.ProcedureEtape)?.etape?.lib_etape || 'Non dï¿½marrï¿½e'
         ])
       ].map(row => row.join(',')).join('\n');
 
@@ -826,10 +826,10 @@ const toggleDropdown = (demandeId: number) => {
       link.click();
       document.body.removeChild(link);
       
-      toast.success('Export réalisé avec succès');
+      toast.success('Export rï¿½alisï¿½ avec succï¿½s');
     } catch (error) {
       console.error('Erreur lors de l\'export:', error);
-      toast.error('Erreur lors de l\'export des données');
+      toast.error('Erreur lors de l\'export des donnï¿½es');
     } finally {
       setIsExporting(false);
     }
@@ -895,7 +895,7 @@ const toggleDropdown = (demandeId: number) => {
           disabled={pagination.currentPage === 1}
           onClick={() => handlePageChange(pagination.currentPage - 1)}
         >
-          Précédent
+          Prï¿½cï¿½dent
         </button>
         
         {startPage > 1 && (
@@ -941,7 +941,7 @@ const toggleDropdown = (demandeId: number) => {
         return (
           <>
             <div className={styles.breadcrumb}>
-              <span>SIGAM</span>
+              <span>POM</span>
               <FiChevronRight className={styles.breadcrumbArrow} />
               <span>Dashboard</span>
               <FiChevronRight className={styles.breadcrumbArrow} />
@@ -954,7 +954,7 @@ const toggleDropdown = (demandeId: number) => {
                   Suivi des demandes en cours d'instruction
                 </h1>
                 <p className={styles.pageSubtitle}>
-                  Consultez, filtrez et gérez les demandes de permis en attente de traitement
+                  Consultez, filtrez et gï¿½rez les demandes de permis en attente de traitement
                 </p>
               </div>
               
@@ -963,7 +963,7 @@ const toggleDropdown = (demandeId: number) => {
                   className={styles.iconButton}
                   onClick={handleRefreshData}
                   disabled={isRefreshing}
-                  title="Actualiser les données"
+                  title="Actualiser les donnï¿½es"
                 >
                   <FiRefreshCw className={isRefreshing ? styles.spinning : ''} />
                 </button>
@@ -978,7 +978,7 @@ const toggleDropdown = (demandeId: number) => {
                   className={styles.iconButton}
                   onClick={handleExportData}
                   disabled={isExporting || filteredDemandes.length === 0}
-                  title="Exporter les données"
+                  title="Exporter les donnï¿½es"
                 >
                   <FiDownload />
                 </button>
@@ -1000,7 +1000,7 @@ const toggleDropdown = (demandeId: number) => {
                   className={styles.retryButton}
                   onClick={handleRefreshData}
                 >
-                  Réessayer
+                  Rï¿½essayer
                 </button>
               </div>
             )}
@@ -1024,7 +1024,7 @@ const toggleDropdown = (demandeId: number) => {
                 <div className={styles.filtersContent}>
                   <div className={styles.filtersGrid}>
                     <div className={styles.filterGroup}>
-                      <label className={styles.filterLabel}>Type de procédure</label>
+                      <label className={styles.filterLabel}>Type de procï¿½dure</label>
                       <select
                         className={styles.filterSelect}
                         value={filters.procedureType}
@@ -1078,16 +1078,16 @@ const toggleDropdown = (demandeId: number) => {
                           Mine
                         </label>
                         <label
-                          className={`${styles.radioOption} ${filters.sector === 'Carrière' ? styles.selected : ''}`}
+                          className={`${styles.radioOption} ${filters.sector === 'Carriï¿½re' ? styles.selected : ''}`}
                         >
                           <input
                             type="radio"
                             name="sector"
-                            checked={filters.sector === 'Carrière'}
-                            onChange={() => setFilters({ ...filters, sector: 'Carrière' })}
+                            checked={filters.sector === 'Carriï¿½re'}
+                            onChange={() => setFilters({ ...filters, sector: 'Carriï¿½re' })}
                           />
                           <span className={styles.radioCustom}></span>
-                          Carrière
+                          Carriï¿½re
                         </label>
                       </div>
                     </div>
@@ -1160,7 +1160,7 @@ const toggleDropdown = (demandeId: number) => {
                         setSearchTerm('');
                       }}
                     >
-                      Réinitialiser les filtres
+                      Rï¿½initialiser les filtres
                     </button>
                   </div>
                 </div>
@@ -1174,7 +1174,7 @@ const toggleDropdown = (demandeId: number) => {
                 <input
                   type="text"
                   className={styles.searchInput}
-                  placeholder="Rechercher par code, titulaire ou numéro de procédure..."
+                  placeholder="Rechercher par code, titulaire ou numï¿½ro de procï¿½dure..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -1190,7 +1190,7 @@ const toggleDropdown = (demandeId: number) => {
               
               <div className={styles.resultsInfo}>
                 <span>
-                  {filteredDemandes.length} résultat{filteredDemandes.length !== 1 ? 's' : ''} trouvé{filteredDemandes.length !== 1 ? 's' : ''}
+                  {filteredDemandes.length} rï¿½sultat{filteredDemandes.length !== 1 ? 's' : ''} trouvï¿½{filteredDemandes.length !== 1 ? 's' : ''}
                 </span>
               </div>
             </div>
@@ -1205,15 +1205,15 @@ const toggleDropdown = (demandeId: number) => {
               ) : filteredDemandes.length === 0 ? (
                 <div className={styles.emptyState}>
                   <FiInfo className={styles.emptyIcon} />
-                  <h3>Aucune demande trouvée</h3>
+                  <h3>Aucune demande trouvï¿½e</h3>
                   <p>
                     {searchTerm || Object.values(filters).some(v => 
                       v !== 'Tous les types' && v !== 'Tous les codes' && v !== 'Tous les types de permis' &&
                       v !== 'Toutes les phases' && v !== 'Tous les statuts' &&
                       (typeof v !== 'object' || (v as any).start !== '')
                     ) 
-                      ? 'Aucune demande ne correspond à vos critères de recherche. Veuillez modifier vos filtres.'
-                      : 'Aucune demande en cours. Commencez par créer une nouvelle procédure.'
+                      ? 'Aucune demande ne correspond ï¿½ vos critï¿½res de recherche. Veuillez modifier vos filtres.'
+                      : 'Aucune demande en cours. Commencez par crï¿½er une nouvelle procï¿½dure.'
                     }
                   </p>
                   {(!searchTerm && !Object.values(filters).some(v => 
@@ -1226,7 +1226,7 @@ const toggleDropdown = (demandeId: number) => {
                       onClick={() => router.push('/procedures/nouvelle')}
                     >
                       <FiPlus className={styles.buttonIcon} />
-                      Créer une nouvelle procédure
+                      Crï¿½er une nouvelle procï¿½dure
                     </button>
                   )}
                 </div>
@@ -1240,7 +1240,7 @@ const toggleDropdown = (demandeId: number) => {
                             className={styles.sortableHeader}
                             onClick={() => handleSort('procedure.num_proc')}
                           >
-                            CODE PROCÉDURE
+                            CODE PROCï¿½DURE
                             {renderSortIndicator('procedure.num_proc')}
                           </th>
                           <th
@@ -1257,7 +1257,7 @@ const toggleDropdown = (demandeId: number) => {
                             TITULAIRE
                             {renderSortIndicator('detenteur.nom_societeFR')}
                           </th>
-                          <th>TYPE DE PROCÉDURE</th>
+                          <th>TYPE DE PROCï¿½DURE</th>
                           <th>TYPE PERMIS</th>
                           <th 
                             className={styles.sortableHeader}
@@ -1327,7 +1327,7 @@ const toggleDropdown = (demandeId: number) => {
                                 ) : (
                                   <div className={`${styles.statusTag} ${styles['bg-gray-100']} ${styles['text-gray-800']}`}>
                                     <FiClock className={styles['text-gray-500']} />
-                                    Non démarrée
+                                    Non dï¿½marrï¿½e
                                   </div>
                                 )}
                               </td>
@@ -1388,18 +1388,18 @@ const toggleDropdown = (demandeId: number) => {
                           <option key={option} value={option}>{option}</option>
                         ))}
                       </select>
-                      <span>entrées par page</span>
+                      <span>entrï¿½es par page</span>
                     </div>
                     
                     <div className={styles.paginationInfo}>
                       {pagination.totalItems > 0 ? (
                         <span>
-                          Affichage de {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} à{' '}
+                          Affichage de {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} ï¿½{' '}
                           {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} sur{' '}
-                          {pagination.totalItems} entrées
+                          {pagination.totalItems} entrï¿½es
                         </span>
                       ) : (
-                        <span>Aucune entrée à afficher</span>
+                        <span>Aucune entrï¿½e ï¿½ afficher</span>
                       )}
                     </div>
                     
@@ -1418,8 +1418,8 @@ const toggleDropdown = (demandeId: number) => {
                     <h3 className={styles.modalTitle}>Confirmer la suppression</h3>
                   </div>
                   <p className={styles.modalBody}>
-                    Êtes-vous sûr de vouloir supprimer cette procédure et toutes ses
-                    données associées ? Cette action est irréversible.
+                    ï¿½tes-vous sï¿½r de vouloir supprimer cette procï¿½dure et toutes ses
+                    donnï¿½es associï¿½es ? Cette action est irrï¿½versible.
                   </p>
                   <div className={styles.modalActions}>
                     <button
@@ -1435,7 +1435,7 @@ const toggleDropdown = (demandeId: number) => {
                         setProcedureToDelete(null);
                       }}
                     >
-                      Supprimer définitivement
+                      Supprimer dï¿½finitivement
                     </button>
                   </div>
                 </div>
@@ -1478,11 +1478,11 @@ function getStatutLabel(statut: string) {
   switch (statut) {
     case 'en_instruction': return 'En instruction';
     case 'avis_wilaya': return 'Avis Wilaya';
-    case 'Comité de direction': return 'CD à convoquer';
+    case 'Comitï¿½ de direction': return 'CD ï¿½ convoquer';
     case 'retard': return 'En retard';
-    case 'acceptée': return 'Acceptée';
-    case 'rejete': return 'Rejetée';
-    case 'Documents': return 'Réserves';
+    case 'acceptï¿½e': return 'Acceptï¿½e';
+    case 'rejete': return 'Rejetï¿½e';
+    case 'Documents': return 'Rï¿½serves';
     default: return statut || '---';
   }
 }

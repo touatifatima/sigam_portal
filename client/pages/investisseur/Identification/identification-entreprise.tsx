@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +15,7 @@ const IdentificationEntreprise = () => {
   const { toast } = useToast();
   const [formData, setFormData] = useState<any>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const justConfirmedRef = useRef(false);
+  const [isSubmittedForReview, setIsSubmittedForReview] = useState(false);
   const setEntrepriseVerified = useAuthStore((s) => s.setEntrepriseVerified);
   const { auth, isLoaded } = useAuthStore();
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
@@ -26,7 +26,7 @@ const IdentificationEntreprise = () => {
 
   useEffect(() => {
     if (!isLoaded) return;
-    if (auth.isEntrepriseVerified && !justConfirmedRef.current) {
+    if (auth.isEntrepriseVerified) {
       navigate("/investisseur/InvestorDashboard");
     }
   }, [auth.isEntrepriseVerified, isLoaded, navigate]);
@@ -47,15 +47,14 @@ const IdentificationEntreprise = () => {
         },
       });
 
-      justConfirmedRef.current = true;
-      setEntrepriseVerified(true);
+      setEntrepriseVerified(false);
+      setIsSubmittedForReview(true);
 
       toast({
-        title: "Entreprise confirmee",
-        description: "Votre entreprise a ete enregistree avec succes.",
+        title: "Demande envoyee",
+        description:
+          "Votre identification d'entreprise est en attente de verification par l'administration.",
       });
-
-      navigate("/investisseur/Identification/bienvenue");
     } catch (error) {
       console.error("Erreur enregistrement entreprise:", error);
       const err = error as any;
@@ -84,6 +83,12 @@ const IdentificationEntreprise = () => {
             <p className={styles.subtitle}>
               Pour acceder a l'espace investisseur, veuillez confirmer les informations de votre entreprise
             </p>
+            {isSubmittedForReview && (
+              <div className={styles.pendingNotice}>
+                Votre dossier a ete transmis a l'administration ANAM. Vous recevrez une
+                notification apres verification.
+              </div>
+            )}
           </div>
 
           {/* Form Card */}
@@ -110,11 +115,11 @@ const IdentificationEntreprise = () => {
                   {isSubmitting ? (
                     <>
                       <span className={styles.spinner}></span>
-                      Verification en cours...
+                      Envoi en cours...
                     </>
                   ) : (
                     <>
-                      Confirmer l'entreprise
+                      Envoyer pour verification
                       <ChevronRight className={styles.actionIcon} />
                     </>
                   )}

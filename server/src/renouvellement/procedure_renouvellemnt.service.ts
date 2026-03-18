@@ -12,6 +12,7 @@ import { Prisma, ProcedureRenouvellement, StatutCoord, StatutProcedure } from '@
 import { ProcedureEtapeService } from '../procedure_etape/procedure-etape.service';
 import { StatutPermis } from './types';
 import { buildDemandeCode } from 'src/demandes/utils/demande-code';
+import { NotificationsService } from 'src/notifications/notifications.service';
 
 @Injectable()
 export class ProcedureRenouvellementService {
@@ -19,6 +20,7 @@ export class ProcedureRenouvellementService {
     private readonly prisma: PrismaService,
     private readonly paymentService: PaymentService,
     private readonly procedureEtapeService: ProcedureEtapeService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async startRenewalWithOriginalData(
@@ -147,6 +149,9 @@ export class ProcedureRenouvellementService {
     if (!initialDemande?.utilisateurId) {
       throw new BadRequestException('utilisateurId introuvable pour la demande initiale.');
     }
+    const detenteurId = Number(permis.id_detenteur);
+    const resolvedDetenteurId =
+      Number.isFinite(detenteurId) && detenteurId > 0 ? detenteurId : null;
 
     const newDemande = await this.prisma.demandePortail.create({
       data: {
@@ -158,13 +163,25 @@ export class ProcedureRenouvellementService {
         statut_demande: 'EN_COURS',
         date_demande: parsedDate,
         date_instruction: new Date(),
+        ...(resolvedDetenteurId
+          ? {
+              detenteurdemande: {
+                create: {
+                  id_detenteur: resolvedDetenteurId,
+                  role_detenteur: 'principal',
+                },
+              },
+            }
+          : {}),
       },
     });
+
+    const generatedCode = buildDemandeCode('RNV', codeType, newDemande.id_demande);
 
     await this.prisma.demandePortail.update({
       where: { id_demande: newDemande.id_demande },
       data: {
-        code_demande: buildDemandeCode('RNV', codeType, newDemande.id_demande),
+        code_demande: generatedCode,
       },
       select: { id_demande: true },
     });
@@ -174,6 +191,19 @@ export class ProcedureRenouvellementService {
         id_demande: newDemande.id_demande,
       },
     });
+
+    try {
+      await this.notificationsService.createAdminNewDemandeNotification({
+        demandeId: newDemande.id_demande,
+        demandeCode: generatedCode,
+        requesterUserId: initialDemande.utilisateurId,
+      });
+    } catch (error) {
+      console.warn(
+        'Failed to create admin notification for renewal demande',
+        error,
+      );
+    }
 
     return {
       original_demande_id: initialDemande?.id_demande,

@@ -37,8 +37,12 @@ import {
   Gavel,
   FileWarning,
   Scale,
+  MessageSquareText,
 } from "lucide-react";
 import styles from "./PermisDetails.module.css";
+import EntityMessagesPanel from "@/components/chat/EntityMessagesPanel";
+import type { Coordinate } from "@/components/arcgismap/ArcgisMap";
+import PerimeterCoordinatesTable from "@/components/perimeter/PerimeterCoordinatesTable";
 
 interface Permis {
   id: string;
@@ -53,6 +57,7 @@ interface Permis {
   dateOctroi: string;
   dateExpiration: string;
   superficie: number;
+  perimetrePoints: Coordinate[];
   substances: { nom: string; principal: boolean }[];
   documents: { nom: string; type: string; date: string; taille: string; statut: string }[];
   historique: { titre: string; date: string; description: string; type: string }[];
@@ -86,6 +91,13 @@ const PermisDetails = () => {
     dateOctroi: "2024-03-15",
     dateExpiration: "2034-03-14",
     superficie: 250,
+    perimetrePoints: [
+      { id: 1, idTitre: 1007, h: 0, x: 512345.123456, y: 2723456.654321, system: "UTM", zone: 31, hemisphere: "N" },
+      { id: 2, idTitre: 1007, h: 0, x: 513002.221134, y: 2722988.554221, system: "UTM", zone: 31, hemisphere: "N" },
+      { id: 3, idTitre: 1007, h: 0, x: 513445.002211, y: 2723380.113004, system: "UTM", zone: 31, hemisphere: "N" },
+      { id: 4, idTitre: 1007, h: 0, x: 513102.771244, y: 2724012.998711, system: "UTM", zone: 31, hemisphere: "N" },
+      { id: 5, idTitre: 1007, h: 0, x: 512598.440003, y: 2724220.221155, system: "UTM", zone: 31, hemisphere: "N" },
+    ],
     substances: [
       { nom: "Or", principal: true },
       { nom: "Argent", principal: false },
@@ -360,6 +372,11 @@ const PermisDetails = () => {
                     </Button>
                   </div>
                 </div>
+                <PerimeterCoordinatesTable
+                  points={permis.perimetrePoints}
+                  emptyMessage="Aucun perimetre defini pour ce permis."
+                  className={styles.coordinatesBlock}
+                />
               </div>
             </div>
 
@@ -621,6 +638,22 @@ const PermisDetails = () => {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+
+            {/* Commentaires / Messages */}
+            <div
+              className={`${styles.infoCard} ${styles.sectionFull}`}
+              style={{ animationDelay: "0.55s" }}
+            >
+              <div className={styles.cardHeader}>
+                <div className={styles.cardIcon}>
+                  <MessageSquareText className="w-5 h-5" />
+                </div>
+                <h2 className={styles.cardTitle}>Commentaires / Messages</h2>
+              </div>
+              <div className={styles.cardContent}>
+                <EntityMessagesPanel entityType="permis" entityCode={permis.code} />
               </div>
             </div>
           </div>

@@ -5,7 +5,7 @@ import { useAuthStore } from '../../src/store/useAuthStore';
 import { FiHome, FiFile, FiMap, FiMapPin, FiSettings, FiUsers, FiChevronRight, 
          FiLogOut, FiChevronLeft, FiActivity, FiBriefcase, FiClipboard, 
          FiDollarSign, FiFileText, FiLayers, FiLock, FiShield, FiChevronDown, 
-         FiMessageSquare,
+         FiMessageSquare, FiBell,
          FiTool} from 'react-icons/fi';
 import styles from './sidebar.module.css';
 import type { ViewType } from '../../src/types/viewtype';
@@ -46,14 +46,12 @@ export default function Sidebar({ currentView, navigateTo }: SidebarProps) {
 
   const menuItems: MenuItem[] = [
     { id: 'dashboard', icon: <FiActivity />, label: 'Tableau de bord', permission: 'dashboard' },
-    { id: 'Permis', icon: <FiFileText />, label: 'permis lists', permission: 'dashboard' },
-    { id: 'Chat', icon: <FiMessageSquare />, label: 'Chat', permission: 'dashboard' },
     { id: 'procedures', icon: <FiClipboard />, label: 'Procédures', permission: 'view_procedures' },
     { id: 'nouvelle-demande', icon: <FiFileText />, label: 'Nouvelle demande', permission: 'create_demande' },
     { id: 'gestion-permis', icon: <FiLayers />, label: 'Gestion des permis', permission: 'manage_permits' },
     { id: 'instruction-cadastrale', icon: <FiMap />, label: 'Instruction cadastrale', permission: 'view_cadastre' },
-    { id: 'carte-sig', icon: <FiMapPin />, label: 'Carte SIG', permission: 'carte_sig' },
-    { id: 'demande-interactive', icon: <FiFileText />, label: 'Demande interactive', permission: 'create_demande' },
+    //{ id: 'carte-sig', icon: <FiMapPin />, label: 'Carte SIG', permission: 'carte_sig' },
+    { id: 'demande-interactive', icon: <FiFileText />, label: 'Verification prealable', permission: 'create_demande' },
     { id: 'generateur-permis', icon: <FiBriefcase />, label: 'Générateur permis', permission: 'generate_permits' },
     { id: 'parametres', icon: <FiSettings />, label: 'Paramètres', permission: 'manage_settings' },
     { 
@@ -62,22 +60,25 @@ export default function Sidebar({ currentView, navigateTo }: SidebarProps) {
       label: 'Admin Panel', 
       permission: 'Admin-Panel',
       subItems: [
+        { id: 'manage_demandes', icon: <FiClipboard />, label: 'Gestion Demandes', permission: 'Admin-Panel' },
+        { id: 'manage_notifications', icon: <FiBell />, label: 'Gestion Notifications', permission: 'Admin-Panel' },
+        { id: 'manage_identifications', icon: <FiShield />, label: 'Identifications Entreprises', permission: 'Admin-Panel' },
+        { id: 'manage_declarations', icon: <FiFileText />, label: 'Declarations', permission: 'Admin-Panel' },
+        //{ id: 'Audit_Logs', icon: <FiFile />, label: 'Audit Logs', permission: 'Audit_Logs' },
+       // { id: 'gestion_experts', icon: <FiUsers />, label: 'gestion experts', permission: 'manage_documents' },
+        { id: 'Configurations', icon: <FiSettings />, label: 'Configurations', permission: 'Admin-Panel' },
         { id: 'manage_users', icon: <FiUsers />, label: 'Manage Users', permission: 'manage_users' },
         { id: 'manage_documents', icon: <FiFile />, label: 'Manage Documents', permission: 'manage_documents' },
-        { id: 'Audit_Logs', icon: <FiFile />, label: 'Audit Logs', permission: 'Audit_Logs' },
-        { id: 'gestion_experts', icon: <FiUsers />, label: 'gestion experts', permission: 'manage_documents' },
-        { id: 'Configurations', icon: <FiSettings />, label: 'Configurations', permission: 'Admin-Panel' },
-
       ]
     },
  
-    { id: 'Payments', icon: <FiDollarSign />, label: 'Paiements', permission: 'Payments' },
+    //{ id: 'Payments', icon: <FiDollarSign />, label: 'Paiements', permission: 'Payments' },
     /*{ id: 'controle_minier', icon: <FiShield />, label: 'Contrôle minier', permission: 'controle_minier' },*/
-    { id: 'Gestion_seances', icon: <FiHome />, label: 'Gestion_seances', permission: 'dashboard' },
+    //{ id: 'Gestion_seances', icon: <FiHome />, label: 'Gestion_seances', permission: 'dashboard' },
     { id: 'parametres', icon: <FiSettings />, label: 'Paramètres', permission: 'manage_settings' },
-    { id: 'mes-demandes', icon: <FiClipboard />, label: 'Mes Demandes', permission: 'dashboard' },
-    { id: 'operateur_mes_demandes', icon: <FiClipboard />, label: 'Mes Demandes', permission: 'operateur' },
-    { id: 'operateur_mes_procedures', icon: <FiClipboard />, label: 'Mes procedures', permission: 'operateur' },
+   // { id: 'mes-demandes', icon: <FiClipboard />, label: 'Mes Demandes', permission: 'dashboard' },
+    //{ id: 'operateur_mes_demandes', icon: <FiClipboard />, label: 'Mes Demandes', permission: 'operateur' },
+    //{ id: 'operateur_mes_procedures', icon: <FiClipboard />, label: 'Mes procedures', permission: 'operateur' },
     { id: 'operateur_nvl_demande', icon: <FiFileText />, label: 'Nouvelle Demande', permission: 'operateur' },
         {
       id: 'outils',
@@ -85,8 +86,10 @@ export default function Sidebar({ currentView, navigateTo }: SidebarProps) {
       label: 'Outils',
       permission: 'dashboard',
       subItems: [
-        { id: 'promotion', icon: <FiDollarSign />, label: 'Promotion', permission: 'dashboard' },
+        //{ id: 'promotion', icon: <FiDollarSign />, label: 'Promotion', permission: 'dashboard' },
         { id: 'convertisseur', icon: <FiMap />, label: 'Convertisseur', permission: 'dashboard' },
+        { id: 'Chat', icon: <FiMessageSquare />, label: 'Chat', permission: 'dashboard' },
+        { id: 'Permis', icon: <FiFileText />, label: 'permis lists', permission: 'dashboard' },
       ],
     },
   ];

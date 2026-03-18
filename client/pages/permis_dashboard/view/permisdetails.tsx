@@ -106,6 +106,31 @@ const getLatestDemandeFromPermis = (permis: any) => {
   return sorted[0] ?? null;
 };
 
+const resolvePermisSuperficie = (permis: any): number | null => {
+  const fromHelper = computePermisSuperficie(permis);
+  if (typeof fromHelper === 'number' && Number.isFinite(fromHelper)) {
+    return fromHelper;
+  }
+
+  const candidates = [
+    permis?.superficie,
+    permis?.superficie_officielle,
+    permis?.surface,
+    permis?.surface_totale,
+    permis?.demande_officielle?.superficie,
+    permis?.demande_officielle?.superficie_ha,
+    permis?.demande_officielle?.surface,
+  ];
+
+  for (const value of candidates) {
+    if (value === null || value === undefined || value === '') continue;
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+
+  return null;
+};
+
 interface DocumentCardProps {
   document: any;
   onView: (document: any) => void;
@@ -4485,7 +4510,11 @@ const getActionButtonClass = (variant: ActionVariant) => {
     );
   }
 
-  const derivedSuperficie = computePermisSuperficie(permis);
+  const derivedSuperficie = resolvePermisSuperficie(permis);
+  const derivedSuperficieLabel =
+    typeof derivedSuperficie === 'number' && Number.isFinite(derivedSuperficie)
+      ? `${derivedSuperficie.toFixed(2)} ha`
+      : 'Non definie';
   const maxRenewalAreaHa =
     typeof derivedSuperficie === 'number' && Number.isFinite(derivedSuperficie) && derivedSuperficie > 0
       ? derivedSuperficie
@@ -5217,7 +5246,7 @@ const getActionButtonClass = (variant: ActionVariant) => {
                         />
                       ) : (
                         <span className={styles.infoValue}>
-                          {derivedSuperficie != null ? `${derivedSuperficie} Ha` : 'Non définie'}
+                          {derivedSuperficieLabel}
                         </span>
                       )}
                     </div>

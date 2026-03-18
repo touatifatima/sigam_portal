@@ -108,7 +108,10 @@ export class CapacitesService {
         update: capacityPayload,
         create: { id_demande, ...capacityPayload },
       });
-    } else if (typeLabel.includes('modification')) {
+    } else if (
+      typeLabel.includes('modification') ||
+      typeLabel.includes('extension')
+    ) {
       await this.prisma.demModification.upsert({
         where: { id_demande },
         update: capacityPayload,

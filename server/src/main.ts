@@ -2,19 +2,36 @@ import * as cookieParser from 'cookie-parser';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import { setDefaultResultOrder } from 'dns';
 import { AppModule } from './app.module';
 import * as fs from 'fs';
 if (!global.crypto?.subtle) {
   const { webcrypto } = require('crypto');
   (global as any).crypto = webcrypto;
 }
+
+try {
+  setDefaultResultOrder('ipv4first');
+} catch {
+  // Older Node versions may not support this API.
+}
+
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.use(cookieParser());
 
   app.enableCors({
-    origin: ['http://localhost:3002','http://localhost:5174','http://localhost:5173'],
+    origin: [
+      'http://localhost:3002',
+      'http://localhost:5174',
+      'http://localhost:5173',
+      'https://pom.anam.dz',
+      'http://pom.anam.dz',
+      'http://10.16.220.140:8080',
+      'http://pom.anam.dz:8080',
+      'https://pom.anam.dz:8080',
+    ],
     credentials: true,
     exposedHeaders: ['set-cookie', 'authorization'],
     allowedHeaders: [

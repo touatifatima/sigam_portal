@@ -24,8 +24,8 @@ import {
 import axios from 'axios';
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
@@ -77,7 +77,8 @@ type DashboardStats = {
 
 type EvolutionData = {
   year: string;
-  value: number;
+  permis: number;
+  demandes: number;
 };
 
 type TypeDistribution = {
@@ -217,6 +218,15 @@ export default function PermisDashboard() {
   const [apiSurfaceStats, setApiSurfaceStats] = useState<{ total: number; avg: number; max: number } | null>(null);
   const [topTitulaires, setTopTitulaires] = useState<{ name: string; count: number }[]>([]);
   const [topSubstances, setTopSubstances] = useState<TopSubstance[]>([]);
+  const evolutionTrend = useMemo(() => {
+    if (evolutionData.length < 2) return null;
+    const current = evolutionData[evolutionData.length - 1];
+    const previous = evolutionData[evolutionData.length - 2];
+    return {
+      permisDelta: current.permis - previous.permis,
+      demandesDelta: current.demandes - previous.demandes,
+    };
+  }, [evolutionData]);
   // Surfaces et titulaires (vision operationnelle)
   
   const baseDetenteurRanking = useMemo(() => {
@@ -519,7 +529,47 @@ const expiringTimeline = useMemo(() => {
         expires: statsResponse.data?.expires ?? 0,
         expiringSoon: expSoonList.length || statsResponse.data?.expiringSoon || 0,
       });
-      setEvolutionData(evolutionResponse.data);
+      const rawPermisEvolution = Array.isArray(evolutionResponse.data) ? evolutionResponse.data : [];
+      const normalizedPermisEvolution = rawPermisEvolution
+        .map((item: any) => ({
+          year: String(item?.year ?? ''),
+          value: Number(item?.value ?? 0),
+        }))
+        .filter((item) => item.year.length > 0 && Number.isFinite(item.value));
+
+      const evolutionYears = normalizedPermisEvolution.length
+        ? normalizedPermisEvolution
+            .map((item) => item.year)
+            .sort((a, b) => Number(a) - Number(b))
+        : Array.from({ length: 6 }, (_, i) => String(new Date().getFullYear() - 5 + i));
+
+      const demandesEvolutionResponses = await Promise.all(
+        evolutionYears.map((year) =>
+          axios
+            .get(`${apiURL}/demandes_dashboard/stats`, {
+              params: {
+                fromDate: `${year}-01-01T00:00:00.000Z`,
+                toDate: `${year}-12-31T23:59:59.999Z`,
+              },
+              withCredentials: true,
+            })
+            .catch(() => ({ data: { total: 0 } })),
+        ),
+      );
+
+      const permisByYear = new Map(
+        normalizedPermisEvolution.map((item) => [item.year, item.value]),
+      );
+
+      const mergedEvolutionData: EvolutionData[] = evolutionYears.map((year, index) => {
+        const demandesTotal = Number((demandesEvolutionResponses[index] as any)?.data?.total ?? 0);
+        return {
+          year,
+          permis: Number(permisByYear.get(year) ?? 0),
+          demandes: Number.isFinite(demandesTotal) ? demandesTotal : 0,
+        };
+      });
+      setEvolutionData(mergedEvolutionData);
       // Normalize pie data to display code_type only
       const palette = ['#3B82F6', '#22D3EE', '#F59E0B', '#10B981', '#6366F1', '#EC4899', '#8B5CF6', '#14B8A6'];
       const normalizedTypes = (typesResponse.data ?? []).map((t: any, idx: number) => ({
@@ -1264,7 +1314,7 @@ const expiringTimeline = useMemo(() => {
                 {/* Dashboard Header */}
                 <div className={styles.header}>
                   <div className={styles.headerTitle}>
-                    <h1>Tableau de Bord SIGAM</h1>
+                    <h1>Tableau de Bord POM</h1>
                     <p>Bienvenue, {auth?.username || 'Utilisateur'}</p>
                   </div>
                   <div className={styles.headerActions}>
@@ -1361,39 +1411,64 @@ const expiringTimeline = useMemo(() => {
                 <div className={styles.chartsGrid}>
                   <div className={styles.chartCard}>
                     <div className={styles.chartHeader}>
-                      <h4 className={styles.chartTitle}>Evolution des permis</h4>
+                      <h4 className={styles.chartTitle}>Evolution des demandes & permis</h4>
                       <div className={styles.chartTrend}>
                         <FiTrendingUp />
                         <span>
-                          {evolutionData.length > 1 && `${((evolutionData[evolutionData.length - 1].value - evolutionData[evolutionData.length - 2].value) > 0 ? '+' : '')}${evolutionData[evolutionData.length - 1].value - evolutionData[evolutionData.length - 2].value} vs. derniere annee`}
+                          {evolutionTrend
+                            ? `Permis ${evolutionTrend.permisDelta >= 0 ? '+' : ''}${evolutionTrend.permisDelta} • Demandes ${evolutionTrend.demandesDelta >= 0 ? '+' : ''}${evolutionTrend.demandesDelta} vs. derniere annee`
+                            : 'Donnees annuelles en cours de consolidation'}
                         </span>
                       </div>
                     </div>
+                    <div className={styles.chartSeriesLegend}>
+                      <span className={`${styles.seriesPill} ${styles.seriesPermis}`}>Permis</span>
+                      <span className={`${styles.seriesPill} ${styles.seriesDemandes}`}>Demandes</span>
+                    </div>
                     <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={evolutionData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                      <AreaChart data={evolutionData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                         <defs>
-                          <linearGradient id="permitsLineGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#2563eb" stopOpacity={0.9} />
-                            <stop offset="100%" stopColor="#22d3ee" stopOpacity={0.3} />
+                          <linearGradient id="permitsAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#a84775" stopOpacity={0.32} />
+                            <stop offset="100%" stopColor="#a84775" stopOpacity={0.04} />
+                          </linearGradient>
+                          <linearGradient id="demandesAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#0ea5e9" stopOpacity={0.3} />
+                            <stop offset="100%" stopColor="#0ea5e9" stopOpacity={0.03} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5d9e2" />
                         <XAxis dataKey="year" tick={{ fill: '#64748b' }} axisLine={{ stroke: '#cbd5e1' }} />
                         <YAxis tick={{ fill: '#64748b' }} axisLine={{ stroke: '#cbd5e1' }} tickFormatter={(value) => value.toLocaleString()} />
                         <Tooltip
-                          formatter={(value) => [value.toLocaleString(), 'Nombre de permis']}
+                          formatter={(value, name) => [
+                            Number(value || 0).toLocaleString('fr-FR'),
+                            name === 'permis' ? 'Permis' : 'Demandes',
+                          ]}
                           labelFormatter={(label) => `Annee: ${label}`}
                           contentStyle={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}
                         />
-                        <Line
+                        <Area
                           type="monotone"
-                          dataKey="value"
-                          stroke="url(#permitsLineGradient)"
-                          strokeWidth={3}
-                          dot={{ r: 6, fill: '#2563eb' }}
-                          activeDot={{ r: 8, stroke: '#1D4ED8', strokeWidth: 2 }}
+                          dataKey="permis"
+                          name="permis"
+                          stroke="#a84775"
+                          fill="url(#permitsAreaGradient)"
+                          strokeWidth={2.6}
+                          dot={{ r: 4, fill: '#a84775', stroke: '#fff', strokeWidth: 1.5 }}
+                          activeDot={{ r: 6, fill: '#a84775', stroke: '#fff', strokeWidth: 2 }}
                         />
-                      </LineChart>
+                        <Area
+                          type="monotone"
+                          dataKey="demandes"
+                          name="demandes"
+                          stroke="#0ea5e9"
+                          fill="url(#demandesAreaGradient)"
+                          strokeWidth={2.6}
+                          dot={{ r: 4, fill: '#0ea5e9', stroke: '#fff', strokeWidth: 1.5 }}
+                          activeDot={{ r: 6, fill: '#0ea5e9', stroke: '#fff', strokeWidth: 2 }}
+                        />
+                      </AreaChart>
                     </ResponsiveContainer>
                   </div>
 

@@ -1,13 +1,11 @@
-// notifications.module.ts
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { Global, Module } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
-import { Notification } from './notification.entity';
-import { Expert } from './expertminier';
+import { PrismaModule } from 'src/prisma/prisma.module';
+
+@Global()
 @Module({
-  imports: [TypeOrmModule.forFeature([Notification,Expert
-])],
+  imports: [PrismaModule],
   providers: [NotificationsService],
   controllers: [NotificationsController],
   exports: [NotificationsService],

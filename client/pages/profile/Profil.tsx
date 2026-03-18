@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { InvestorLayout } from "@/components/investor/InvestorLayout";
@@ -41,6 +41,10 @@ const Profil = () => {
   const [entrepriseProfile, setEntrepriseProfile] = useState<EntrepriseProfile | null>(null);
   const [isLoadingEntreprise, setIsLoadingEntreprise] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const profilePhotoStorageKey = `sigam_profile_photo_${auth.email || auth.username || "user"}`;
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -76,12 +80,62 @@ const Profil = () => {
     fetchEntreprise();
   }, [apiURL, auth.isEntrepriseVerified, isLoaded]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem(profilePhotoStorageKey);
+    if (saved) {
+      setProfilePhoto(saved);
+    }
+  }, [profilePhotoStorageKey]);
+
   const handleEditBlocked = () => {
     toast({
       title: "Modification indisponible",
       description:
         "Pour modifier ces informations, veuillez soumettre une demande specifique (renonciation, amodiation, etc.).",
     });
+  };
+
+  const handleSelectPhoto = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Fichier invalide",
+        description: "Veuillez choisir une image (PNG, JPG, WEBP...).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "Image trop lourde",
+        description: "La taille maximale autorisee est 2 Mo.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : null;
+      if (!result) return;
+      setProfilePhoto(result);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(profilePhotoStorageKey, result);
+      }
+      toast({
+        title: "Photo mise a jour",
+        description: "Votre photo de profil a ete enregistree.",
+      });
+    };
+    reader.readAsDataURL(file);
   };
 
   const formatDate = (dateString?: string | null) => {
@@ -142,7 +196,11 @@ const Profil = () => {
               <div className={styles.profileSection}>
                 <div className={styles.avatarContainer}>
                   <div className={styles.avatar}>
-                    <User className="w-12 h-12" />
+                    {profilePhoto ? (
+                      <img src={profilePhoto} alt="Photo de profil" className={styles.avatarImage} />
+                    ) : (
+                      <User className="w-12 h-12" />
+                    )}
                   </div>
                   <div className={styles.avatarInfo}>
                     <h3 className={styles.userName}>
@@ -152,7 +210,14 @@ const Profil = () => {
                     </h3>
                     <p className={styles.userEmail}>{auth.email || "email@exemple.com"}</p>
                   </div>
-                  <Button variant="outline" size="sm" className={styles.editButton} onClick={handleEditBlocked}>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoChange}
+                    className={styles.hiddenFileInput}
+                  />
+                  <Button variant="outline" size="sm" className={styles.editButton} onClick={handleSelectPhoto}>
                     <Image className="w-4 h-4 mr-2" />
                     Modifier la photo
                   </Button>

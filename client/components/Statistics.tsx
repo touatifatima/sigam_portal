@@ -1,6 +1,7 @@
-import { useEffect, useState, useRef } from "react";
-import { FileCheck, Factory, TrendingUp, Search, Gem } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Factory, FileCheck, Gem, Search, TrendingUp } from "lucide-react";
 import styles from "./Statistics.module.css";
+import { ScrollReveal } from "./ScrollReveal";
 
 interface StatItemProps {
   icon: React.ReactNode;
@@ -9,6 +10,77 @@ interface StatItemProps {
   label: string;
   delay: number;
 }
+
+type DashboardStatsResponse = {
+  total?: number;
+  actifs?: number;
+  enCours?: number;
+  expires?: number;
+  expiringSoon?: number;
+};
+
+type StatConfig = {
+  key: string;
+  icon: React.ReactNode;
+  value: number;
+  suffix?: string;
+  label: string;
+  delay: number;
+};
+
+const toSafeNumber = (value: unknown, fallback = 0): number => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+};
+
+const buildDefaultStats = (): StatConfig[] => [
+  {
+    key: "total",
+    icon: <FileCheck className="h-8 w-8" />,
+    value: 0,
+    label: "Permis miniers (total)",
+    delay: 0,
+  },
+  {
+    key: "actifs",
+    icon: <Factory className="h-8 w-8" />,
+    value: 0,
+    label: "Permis en vigueur",
+    delay: 100,
+  },
+  {
+    key: "encours",
+    icon: <TrendingUp className="h-8 w-8" />,
+    value: 0,
+    label: "Procedures en cours",
+    delay: 200,
+  },
+  {
+    key: "expires",
+    icon: <Search className="h-8 w-8" />,
+    value: 0,
+    label: "Permis expires",
+    delay: 300,
+  },
+  {
+    key: "expiringSoon",
+    icon: <Gem className="h-8 w-8" />,
+    value: 0,
+    label: "Expiration <= 6 mois",
+    delay: 400,
+  },
+];
+
+const mapStatsFromApi = (data: DashboardStatsResponse): StatConfig[] => {
+  const defaults = buildDefaultStats();
+  return [
+    { ...defaults[0], value: toSafeNumber(data?.total) },
+    { ...defaults[1], value: toSafeNumber(data?.actifs) },
+    { ...defaults[2], value: toSafeNumber(data?.enCours) },
+    { ...defaults[3], value: toSafeNumber(data?.expires) },
+    { ...defaults[4], value: toSafeNumber(data?.expiringSoon) },
+  ];
+};
 
 const StatItem = ({ icon, value, suffix = "", label, delay }: StatItemProps) => {
   const [count, setCount] = useState(0);
@@ -22,7 +94,7 @@ const StatItem = ({ icon, value, suffix = "", label, delay }: StatItemProps) => 
           setIsVisible(true);
         }
       },
-      { threshold: 0.3 }
+      { threshold: 0.3 },
     );
 
     if (ref.current) {
@@ -60,10 +132,7 @@ const StatItem = ({ icon, value, suffix = "", label, delay }: StatItemProps) => 
   return (
     <div
       ref={ref}
-      className={`${styles.statItem} ${
-        isVisible ? styles.statItemVisible : styles.statItemHidden
-      }`}
-      style={{ transitionDelay: `${delay}ms` }}
+      className={styles.statItem}
     >
       <div className={styles.statCard}>
         <div className={styles.iconWrapper}>
@@ -80,41 +149,59 @@ const StatItem = ({ icon, value, suffix = "", label, delay }: StatItemProps) => 
 };
 
 export const Statistics = () => {
-  const stats = [
-    { icon: <FileCheck className="h-8 w-8" />, value: 2380, label: "Licences minières", delay: 0 },
-    { icon: <Factory className="h-8 w-8" />, value: 2873, label: "Sites miniers", delay: 100 },
-    { icon: <TrendingUp className="h-8 w-8" />, value: 89, suffix: " Mrd", label: "Valeur des investissements", delay: 200 },
-    { icon: <Search className="h-8 w-8" />, value: 608, label: "Licences d'exploration", delay: 300 },
-    { icon: <Gem className="h-8 w-8" />, value: 10, label: "Minéraux stratégiques", delay: 400 },
-  ];
+  const [stats, setStats] = useState<StatConfig[]>(() => buildDefaultStats());
+
+  useEffect(() => {
+    const API_BASE =
+      process.env.NEXT_PUBLIC_API_URL ||
+      ((typeof import.meta !== "undefined" &&
+        (import.meta as any)?.env?.VITE_API_URL) as string) ||
+      "";
+
+    const url = `${API_BASE}/api/dashboard/stats`;
+    const controller = new AbortController();
+
+    const loadStats = async () => {
+      try {
+        const res = await fetch(url, { signal: controller.signal });
+        if (!res.ok) return;
+        const data = (await res.json()) as DashboardStatsResponse;
+        setStats(mapStatsFromApi(data));
+      } catch {
+        // Keep zero values if backend is unavailable.
+      }
+    };
+
+    loadStats();
+    return () => controller.abort();
+  }, []);
 
   return (
     <section id="stats" className={styles.section}>
-      {/* Background Pattern */}
       <div className={styles.backgroundPattern}>
         <div className={styles.dotPattern} />
       </div>
 
       <div className={`container ${styles.container}`}>
-        {/* Section Header */}
-        <div className={styles.header}>
-          <span className={styles.label}>
-            Le secteur minier en chiffres
-          </span>
-          <h2 className={styles.title}>
-            Des solutions innovantes pour{" "}
-            <span className={styles.titleHighlight}>votre investissement</span>
-          </h2>
-          <p className={styles.description}>
-            Nous contribuons à accélérer vos procédures d'obtention de licences minières 
-            grâce à des solutions numériques fluides et fiables.
-          </p>
-        </div>
+        <ScrollReveal delay={60}>
+          <div className={styles.header}>
+            <span className={styles.label}>Le secteur minier en chiffres</span>
+            <h2 className={styles.title}>
+              Des solutions innovantes pour{" "}
+              <span className={styles.titleHighlight}>votre investissement</span>
+            </h2>
+            <p className={styles.description}>
+              Nous contribuons a accelerer vos procedures d obtention de permis
+              miniers grace a des solutions numeriques fluides et fiables.
+            </p>
+          </div>
+        </ScrollReveal>
 
-        {/* Stats Grid */}
         <div className={styles.grid}>
-          {stats.map((stat) => (
-            <StatItem key={stat.label} {...stat} />
+          {stats.map(({ key, delay, ...stat }) => (
+            <ScrollReveal key={key} delay={120 + delay}>
+              <StatItem {...stat} delay={delay} />
+            </ScrollReveal>
           ))}
         </div>
       </div>

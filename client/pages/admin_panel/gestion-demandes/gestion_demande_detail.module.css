@@ -1,0 +1,673 @@
+.appContainer {
+  --anam-primary: #8b3a62;
+  --anam-primary-dark: #6f2f4f;
+  --anam-accent: #0f766e;
+  --anam-accent-soft: #e6f7f5;
+  --anam-ink: #3f2d43;
+  --anam-border: #e7d7e2;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(139, 58, 98, 0.12) 0%, transparent 40%),
+    radial-gradient(circle at 100% 0%, rgba(15, 118, 110, 0.08) 0%, transparent 38%),
+    linear-gradient(180deg, #f8f4f8 0%, #f3f6fb 55%, #f6f8fb 100%);
+}
+
+.appContent {
+  display: flex;
+  min-height: calc(100vh - 60px);
+}
+
+.mainContent {
+  flex: 1;
+  min-width: 0;
+  padding: 1.2rem 1.5rem 2rem;
+  display: grid;
+  gap: 0.95rem;
+}
+
+.loadingScreen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  color: #5e4460;
+}
+
+.hero {
+  border: 1px solid rgba(139, 58, 98, 0.2);
+  border-radius: 18px;
+  background: linear-gradient(135deg, var(--anam-primary) 0%, var(--anam-primary-dark) 100%);
+  box-shadow: 0 14px 28px rgba(57, 23, 42, 0.2);
+  padding: 1rem 1.1rem 1.1rem;
+  color: #fff;
+}
+
+.heroTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.hero h1 {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+
+.hero p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.heroMeta {
+  margin-top: 0.7rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.metaBadge {
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-weight: 700;
+}
+
+.backBtn {
+  background: rgba(255, 255, 255, 0.98);
+  color: var(--anam-primary-dark);
+  border-color: rgba(255, 255, 255, 0.35);
+  font-weight: 700;
+}
+
+.heroActions {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.validateBtn,
+.rejectBtn,
+.complementBtn {
+  height: 36px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  gap: 0.35rem;
+}
+
+.validateBtn {
+  background: linear-gradient(135deg, #10b981 0%, #16a34a 100%);
+  border: 1px solid #0f9f67;
+  color: #fff;
+}
+
+.rejectBtn {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  border: 1px solid #c21f2c;
+  color: #fff;
+}
+
+.complementBtn {
+  background: #fff;
+  border: 1px solid rgba(15, 118, 110, 0.34);
+  color: var(--anam-accent);
+}
+
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 12px;
+  padding: 0.68rem 0.8rem;
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.alertError {
+  background: #fff2f2;
+  color: #b42318;
+  border: 1px solid #f1c2c2;
+}
+
+.alertSuccess {
+  background: #eefcf4;
+  color: #0f8f57;
+  border: 1px solid #bde7cd;
+}
+
+.cardsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.95rem;
+}
+
+.card {
+  border-radius: 15px;
+  border: 1px solid var(--anam-border);
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(54, 24, 45, 0.08);
+  padding: 0.9rem 1rem;
+}
+
+.card h3 {
+  margin: 0 0 0.7rem;
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: var(--anam-ink);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem 0.8rem;
+}
+
+.infoGrid div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.infoGrid strong {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #7a6580;
+}
+
+.infoGrid span {
+  font-size: 0.88rem;
+  color: #3f2d43;
+  font-weight: 600;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.55rem;
+}
+
+.sectionHeader span {
+  color: #6f6a78;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.mapWrap {
+  position: relative;
+  border: 1px solid #e8e2ea;
+  border-radius: 12px;
+  overflow: hidden;
+  height: 360px;
+  background: #fbfbfd;
+}
+
+.mapWrap > div {
+  width: 100%;
+  height: 100%;
+}
+
+.mapCanvas {
+  position: absolute;
+  inset: 0;
+}
+
+.mapWrap :global(.map-toolbar),
+.mapWrap :global(.layer-control-panel),
+.mapWrap :global(.tools-panel),
+.mapWrap :global(.selection-panel),
+.mapWrap :global(.map-legend) {
+  display: none !important;
+}
+
+.coordinatesBlock {
+  margin-top: 0.8rem;
+}
+
+.simpleLegend {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #e8e2ea;
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #3f2d43;
+  z-index: 3;
+}
+
+.legendSwatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: rgba(96, 165, 250, 0.36);
+  border: 1px solid rgba(59, 130, 246, 1);
+}
+
+.mapPlaceholder {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  gap: 0.4rem;
+  text-align: center;
+  color: #7a6580;
+}
+
+.mapPlaceholder svg {
+  font-size: 1.8rem;
+  color: var(--anam-primary);
+}
+
+.splitGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.95rem;
+}
+
+.muted {
+  margin: 0;
+  color: #7c7488;
+}
+
+.timeline {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.timelineRow {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  padding: 0.48rem 0.52rem;
+  border-radius: 10px;
+  background: #f9f5f9;
+  border: 1px solid #eadce8;
+}
+
+.timelineRow p {
+  margin: 0;
+  color: #3f2d43;
+  font-weight: 700;
+}
+
+.timelineRow small {
+  color: #7b7288;
+  font-size: 0.76rem;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  margin-top: 0.3rem;
+  flex-shrink: 0;
+}
+
+.done {
+  background: #16a34a;
+}
+
+.active {
+  background: #f59e0b;
+}
+
+.pending {
+  background: #c4b8c8;
+}
+
+.docsList {
+  display: grid;
+  gap: 0.52rem;
+}
+
+.docRow {
+  border: 1px solid #eadce8;
+  border-radius: 10px;
+  padding: 0.52rem 0.6rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.docRow p {
+  margin: 0;
+  color: #3f2d43;
+  font-weight: 700;
+}
+
+.docRow small {
+  color: #7a7188;
+}
+
+.docActions {
+  display: flex;
+  align-items: center;
+  gap: 0.38rem;
+  flex-wrap: wrap;
+}
+
+.docStatus {
+  background: #f4edf3;
+  color: #7f3157;
+  border: 1px solid #e7ccdb;
+  font-weight: 700;
+}
+
+.paymentList {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.paymentRow {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr 1fr;
+  gap: 0.45rem;
+  align-items: center;
+  border: 1px solid #e9dbe7;
+  border-radius: 10px;
+  padding: 0.52rem 0.58rem;
+  background: #fcfbfd;
+  color: #3f2d43;
+  font-weight: 600;
+  font-size: 0.84rem;
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(28, 19, 34, 0.42);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  z-index: 1000;
+}
+
+.modalCard {
+  width: min(560px, 100%);
+  border-radius: 14px;
+  border: 1px solid #e4d4e0;
+  background: #fff;
+  box-shadow: 0 20px 44px rgba(38, 21, 34, 0.22);
+  padding: 1rem;
+}
+
+.modalCard h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #4a314c;
+}
+
+.modalCard p {
+  margin: 0.35rem 0 0.7rem;
+  color: #786d84;
+  font-size: 0.87rem;
+}
+
+.modalCard textarea {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid #ddced9;
+  padding: 0.65rem 0.75rem;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: #403047;
+  background: #fdfbfe;
+}
+
+.modalCard textarea:focus {
+  outline: none;
+  border-color: rgba(139, 58, 98, 0.55);
+  box-shadow: 0 0 0 3px rgba(139, 58, 98, 0.12);
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+@media (max-width: 1240px) {
+  .cardsGrid,
+  .splitGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .mainContent {
+    padding: 1rem 0.95rem 1.3rem;
+  }
+
+  .heroTop {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .heroActions {
+    justify-content: stretch;
+  }
+
+  .heroActions button {
+    flex: 1;
+  }
+
+  .paymentRow {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+
+  .docRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Premium Admin Detail Refresh */
+.appContainer {
+  position: relative;
+  background:
+    radial-gradient(circle at 8% -10%, rgba(139, 58, 98, 0.2) 0%, rgba(139, 58, 98, 0) 46%),
+    radial-gradient(circle at 104% 2%, rgba(15, 118, 110, 0.16) 0%, rgba(15, 118, 110, 0) 42%),
+    linear-gradient(180deg, #f7f2f8 0%, #f2f6fb 46%, #f4f7fb 100%);
+}
+
+.mainContent {
+  width: min(1720px, 100%);
+  margin: 0 auto;
+  gap: 1.05rem;
+  padding: 1.35rem 1.65rem 2.4rem;
+}
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(124, 46, 83, 0.36);
+  border-radius: 22px;
+  background:
+    linear-gradient(125deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 42%),
+    linear-gradient(135deg, #8b3a62 0%, #6f2f4f 52%, #51263b 100%);
+  box-shadow:
+    0 20px 38px rgba(57, 23, 42, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  padding: 1.12rem 1.22rem 1.22rem;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: -60% auto auto 52%;
+  width: 420px;
+  height: 420px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 68%);
+  pointer-events: none;
+}
+
+.hero h1 {
+  margin-top: 0.82rem;
+  font-size: clamp(1.48rem, 1.1rem + 1.1vw, 2.02rem);
+  letter-spacing: 0.01em;
+}
+
+.hero p {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.94rem;
+}
+
+.heroMeta {
+  margin-top: 0.76rem;
+  gap: 0.52rem;
+}
+
+.metaBadge {
+  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.backBtn {
+  border-radius: 12px;
+  box-shadow: 0 7px 18px rgba(49, 18, 36, 0.26);
+}
+
+.validateBtn,
+.rejectBtn,
+.complementBtn {
+  border-radius: 11px;
+  min-height: 37px;
+  box-shadow: 0 10px 18px rgba(35, 13, 27, 0.24);
+  transition: transform 0.16s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.validateBtn:hover,
+.rejectBtn:hover,
+.complementBtn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+
+.card {
+  border-radius: 17px;
+  border: 1px solid #eadce8;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(253, 250, 255, 0.98) 100%);
+  box-shadow:
+    0 14px 30px rgba(54, 24, 45, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.78) inset;
+  padding: 1rem 1.05rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  border-color: #dbc4d3;
+  box-shadow: 0 18px 36px rgba(54, 24, 45, 0.12);
+}
+
+.card h3 {
+  margin-bottom: 0.76rem;
+  font-size: 1.02rem;
+}
+
+.infoGrid {
+  gap: 0.62rem 0.88rem;
+}
+
+.infoGrid strong {
+  font-size: 0.72rem;
+  color: #876c8a;
+  letter-spacing: 0.04em;
+}
+
+.infoGrid span {
+  font-size: 0.9rem;
+}
+
+.sectionHeader {
+  margin-bottom: 0.65rem;
+}
+
+.sectionHeader span {
+  border: 1px solid #e4d5e0;
+  background: #fdf6fb;
+  border-radius: 999px;
+  padding: 0.18rem 0.56rem;
+  color: #7a4f6c;
+}
+
+.mapWrap {
+  border-radius: 14px;
+  border-color: #e3d8e5;
+  background: linear-gradient(180deg, #faf9fd 0%, #f6f8fb 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.75);
+}
+
+.simpleLegend {
+  border-color: #ddd1df;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 8px 18px rgba(43, 23, 37, 0.14);
+}
+
+.timelineRow {
+  background: #fcf8fc;
+  border: 1px solid #ecddea;
+  border-left: 4px solid #d6b8cb;
+  padding: 0.54rem 0.62rem;
+}
+
+.docRow {
+  border-radius: 11px;
+  background: linear-gradient(180deg, #fff 0%, #fcf9fc 100%);
+  border-color: #e9d9e6;
+}
+
+.docStatus {
+  border-radius: 999px;
+}
+
+.paymentRow {
+  border-color: #e8d9e6;
+  border-radius: 11px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbf8fc 100%);
+}
+
+.modalCard {
+  border-radius: 16px;
+  border-color: #e7d7e2;
+  background: linear-gradient(180deg, #fff 0%, #fdfafe 100%);
+}
+
+.modalCard textarea {
+  background: #fff;
+}
+
+@media (max-width: 900px) {
+  .mainContent {
+    padding: 1.02rem 0.9rem 1.45rem;
+  }
+
+  .hero {
+    border-radius: 18px;
+    padding: 0.95rem 0.95rem 1rem;
+  }
+
+  .heroActions button {
+    min-height: 36px;
+  }
+}

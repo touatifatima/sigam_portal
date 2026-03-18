@@ -127,8 +127,8 @@
 .formGroup1 select:focus,
 .formGroup1 textarea:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
+  border-color: #8b3a62;
+  box-shadow: 0 0 0 1px rgba(139, 58, 98, 0.2);
   background-color: #ffffff;
 }
 
@@ -173,8 +173,8 @@
 .formGroup1 select:focus,
 .formGroup1 textarea:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
+  border-color: #8b3a62;
+  box-shadow: 0 0 0 1px rgba(139, 58, 98, 0.2);
   background-color: #ffffff;
 }
 
@@ -205,7 +205,7 @@
 }
 
 .primaryButton {
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  background: linear-gradient(135deg, #8b3a62, #a84968);
   color: #fff;
 }
 
@@ -226,7 +226,7 @@
 }
 
 .primaryButton:hover {
-  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  background: linear-gradient(135deg, #8b3a62, #a84968);
 }
 
 .secondaryButton:hover {
@@ -269,9 +269,9 @@
 }
 
 .itemCardSelected {
-  border-color: #2563eb;
+  border-color: #8b3a62;
   background-color: #eff6ff;
-  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 4px 10px rgba(139, 58, 98, 0.2);
   transform: translateY(-1px);
 }
 
@@ -351,8 +351,8 @@
 
 .combinaisonSelectRow select:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
+  border-color: #8b3a62;
+  box-shadow: 0 0 0 1px rgba(139, 58, 98, 0.2);
   background-color: #ffffff;
 }
 
@@ -374,8 +374,8 @@
 
 .combinaisonSearchInput:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
+  border-color: #8b3a62;
+  box-shadow: 0 0 0 1px rgba(139, 58, 98, 0.2);
   background-color: #ffffff;
 }
 

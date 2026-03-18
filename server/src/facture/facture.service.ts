@@ -43,9 +43,9 @@ export class FactureService {
       typeProcedure: demande.typeProcedure?.libelle ?? null,
     });
 
-    if (!this.isInitialDemande(demande)) {
-      console.warn('[Facture] demande not initiale', { id_demande });
-      throw new BadRequestException('Demande non initiale');
+    if (!this.isFacturableDemande(demande)) {
+      console.warn('[Facture] demande non facturable', { id_demande });
+      throw new BadRequestException('Demande non facturable');
     }
 
     let facture = await this.prisma.facture.findUnique({
@@ -90,7 +90,7 @@ export class FactureService {
 
       return {
         facture,
-        lignes: this.buildLines(),
+        lignes: this.buildLines(demande),
       };
     }
 
@@ -127,7 +127,7 @@ export class FactureService {
 
     return {
       facture,
-      lignes: this.buildLines(),
+      lignes: this.buildLines(demande),
     };
   }
 
@@ -141,8 +141,8 @@ export class FactureService {
       throw new NotFoundException('Demande introuvable');
     }
 
-    if (!this.isInitialDemande(demande)) {
-      throw new BadRequestException('Demande non initiale');
+    if (!this.isFacturableDemande(demande)) {
+      throw new BadRequestException('Demande non facturable');
     }
 
     const facture = await this.prisma.facture.findUnique({
@@ -159,7 +159,7 @@ export class FactureService {
 
     return {
       facture,
-      lignes: this.buildLines(),
+      lignes: this.buildLines(demande),
     };
   }
 
@@ -255,8 +255,8 @@ export class FactureService {
       throw new NotFoundException('Demande introuvable');
     }
 
-    if (!this.isInitialDemande(facture.demande)) {
-      throw new BadRequestException('Demande non initiale');
+    if (!this.isFacturableDemande(facture.demande)) {
+      throw new BadRequestException('Demande non facturable');
     }
 
     let numeroFacture = facture.numero_facture;
@@ -652,7 +652,7 @@ export class FactureService {
 
     y -= headerHeight + 6;
 
-    const lines = this.buildLines();
+    const lines = this.buildLines(demande);
     for (const row of lines) {
       const posteLines = wrapText(row.poste, col1 - 12, font, valueSize);
       const baseLines = wrapText(row.base, col2 - 12, font, valueSize);
@@ -741,19 +741,55 @@ export class FactureService {
     return { buffer, filename };
   }
 
-  private isInitialDemande(demande: DemandeWithType) {
+  private isFacturableDemande(demande: DemandeWithType) {
     if (demande.demInitial) {
       return true;
     }
-    const label = demande.typeProcedure?.libelle?.toLowerCase() ?? '';
-    return label.includes('demande');
+    const label = (demande.typeProcedure?.libelle ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+
+    const allowedKeywords = [
+      'demande',
+      'renouvellement',
+      'extension',
+      'extention',
+      'transfert',
+      'cession',
+      'fusion',
+      'modification',
+      'substitution',
+    ];
+
+    return allowedKeywords.some((keyword) => label.includes(keyword));
   }
 
-  private buildLines(): FactureLine[] {
+  private buildLines(
+    demande?: { typeProcedure?: { libelle?: string | null } | null } | null,
+  ): FactureLine[] {
+    const typeLabel = (demande?.typeProcedure?.libelle ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+
+    let procedureLabel = 'nouvelle demande de permis';
+    if (typeLabel.includes('renouvellement')) procedureLabel = 'renouvellement de permis';
+    else if (typeLabel.includes('cession')) procedureLabel = 'cession de permis';
+    else if (typeLabel.includes('transfert')) procedureLabel = 'transfert de permis';
+    else if (typeLabel.includes('fusion')) procedureLabel = 'fusion de permis';
+    else if (typeLabel.includes('extension') || typeLabel.includes('extention')) {
+      if (typeLabel.includes('substance')) procedureLabel = 'extension de substances';
+      else procedureLabel = 'extension de perimetre';
+    } else if (typeLabel.includes('modification')) procedureLabel = 'modification de permis';
+
+    const poste = `Frais d'inscription et d'etude de dossier (${procedureLabel})`;
+    const base = `Montant fixe pour ${procedureLabel}`;
+
     return [
       {
-        poste: "Frais d'inscription et d'étude de dossier",
-        base: 'Montant fixe pour nouvelle demande de permis',
+        poste,
+        base,
         montant: FIXED_AMOUNT,
         isTotal: true,
       },

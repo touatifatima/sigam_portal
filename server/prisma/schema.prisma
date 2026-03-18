@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
 }
 
@@ -9,35 +9,39 @@ datasource db {
 }
 
 model UtilisateurPortail {
-  id                    Int                     @id @default(autoincrement())
-  idInterne             Int?                    @unique
-  roleId                Int?
-  email                 String                  @unique
-  telephone             String?                 @db.VarChar(20)
-  modifieLe             DateTime                @updatedAt
-  deletedAt             DateTime?
-  Prenom                String
-  createdAt             DateTime                @default(now())
-  nom                   String
-  password              String
-  username              String                  @unique
-  detenteurId           Int?
-  entreprise_verified   Boolean                 @default(false)
-  auditLogs             AuditLogPortail[]
-  conversationsInitiees Conversation[]          @relation("ConversationUser1")
-  conversationsRecues   Conversation[]          @relation("ConversationUser2")
-  demandes              demandePortail[]
-  messagesRecus         MessagePortail[]        @relation("ReceivedMessages")
-  messagesEnvoyes       MessagePortail[]        @relation("SentMessages")
-  paiements             Paiement[]
-  sessions              SessionPortail[]
-  userGroups            UserGroup[]
-  detenteur             DetenteurMoralePortail? @relation(fields: [detenteurId], references: [id_detenteur])
-  role                  Role?                   @relation(fields: [roleId], references: [id])
-  emailVerified          Boolean   @default(false)  ///////////
-  verificationCode       String?   // stocke le code hashé ou en clair (hashé = mieux)  ////////////
-  verificationCodeExpires DateTime? // date d’expiration   ///////////////
+  id                             Int                     @id @default(autoincrement())
+  idInterne                      Int?                    @unique
+  roleId                         Int?
+  email                          String                  @unique
+  telephone                      String?                 @db.VarChar(20)
+  modifieLe                      DateTime                @updatedAt
+  deletedAt                      DateTime?
+  Prenom                         String
+  createdAt                      DateTime                @default(now())
+  nom                            String
+  password                       String
+  username                       String                  @unique
+  detenteurId                    Int?
+  entreprise_verified            Boolean                 @default(false)
+  first_login_after_confirmation Boolean                 @default(false)
+  /// ////////
+  emailVerified                  Boolean                 @default(false)
+  verificationCode               String?
+  verificationCodeExpires        DateTime?
+  auditLogs                      AuditLogPortail[]
+  conversationsInitiees          Conversation[]          @relation("ConversationUser1")
+  conversationsRecues            Conversation[]          @relation("ConversationUser2")
+  demandes                       demandePortail[]
+  messagesRecus                  MessagePortail[]        @relation("ReceivedMessages")
+  messagesEnvoyes                MessagePortail[]        @relation("SentMessages")
+  paiements                      Paiement[]
+  sessions                       SessionPortail[]
+  userGroups                     UserGroup[]
+  detenteur                      DetenteurMoralePortail? @relation(fields: [detenteurId], references: [id_detenteur])
+  role                           Role?                   @relation(fields: [roleId], references: [id])
+  notifications                  NotificationPortail[]   @relation("UserNotifications")
 
+  @@index([detenteurId], map: "utilisateurs_portail_detenteurId_idx")
   @@map("utilisateurs_portail")
 }
 
@@ -141,55 +145,107 @@ model GroupPermission {
 }
 
 model Conversation {
-  id        Int                @id @default(autoincrement())
-  user1Id   Int
-  user2Id   Int
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
-  user1     UtilisateurPortail @relation("ConversationUser1", fields: [user1Id], references: [id], onDelete: Cascade)
-  user2     UtilisateurPortail @relation("ConversationUser2", fields: [user2Id], references: [id], onDelete: Cascade)
-  messages  MessagePortail[]
+  id         Int                @id @default(autoincrement())
+  user1Id    Int
+  user2Id    Int
+  entityType String             @default("GENERAL")
+  entityCode String             @default("GENERAL")
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  user1      UtilisateurPortail @relation("ConversationUser1", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2      UtilisateurPortail @relation("ConversationUser2", fields: [user2Id], references: [id], onDelete: Cascade)
+  messages   MessagePortail[]
 
-  @@unique([user1Id, user2Id])
+  @@unique([user1Id, user2Id, entityType, entityCode])
   @@index([user1Id])
   @@index([user2Id])
+  @@index([entityType, entityCode])
   @@map("conversations")
 }
 
 model MessagePortail {
-  id             Int                @id @default(autoincrement())
+  id             Int                   @id @default(autoincrement())
   content        String
   senderId       Int
   receiverId     Int
   conversationId Int?
-  isRead         Boolean            @default(false)
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  conversation   Conversation?      @relation(fields: [conversationId], references: [id])
-  receiver       UtilisateurPortail @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
-  sender         UtilisateurPortail @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  isRead         Boolean               @default(false)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  conversation   Conversation?         @relation(fields: [conversationId], references: [id])
+  receiver       UtilisateurPortail    @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender         UtilisateurPortail    @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  notifications  NotificationPortail[] @relation("MessageToNotifications")
 
   @@index([senderId])
   @@index([receiverId])
   @@index([conversationId])
   @@index([createdAt])
+  @@index([conversationId, createdAt(sort: Desc)], map: "messages_portail_conversationId_createdAt_idx")
+  @@index([receiverId, isRead, createdAt(sort: Desc)], map: "messages_portail_receiverId_isRead_createdAt_idx")
   @@map("messages_portail")
 }
 
 model NotificationPortail {
-  id                Int           @id @default(autoincrement())
-  type              String
-  title             String        @db.VarChar(255)
-  message           String
-  isRead            Boolean       @default(false)
-  createdAt         DateTime      @default(now())
+  id Int @id @default(autoincrement())
+
+  userId      Int
+  utilisateur UtilisateurPortail @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  type     TypeNotification
+  category NotificationCategory?
+  priority NotificationPriority  @default(MEDIUM)
+
+  title   String    @db.VarChar(255)
+  message String    @db.Text
+  isRead  Boolean   @default(false)
+  readAt  DateTime?
+
+  createdAt DateTime @default(now())
+
+  // Champs polymorphes pour l'affichage / filtrage
   relatedEntityId   Int?
   relatedEntityType String?
-  expertId          Int?
-  priority          String        @default("info")
-  expert            ExpertMinier? @relation(fields: [expertId], references: [id_expert])
 
+  // FKs dediees par entite (evite le conflit d'un meme champ FK vers plusieurs tables)
+  demandeId      Int?
+  permisId       Int?
+  messageId      Int?
+  demande        demandePortail? @relation("DemandeToNotifications", fields: [demandeId], references: [id_demande], onDelete: SetNull, map: "notifications_portail_demandeId_fkey")
+  permis         PermisPortail?  @relation("PermisToNotifications", fields: [permisId], references: [id], onDelete: SetNull, map: "notifications_portail_permisId_fkey")
+  messageRelated MessagePortail? @relation("MessageToNotifications", fields: [messageId], references: [id], onDelete: SetNull, map: "notifications_portail_messageId_fkey")
+
+  expertId Int?
+  expert   ExpertMinier? @relation(fields: [expertId], references: [id_expert], onDelete: SetNull)
+
+  @@index([userId, isRead, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)], map: "notifications_portail_userId_createdAt_idx")
+  @@index([isRead, createdAt(sort: Desc)], map: "notifications_portail_isRead_createdAt_idx")
+  @@index([createdAt(sort: Desc)], map: "notifications_portail_createdAt_idx")
+  @@index([userId, type])
+  @@index([demandeId])
+  @@index([permisId])
+  @@index([messageId])
+  @@index([relatedEntityType, relatedEntityId])
+  @@index([relatedEntityId, relatedEntityType, createdAt(sort: Desc)], map: "notif_rel_entity_createdAt_idx")
   @@map("notifications_portail")
+}
+
+// Nouveaux enums (a ajouter ou remplacer)
+enum NotificationCategory {
+  DEMANDE
+  PERMIS
+  MESSAGE_ADMIN
+  PAIEMENT
+  RELANCE
+  SYSTEM
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
 
 model Antenne {
@@ -199,8 +255,8 @@ model Antenne {
   Email        String?
   Telephone    String?
   Responsable  String?
-  wilayas      Wilaya[]
   permis       PermisPortail[]
+  wilayas      Wilaya[]
 }
 
 model Wilaya {
@@ -227,24 +283,22 @@ model Daira {
 }
 
 model Commune {
-  id_commune    Int              @id @default(autoincrement())
-  id_daira      Int?
-  nom_communeFR String
-  nom_communeAR String
-  nature        String?
-  daira         Daira?           @relation(fields: [id_daira], references: [id_daira])
-  Demande       demandePortail[]
-  // (la relation inverse vers la table pivot)
+  id_commune       Int              @id @default(autoincrement())
+  id_daira         Int?
+  nom_communeFR    String
+  nom_communeAR    String
+  nature           String?
+  daira            Daira?           @relation(fields: [id_daira], references: [id_daira])
   demandesCommunes DemandeCommune[]
+  Demande          demandePortail[]
 }
-// Table pivot many-to-many
+
 model DemandeCommune {
   id_demande Int
   id_commune Int
-  principale Boolean? @default(false)  // optionnel : commune principale
-
-  demande  demandePortail @relation(fields: [id_demande], references: [id_demande])
-  commune  Commune       @relation(fields: [id_commune], references: [id_commune])
+  principale Boolean?       @default(false)
+  commune    Commune        @relation(fields: [id_commune], references: [id_commune])
+  demande    demandePortail @relation(fields: [id_demande], references: [id_demande])
 
   @@id([id_demande, id_commune])
 }
@@ -353,12 +407,12 @@ model DetenteurMoralePortail {
   email                   String?
   site_web                String?
   statutDetenteur         StatutDetenteur?
+  Permis                  PermisPortail[]
   detenteurdemande        DetenteurDemandePortail[]
   nationaliteRef          Nationalite?              @relation(fields: [id_nationalite], references: [id_nationalite])
   pays                    Pays?                     @relation(fields: [id_pays], references: [id_pays])
   fonctions               FonctionPersonneMoral[]
   FormeJuridiqueDetenteur FormeJuridiqueDetenteur[]
-  Permis                  PermisPortail[]
   registreCommerce        RegistreCommercePortail[]
   transfertDetenteur      TransfertDetenteur[]
   utilisateurs            UtilisateurPortail[]
@@ -419,10 +473,10 @@ model TypePermis {
   superficie_max         Float?
   ref_legales            String?
   DossierAdministratif   DossierAdministratif[]
+  permis                 PermisPortail[]
   Barems                 BaremProduitetDroit[]
   combinaisionPermisProc combinaisonPermisProc[]
   Demande                demandePortail[]
-  permis                 PermisPortail[]
   PermisTemplate         PermisTemplate[]
   taxe                   SuperficiaireBareme?    @relation(fields: [id_taxe], references: [id])
 
@@ -503,8 +557,8 @@ model demandePortail {
   PP                       Boolean?
   id_sourceProc            Int?
   utilisateurId            Int
+  perimetre                Json?
   communes                 DemandeCommune[]
-  perimetre                Json?  // ← pour stocker le vrai polygon GeoJSON
   facture                  Facture?
   CahierCharge             CahierChargePortail[]
   cession                  demCession?
@@ -532,7 +586,18 @@ model demandePortail {
   droitPreemption          DroitPreemption?
   inscriptionProvisoire    InscriptionProvisoirePortail?
   renouvellement           ProcedureRenouvellement?
+  notifications            NotificationPortail[]         @relation("DemandeToNotifications")
 
+  @@index([code_demande], map: "demande_code_demande_idx")
+  @@index([utilisateurId], map: "demande_utilisateur_id_idx")
+  @@index([statut_demande], map: "demande_statut_demande_idx")
+  @@index([date_demande(sort: Desc)], map: "demande_date_demande_desc_idx")
+  @@index([id_proc], map: "demande_id_proc_idx")
+  @@index([id_typePermis], map: "demande_id_typepermis_idx")
+  @@index([statut_demande, date_demande(sort: Desc)], map: "demande_statut_date_demande_idx")
+  @@index([utilisateurId, statut_demande, date_demande(sort: Desc)], map: "demande_utilisateur_statut_date_idx")
+  @@index([id_typePermis, statut_demande, date_demande(sort: Desc)], map: "demande_typepermis_statut_date_idx")
+  @@index([id_proc, date_demande(sort: Desc)], map: "demande_id_proc_date_demande_idx")
   @@map("demande")
 }
 
@@ -755,56 +820,61 @@ model demandeMin {
   ordre_mineral String?
   demande       demandePortail @relation(fields: [id_demande], references: [id_demande])
 }
-  model PermisPortail {
-    id                       Int       @id @default(autoincrement())
-    id_typePermis            Int
-    id_antenne               Int?
-    id_detenteur             Int?
-    id_statut                Int?
-    code_permis              String?   
-    date_adjudication        DateTime?
-    date_octroi              DateTime?
-    date_signature           DateTime?
-    date_expiration          DateTime?
-    duree_validite           Int? // in years
-    lieu_ditFR               String?
-    lieu_ditAR               String?
-    mode_attribution         String?
-    superficie               Float?
-    utilisation              String?
-    montant_offre            String?
-    statut_activites         String?
-    nombre_renouvellements   Int?
-    hypothec                 String?
-    date_conversion_permis   DateTime?
-    date_option_permis       DateTime?
-    commentaires             String?
-    validation               Boolean?
-      is_signed                Boolean?  @default(false)
-        date_remise_titre        DateTime?
-        nom_remise_titre         String?
-        qr_code                  String?
-        date_heure_systeme       DateTime?
-        qr_inserer_par           String?
-        code_wilaya              String?
-        // Relations
-      typePermis         TypePermis           @relation(fields: [id_typePermis], references: [id])
-      antenne            Antenne?             @relation(fields: [id_antenne], references: [id_antenne])
-      detenteur          DetenteurMoralePortail?     @relation(fields: [id_detenteur], references: [id_detenteur])
-    statut             StatutPermis?        @relation(fields: [id_statut], references: [id])
-    permisProcedure    permisProcedure[]
-    RapportActivite    RapportActivite[]
-    CahierCharge       CahierChargePortail[]
-    ObligationFiscale  ObligationFiscale[]
-    demFusion          demFusion?
-    fusionPermisSource fusionPermisSource[]
-    codeAssimilation codeAssimilation[]
-    PermisTemplate     PermisTemplate[]
-    @@index([date_octroi(sort: Desc)], map: "idx_permis_date_octroi")
-    @@index([id_statut, date_octroi(sort: Desc)], map: "idx_permis_id_statut_date_octroi")
-    @@index([id_statut, date_expiration(sort: Desc)], map: "idx_permis_id_statut_date_expiration")
-    @@index([code_permis], map: "idx_permis_code_permis")
-    @@map("PermisPortail") 
+
+model PermisPortail {
+  id                     Int                     @id @default(autoincrement())
+  id_typePermis          Int
+  id_antenne             Int?
+  id_detenteur           Int?
+  id_statut              Int?
+  code_permis            String?
+  date_adjudication      DateTime?
+  date_octroi            DateTime?
+  date_signature         DateTime?
+  date_expiration        DateTime?
+  duree_validite         Int?
+  lieu_ditFR             String?
+  lieu_ditAR             String?
+  mode_attribution       String?
+  superficie             Float?
+  utilisation            String?
+  montant_offre          String?
+  statut_activites       String?
+  nombre_renouvellements Int?
+  hypothec               String?
+  date_conversion_permis DateTime?
+  date_option_permis     DateTime?
+  commentaires           String?
+  validation             Boolean?
+  is_signed              Boolean?                @default(false)
+  date_remise_titre      DateTime?
+  nom_remise_titre       String?
+  qr_code                String?
+  date_heure_systeme     DateTime?
+  qr_inserer_par         String?
+  code_wilaya            String?
+  antenne                Antenne?                @relation(fields: [id_antenne], references: [id_antenne])
+  detenteur              DetenteurMoralePortail? @relation(fields: [id_detenteur], references: [id_detenteur])
+  statut                 StatutPermis?           @relation(fields: [id_statut], references: [id])
+  typePermis             TypePermis              @relation(fields: [id_typePermis], references: [id])
+  CahierCharge           CahierChargePortail[]
+  codeAssimilation       codeAssimilation[]
+  demFusion              demFusion?
+  fusionPermisSource     fusionPermisSource[]
+  ObligationFiscale      ObligationFiscale[]
+  permisProcedure        permisProcedure[]
+  PermisTemplate         PermisTemplate[]
+  RapportActivite        RapportActivite[]
+  notifications          NotificationPortail[]   @relation("PermisToNotifications")
+
+  @@index([date_octroi(sort: Desc)], map: "idx_permis_date_octroi")
+  @@index([id_statut, date_octroi(sort: Desc)], map: "idx_permis_id_statut_date_octroi")
+  @@index([id_statut, date_expiration(sort: Desc)], map: "idx_permis_id_statut_date_expiration")
+  @@index([id_detenteur], map: "idx_permis_id_detenteur")
+  @@index([date_expiration(sort: Desc)], map: "idx_permis_date_expiration")
+  @@index([id_detenteur, date_expiration(sort: Desc)], map: "idx_permis_id_detenteur_date_expiration")
+  @@index([code_permis], map: "idx_permis_code_permis")
+  @@map("PermisPortail")
 }
 
 model fusionPermisSource {
@@ -957,6 +1027,7 @@ model TypeProcedure {
   Bareme                 BaremProduitetDroit[]
   combinaisionPermisProc combinaisonPermisProc[]
   Demande                demandePortail[]
+  declarations           ProcedureDeclaration[]
 
   @@map("typeprocedure")
 }
@@ -1147,9 +1218,9 @@ model permisProcedure {
   id_procedurePermis Int              @id @default(autoincrement())
   id_permis          Int
   id_proc            Int
+  date_octroi_proc   DateTime?
   permis             PermisPortail    @relation(fields: [id_permis], references: [id])
   procedure          ProcedurePortail @relation(fields: [id_proc], references: [id_proc])
-  date_octroi_proc   DateTime?
 
   @@unique([id_permis, id_proc])
   @@map("permis_procedure")
@@ -1272,6 +1343,7 @@ model InscriptionProvisoirePortail {
   demande             demandePortail   @relation(fields: [id_demande], references: [id_demande])
   procedure           ProcedurePortail @relation(fields: [id_proc], references: [id_proc])
 
+  @@index([createdAt(sort: Desc)], map: "inscription_provisoire_createdAt_idx")
   @@map("inscription_provisoire")
 }
 
@@ -1518,6 +1590,20 @@ model DroitPreemption {
   demande               demandePortail        @relation(fields: [demandeId], references: [id_demande], onDelete: Cascade)
 
   @@map("droit_preemption")
+}
+
+model ProcedureDeclaration {
+  id              Int           @id @default(autoincrement())
+  typeProcedureId Int
+  ordre           Int
+  texte           String
+  actif           Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  typeProcedure   TypeProcedure @relation(fields: [typeProcedureId], references: [id])
+
+  @@index([typeProcedureId, ordre])
+  @@map("procedure_declarations")
 }
 
 enum EnumStatutSeance {

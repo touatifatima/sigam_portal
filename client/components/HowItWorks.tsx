@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import styles from "./HowItWorks.module.css";
+import { ScrollReveal } from "./ScrollReveal";
 
 const steps = [
   {
@@ -39,51 +40,57 @@ export const HowItWorks = () => {
       <div className={styles.backgroundGradient} />
 
       <div className={`container ${styles.container}`}>
-        <div className={styles.header}>
-          <span className={styles.label}>Investir dans le secteur minier</span>
-          <h2 className={styles.title}>
-            Explorez l'Algerie, investissez via{" "}
-            <span className={styles.titleHighlight}>SIGAM</span>
-          </h2>
-          <p className={styles.description}>
-            Decouvrez les services et options qui accelerent votre processus
-            d'investissement dans le secteur minier avec des procedures
-            simplifiees et fiables.
-          </p>
-        </div>
+        <ScrollReveal>
+          <div className={styles.header}>
+            <span className={styles.label}>Investir dans le secteur minier</span>
+            <h2 className={styles.title}>
+              Explorez l'Algerie, investissez via{" "}
+              <span className={styles.titleHighlight}>POM</span>
+            </h2>
+            <p className={styles.description}>
+              Decouvrez les services et options qui accelerent votre processus
+              d'investissement dans le secteur minier avec des procedures
+              simplifiees et fiables.
+            </p>
+          </div>
+        </ScrollReveal>
 
         <div className={styles.grid}>
-          {steps.map((item) => (
-            <div key={item.step} className={styles.stepCard}>
-              <div className={styles.stepNumber}>{item.step}</div>
-              <div className={styles.stepContent}>
-                <h3 className={styles.stepTitle}>{item.title}</h3>
-                <p className={styles.stepDescription}>{item.description}</p>
-                <ul className={styles.featuresList}>
-                  {item.features.map((feature) => (
-                    <li key={feature} className={styles.featureItem}>
-                      <CheckCircle2 className={styles.featureIcon} />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
+          {steps.map((item, i) => (
+            <ScrollReveal key={item.step} delay={i * 100}>
+              <div className={styles.stepCard}>
+                <div className={styles.stepNumber}>{item.step}</div>
+                <div className={styles.stepContent}>
+                  <h3 className={styles.stepTitle}>{item.title}</h3>
+                  <p className={styles.stepDescription}>{item.description}</p>
+                  <ul className={styles.featuresList}>
+                    {item.features.map((feature) => (
+                      <li key={feature} className={styles.featureItem}>
+                        <CheckCircle2 className={styles.featureIcon} />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-            </div>
+            </ScrollReveal>
           ))}
         </div>
 
-        <div className={styles.cta}>
-          <Button
-            size="lg"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground px-10 py-7 text-lg shadow-lg hover:shadow-xl transition-all group"
-            asChild
-          >
-            <a href="/auth/signup">
-              Commencer votre projet
-              <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-            </a>
-          </Button>
-        </div>
+        <ScrollReveal delay={200}>
+          <div className={styles.cta}>
+            <Button
+              size="lg"
+              className="homePremiumSignupButton homePremiumButtonLg"
+              asChild
+            >
+              <a href="/Signup/page">
+                Commencer votre projet
+                <ArrowRight className="h-5 w-5" />
+              </a>
+            </Button>
+          </div>
+        </ScrollReveal>
       </div>
     </section>
   );

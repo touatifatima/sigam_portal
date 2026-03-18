@@ -1,4 +1,26 @@
 /* src/app/globals.css */
+:root {
+  --anam-page-zoom-desktop: 1.25;
+  --anam-page-zoom-tablet: 1.1;
+  --anam-page-zoom-mobile: 1;
+}
+
+.anam-app-zoom {
+  zoom: var(--anam-page-zoom-desktop);
+}
+
+@media (max-width: 1024px) {
+  .anam-app-zoom {
+    zoom: var(--anam-page-zoom-tablet);
+  }
+}
+
+@media (max-width: 768px) {
+  .anam-app-zoom {
+    zoom: var(--anam-page-zoom-mobile);
+  }
+}
+
 html {
   font-size: 13px; /* or 13px for ultra-compact */
 }
@@ -11,11 +33,11 @@ body {
   line-height: 1.2;
 }
 
-/* Force light form fields even under OS/browser dark mode */
-input,
+/* Force light form fields even under OS/browser dark mode
+   Keep native controls for radio/checkbox to avoid broken toggles. */
+input:not([type="radio"]):not([type="checkbox"]),
 textarea,
-select,
-input[type="date"] {
+select {
   -webkit-appearance: none;
   appearance: none;
   background-color: #ffffff !important;

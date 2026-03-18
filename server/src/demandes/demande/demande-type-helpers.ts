@@ -58,7 +58,7 @@ export function resolveTypeSpecificSection(
     return demande.renouvellement;
   }
 
-  if (label.includes('modification')) {
+  if (label.includes('modification') || label.includes('extension')) {
     return demande.modification;
   }
 

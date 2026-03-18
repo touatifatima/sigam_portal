@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { MissingAction, Prisma, StatutProcedure } from '@prisma/client';
 
+import { CessionService } from 'src/cession/cession.service';
+import { NotificationsService } from 'src/notifications/notifications.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import * as fs from 'fs';
@@ -29,7 +31,11 @@ type DeadlinePayload = {
 
 @Injectable()
 export class DocumentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly cessionService: CessionService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   private addBusinessDays(base: Date, businessDays: number) {
     const result = new Date(base);
@@ -710,7 +716,7 @@ export class DocumentsService {
 
   async updateDemandeStatus(
     id_demande: number,
-    statut_demande: 'ACCEPTEE' | 'REJETEE',
+    statut_demande: 'ACCEPTEE' | 'REJETEE' | 'EN_COMPLEMENT',
     rejectionReason?: string,
   ) {
     // Update demande with correct fields present in schema
@@ -732,9 +738,50 @@ export class DocumentsService {
               remarques: rejectionReason || 'Reason not specified',
             }
           : {}),
+        ...(statut_demande === 'EN_COMPLEMENT'
+          ? {
+              date_refus: null,
+              remarques: rejectionReason || 'Complement requis',
+            }
+          : {}),
       },
-      include: { procedure: true },
+      include: {
+        procedure: true,
+        typePermis: {
+          select: {
+            code_type: true,
+            lib_type: true,
+          },
+        },
+      },
     });
+
+    if (statut_demande === 'ACCEPTEE') {
+      await this.cessionService.applyAcceptedCessionByDemandeId(
+        updatedDemande.id_demande,
+      );
+    }
+
+    try {
+      await this.notificationsService.createDemandeStatusNotification({
+        userId: updatedDemande.utilisateurId,
+        demandeId: updatedDemande.id_demande,
+        demandeCode:
+          updatedDemande.code_demande ||
+          `DEM-${updatedDemande.id_demande}`,
+        typePermisLabel:
+          updatedDemande.typePermis?.lib_type ||
+          updatedDemande.typePermis?.code_type ||
+          null,
+        statut: statut_demande,
+        motifRejet: rejectionReason || null,
+      });
+    } catch (error) {
+      console.warn(
+        `Notification demande ${updatedDemande.id_demande} non envoyee`,
+        error,
+      );
+    }
 
     // Do not auto-close the procedure here on rejection.
     // Keep procedure open until an explicit finalization endpoint is called.

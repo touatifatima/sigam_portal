@@ -20,6 +20,20 @@ export class AuthController {
       if (result.error === 'EMAIL_NOT_VERIFIED') {
         return { error: 'Email non vérifié' };
       }
+      if (result.error === 'IDENTIFICATION_PENDING') {
+        return {
+          error: 'IDENTIFICATION_PENDING',
+          message:
+            "Desole, votre compte est en attente de validation. L'administration ANAM doit encore verifier et confirmer l'identification de votre entreprise. Si cela fait plus d'une semaine, contactez-nous a pom@anam.dz. Merci de votre patience !",
+        };
+      }
+      if (result.error === 'IDENTIFICATION_REJECTED') {
+        return {
+          error: 'IDENTIFICATION_REJECTED',
+          message:
+            "Desole, votre compte n'a pas ete valide par l'administration. Veuillez contacter le support ANAM pour plus d'informations.",
+        };
+      }
       return { error: 'Invalid credentials' };
     }
 
@@ -108,3 +122,4 @@ async verify(@Body() body: { token: string }) {
   };
 }
 }
+

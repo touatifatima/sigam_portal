@@ -19,6 +19,7 @@ import {
   XCircle, 
   Filter,
   ArrowRight,
+  ArrowLeft,
   Sparkles,
   LayoutGrid,
   List
@@ -247,14 +248,26 @@ const DemandesList = () => {
                 Suivez l'état de vos demandes de permis miniers en temps réel
               </p>
             </div>
-            <Button 
-              onClick={() => navigate('/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis')} 
-              className={styles.newButton}
-              size="lg"
-            >
-              <Plus className="w-5 h-5" />
-              Nouvelle demande
-            </Button>
+            <div className={styles.heroActions}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate("/investisseur/InvestorDashboard")}
+                className={styles.dashboardButton}
+                size="lg"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                Retour au dashboard
+              </Button>
+              <Button 
+                onClick={() => navigate('/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis')} 
+                className={styles.newButton}
+                size="lg"
+              >
+                <Plus className="w-5 h-5" />
+                Nouvelle demande
+              </Button>
+            </div>
           </div>
 
           {/* Stats Cards */}
@@ -336,6 +349,14 @@ const DemandesList = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className={styles.searchInput}
                 />
+                <button
+                  type="button"
+                  className={styles.searchBtn}
+                  aria-label="Rechercher"
+                >
+                  <Search className="w-4 h-4" />
+                  <span>Rechercher</span>
+                </button>
               </div>
 
               <Select value={statusFilter} onValueChange={setStatusFilter}>

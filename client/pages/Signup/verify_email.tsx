@@ -118,8 +118,16 @@ export default function VerifyEmailPage() {
             user?.entrepriseVerified ??
             user?.entreprise_verified,
         );
+        const shouldShowWelcome = Boolean(
+          user?.firstLoginAfterConfirmation ??
+            user?.first_login_after_confirmation,
+        );
         if (verified) {
-          router.push('/investisseur/InvestorDashboard');
+          if (shouldShowWelcome) {
+            router.push('/investisseur/Identification/bienvenue');
+          } else {
+            router.push('/investisseur/InvestorDashboard');
+          }
         } else {
           router.push('/investisseur/Identification/identification-entreprise');
         }

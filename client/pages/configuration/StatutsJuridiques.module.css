@@ -40,8 +40,8 @@
 
 .searchBar input:focus {
   outline: none;
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+  border-color: #8b3a62;
+  box-shadow: 0 0 0 3px rgba(139, 58, 98, 0.2);
 }
 
 .searchIcon {
@@ -63,7 +63,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background-color: #2563eb;
+  background-color: #8b3a62;
   color: white;
   border: none;
   border-radius: 6px;
@@ -73,7 +73,7 @@
 }
 
 .addButton:hover {
-  background-color: #1d4ed8;
+  background-color: #8b3a62;
 }
 
 .content {
@@ -136,7 +136,7 @@
 
 .editButton {
   background-color: #dbeafe;
-  color: #2563eb;
+  color: #067647;
 }
 
 .editButton:hover {
@@ -291,7 +291,7 @@
 .formGroup input:focus,
 .formGroup textarea:focus {
   outline: none;
-  border-color: #60a5fa;
+  border-color: #8b3a62;
   box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
 }
 
@@ -323,13 +323,13 @@
 }
 
 .saveButton {
-  background-color: #2563eb;
+  background-color: #8b3a62;
   color: white;
   border: none;
 }
 
 .saveButton:hover {
-  background-color: #1d4ed8;
+  background-color: #8b3a68;
 }
 
 /* Responsive styles */
