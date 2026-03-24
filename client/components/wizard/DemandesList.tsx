@@ -22,7 +22,8 @@ import {
   ArrowLeft,
   Sparkles,
   LayoutGrid,
-  List
+  List,
+  Loader2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { InvestorLayout } from "@/components/investor/InvestorLayout";
@@ -30,6 +31,7 @@ import styles from "./DemandesList.module.css";
 
 type DemandeListItem = {
   id_demande: number;
+  short_code?: string | null;
   code_demande?: string | null;
   date_demande?: string | null;
   statut_demande?: string | null;
@@ -39,6 +41,159 @@ type DemandeListItem = {
   daira?: { nom_dairaFR?: string | null };
   commune?: { nom_communeFR?: string | null };
   procedure?: { date_debut_proc?: string | null };
+};
+
+type DemandeDetail = {
+  id_demande: number;
+  id_proc?: number | null;
+  code_demande?: string | null;
+  short_code?: string | null;
+  date_demande?: string | null;
+  statut_demande?: string | null;
+  superficie?: number | string | null;
+  superficie_ha?: number | string | null;
+  superficieHa?: number | string | null;
+  surface?: number | string | null;
+  lieu_ditFR?: string | null;
+  typePermis?: { lib_type?: string | null; code_type?: string | null } | null;
+  typeProcedure?: { libelle?: string | null } | null;
+  detenteur?: { nom_societeFR?: string | null; nom_societeAR?: string | null } | null;
+  wilaya?: { nom_wilayaFR?: string | null } | null;
+  daira?: { nom_dairaFR?: string | null } | null;
+  commune?: { nom_communeFR?: string | null } | null;
+  communes?: Array<{
+    principale?: boolean | null;
+    commune?: {
+      nom_communeFR?: string | null;
+      daira?: {
+        nom_dairaFR?: string | null;
+        wilaya?: { nom_wilayaFR?: string | null } | null;
+      } | null;
+    } | null;
+  }>;
+  procedure?: { date_debut_proc?: string | null } | null;
+};
+
+const safeText = (value: unknown, fallback = "--"): string => {
+  if (value === null || value === undefined) return fallback;
+  if (typeof value === "string") {
+    const normalized = value.trim();
+    return normalized ? normalized : fallback;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return fallback;
+};
+
+const toNumber = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const pickFirstNumber = (...values: unknown[]): number | null => {
+  for (const value of values) {
+    const parsed = toNumber(value);
+    if (parsed !== null) return parsed;
+  }
+  return null;
+};
+
+const formatDate = (value?: string | null) => {
+  if (!value) return "--";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--";
+  return date.toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+
+const formatDateTime = (value?: string | null) => {
+  if (!value) return "--";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--";
+  return date.toLocaleString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const toFileSafe = (value: string) =>
+  value
+    .normalize("NFKD")
+    .replace(/[^\w.-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 80);
+
+const extractSurfaceValues = (payload: unknown): number[] => {
+  const values: number[] = [];
+  if (!payload || typeof payload !== "object") return values;
+
+  const stack: unknown[] = [payload];
+  const seen = new Set<unknown>();
+  let visited = 0;
+
+  while (stack.length > 0 && visited < 5000) {
+    const current = stack.pop();
+    visited += 1;
+    if (!current || typeof current !== "object") continue;
+    if (seen.has(current)) continue;
+    seen.add(current);
+
+    if (Array.isArray(current)) {
+      for (const item of current) {
+        stack.push(item);
+      }
+      continue;
+    }
+
+    for (const [key, raw] of Object.entries(current as Record<string, unknown>)) {
+      const lowerKey = key.toLowerCase();
+      if (lowerKey.includes("superficie") || lowerKey.includes("surface")) {
+        const parsed = toNumber(raw);
+        if (parsed !== null) {
+          values.push(parsed);
+        }
+      }
+      if (raw && typeof raw === "object") {
+        stack.push(raw);
+      }
+    }
+  }
+
+  return values;
+};
+
+const loadImageAsDataUrl = async (src: string): Promise<string | null> => {
+  if (typeof window === "undefined") return null;
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(null);
+          return;
+        }
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL("image/png"));
+      } catch {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
 };
 
 const apiURL =
@@ -59,6 +214,7 @@ const DemandesList = () => {
   const [dateTo, setDateTo] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [pdfLoadingId, setPdfLoadingId] = useState<number | null>(null);
   const pageSize = 10;
 
   useEffect(() => {
@@ -216,19 +372,385 @@ const DemandesList = () => {
 
   const handleDownloadPdf = async (demandeId: number) => {
     if (!apiURL) return;
+    if (pdfLoadingId === demandeId) return;
+
+    setPdfLoadingId(demandeId);
+
     try {
-      const res = await axios.get(`${apiURL}/api/facture/demande/${demandeId}`, {
+      const [{ default: JsPdf }, { default: autoTable }] = await Promise.all([
+        import("jspdf"),
+        import("jspdf-autotable"),
+      ]);
+
+      const demandeRes = await axios.get(`${apiURL}/demandes/${demandeId}`, {
         withCredentials: true,
       });
-      const factureId = res.data?.facture?.id_facture;
-      if (!factureId) {
-        toast.info("Aucune facture disponible pour cette demande.");
-        return;
+      const demandeData = (demandeRes.data || {}) as DemandeDetail;
+      const resolvedDemandeId = Number(demandeData?.id_demande ?? demandeId);
+      const idProc = Number(demandeData?.id_proc || 0);
+
+      const [
+        substancesRes,
+        documentsRes,
+        etapesRes,
+        verificationRes,
+        coordsRes,
+        factureRes,
+        demandeProcRes,
+        inscriptionRes,
+        logoDataUrl,
+      ] = await Promise.all([
+        axios
+          .get(`${apiURL}/api/substances/demande/${resolvedDemandeId}/substances`, {
+            withCredentials: true,
+          })
+          .catch(() => null),
+        axios
+          .get(`${apiURL}/api/procedure/${resolvedDemandeId}/documents`, {
+            withCredentials: true,
+          })
+          .catch(() => null),
+        idProc > 0
+          ? axios
+              .get(`${apiURL}/api/procedure-etape/procedure/${idProc}`, {
+                withCredentials: true,
+              })
+              .catch(() => null)
+          : Promise.resolve(null),
+        axios
+          .get(`${apiURL}/verification-geo/demande/${resolvedDemandeId}`, {
+            withCredentials: true,
+          })
+          .catch(() => null),
+        idProc > 0
+          ? axios
+              .get(`${apiURL}/coordinates/procedure/${idProc}`, {
+                withCredentials: true,
+              })
+              .catch(() => null)
+          : Promise.resolve(null),
+        axios
+          .get(`${apiURL}/api/facture/demande/${resolvedDemandeId}`, {
+            withCredentials: true,
+          })
+          .catch(() => null),
+        idProc > 0
+          ? axios
+              .get(`${apiURL}/api/procedures/${idProc}/demande`, {
+                withCredentials: true,
+              })
+              .catch(() => null)
+          : Promise.resolve(null),
+        idProc > 0
+          ? axios
+              .get(`${apiURL}/inscription-provisoire/procedure/${idProc}`, {
+                withCredentials: true,
+              })
+              .catch(() => null)
+          : Promise.resolve(null),
+        loadImageAsDataUrl("/anamlogo.png"),
+      ]);
+
+      const primaryCommune =
+        demandeData.commune?.nom_communeFR ||
+        demandeData.communes?.find((item) => item.principale)?.commune
+          ?.nom_communeFR ||
+        demandeData.communes?.[0]?.commune?.nom_communeFR ||
+        "--";
+
+      const primaryDaira =
+        demandeData.daira?.nom_dairaFR ||
+        demandeData.communes?.find((item) => item.principale)?.commune?.daira
+          ?.nom_dairaFR ||
+        demandeData.communes?.[0]?.commune?.daira?.nom_dairaFR ||
+        "--";
+
+      const primaryWilaya =
+        demandeData.wilaya?.nom_wilayaFR ||
+        demandeData.communes?.find((item) => item.principale)?.commune?.daira
+          ?.wilaya?.nom_wilayaFR ||
+        demandeData.communes?.[0]?.commune?.daira?.wilaya?.nom_wilayaFR ||
+        "--";
+
+      const verifSurfaceValues = extractSurfaceValues(verificationRes?.data);
+      const demandeProcSurfaceValues = extractSurfaceValues(demandeProcRes?.data);
+      const inscriptionSurfaceValues = extractSurfaceValues(inscriptionRes?.data);
+      const demandeSurfaceValues = extractSurfaceValues(demandeData);
+
+      const superficie = pickFirstNumber(
+        verificationRes?.data?.superficie_cadastrale,
+        verificationRes?.data?.superficie_cadastrale_ha,
+        verificationRes?.data?.superficie,
+        verificationRes?.data?.surface,
+        ...verifSurfaceValues,
+        demandeData.superficie,
+        demandeData.superficie_ha,
+        demandeData.superficieHa,
+        demandeData.surface,
+        ...demandeSurfaceValues,
+        ...demandeProcSurfaceValues,
+        ...inscriptionSurfaceValues,
+      );
+
+      const superficieSource =
+        typeof superficie !== "number"
+          ? "--"
+          : verifSurfaceValues.includes(superficie) ||
+            toNumber(verificationRes?.data?.superficie_cadastrale) === superficie ||
+            toNumber(verificationRes?.data?.superficie) === superficie
+          ? "Verification geospatiale"
+          : demandeProcSurfaceValues.includes(superficie)
+          ? "Procedure liee"
+          : inscriptionSurfaceValues.includes(superficie)
+          ? "Inscription provisoire"
+          : "Demande";
+
+      const typePermisLabel =
+        demandeData.typePermis?.lib_type || demandeData.typePermis?.code_type || "--";
+      const typeProcedureLabel = demandeData.typeProcedure?.libelle || "--";
+      const codeDemande =
+        demandeData.code_demande || `DEM-${resolvedDemandeId}`;
+      const statutDemande = safeText(demandeData.statut_demande, "EN_COURS");
+      const titulaire =
+        demandeData.detenteur?.nom_societeFR ||
+        demandeData.detenteur?.nom_societeAR ||
+        "--";
+      const dateDepot = formatDate(
+        demandeData.date_demande || demandeData.procedure?.date_debut_proc || null,
+      );
+
+      const substancesPayload = Array.isArray(substancesRes?.data)
+        ? substancesRes?.data
+        : [];
+      const substanceRows = substancesPayload.map((item: any, idx: number) => [
+        String(idx + 1),
+        safeText(item?.nom_subFR || item?.nom_subAR || item?.code_sub),
+        safeText(item?.code_sub),
+      ]);
+
+      const documentsPayload = Array.isArray(documentsRes?.data?.documents)
+        ? documentsRes?.data?.documents
+        : [];
+      const dossierDate = documentsRes?.data?.dossierFournis?.date_depot ?? null;
+      const documentRows = documentsPayload.map((doc: any, idx: number) => [
+        String(idx + 1),
+        safeText(doc?.nom_doc),
+        safeText(doc?.statut),
+        safeText(doc?.taille_doc),
+        formatDate(dossierDate),
+      ]);
+
+      const etapesPayload = Array.isArray(etapesRes?.data?.ProcedureEtape)
+        ? etapesRes?.data?.ProcedureEtape
+        : [];
+      const etapesRows = etapesPayload.map((etape: any, idx: number) => [
+        String(idx + 1),
+        safeText(etape?.etape?.lib_etape || `Etape ${idx + 1}`),
+        safeText(etape?.statut),
+        formatDate(etape?.date_debut),
+        formatDate(etape?.date_fin),
+      ]);
+
+      const coordPayload = Array.isArray(coordsRes?.data) ? coordsRes?.data : [];
+      const parsedCoords = coordPayload
+        .map((item: any, idx: number) => {
+          const coord = item?.coordonnee ?? item;
+          const x = toNumber(coord?.x);
+          const y = toNumber(coord?.y);
+          if (x === null || y === null) return null;
+          return {
+            idx: idx + 1,
+            x,
+            y,
+            zone: safeText(coord?.zone, "--"),
+            system: safeText(coord?.system, "UTM"),
+          };
+        })
+        .filter(Boolean) as Array<{
+        idx: number;
+        x: number;
+        y: number;
+        zone: string;
+        system: string;
+      }>;
+
+      const coordRows = parsedCoords.map((point) => [
+        String(point.idx),
+        point.x.toFixed(3),
+        point.y.toFixed(3),
+        point.zone,
+        point.system,
+      ]);
+
+      const facture = factureRes?.data?.facture ?? null;
+      const factureRows = facture
+        ? [
+            ["Numero facture", safeText(facture.id_facture)],
+            [
+              "Montant total",
+              facture.montant_total != null
+                ? `${Number(facture.montant_total).toLocaleString("fr-FR")} DZD`
+                : "--",
+            ],
+            ["Statut paiement", safeText(facture.statut)],
+            ["Date emission", formatDate(facture.date_emission)],
+          ]
+        : [["Facture", "Aucune facture disponible"]];
+
+      const doc = new JsPdf({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      doc.setFillColor(125, 38, 74);
+      doc.rect(0, 0, pageWidth, 32, "F");
+      doc.setFillColor(42, 157, 143);
+      doc.rect(0, 32, pageWidth, 2, "F");
+
+      if (logoDataUrl) {
+        try {
+          doc.addImage(logoDataUrl, "PNG", 14, 5, 22, 22);
+        } catch {
+          // Ignore logo rendering failure and continue.
+        }
       }
-      window.open(`${apiURL}/api/facture/${factureId}/pdf`, "_blank");
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(15);
+      doc.text("PORTAIL ANAM", 40, 12);
+      doc.setFontSize(12);
+      doc.text("Recapitulatif professionnel de la demande", 40, 19);
+
+      doc.setFontSize(9.5);
+      doc.text(`Code: ${codeDemande}`, pageWidth - 14, 11, { align: "right" });
+      doc.text(`Date: ${formatDateTime(new Date().toISOString())}`, pageWidth - 14, 17, {
+        align: "right",
+      });
+      doc.text(`Reference interne: #${resolvedDemandeId}`, pageWidth - 14, 23, {
+        align: "right",
+      });
+
+      let currentY = 40;
+      const marginX = 14;
+      const bodyWidth = pageWidth - marginX * 2;
+
+      const addSectionTitle = (title: string) => {
+        if (currentY > pageHeight - 25) {
+          doc.addPage();
+          currentY = 18;
+        }
+        doc.setFillColor(234, 247, 245);
+        doc.roundedRect(marginX, currentY - 4, bodyWidth, 8, 2, 2, "F");
+        doc.setTextColor(93, 31, 58);
+        doc.setFontSize(11);
+        doc.text(title, marginX + 2, currentY + 1);
+        currentY += 8;
+      };
+
+      const runTable = (head: string[][], body: string[][]) => {
+        autoTable(doc, {
+          startY: currentY,
+          margin: { left: marginX, right: marginX },
+          head,
+          body,
+          theme: "grid",
+          headStyles: {
+            fillColor: [42, 157, 143],
+            textColor: [255, 255, 255],
+            fontSize: 9,
+          },
+          styles: {
+            fontSize: 8.5,
+            cellPadding: 2.2,
+            textColor: [39, 39, 42],
+          },
+          alternateRowStyles: { fillColor: [248, 251, 250] },
+        });
+        currentY = ((doc as any).lastAutoTable?.finalY || currentY) + 6;
+      };
+
+      addSectionTitle("Informations generales");
+      runTable(
+        [["Champ", "Valeur"]],
+        [
+          ["Code demande", codeDemande],
+          ["Statut", statutDemande],
+          ["Type permis", safeText(typePermisLabel)],
+          ["Type procedure", safeText(typeProcedureLabel)],
+          ["Date depot", dateDepot],
+          ["Titulaire", safeText(titulaire)],
+          ["Wilaya", safeText(primaryWilaya)],
+          ["Daira", safeText(primaryDaira)],
+          ["Commune", safeText(primaryCommune)],
+          ["Lieu-dit", safeText(demandeData.lieu_ditFR)],
+          [
+            "Superficie",
+            typeof superficie === "number" ? `${superficie.toFixed(2)} ha` : "--",
+          ],
+          ["Source superficie", superficieSource],
+        ],
+      );
+
+      addSectionTitle("Substances");
+      runTable(
+        [["#", "Substance", "Code"]],
+        substanceRows.length > 0 ? substanceRows : [["1", "Aucune substance", "--"]],
+      );
+
+      addSectionTitle("Perimetre et coordonnees");
+      runTable(
+        [["Point", "X", "Y", "Zone", "Systeme"]],
+        coordRows.length > 0
+          ? coordRows
+          : [["--", "--", "--", "--", "Aucune coordonnee disponible"]],
+      );
+
+      addSectionTitle("Documents fournis");
+      runTable(
+        [["#", "Document", "Statut", "Taille", "Date depot"]],
+        documentRows.length > 0
+          ? documentRows
+          : [["1", "Aucun document", "--", "--", "--"]],
+      );
+
+      addSectionTitle("Historique de traitement");
+      runTable(
+        [["#", "Etape", "Statut", "Date debut", "Date fin"]],
+        etapesRows.length > 0
+          ? etapesRows
+          : [["1", "Aucune etape", "--", "--", "--"]],
+      );
+
+      addSectionTitle("Paiement");
+      runTable([["Champ", "Valeur"]], factureRows);
+
+      const pageCount = doc.getNumberOfPages();
+      for (let page = 1; page <= pageCount; page += 1) {
+        doc.setPage(page);
+        doc.setDrawColor(226, 232, 240);
+        doc.line(marginX, pageHeight - 14, pageWidth - marginX, pageHeight - 14);
+        doc.setFontSize(8.5);
+        doc.setTextColor(107, 114, 128);
+        doc.text(
+          "Document genere automatiquement par le Portail ANAM.",
+          marginX,
+          pageHeight - 8,
+        );
+        doc.text(
+          `Page ${page}/${pageCount}`,
+          pageWidth - marginX,
+          pageHeight - 8,
+          { align: "right" },
+        );
+      }
+
+      const fileName = `demande_${toFileSafe(codeDemande)}.pdf`;
+      doc.save(fileName);
+      toast.success("PDF de la demande genere avec succes.");
     } catch (err) {
-      console.error("Erreur telechargement facture", err);
-      toast.error("Impossible de telecharger la facture.");
+      console.error("Erreur generation PDF demande", err);
+      toast.error("Impossible de generer le PDF de la demande.");
+    } finally {
+      setPdfLoadingId(null);
     }
   };
 
@@ -520,14 +1042,19 @@ const DemandesList = () => {
                         variant="ghost"
                         size="sm"
                         className={styles.downloadBtn}
+                        disabled={pdfLoadingId === demande.id_demande}
                         onClick={() => handleDownloadPdf(demande.id_demande)}
                       >
-                        <Download className="w-4 h-4" />
-                        PDF
+                        {pdfLoadingId === demande.id_demande ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Download className="w-4 h-4" />
+                        )}
+                        {pdfLoadingId === demande.id_demande ? "Generation..." : "PDF"}
                       </Button>
                       <Button
                         onClick={() =>
-                          navigate(`/investisseur/demandes/${demande.id_demande}`)
+                          navigate(`/investisseur/demandes/${demande.short_code || demande.id_demande}`)
                         }
                         className={styles.viewBtn}
                         size="sm"
@@ -610,14 +1137,19 @@ const DemandesList = () => {
                         variant="ghost"
                         size="sm"
                         className={styles.downloadBtn}
+                        disabled={pdfLoadingId === demande.id_demande}
                         onClick={() => handleDownloadPdf(demande.id_demande)}
                       >
-                        <Download className="w-4 h-4" />
-                        PDF
+                        {pdfLoadingId === demande.id_demande ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Download className="w-4 h-4" />
+                        )}
+                        {pdfLoadingId === demande.id_demande ? "Generation..." : "PDF"}
                       </Button>
                       <Button
                         onClick={() =>
-                          navigate(`/investisseur/demandes/${demande.id_demande}`)
+                          navigate(`/investisseur/demandes/${demande.short_code || demande.id_demande}`)
                         }
                         className={styles.viewBtn}
                         size="sm"

@@ -1,10 +1,16 @@
 ﻿// src/auth/auth.service.ts
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { SessionService } from '../session/session.service';
 import * as nodemailer from 'nodemailer';
 import { isIP } from 'net';
+import { createHash, randomBytes } from 'crypto';
 
 const IDENTIFICATION_EVENT_TYPES = [
   'entreprise_identification_request',
@@ -14,6 +20,10 @@ const IDENTIFICATION_EVENT_TYPES = [
 ] as const;
 
 type IdentificationAccessState = 'ALLOW' | 'PENDING' | 'REJECTED';
+type ForgotPasswordLimitEntry = { count: number; windowStart: number };
+
+const FORGOT_PASSWORD_SUCCESS_MESSAGE =
+  "Un email de reinitialisation a ete envoye a l'adresse indiquee. Si un compte est associe a cet email, vous recevrez un lien dans les prochaines minutes. Verifiez votre boite de reception (et vos spams). Le lien est valide pendant 15 minutes.";
 
 @Injectable()
 export class AuthService {
@@ -31,6 +41,7 @@ export class AuthService {
     string,
     { count: number; blockedUntil?: number }
   >();
+  private forgotPasswordIpLimits = new Map<string, ForgotPasswordLimitEntry>();
   private mailer?: nodemailer.Transporter;
 
   private getMailer() {
@@ -82,6 +93,146 @@ export class AuthService {
 
   private generateOtp() {
     return String(Math.floor(100000 + Math.random() * 900000));
+  }
+
+  private generatePasswordResetToken() {
+    return randomBytes(32).toString('hex');
+  }
+
+  private hashPasswordResetToken(token: string) {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  private isStrongPassword(password: string) {
+    return (
+      password.length >= 8 &&
+      /[A-Z]/.test(password) &&
+      /\d/.test(password) &&
+      /[^A-Za-z0-9]/.test(password)
+    );
+  }
+
+  private checkForgotPasswordRateLimit(ipAddress: string) {
+    const key = (ipAddress || 'unknown').trim() || 'unknown';
+    const now = Date.now();
+    const oneHour = 60 * 60 * 1000;
+
+    const existing = this.forgotPasswordIpLimits.get(key);
+    if (!existing || now - existing.windowStart >= oneHour) {
+      this.forgotPasswordIpLimits.set(key, { count: 1, windowStart: now });
+      return;
+    }
+
+    if (existing.count >= 3) {
+      throw new HttpException(
+        'Trop de demandes. Reessayez dans une heure.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    existing.count += 1;
+    this.forgotPasswordIpLimits.set(key, existing);
+  }
+
+  private async sendPasswordResetEmail(
+    email: string,
+    prenom: string | null | undefined,
+    token: string,
+  ) {
+    const from = process.env.SMTP_FROM || process.env.SMTP_USER || '';
+    const name = prenom || 'Utilisateur';
+    const siteUrl = (process.env.PORTAIL_URL || 'https://pom.anam.dz')
+      .trim()
+      .replace(/\/+$/, '');
+    const supportEmail = (process.env.SUPPORT_EMAIL || 'support@anam.dz').trim();
+    const logoUrl = (
+      process.env.MAIL_LOGO_URL || `${siteUrl}/logo.jpg`
+    ).trim();
+    const resetUrl = `${siteUrl}/auth/reset-password?token=${encodeURIComponent(token)}`;
+    const subject = 'Reinitialisez votre mot de passe ANAM';
+
+    const text = [
+      `Bonjour ${name},`,
+      '',
+      'Nous avons recu une demande de reinitialisation de votre mot de passe ANAM.',
+      '',
+      `Cliquez sur ce lien pour continuer: ${resetUrl}`,
+      '',
+      'Ce lien est valable 15 minutes.',
+      "Si vous n'avez pas demande cette reinitialisation, ignorez cet email.",
+      '',
+      "L'equipe ANAM",
+      siteUrl,
+      supportEmail,
+    ].join('\n');
+
+    const safeName = this.escapeHtml(name);
+    const safeSiteUrl = this.escapeHtml(siteUrl);
+    const safeSupportEmail = this.escapeHtml(supportEmail);
+    const safeLogoUrl = this.escapeHtml(logoUrl);
+    const safeResetUrl = this.escapeHtml(resetUrl);
+    const html = `
+      <div style="margin:0;padding:0;background:#f3f7fb;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f3f7fb;padding:24px 0;">
+          <tr>
+            <td align="center">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:#ffffff;border:1px solid #dbe3ef;border-radius:14px;overflow:hidden;">
+                <tr>
+                  <td style="padding:24px 24px 8px 24px;text-align:center;">
+                    <img src="${safeLogoUrl}" alt="ANAM" style="display:block;margin:0 auto 12px auto;max-width:140px;height:auto;" />
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 24px 8px 24px;">
+                    <h1 style="margin:0 0 12px 0;font-size:24px;line-height:1.3;color:#0f172a;">Reinitialisation de mot de passe</h1>
+                    <p style="margin:0 0 12px 0;font-size:15px;line-height:1.7;">Bonjour ${safeName},</p>
+                    <p style="margin:0 0 16px 0;font-size:15px;line-height:1.7;">
+                      Vous avez demande la reinitialisation de votre mot de passe ANAM.
+                      Cliquez sur le bouton ci-dessous pour definir un nouveau mot de passe.
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 24px 18px 24px;text-align:center;">
+                    <a href="${safeResetUrl}" style="display:inline-block;background:#1d4ed8;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 24px;border-radius:10px;font-size:15px;">
+                      Reinitialiser mon mot de passe
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 24px 16px 24px;">
+                    <p style="margin:0 0 8px 0;font-size:14px;line-height:1.7;color:#0f172a;">
+                      Ce lien est valable <strong>15 minutes</strong>.
+                    </p>
+                    <p style="margin:0;font-size:14px;line-height:1.7;color:#475569;">
+                      Si vous n'avez pas demande cette reinitialisation, ignorez cet email.
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:16px 24px 24px 24px;border-top:1px solid #e2e8f0;">
+                    <p style="margin:0 0 8px 0;font-size:13px;line-height:1.6;color:#64748b;">Merci,<br />L'equipe ANAM</p>
+                    <p style="margin:0;font-size:13px;line-height:1.6;color:#64748b;">
+                      <a href="${safeSiteUrl}" style="color:#1d4ed8;text-decoration:none;">${safeSiteUrl}</a>
+                      &nbsp;|&nbsp;
+                      <a href="mailto:${safeSupportEmail}" style="color:#1d4ed8;text-decoration:none;">${safeSupportEmail}</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </div>
+    `;
+
+    await this.getMailer().sendMail({
+      from,
+      to: email,
+      subject,
+      text,
+      html,
+    });
   }
 
   private async sendOtpEmail(email: string, prenom: string | undefined, code: string) {
@@ -425,7 +576,7 @@ export class AuthService {
     if (entry.blockedUntil && now < entry.blockedUntil) {
       const wait = Math.ceil((entry.blockedUntil - now) / 1000);
       throw new Error(
-        `Trop de tentatives. RÃ©essayez dans ${wait}s`,
+        `Trop de tentatives. Réessayez dans ${wait}s`,
       );
     }
     return entry;
@@ -451,6 +602,12 @@ export class AuthService {
     username?: string;
     telephone?: string;
   }) {
+    if (!this.isStrongPassword(body.password || '')) {
+      throw new BadRequestException(
+        'Le mot de passe doit contenir au moins 8 caracteres, une majuscule, un chiffre et un symbole.',
+      );
+    }
+
     const hashed = await bcrypt.hash(body.password, 10);
     const normalizedEmail = this.normalizeEmail(body.email);
 
@@ -474,7 +631,7 @@ export class AuthService {
       /^0\d{9}$/.test(phone) || /^\+\d{8,15}$/.test(phone);
     if (!isValidPhone) {
       throw new Error(
-        'Veuillez entrer un numÃ©ro de tÃ©lÃ©phone valide (10 chiffres)',
+        'Veuillez entrer un numéro de téléphone valide (10 chiffres)',
       );
     }
     if (phone) {
@@ -489,12 +646,12 @@ export class AuthService {
         where: phoneWhere,
       });
       if (existingPhone) {
-        throw new Error("NumÃ©ro de tÃ©lÃ©phone dÃ©jÃ  utilisÃ©");
+        throw new Error("Numéro de téléphone déja utilisé");
       }
     }
 
     if (existingUser?.emailVerified) {
-      throw new Error('Email dÃ©jÃ  utilisÃ©');
+      throw new Error('Email déja vérifié');
     }
 
     const otpCode = this.generateOtp();
@@ -546,7 +703,7 @@ export class AuthService {
       throw new Error('Compte introuvable');
     }
     if (user.emailVerified) {
-      throw new Error('Email dÃ©jÃ  vÃ©rifiÃ©');
+      throw new Error('Email déja  vérifié');
     }
 
     this.checkAttemptLimit(normalizedEmail);
@@ -557,13 +714,13 @@ export class AuthService {
       user.verificationCodeExpires.getTime() < now
     ) {
       this.recordFailedAttempt(normalizedEmail);
-      throw new Error('Code invalide ou expirÃ©');
+      throw new Error('Code invalide ou expiré');
     }
 
     const match = await bcrypt.compare(code, user.verificationCode);
     if (!match) {
       this.recordFailedAttempt(normalizedEmail);
-      throw new Error('Code invalide ou expirÃ©');
+      throw new Error('Code invalide ou expiré');
     }
 
     await this.prisma.utilisateurPortail.update({
@@ -579,7 +736,7 @@ export class AuthService {
 
     const verifiedUser = await this.findUserWithRoleByEmail(normalizedEmail);
     if (!verifiedUser) {
-      throw new Error('Utilisateur introuvable aprÃ¨s vÃ©rification');
+      throw new Error('Utilisateur introuvable après vérification');
     }
 
     return this.login(verifiedUser);
@@ -595,7 +752,7 @@ export class AuthService {
       throw new Error('Compte introuvable');
     }
     if (user.emailVerified) {
-      throw new Error('Email dÃ©jÃ  vÃ©rifiÃ©');
+      throw new Error('Email déja  vérifié');
     }
 
     this.checkResendLimit(normalizedEmail);
@@ -615,6 +772,99 @@ export class AuthService {
     await this.sendOtpEmail(normalizedEmail, user.Prenom, otpCode);
 
     return { message: 'Code renvoyÃ©' };
+  }
+
+  async forgotPassword(email: string, ipAddress: string) {
+    const normalizedEmail = this.normalizeEmail(email);
+    if (!normalizedEmail) {
+      throw new BadRequestException('Email requis.');
+    }
+
+    this.checkForgotPasswordRateLimit(ipAddress);
+
+    const genericResponse = { message: FORGOT_PASSWORD_SUCCESS_MESSAGE };
+
+    const user = await this.prisma.utilisateurPortail.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true, email: true, Prenom: true },
+    });
+    if (!user) {
+      return genericResponse;
+    }
+
+    const plainToken = this.generatePasswordResetToken();
+    const tokenHash = this.hashPasswordResetToken(plainToken);
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    const resetTokenData: Record<string, unknown> = {
+      passwordResetTokenHash: tokenHash,
+      passwordResetTokenExpires: expiresAt,
+      passwordResetTokenUsedAt: null,
+    };
+
+    await this.prisma.utilisateurPortail.update({
+      where: { id: user.id },
+      data: resetTokenData as any,
+    });
+
+    try {
+      await this.sendPasswordResetEmail(user.email, user.Prenom, plainToken);
+    } catch (error) {
+      // Keep the same client response to avoid account/email enumeration.
+      console.error('Failed to send password reset email:', error);
+    }
+
+    return genericResponse;
+  }
+
+  async resetPassword(token: string, newPassword: string, confirmPassword: string) {
+    const cleanToken = (token || '').trim();
+    if (!cleanToken) {
+      throw new BadRequestException('Lien invalide ou expire.');
+    }
+
+    if (newPassword !== confirmPassword) {
+      throw new BadRequestException('La confirmation du mot de passe ne correspond pas.');
+    }
+
+    if (!this.isStrongPassword(newPassword || '')) {
+      throw new BadRequestException(
+        'Le mot de passe doit contenir au moins 8 caracteres, une majuscule, un chiffre et un symbole.',
+      );
+    }
+
+    const tokenHash = this.hashPasswordResetToken(cleanToken);
+    const resetTokenWhere: Record<string, unknown> = {
+      passwordResetTokenHash: tokenHash,
+      passwordResetTokenUsedAt: null,
+      passwordResetTokenExpires: { gt: new Date() },
+    };
+    const user = await this.prisma.utilisateurPortail.findFirst({
+      where: resetTokenWhere as any,
+      select: { id: true },
+    });
+
+    if (!user) {
+      throw new BadRequestException('Le lien de reinitialisation est invalide ou expire.');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const resetTokenCleanupData: Record<string, unknown> = {
+      password: hashedPassword,
+      passwordResetTokenHash: null,
+      passwordResetTokenExpires: null,
+      passwordResetTokenUsedAt: new Date(),
+    };
+    await this.prisma.$transaction([
+      this.prisma.utilisateurPortail.update({
+        where: { id: user.id },
+        data: resetTokenCleanupData as any,
+      }),
+      this.prisma.sessionPortail.deleteMany({
+        where: { userId: user.id },
+      }),
+    ]);
+
+    return { message: 'Votre mot de passe a ete modifie avec succes !' };
   }
 
 }

@@ -191,7 +191,7 @@ export default function AvisWaliStep() {
     });
 
     // Header
-    doc.addImage("/logo.jpg", "PNG", 15, 10, 30, 30);
+    doc.addImage("/anamlogo.png", "PNG", 15, 10, 30, 30);
     doc.setFontSize(10);
     doc.setTextColor(100);
     doc.text("Ministére de l'énergie et des Mines", 50, 15);

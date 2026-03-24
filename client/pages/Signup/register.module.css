@@ -2,6 +2,38 @@
   display: flex;
   min-height: 100vh;
   width: 100%;
+  position: relative;
+}
+
+.homeButton {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  text-decoration: none;
+  color: #4a2c3e;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 10px 24px rgba(41, 19, 31, 0.18);
+  backdrop-filter: blur(6px);
+  font-size: 0.88rem;
+  font-weight: 700;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+}
+
+.homeButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(41, 19, 31, 0.22);
+  background: #ffffff;
+}
+
+.homeButton svg {
+  color: #8b3a62;
 }
 
 /* SECTION GAUCHE */
@@ -209,6 +241,22 @@
   margin-top: 2px;
 }
 
+.passwordRules {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  font-size: 0.82rem;
+}
+
+.ruleOk {
+  color: #1f8a4c;
+}
+
+.ruleKo {
+  color: #b63a4d;
+}
+
 .inputGroup select {
   cursor: pointer;
   appearance: none;
@@ -290,6 +338,101 @@
   width: 100%;
 }
 
+.successOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(34, 18, 27, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.2s ease;
+}
+
+.successCard {
+  width: min(560px, 96vw);
+  background: #ffffff;
+  border: 1px solid rgba(139, 58, 98, 0.18);
+  border-radius: 18px;
+  box-shadow: 0 30px 80px rgba(32, 18, 26, 0.3);
+  padding: 28px 24px 24px;
+  text-align: center;
+  animation: slideInUp 0.25s ease;
+}
+
+.successIconWrap {
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  margin: 0 auto 14px;
+  background: linear-gradient(135deg, #e9faf2 0%, #dff5f7 100%);
+  border: 1px solid rgba(24, 134, 112, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.successIcon {
+  width: 34px;
+  height: 34px;
+  stroke: #178671;
+  stroke-width: 2.4;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.successTitle {
+  margin: 0 0 10px;
+  color: #2d1b27;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.successText {
+  margin: 0 0 8px;
+  color: #5d4554;
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.successHint {
+  margin: 4px 0 18px;
+  color: #8a6b7a;
+  font-size: 0.92rem;
+}
+
+.successPrimaryBtn {
+  min-width: 260px;
+  height: 48px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #8b3a62 0%, #178671 100%);
+  color: #ffffff;
+  font-size: 0.98rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 12px 26px -12px rgba(33, 91, 96, 0.62);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.successPrimaryBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px -12px rgba(33, 91, 96, 0.68);
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* RESPONSIVE */
 @media (max-width: 968px) {
   .container {
@@ -312,6 +455,11 @@
   .grid2 {
     grid-template-columns: 1fr;
   }
+
+  .successPrimaryBtn {
+    width: 100%;
+    min-width: unset;
+  }
 }
 
 @media (max-width: 640px) {
@@ -325,5 +473,12 @@
 
   .rightSection {
     padding: 30px 15px;
+  }
+
+  .homeButton {
+    top: 12px;
+    left: 12px;
+    padding: 9px 12px;
+    font-size: 0.8rem;
   }
 }

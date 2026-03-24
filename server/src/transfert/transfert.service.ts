@@ -20,6 +20,35 @@ export class TransfertService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
+  private isNumericId(value: string): boolean {
+    return /^\d+$/.test(value);
+  }
+
+  async resolvePermisId(permisIdOrCode: string): Promise<number> {
+    const candidate = String(permisIdOrCode ?? '').trim();
+    if (!candidate) {
+      throw new BadRequestException('permisId invalide');
+    }
+
+    if (this.isNumericId(candidate)) {
+      const parsed = Number(candidate);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+
+    const permis = await this.prisma.permisPortail.findFirst({
+      where: { short_code: candidate } as any,
+      select: { id: true },
+    });
+
+    if (!permis?.id) {
+      throw new NotFoundException('Permis introuvable.');
+    }
+
+    return permis.id;
+  }
+
   private normalizeString(value?: string | null): string | null {
     if (typeof value !== 'string') return null;
     const trimmed = value.trim();

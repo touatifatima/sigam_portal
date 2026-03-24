@@ -1,26 +1,32 @@
-import { JSX, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { JSX, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Building2,
   FileText,
   Gem,
-  ListChecks,
-  CreditCard,
-  FolderOpen,
-  LogOut,
+  BarChart3,
+  Map,
+  Bell,
   Plus,
   CheckCircle2,
   Clock,
   ShieldCheck,
-  ChevronDown,
   ArrowRight,
-  User,
-  Settings,
 } from "lucide-react";
 import axios from "axios";
 import styles from "./Dashboard.module.css";
+import Navbar from "@/pages/navbar/Navbar";
 import { useAuthStore } from "@/src/store/useAuthStore";
 import { useAuthReady } from "@/src/hooks/useAuthReady";
+import { OnboardingTour, type OnboardingStep } from "@/components/onboarding/OnboardingTour";
+import {
+  getHasSeenOnboarding,
+  getOnboardingActive,
+  getOnboardingPageSeen,
+  markOnboardingPageCompleted,
+  setOnboardingActive,
+  stopOnboardingForever,
+} from "@/src/onboarding/storage";
 
 type StatState = {
   demandesEnCours: number;
@@ -62,48 +68,124 @@ const cards: CardConfig[] = [
     description: "Consulter les statistiques de vos activites",
     route: "/investisseur/statistiques",
     tone: "amber",
-    icon: <ListChecks size={26} />,
+    icon: <BarChart3 size={26} />,
   },
   {
-    title: "Paiements",
-    description: "Gerer vos factures et effectuer vos paiements",
-    route: "/investisseur/paiements",
+    title: "Carte Miniere",
+    description: "Explorer les zones minières et opportunités d'investissement",
+    route: "/carte/carte_public",
     tone: "mint",
-    icon: <CreditCard size={26} />,
+    icon: <Map size={26} />,
   },
   {
-    title: "notifications",
+    title: "Notifications",
     description: "Consulter vos notifications et messages importants",
-    route: "/investisseur/notifications",
+    route: "/notification",
     tone: "violet",
-    icon: <FolderOpen size={26} />,
+    icon: <Bell size={26} />,
   },
 ];
 
+const DASHBOARD_ONBOARDING_STEPS: OnboardingStep[] = [
+  {
+    id: "dashboard-hero",
+    target: '[data-onboarding-id="dashboard-hero"]',
+    title: "Votre espace personnel",
+    description:
+      "Ici vous retrouvez un resume global de votre activite miniere avec vos actions prioritaires.",
+    placement: "bottom",
+  },
+  {
+    id: "dashboard-new-request",
+    target: '[data-onboarding-id="dashboard-new-request"]',
+    title: "Demarrer une nouvelle demande",
+    description:
+      "Ce bouton lance directement le workflow de creation de demande, avec verification prealable et etapes guidees.",
+    placement: "left",
+  },
+  {
+    id: "dashboard-status",
+    target: '[data-onboarding-id="dashboard-status"]',
+    title: "Statut instantane",
+    description:
+      "Ces cartes donnent vos indicateurs critiques: profil entreprise, demandes en cours et permis actifs.",
+    placement: "bottom",
+  },
+  {
+    id: "dashboard-demandes",
+    target: '[data-onboarding-id="dashboard-card-demandes"]',
+    title: "Suivi des demandes",
+    description:
+      "Accedez rapidement a vos demandes pour voir les statuts, actions attendues et historique.",
+    placement: "right",
+  },
+  {
+    id: "dashboard-permis",
+    target: '[data-onboarding-id="dashboard-card-permis"]',
+    title: "Permis actifs",
+    description:
+      "Consultez vos permis valides, leur avancement et les details utiles en un clic.",
+    placement: "right",
+  },
+  {
+    id: "dashboard-notifications",
+    target: '[data-onboarding-id="dashboard-card-notifications"]',
+    title: "Centre de notifications",
+    description:
+      "Toutes les alertes importantes arrivent ici: changements de statut, demandes de complement, decisions.",
+    placement: "left",
+  },
+  {
+    id: "dashboard-quick-access",
+    target: '[data-onboarding-id="dashboard-quick-access"]',
+    title: "Acces rapide",
+    description:
+      "Utilisez ces raccourcis pour naviguer plus vite entre vos modules metier.",
+    placement: "top",
+  },
+];
+
+const toList = <T,>(payload: unknown): T[] => {
+  if (Array.isArray(payload)) return payload as T[];
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "data" in payload &&
+    Array.isArray((payload as { data?: unknown }).data)
+  ) {
+    return (payload as { data: T[] }).data;
+  }
+  return [];
+};
+
+const normalizeStatus = (value: unknown): string =>
+  String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase();
+
+const isActivePermisStatus = (status: unknown): boolean => {
+  const normalized = normalizeStatus(status);
+  return (
+    normalized.includes("ACTIF") ||
+    normalized.includes("VALIDE") ||
+    normalized.includes("VALID") ||
+    normalized.includes("VIGUEUR")
+  );
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { auth, logout } = useAuthStore();
+  const location = useLocation();
+  const { auth } = useAuthStore();
   const isAuthReady = useAuthReady();
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
   const [stats, setStats] = useState<StatState>({
     demandesEnCours: 0,
     permisActifs: 0,
   });
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (!menuRef.current) return;
-      if (!menuRef.current.contains(event.target as Node)) {
-        setIsMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     if (!isAuthReady) return;
@@ -115,23 +197,68 @@ export default function Dashboard() {
   useEffect(() => {
     let isActive = true;
     if (!apiURL) return () => undefined;
-    axios
-      .get(`${apiURL}/investisseur/stats`, { withCredentials: true })
-      .then((response) => {
+
+    const loadStats = async () => {
+      try {
+        const [demandesResult, permisResult] = await Promise.allSettled([
+          axios.get(`${apiURL}/demandes/mes-demandes`, { withCredentials: true }),
+          axios.get(`${apiURL}/operateur/permis`, { withCredentials: true }),
+        ]);
+
+        const demandes =
+          demandesResult.status === "fulfilled"
+            ? toList<unknown>(demandesResult.value.data)
+            : [];
+
+        const permis =
+          permisResult.status === "fulfilled"
+            ? toList<Record<string, unknown>>(permisResult.value.data)
+            : [];
+
+        const permisActifs = permis.filter((item) => {
+          const statutField = (item as { statut?: unknown }).statut;
+          const rawStatus =
+            typeof statutField === "string"
+              ? statutField
+              : (statutField as { lib_statut?: unknown } | undefined)?.lib_statut;
+          return isActivePermisStatus(rawStatus);
+        }).length;
+
         if (!isActive) return;
         setStats({
-          demandesEnCours: response.data?.demandesEnAttente ?? 0,
-          permisActifs: response.data?.permisActifs ?? 0,
+          demandesEnCours: demandes.length,
+          permisActifs,
         });
-      })
-      .catch(() => {
+      } catch {
         if (!isActive) return;
         setStats((prev) => ({ ...prev }));
-      });
+      }
+    };
+
+    void loadStats();
+
     return () => {
       isActive = false;
     };
   }, [apiURL]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (getHasSeenOnboarding()) return;
+
+    const search = new URLSearchParams(location.search);
+    const shouldStartFromQuery = search.get("onboarding") === "1";
+    const active = getOnboardingActive() || shouldStartFromQuery;
+    const alreadySeenDashboard = getOnboardingPageSeen("investor-dashboard");
+
+    if (shouldStartFromQuery) {
+      setOnboardingActive(true);
+    }
+
+    if (active && !alreadySeenDashboard) {
+      setShowOnboarding(true);
+    }
+  }, [location.search]);
 
   const displayName = useMemo(() => {
     return auth?.username || auth?.email || "Utilisateur";
@@ -156,10 +283,21 @@ export default function Dashboard() {
     return labels.length ? labels.join(" / ") : "Investisseur";
   }, [auth?.role]);
 
-  const handleLogout = async () => {
-    setIsMenuOpen(false);
-    await logout();
-    navigate("/");
+  const getCardOnboardingId = (title: string): string | undefined => {
+    if (title === "Mes Demandes") return "dashboard-card-demandes";
+    if (title === "Mes Permis") return "dashboard-card-permis";
+    if (title === "Notifications") return "dashboard-card-notifications";
+    return undefined;
+  };
+
+  const handleCloseOnboarding = () => {
+    setShowOnboarding(false);
+    stopOnboardingForever();
+  };
+
+  const handleCompleteOnboarding = () => {
+    setShowOnboarding(false);
+    markOnboardingPageCompleted("investor-dashboard");
   };
 
   if (!isAuthReady) {
@@ -173,73 +311,10 @@ export default function Dashboard() {
 
   return (
     <div className={styles.dashboard}>
-      <header className={styles.header}>
-        <div className={styles.headerInner}>
-          <div className={styles.logo}>
-            <span className={styles.logoMark}>POM</span>
-            <span className={styles.logoText}>Portail</span>
-          </div>
-          <div className={styles.headerRight}>
-            <div className={styles.userMenu} ref={menuRef}>
-              <button
-                className={styles.userMenuButton}
-                onClick={() => setIsMenuOpen((prev) => !prev)}
-                aria-expanded={isMenuOpen}
-                aria-haspopup="menu"
-              >
-                <div className={styles.avatar}>{displayName[0] || "U"}</div>
-                <div className={styles.userMeta}>
-                  <div className={styles.userName}>{displayName}</div>
-                  <div className={styles.userRole}>{displayRoles}</div>
-                </div>
-                <ChevronDown
-                  size={16}
-                  className={`${styles.menuChevron} ${
-                    isMenuOpen ? styles.menuChevronOpen : ""
-                  }`}
-                />
-              </button>
-
-              {isMenuOpen && (
-                <div className={styles.userDropdown} role="menu">
-                  <button
-                    className={styles.dropdownItem}
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      navigate("/investisseur/profil");
-                    }}
-                  >
-                    <User size={18} className={styles.dropdownIcon} />
-                    Mon profil
-                  </button>
-
-                  <button
-                    className={styles.dropdownItem}
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      navigate("/investisseur/parametres");
-                    }}
-                  >
-                    <Settings size={18} className={styles.dropdownIcon} />
-                    Parametres
-                  </button>
-
-                  <button
-                    className={`${styles.dropdownItem} ${styles.dropdownLogout}`}
-                    onClick={handleLogout}
-                  >
-                    <LogOut size={18} className={styles.dropdownIcon} />
-                    Deconnexion
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+      <Navbar />
 
       <main className={styles.main}>
-        <section className={styles.hero}>
+        <section className={styles.hero} data-onboarding-id="dashboard-hero">
           <div className={styles.heroContent}>
             <h1 className={styles.heroTitle}>Bienvenue, {displayName}</h1>
             <p className={styles.heroSubtitle}>
@@ -252,6 +327,7 @@ export default function Dashboard() {
           </div>
           <button
             className={styles.primaryAction}
+            data-onboarding-id="dashboard-new-request"
             onClick={() =>
               navigate(
                 "/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis"
@@ -263,7 +339,7 @@ export default function Dashboard() {
           </button>
         </section>
 
-        <section className={styles.statusRow}>
+        <section className={styles.statusRow} data-onboarding-id="dashboard-status">
           <div className={styles.statusCard}>
             <div className={`${styles.statusIcon} ${styles.statusSuccess}`}>
               <CheckCircle2 size={18} />
@@ -271,7 +347,7 @@ export default function Dashboard() {
             <div>
               <div className={styles.statusLabel}>Profil entreprise</div>
               <div className={styles.statusValue}>
-                {auth.isEntrepriseVerified ? "Confirme" : "Non confirme"}
+                {auth.isEntrepriseVerified ? "Confirmé" : "Non confirmé"}
               </div>
             </div>
           </div>
@@ -299,19 +375,22 @@ export default function Dashboard() {
           </div>
         </section>
 
-        <section className={styles.quickAccess}>
+        <section className={styles.quickAccess} data-onboarding-id="dashboard-quick-access">
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>Acces rapide</h2>
             <p className={styles.sectionSubtitle}>
               Outils operationnels pour piloter vos demandes, permis et documents.
             </p>
           </div>
-          <div className={styles.cardsGrid}>
-            {cards.map((card, index) => (
+          <div className={styles.cardsGrid} data-onboarding-id="dashboard-cards">
+            {cards.map((card, index) => {
+              const tourId = getCardOnboardingId(card.title);
+              return (
               <div
                 key={card.title}
                 className={styles.quickCard}
                 data-tone={card.tone}
+                data-onboarding-id={tourId}
                 style={{ animationDelay: `${0.08 * index}s` }}
               >
                 <div className={styles.cardIcon}>{card.icon}</div>
@@ -323,14 +402,23 @@ export default function Dashboard() {
                   className={styles.cardButton}
                   onClick={() => navigate(card.route)}
                 >
-                  Acceder
+                  {card.title === "Statistiques"
+                    ? "Acceder"
+                    : "Acceder"}
                   <ArrowRight size={16} />
                 </button>
               </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       </main>
+      <OnboardingTour
+        isOpen={showOnboarding}
+        steps={DASHBOARD_ONBOARDING_STEPS}
+        onClose={handleCloseOnboarding}
+        onComplete={handleCompleteOnboarding}
+      />
     </div>
   );
 }

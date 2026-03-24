@@ -13,6 +13,14 @@ import { useViewNavigator } from '../../../../src/hooks/useViewNavigator';
 import { useAuthReady } from '../../../../src/hooks/useAuthReady';
 import { useLoading } from '@/components/globalspinner/LoadingContext';
 import ProgressStepper from '../../../../components/ProgressStepper';
+import { OnboardingTour, type OnboardingStep } from '@/components/onboarding/OnboardingTour';
+import {
+  getHasSeenOnboarding,
+  getOnboardingActive,
+  getOnboardingPageSeen,
+  markOnboardingPageCompleted,
+  stopOnboardingForever,
+} from '@/src/onboarding/storage';
 import {
   Select,
   SelectContent,
@@ -38,6 +46,41 @@ interface TypePermis {
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL ?? '';
 const SIMPLE_STEPS = ['Type & Cadastre', 'Localisation', 'Capacités',  'Documents', 'Facture', 'Paiement'];
+
+const START_ONBOARDING_STEPS: OnboardingStep[] = [
+  {
+    id: 'start-progress',
+    target: '[data-onboarding-id="start-progress"]',
+    title: 'Parcours de creation',
+    description:
+      'Ce bandeau vous montre toutes les etapes de votre demande pour suivre votre avancement en temps reel.',
+    placement: 'bottom',
+  },
+  {
+    id: 'start-type-select',
+    target: '[data-onboarding-id="start-type-select"]',
+    title: 'Verification prealable',
+    description:
+      'Commencez par choisir le type de permis adapte. Les regles de duree et superficie seront appliquees automatiquement.',
+    placement: 'bottom',
+  },
+  {
+    id: 'start-details',
+    target: '[data-onboarding-id="start-details"]',
+    title: 'Details du permis',
+    description:
+      'Verifiez ici les informations critiques avant de continuer: duree, renouvellements et superficie maximale.',
+    placement: 'top',
+  },
+  {
+    id: 'start-next',
+    target: '[data-onboarding-id="start-next"]',
+    title: 'Passer a l etape suivante',
+    description:
+      'Cliquez sur Suivant pour creer la procedure et ouvrir directement la page Cadastre.',
+    placement: 'top',
+  },
+];
 
 const isTypePermis = (value: unknown): value is TypePermis => {
   if (!value || typeof value !== 'object') return false;
@@ -96,6 +139,7 @@ export default function DemandeStart() {
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const [selectedPermisId, setSelectedPermisId] = useState<number | ''>('');
   const [selectedPermis, setSelectedPermis] = useState<TypePermis | null>(null);
@@ -149,6 +193,18 @@ export default function DemandeStart() {
       controller.abort();
     };
   }, [isAuthReady]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (getHasSeenOnboarding()) return;
+
+    const active = getOnboardingActive();
+    const alreadySeen = getOnboardingPageSeen('demande-start');
+
+    if (active && !alreadySeen) {
+      setShowOnboarding(true);
+    }
+  }, []);
 
   const effectivePermis = useMemo(() => {
     if (selectedPermis) {
@@ -268,6 +324,16 @@ console.log('auth in start procedure', auth);
     }
   };
 
+  const handleCloseOnboarding = () => {
+    setShowOnboarding(false);
+    stopOnboardingForever();
+  };
+
+  const handleCompleteOnboarding = () => {
+    setShowOnboarding(false);
+    markOnboardingPageCompleted('demande-start');
+  };
+
   return (
     <div className={styles.appContainer}>
       <Navbar />
@@ -285,44 +351,48 @@ console.log('auth in start procedure', auth);
             </button>
           </div>
 
-          <ProgressStepper steps={SIMPLE_STEPS} currentStep={1} />
+          <div data-onboarding-id="start-progress">
+            <ProgressStepper steps={SIMPLE_STEPS} currentStep={1} />
+          </div>
 
           <div className={`${styles.card} ${styles.stepCard}`}>
             {pageError && <div className={styles.errorBox}>{pageError}</div>}
 
-            <label className={styles.label}>
-              Type de permis <span className={styles.requiredMark}>*</span>
-            </label>
-            <Select
-              value={selectedPermisId === '' ? undefined : String(selectedPermisId)}
-              onValueChange={handlePermisChange}
-              disabled={optionsLoading}
-            >
-              <SelectTrigger className={styles.select}>
-                <SelectValue
-                  className={styles.selectValue}
-                  placeholder="-- Selectionnez --"
-                />
-              </SelectTrigger>
-              <SelectContent className={styles.selectContent}>
-                {permisOptions.map((permis) => (
-                  <SelectItem
-                    key={permis.id}
-                    value={String(permis.id)}
-                    className={styles.selectItem}
-                  >
-                    {permis.lib_type} ({permis.code_type}) - {permis.regime}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div data-onboarding-id="start-type-select">
+              <label className={styles.label}>
+                Type de permis <span className={styles.requiredMark}>*</span>
+              </label>
+              <Select
+                value={selectedPermisId === '' ? undefined : String(selectedPermisId)}
+                onValueChange={handlePermisChange}
+                disabled={optionsLoading}
+              >
+                <SelectTrigger className={styles.select}>
+                  <SelectValue
+                    className={styles.selectValue}
+                    placeholder="-- Selectionnez --"
+                  />
+                </SelectTrigger>
+                <SelectContent className={styles.selectContent}>
+                  {permisOptions.map((permis) => (
+                    <SelectItem
+                      key={permis.id}
+                      value={String(permis.id)}
+                      className={styles.selectItem}
+                    >
+                      {permis.lib_type} ({permis.code_type}) - {permis.regime}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             {detailsLoading && (
               <div className={styles.loadingHint}>Chargement des details du permis...</div>
             )}
 
             {effectivePermis && !detailsLoading && (
-              <div className={styles.permisDetails}>
+              <div className={styles.permisDetails} data-onboarding-id="start-details">
                 <h4>Details du permis selectionne</h4>
                 <ul>
                   <li>Duree initiale: {effectivePermis.duree_initiale} ans</li>
@@ -337,6 +407,7 @@ console.log('auth in start procedure', auth);
             <div className={styles.buttonGroup}>
               <button
                 className={styles.nextButton}
+                data-onboarding-id="start-next"
                 disabled={submitting || !effectivePermis}
                 onClick={handleStartProcedure}
               >
@@ -344,6 +415,12 @@ console.log('auth in start procedure', auth);
               </button>
             </div>
           </div>
+          <OnboardingTour
+            isOpen={showOnboarding}
+            steps={START_ONBOARDING_STEPS}
+            onClose={handleCloseOnboarding}
+            onComplete={handleCompleteOnboarding}
+          />
         </main>
       </div>
     </div>

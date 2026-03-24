@@ -25,6 +25,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { OnboardingTour, type OnboardingStep } from "@/components/onboarding/OnboardingTour";
+import {
+  getHasSeenOnboarding,
+  getOnboardingActive,
+  getOnboardingPageSeen,
+  markOnboardingPageCompleted,
+  stopOnboardingForever,
+} from "@/src/onboarding/storage";
 
 type Document = {
   id_doc: number;
@@ -78,6 +86,33 @@ type ProcedureDeclarationItem = {
 type DocStatus = "present" | "manquant" | "attente" | "uploading";
 type DocumentWithStatus = Document & { statut: DocStatus };
 
+const DOCUMENTS_ONBOARDING_STEPS: OnboardingStep[] = [
+  {
+    id: "documents-progress",
+    target: '[data-onboarding-id="documents-progress"]',
+    title: "Suivi des pieces",
+    description:
+      "Cette barre vous montre l avancement global des documents obligatoires et deja televerses.",
+    placement: "bottom",
+  },
+  {
+    id: "documents-grid",
+    target: '[data-onboarding-id="documents-grid"]',
+    title: "Deposer vos documents",
+    description:
+      "Chaque carte represente un document attendu. Glissez un fichier ou cliquez sur Televerser pour l ajouter.",
+    placement: "top",
+  },
+  {
+    id: "documents-navigation",
+    target: '[data-onboarding-id="documents-navigation"]',
+    title: "Continuer le workflow",
+    description:
+      "Une fois les documents requis valides, utilisez Suivant pour passer a l etape facture/paiement.",
+    placement: "top",
+  },
+];
+
 export default function Step5_Documents() {
   const { resetLoading } = useLoading();
   const searchParams = useSearchParams();
@@ -119,12 +154,24 @@ export default function Step5_Documents() {
   const [isDeclarationsLoading, setIsDeclarationsLoading] = useState(false);
   const [declarationsError, setDeclarationsError] = useState<string | null>(null);
   const [declarationsValidationError, setDeclarationsValidationError] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Clear any stuck global spinner when landing here
   useEffect(() => {
     try { resetLoading(); } catch {}
   }, [resetLoading]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (getHasSeenOnboarding()) return;
+    const active = getOnboardingActive();
+    const alreadySeen = getOnboardingPageSeen("demande-documents");
+
+    if (active && !alreadySeen) {
+      setShowOnboarding(true);
+    }
+  }, []);
 
   // Synchronize statuses and URLs from backend payload
   const applyDocPayload = useCallback((docs: DocumentWithStatus[] | undefined | null) => {
@@ -186,6 +233,16 @@ export default function Step5_Documents() {
       window.dispatchEvent(new CustomEvent('sigam:missing-docs', { detail: store[idProc] }));
     } catch {}
   }, [idProc, idDemande, missingSummary, deadlines]);
+
+  const handleCloseOnboarding = () => {
+    setShowOnboarding(false);
+    stopOnboardingForever();
+  };
+
+  const handleCompleteOnboarding = () => {
+    setShowOnboarding(false);
+    markOnboardingPageCompleted("demande-documents");
+  };
 
   // Stocker les documents manquants dans le localStorage pour le ProgressStepper et ClientLayout
   useEffect(() => {
@@ -998,7 +1055,7 @@ export default function Step5_Documents() {
                   </div>
                 </div>
 
-                <Card className={styles.progressCard}>
+                <Card className={styles.progressCard} data-onboarding-id="documents-progress">
                   <CardContent className={styles.progressContent}>
                     <div className={styles.progressHeader}>
                       <span className={styles.progressLabel}>Documents téléversés</span>
@@ -1045,7 +1102,7 @@ export default function Step5_Documents() {
                   <p>Chargement des documents...</p>
                 </div>
               ) : (
-                  <div className={styles.documentsGrid}>
+                  <div className={styles.documentsGrid} data-onboarding-id="documents-grid">
                     {documents.map((doc) => {
                       const status: DocStatus = statusMap[doc.id_doc] ?? 'manquant';
                       const rawFileUrl =
@@ -1193,7 +1250,7 @@ export default function Step5_Documents() {
                     })}
                   </div>
               )}
-              <div className={styles['navigation-buttons']}>
+              <div className={styles['navigation-buttons']} data-onboarding-id="documents-navigation">
                 <button
                   className={`${styles['btn']} ${styles['btn-outline']}`}
                   onClick={handleBack}
@@ -1231,6 +1288,12 @@ export default function Step5_Documents() {
             {showCahierForm && <CahierFormModal />}
             {letterPreview && <LetterPreviewModal />}
             <FinalDeclarationsModal />
+            <OnboardingTour
+              isOpen={showOnboarding}
+              steps={DOCUMENTS_ONBOARDING_STEPS}
+              onClose={handleCloseOnboarding}
+              onComplete={handleCompleteOnboarding}
+            />
           </div>
         </main>
       </div>

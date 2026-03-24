@@ -61,7 +61,7 @@ const unsplashVariant = (url: string, width: number, format: "jpg" | "webp" = "j
 
 export const Services = () => {
   return (
-    <section id="services" className={styles.section}>
+    <section className={styles.section}>
       <div className={styles.backgroundGradient} />
       <div className={styles.backgroundOrb} />
 

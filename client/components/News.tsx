@@ -44,7 +44,7 @@ const unsplashVariant = (url: string, width: number, format: "jpg" | "webp" = "j
 
 export const News = () => {
   return (
-    <section id="actualites" className={styles.section}>
+    <section className={styles.section}>
       <div className="container">
         <ScrollReveal>
           <div className={styles.header}>

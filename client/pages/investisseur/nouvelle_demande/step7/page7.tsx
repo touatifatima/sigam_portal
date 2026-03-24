@@ -14,7 +14,7 @@ import { useViewNavigator } from '@/src/hooks/useViewNavigator';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 // Use public asset URL directly instead of importing from /public
-const logo = '/assets/logo.jpg';
+const logo = '/anamlogo.png';
 import { useActivateEtape } from '@/src/hooks/useActivateEtape';
 import { Phase, Procedure, ProcedureEtape, ProcedurePhase, StatutProcedure } from '@/src/types/procedure';
 interface Procedure1 {

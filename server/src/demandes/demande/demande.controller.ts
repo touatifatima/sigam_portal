@@ -5,7 +5,6 @@ import {
   Put,
   Param,
   Get,
-  ParseIntPipe,
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
@@ -28,7 +27,8 @@ export class DemandesController {
     @Param('id') id: string,
     @Body() updateDemandeDto: UpdateDemandeDto,
   ) {
-    return this.demandeService.update(+id, updateDemandeDto);
+    const idDemande = await this.demandeService.resolveDemandeId(id);
+    return this.demandeService.update(idDemande, updateDemandeDto);
   }
 ////////////// Get demandes for the currently authenticated user
   @Get('mes-demandes')
@@ -45,8 +45,9 @@ export class DemandesController {
   }
 
   @Get(':id')
-  async getDemande(@Param('id', ParseIntPipe) id: number) {
-    return this.demandeService.findById(id);
+  async getDemande(@Param('id') id: string) {
+    const idDemande = await this.demandeService.resolveDemandeId(id);
+    return this.demandeService.findById(idDemande);
   }
 
   @Put(':id/expert')
@@ -61,7 +62,7 @@ export class DemandesController {
       date_agrement: Date;
     },
   ) {
-    const id_demande = parseInt(id, 10);
+    const id_demande = await this.demandeService.resolveDemandeId(id);
     const expert = await this.demandeService.createOrFindExpert(body);
     const updated = await this.demandeService.attachExpertToDemande(
       id_demande,
@@ -97,8 +98,9 @@ export class DemandesController {
 
   // Final deposit: set official date_demande and final code
   @Post(':id/deposer')
-  async deposer(@Param('id', ParseIntPipe) id: number) {
-    return this.demandeService.deposerDemande(id);
+  async deposer(@Param('id') id: string) {
+    const idDemande = await this.demandeService.resolveDemandeId(id);
+    return this.demandeService.deposerDemande(idDemande);
   }
 
   @Post('generate-code')

@@ -1,8 +1,16 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, ArrowRight, FileText, Map, BarChart3 } from "lucide-react";
 import { InvestorLayout } from "@/components/investor/InvestorLayout";
+import { OnboardingWelcomeModal } from "@/components/onboarding/OnboardingWelcomeModal";
+import {
+  getHasSeenOnboarding,
+  resetOnboardingPages,
+  setHasSeenOnboarding,
+  setOnboardingActive,
+  stopOnboardingForever,
+} from "@/src/onboarding/storage";
 import styles from "./Bienvenue.module.css";
 import { useAuthStore } from "@/src/store/useAuthStore";
 
@@ -10,6 +18,7 @@ const Bienvenue = () => {
   const navigate = useNavigate();
   const auth = useAuthStore((state) => state.auth);
   const isLoaded = useAuthStore((state) => state.isLoaded);
+  const [showOnboardingPrompt, setShowOnboardingPrompt] = useState(false);
   const displayName = auth.username || auth.email || "Investisseur";
 
   useEffect(() => {
@@ -25,6 +34,25 @@ const Bienvenue = () => {
     isLoaded,
     navigate,
   ]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (getHasSeenOnboarding()) return;
+    setShowOnboardingPrompt(true);
+  }, []);
+
+  const handleStartOnboarding = () => {
+    resetOnboardingPages();
+    setHasSeenOnboarding(false);
+    setOnboardingActive(true);
+    setShowOnboardingPrompt(false);
+    navigate("/investisseur/InvestorDashboard?onboarding=1");
+  };
+
+  const handleSkipOnboarding = () => {
+    stopOnboardingForever();
+    setShowOnboardingPrompt(false);
+  };
 
   const features = [
     {
@@ -111,6 +139,11 @@ const Bienvenue = () => {
           </div>
         </div>
       </div>
+      <OnboardingWelcomeModal
+        isOpen={showOnboardingPrompt}
+        onStart={handleStartOnboarding}
+        onSkip={handleSkipOnboarding}
+      />
     </InvestorLayout>
   );
 };

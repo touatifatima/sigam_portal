@@ -5,10 +5,68 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { StepIdentification } from "@/components/wizard/steps/StepIdentification";
 import { useToast } from "@/src/hooks/use-toast";
-import { Building2, CheckCircle, ChevronRight } from "lucide-react";
+import { Building2, CheckCircle, ChevronRight, Download, LogOut } from "lucide-react";
 import { InvestorLayout } from "@/components/investor/InvestorLayout";
 import styles from "./IdentificationEntreprise.module.css";
 import { useAuthStore } from "@/src/store/useAuthStore";
+
+type IdentificationPayload = Record<string, unknown> & {
+  actionnaires?: Array<Record<string, unknown>>;
+};
+
+const FIELD_LABELS: Record<string, string> = {
+  nomSocieteFr: "Nom societe (FR)",
+  nomSocieteAr: "Nom societe (AR)",
+  statutJuridique: "Statut juridique",
+  pays: "Pays",
+  telephone: "Telephone",
+  email: "Email",
+  siteWeb: "Site web",
+  numeroFax: "Numero de fax",
+  adresseComplete: "Adresse complete",
+  nationalite: "Nationalite",
+  dateConstitution: "Date de constitution",
+  representantNomFr: "Representant nom (FR)",
+  representantPrenomFr: "Representant prenom (FR)",
+  representantNomAr: "Representant nom (AR)",
+  representantPrenomAr: "Representant prenom (AR)",
+  representantTelephone: "Representant telephone",
+  representantEmail: "Representant email",
+  representantFax: "Representant fax",
+  representantQualite: "Representant qualite",
+  representantNationalite: "Representant nationalite",
+  representantPays: "Representant pays",
+  representantNIN: "Representant NIN",
+  representantTauxParticipation: "Taux participation representant",
+  numeroRC: "Numero RC",
+  dateEnregistrement: "Date enregistrement",
+  capitalSocial: "Capital social",
+  numeroNIS: "Numero NIS",
+  adresseSiege: "Adresse siege",
+  numeroNIF: "Numero NIF",
+};
+
+const toLabel = (key: string): string =>
+  FIELD_LABELS[key] ??
+  key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/_/g, " ")
+    .trim();
+
+const toDisplayValue = (value: unknown): string => {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) {
+    return value
+      .map((item) =>
+        item && typeof item === "object" ? JSON.stringify(item) : String(item ?? ""),
+      )
+      .join(", ");
+  }
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+};
 
 const IdentificationEntreprise = () => {
   const navigate = useNavigate();
@@ -16,6 +74,11 @@ const IdentificationEntreprise = () => {
   const [formData, setFormData] = useState<any>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmittedForReview, setIsSubmittedForReview] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [submittedPayload, setSubmittedPayload] = useState<IdentificationPayload | null>(null);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
+  const [goodbyeMessage, setGoodbyeMessage] = useState("");
   const setEntrepriseVerified = useAuthStore((s) => s.setEntrepriseVerified);
   const { auth, isLoaded } = useAuthStore();
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
@@ -35,7 +98,9 @@ const IdentificationEntreprise = () => {
     setIsSubmitting(true);
 
     try {
-      const payload = formData?.identification ?? formData;
+      const payload = JSON.parse(
+        JSON.stringify((formData?.identification ?? formData) || {}),
+      ) as IdentificationPayload;
       if (!apiURL) {
         throw new Error("API URL manquante");
       }
@@ -49,12 +114,8 @@ const IdentificationEntreprise = () => {
 
       setEntrepriseVerified(false);
       setIsSubmittedForReview(true);
-
-      toast({
-        title: "Demande envoyee",
-        description:
-          "Votre identification d'entreprise est en attente de verification par l'administration.",
-      });
+      setSubmittedPayload(payload);
+      setShowSuccessModal(true);
     } catch (error) {
       console.error("Erreur enregistrement entreprise:", error);
       const err = error as any;
@@ -68,6 +129,127 @@ const IdentificationEntreprise = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const downloadIdentificationPdf = async () => {
+    if (!submittedPayload || isDownloadingPdf) return;
+    setIsDownloadingPdf(true);
+    try {
+      const [{ default: JsPdf }, { default: autoTable }] = await Promise.all([
+        import("jspdf"),
+        import("jspdf-autotable"),
+      ]);
+
+      const doc = new JsPdf({ orientation: "portrait", unit: "mm", format: "a4" });
+      doc.setFontSize(16);
+      doc.setTextColor(45, 27, 39);
+      doc.text("Recapitulatif d'identification entreprise", 14, 16);
+      doc.setFontSize(10);
+      doc.setTextColor(107, 77, 94);
+      doc.text(`Date: ${new Date().toLocaleString("fr-FR")}`, 14, 22);
+
+      const mainRows = Object.entries(submittedPayload)
+        .filter(([key]) => key !== "actionnaires")
+        .map(([key, value]) => [toLabel(key), toDisplayValue(value)])
+        .filter(([, value]) => value);
+
+      autoTable(doc, {
+        startY: 28,
+        head: [["Champ", "Valeur"]],
+        body: mainRows.length ? mainRows : [["Information", "Aucune valeur renseignee"]],
+        headStyles: { fillColor: [139, 58, 98], textColor: [255, 255, 255] },
+        styles: { fontSize: 9, cellPadding: 2 },
+        columnStyles: {
+          0: { cellWidth: 62, fontStyle: "bold" },
+          1: { cellWidth: "auto" },
+        },
+      });
+
+      const actionnaires = Array.isArray(submittedPayload.actionnaires)
+        ? submittedPayload.actionnaires
+        : [];
+
+      if (actionnaires.length > 0) {
+        const body = actionnaires.map((actionnaire, index) => [
+          `Actionnaire ${index + 1}`,
+          toDisplayValue(actionnaire.nom),
+          toDisplayValue(actionnaire.prenom),
+          toDisplayValue(actionnaire.nationalite),
+          toDisplayValue(actionnaire.tauxParticipation),
+          toDisplayValue(actionnaire.pays),
+        ]);
+
+        autoTable(doc, {
+          startY: (doc as any).lastAutoTable.finalY + 8,
+          head: [[
+            "Actionnaire",
+            "Nom",
+            "Prenom",
+            "Nationalite",
+            "Taux %",
+            "Pays",
+          ]],
+          body,
+          headStyles: { fillColor: [22, 128, 136], textColor: [255, 255, 255] },
+          styles: { fontSize: 8.5, cellPadding: 2 },
+        });
+      }
+
+      doc.save(`identification-entreprise-${new Date().toISOString().slice(0, 10)}.pdf`);
+    } catch (error) {
+      console.error("Erreur generation PDF identification:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de generer le PDF pour le moment.",
+      });
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
+  const handleFinish = async () => {
+    if (isFinishing) return;
+    setIsFinishing(true);
+    setGoodbyeMessage("A bientot sur le Portail ANAM");
+
+    try {
+      if (apiURL) {
+        await axios.post(`${apiURL}/auth/logout`, {}, { withCredentials: true });
+      }
+    } catch (error) {
+      console.warn("Logout API warning:", error);
+    }
+
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("auth");
+      window.localStorage.removeItem("auth-storage");
+    }
+
+    useAuthStore.setState((state) => ({
+      ...state,
+      auth: {
+        ...state.auth,
+        token: null,
+        id: null,
+        username: null,
+        email: null,
+        nom: null,
+        Prenom: null,
+        telephone: null,
+        createdAt: null,
+        role: null,
+        permissions: [],
+        isEntrepriseVerified: false,
+        identificationStatus: null,
+        firstLoginAfterConfirmation: false,
+      },
+      isLoaded: true,
+    }));
+
+    window.setTimeout(() => {
+      setShowSuccessModal(false);
+      navigate("/auth/login");
+    }, 1100);
   };
 
   return (
@@ -128,6 +310,54 @@ const IdentificationEntreprise = () => {
             </CardContent>
           </Card>
         </div>
+
+        {showSuccessModal && (
+          <div className={styles.successOverlay}>
+            <div className={styles.successModal} role="dialog" aria-modal="true">
+              <div className={styles.successIconWrap}>
+                <CheckCircle className={styles.successIcon} />
+              </div>
+              <h2 className={styles.successTitle}>
+                Demande d&apos;identification envoyee avec succes
+              </h2>
+              <p className={styles.successText}>
+                Votre identification d&apos;entreprise a ete transmise a l&apos;administration ANAM.
+              </p>
+              <p className={styles.successText}>
+                Vous recevrez une reponse par email dans les plus brefs delais
+                (generalement sous 48h).
+              </p>
+              <p className={styles.successText}>
+                En attendant, nous avons prepare un recapitulatif de vos informations.
+              </p>
+
+              <div className={styles.successActions}>
+                <button
+                  type="button"
+                  className={styles.downloadButton}
+                  onClick={() => void downloadIdentificationPdf()}
+                  disabled={isDownloadingPdf || isFinishing}
+                >
+                  <Download size={18} />
+                  {isDownloadingPdf ? "Generation du PDF..." : "Telecharger le PDF"}
+                </button>
+                <button
+                  type="button"
+                  className={styles.finishButton}
+                  onClick={() => void handleFinish()}
+                  disabled={isFinishing}
+                >
+                  <LogOut size={18} />
+                  {isFinishing ? "Finalisation..." : "Terminer"}
+                </button>
+              </div>
+
+              {goodbyeMessage && (
+                <p className={styles.goodbyeMessage}>{goodbyeMessage}</p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </InvestorLayout>
   );

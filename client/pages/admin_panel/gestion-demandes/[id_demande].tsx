@@ -66,6 +66,7 @@ type PaiementItem = {
 
 type DemandeDetail = {
   id_demande: number;
+  short_code?: string | null;
   code_demande?: string | null;
   statut_demande?: string | null;
   date_demande?: string | null;
@@ -244,21 +245,21 @@ export default function GestionDemandeDetailAdminPage() {
       ? router.query.id_demande[0]
       : router.query.id_demande;
     const queryValue = String(fromQuery || '').trim();
-    const parsedQuery = Number(queryValue);
-    if (Number.isFinite(parsedQuery) && parsedQuery > 0) {
-      return parsedQuery;
+    if (queryValue) {
+      return decodeURIComponent(queryValue);
     }
 
-    const fromPath = String(router.asPath || '').match(/\/admin_panel\/gestion-demandes\/(\d+)/i)?.[1];
-    const parsedPath = Number(fromPath);
-    if (Number.isFinite(parsedPath) && parsedPath > 0) {
-      return parsedPath;
+    const fromPath = String(router.asPath || '').match(
+      /\/admin_panel\/gestion-demandes\/([^/?#]+)/i,
+    )?.[1];
+    if (fromPath) {
+      return decodeURIComponent(fromPath);
     }
 
     return null;
   }, [router.asPath, router.isReady, router.query.id_demande]);
 
-  const hasValidId = Number.isFinite(Number(demandeId)) && Number(demandeId) > 0;
+  const hasValidId = typeof demandeId === 'string' && demandeId.trim().length > 0;
 
   const [loading, setLoading] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -270,7 +271,7 @@ export default function GestionDemandeDetailAdminPage() {
   const [mapZone, setMapZone] = useState<number | undefined>(undefined);
   const [procedureEtapes, setProcedureEtapes] = useState<ProcedureEtapeItem[]>([]);
   const mapRef = useRef<ArcGISMapRef | null>(null);
-  const loadedIdRef = useRef<number | null>(null);
+  const loadedIdRef = useRef<string | null>(null);
 
   const [motifModalOpen, setMotifModalOpen] = useState<boolean>(false);
   const [motifAction, setMotifAction] = useState<StatusAction>('REJETEE');
@@ -284,7 +285,7 @@ export default function GestionDemandeDetailAdminPage() {
       .includes('admin');
 
   const codeDemande = useMemo(() => {
-    if (!demande) return hasValidId ? `DEM-${Number(demandeId)}` : '--';
+    if (!demande) return hasValidId ? String(demandeId) : '--';
     return demande.code_demande || `DEM-${demande.id_demande}`;
   }, [demande, demandeId, hasValidId]);
   const demandeurUserId = useMemo(() => {
@@ -351,15 +352,26 @@ export default function GestionDemandeDetailAdminPage() {
     setLoading(true);
     setError(null);
     try {
-      const detailRes = await axios.get<DemandeDetail>(`${apiURL}/demandes_dashboard/${Number(demandeId)}`, {
-        withCredentials: true,
-      });
+      const detailRes = await axios.get<DemandeDetail>(
+        `${apiURL}/demandes_dashboard/${encodeURIComponent(String(demandeId))}`,
+        {
+          withCredentials: true,
+        },
+      );
       const payload = detailRes.data ?? null;
+      const resolvedDemandeId = Number((payload as any)?.id_demande);
+      if (!Number.isFinite(resolvedDemandeId) || resolvedDemandeId <= 0) {
+        throw new Error('Identifiant interne de demande introuvable');
+      }
       setDemande(payload);
       const procedureId = toFiniteNumber((payload as any)?.procedure?.id_proc ?? (payload as any)?.id_proc);
 
       const [docsRes, provRes, coordsRes] = await Promise.all([
-        axios.get(`${apiURL}/api/procedure/${Number(demandeId)}/documents`, { withCredentials: true }).catch(() => null),
+        axios
+          .get(`${apiURL}/api/procedure/${resolvedDemandeId}/documents`, {
+            withCredentials: true,
+          })
+          .catch(() => null),
         procedureId
           ? axios.get(`${apiURL}/inscription-provisoire/procedure/${procedureId}`, {
               withCredentials: true,
@@ -461,7 +473,7 @@ export default function GestionDemandeDetailAdminPage() {
         mappedPoints.map((point: any) => `${Number(point?.x).toFixed(6)}|${Number(point?.y).toFixed(6)}`),
       ).size;
       const bbox = computeBbox(mappedPoints as Array<{ x: number; y: number }>);
-      const diagnosticId = (payload as any)?.code_demande || `id_demande=${Number(demandeId)}`;
+      const diagnosticId = (payload as any)?.code_demande || `id_demande=${resolvedDemandeId}`;
       console.groupCollapsed(`[AdminDemandeMap] Diagnostics ${diagnosticId}`);
       console.log('source', {
         sourceType: pointsSourceName,
@@ -518,8 +530,8 @@ export default function GestionDemandeDetailAdminPage() {
       setError('Identifiant de demande invalide.');
       return;
     }
-    if (loadedIdRef.current === Number(demandeId)) return;
-    loadedIdRef.current = Number(demandeId);
+    if (loadedIdRef.current === String(demandeId)) return;
+    loadedIdRef.current = String(demandeId);
     fetchDetails();
   }, [demandeId, fetchDetails, hasValidId, isAdmin, isLoaded, router, router.isReady]);
 
@@ -551,11 +563,16 @@ export default function GestionDemandeDetailAdminPage() {
 
   const runStatusAction = async (action: StatusAction, motif?: string) => {
     if (!apiURL || !hasValidId) return;
+    const internalDemandeId = Number(demande?.id_demande ?? demandeId);
+    if (!Number.isFinite(internalDemandeId) || internalDemandeId <= 0) {
+      setError("Impossible de déterminer l'identifiant interne de la demande.");
+      return;
+    }
     try {
       setSubmitting(true);
       setError(null);
       await axios.put(
-        `${apiURL}/api/demande/${Number(demandeId)}/status`,
+        `${apiURL}/api/demande/${internalDemandeId}/status`,
         {
           statut_demande: action,
           rejectionReason: motif,

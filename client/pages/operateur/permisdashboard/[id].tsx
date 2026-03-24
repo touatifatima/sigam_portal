@@ -1047,20 +1047,36 @@ const PermisDetailsOperateur = () => {
         setLoading(false);
         return;
       }
+      const permisRouteKey = String(id).trim();
+      if (!permisRouteKey) {
+        setError("Permis invalide");
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       setError(null);
 
       try {
         const [permisRes, docsRes, obligationsRes, historiqueRes] = await Promise.all([
-          axios.get(`${apiURL}/operateur/permis/${id}`, { withCredentials: true }),
+          axios.get(`${apiURL}/operateur/permis/${encodeURIComponent(permisRouteKey)}`, {
+            withCredentials: true,
+          }),
           axios
-            .get(`${apiURL}/operateur/permis/${id}/documents`, { withCredentials: true })
+            .get(`${apiURL}/operateur/permis/${encodeURIComponent(permisRouteKey)}/documents`, {
+              withCredentials: true,
+            })
             .catch(() => ({ data: null })),
           axios
-            .get(`${apiURL}/operateur/permis/${id}/obligations`, { withCredentials: true })
+            .get(
+              `${apiURL}/operateur/permis/${encodeURIComponent(permisRouteKey)}/obligations`,
+              { withCredentials: true },
+            )
             .catch(() => ({ data: [] })),
           axios
-            .get(`${apiURL}/operateur/permis/${id}/historique`, { withCredentials: true })
+            .get(
+              `${apiURL}/operateur/permis/${encodeURIComponent(permisRouteKey)}/historique`,
+              { withCredentials: true },
+            )
             .catch(() => ({ data: [] })),
         ]);
 

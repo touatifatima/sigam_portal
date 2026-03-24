@@ -1,12 +1,19 @@
 ﻿'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import Image from 'next/image';
 import Link from 'next/link';
-const logo = '/assets/logo.jpg';
+const logo = '/anamlogo.png';
 import styles from './register.module.css';
+
+const getPasswordChecks = (password: string) => ({
+  minLength: password.length >= 8,
+  hasUppercase: /[A-Z]/.test(password),
+  hasNumber: /\d/.test(password),
+  hasSymbol: /[^A-Za-z0-9]/.test(password),
+});
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -23,8 +30,18 @@ export default function Register() {
   const [roles, setRoles] = useState<{ id: number; name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [showOtpSentModal, setShowOtpSentModal] = useState(false);
+  const [otpTargetEmail, setOtpTargetEmail] = useState('');
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
   const router = useRouter();
+  const passwordChecks = getPasswordChecks(form.password);
+  const isPasswordStrong =
+    passwordChecks.minLength &&
+    passwordChecks.hasUppercase &&
+    passwordChecks.hasNumber &&
+    passwordChecks.hasSymbol;
   const toRoleList = (payload: any): { id: number; name: string }[] => {
     const candidates = Array.isArray(payload)
       ? payload
@@ -62,10 +79,21 @@ export default function Register() {
     fetchRoles();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleChange = (field: string, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
     if (field === 'telephone') {
       setPhoneError(null);
+    }
+    if (field === 'password' || field === 'confirmPassword') {
+      setPasswordError(null);
     }
   };
 
@@ -82,6 +110,13 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isPasswordStrong) {
+      setPasswordError(
+        'Le mot de passe doit contenir au moins 8 caracteres, une majuscule, un chiffre et un symbole.',
+      );
+      return;
+    }
     
     if (form.password !== form.confirmPassword) {
       alert('Les mots de passe ne correspondent pas.');
@@ -104,8 +139,14 @@ export default function Register() {
         username: form.username,
         telephone: normalizePhone(form.telephone),
       });
-      alert('votre… Code envoyé à votre email. Vérifiez votre boîte de réception.');
-      router.push(`/Signup/verify_email?email=${encodeURIComponent(form.email)}`);
+      setOtpTargetEmail(form.email);
+      setShowOtpSentModal(true);
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+      }
+      redirectTimerRef.current = setTimeout(() => {
+        void router.push(`/Signup/verify_email?email=${encodeURIComponent(form.email)}`);
+      }, 2600);
       
       // RÃ©initialiser le formulaire
       setForm({
@@ -125,8 +166,24 @@ export default function Register() {
     }
   };
 
+  const handleContinueToVerification = () => {
+    if (!otpTargetEmail) return;
+    if (redirectTimerRef.current) {
+      clearTimeout(redirectTimerRef.current);
+      redirectTimerRef.current = null;
+    }
+    void router.push(`/Signup/verify_email?email=${encodeURIComponent(otpTargetEmail)}`);
+  };
+
   return (
     <div className={styles.container}>
+      <Link href="/" className={styles.homeButton} aria-label="Retour a l'accueil">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M19 12H5" />
+          <path d="M12 19l-7-7 7-7" />
+        </svg>
+        <span>Accueil</span>
+      </Link>
       {/* SECTION GAUCHE */}
       <div className={styles.leftSection}>
         <div className={styles.logoContainer}>
@@ -249,11 +306,26 @@ export default function Register() {
                 type="password"
                 value={form.password}
                 onChange={e => handleChange('password', e.target.value)}
-                placeholder="Au moins 6 caractaires"
+                placeholder="8+ caracteres, majuscule, chiffre, symbole"
                 disabled={isLoading}
-                minLength={6}
+                minLength={8}
                 required
               />
+              <ul className={styles.passwordRules}>
+                <li className={passwordChecks.minLength ? styles.ruleOk : styles.ruleKo}>
+                  Au moins 8 caracteres
+                </li>
+                <li className={passwordChecks.hasUppercase ? styles.ruleOk : styles.ruleKo}>
+                  Au moins une majuscule
+                </li>
+                <li className={passwordChecks.hasNumber ? styles.ruleOk : styles.ruleKo}>
+                  Au moins un chiffre
+                </li>
+                <li className={passwordChecks.hasSymbol ? styles.ruleOk : styles.ruleKo}>
+                  Au moins un symbole
+                </li>
+              </ul>
+              {passwordError && <span className={styles.errorText}>{passwordError}</span>}
             </div>
 
             <div className={styles.inputGroup}>
@@ -274,11 +346,40 @@ export default function Register() {
             </button>
 
             <p className={styles.loginLink}>
-              Déjà un compte ? <Link href="/">Se connecter</Link>
+              Déjà un compte ? <Link href="/auth/login">Se connecter</Link>
             </p>
           </form>
         </div>
       </div>
+
+      {showOtpSentModal && (
+        <div className={styles.successOverlay} role="dialog" aria-modal="true">
+          <div className={styles.successCard}>
+            <div className={styles.successIconWrap} aria-hidden="true">
+              <svg viewBox="0 0 24 24" className={styles.successIcon}>
+                <path d="M20 6L9 17l-5-5" />
+              </svg>
+            </div>
+            <h3 className={styles.successTitle}>Code de verification envoye</h3>
+            <p className={styles.successText}>
+              Votre compte ANAM a bien ete enregistre.
+            </p>
+            <p className={styles.successText}>
+              Un code OTP a ete envoye a <strong>{otpTargetEmail}</strong>.
+            </p>
+            <p className={styles.successHint}>
+              Le code est valable 10 minutes. Nous vous redirigeons vers la verification.
+            </p>
+            <button
+              type="button"
+              className={styles.successPrimaryBtn}
+              onClick={handleContinueToVerification}
+            >
+              Continuer vers la verification
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

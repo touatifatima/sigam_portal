@@ -5,6 +5,9 @@ import {
   Prisma,
   StatutFacture,
 } from '@prisma/client';
+import { existsSync } from 'fs';
+import { readFile } from 'fs/promises';
+import * as path from 'path';
 import { PDFDocument, PDFFont, StandardFonts, rgb } from 'pdf-lib';
 import { PrismaService } from 'src/prisma/prisma.service';
 
@@ -15,6 +18,11 @@ type FactureLine = {
   base: string;
   montant: number;
   isTotal: boolean;
+};
+
+type LogoAsset = {
+  bytes: Uint8Array;
+  type: 'png' | 'jpg';
 };
 
 type DemandeWithType = Prisma.demandePortailGetPayload<{
@@ -279,22 +287,37 @@ export class FactureService {
     };
 
     const sanitizeText = (value: string) => {
-      return String(value ?? '')
+      const normalized = String(value ?? '')
         .replace(/[\u00A0\u202F]/g, ' ')
-        .replace(/[“”]/g, '"')
-        .replace(/[’]/g, "'");
+        .replace(/[\u201C\u201D]/g, '"')
+        .replace(/[\u2019]/g, "'")
+        .replace(/[\r\n\t]+/g, ' ')
+        .trim();
+
+      const safe = Array.from(normalized)
+        .map((char) => {
+          const code = char.charCodeAt(0);
+          if (code >= 32 && code <= 255) return char;
+          return ' ';
+        })
+        .join('')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+
+      return safe || '--';
     };
 
-    const formatMoney = (value: number | null) => {
-      if (value == null || Number.isNaN(value)) return '--';
+    const formatMoney = (value: number | null | unknown) => {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return '--';
       try {
         const formatted = new Intl.NumberFormat('fr-DZ', {
           minimumFractionDigits: 0,
           maximumFractionDigits: 0,
-        }).format(value);
+        }).format(numeric);
         return sanitizeText(formatted);
       } catch {
-        return sanitizeText(String(value));
+        return sanitizeText(String(numeric));
       }
     };
 
@@ -423,29 +446,92 @@ export class FactureService {
     const { height, width } = page.getSize();
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const logoAsset = await this.loadAnamLogoAsset();
     const marginX = 50;
     const contentWidth = width - marginX * 2;
-    const brand = rgb(0.49, 0.23, 0.82);
-    const brandSoft = rgb(0.96, 0.94, 0.99);
-    const textColor = rgb(0.12, 0.12, 0.16);
-    const muted = rgb(0.4, 0.4, 0.45);
-    const tableHeader = rgb(0.94, 0.94, 0.97);
-    const border = rgb(0.86, 0.86, 0.9);
+    const brand = rgb(0.545, 0.227, 0.384);
+    const brandDark = rgb(0.36, 0.14, 0.26);
+    const brandSoft = rgb(0.985, 0.95, 0.97);
+    const accent = rgb(0.12, 0.56, 0.51);
+    const accentSoft = rgb(0.93, 0.98, 0.96);
+    const textColor = rgb(0.13, 0.13, 0.18);
+    const muted = rgb(0.41, 0.41, 0.46);
+    const tableHeader = rgb(0.48, 0.19, 0.34);
+    const border = rgb(0.86, 0.84, 0.88);
 
     page.drawRectangle({
       x: 0,
-      y: height - 110,
+      y: height - 132,
       width,
-      height: 110,
+      height: 132,
       color: brandSoft,
     });
+    page.drawRectangle({
+      x: 0,
+      y: height - 132,
+      width,
+      height: 34,
+      color: accentSoft,
+    });
+    page.drawRectangle({
+      x: 0,
+      y: height - 8,
+      width,
+      height: 8,
+      color: accent,
+    });
 
-    page.drawText('SIGAM', {
-      x: marginX,
-      y: height - 62,
-      size: 22,
+    let textStartX = marginX;
+    if (logoAsset) {
+      try {
+        const logoImage =
+          logoAsset.type === 'png'
+            ? await pdfDoc.embedPng(logoAsset.bytes)
+            : await pdfDoc.embedJpg(logoAsset.bytes);
+        const boxX = marginX;
+        const boxY = height - 102;
+        const boxW = 52;
+        const boxH = 54;
+        page.drawRectangle({
+          x: boxX,
+          y: boxY,
+          width: boxW,
+          height: boxH,
+          color: rgb(1, 1, 1),
+          borderColor: border,
+          borderWidth: 0.8,
+        });
+        const scale = Math.min(
+          (boxW - 8) / logoImage.width,
+          (boxH - 8) / logoImage.height,
+        );
+        const logoW = logoImage.width * scale;
+        const logoH = logoImage.height * scale;
+        page.drawImage(logoImage, {
+          x: boxX + (boxW - logoW) / 2,
+          y: boxY + (boxH - logoH) / 2,
+          width: logoW,
+          height: logoH,
+        });
+        textStartX = boxX + boxW + 10;
+      } catch {
+        textStartX = marginX;
+      }
+    }
+
+    page.drawText('ANAM', {
+      x: textStartX,
+      y: height - 64,
+      size: 24,
       font: fontBold,
       color: brand,
+    });
+    page.drawText('Agence Nationale des Activites Minieres', {
+      x: textStartX,
+      y: height - 82,
+      size: 9,
+      font,
+      color: muted,
     });
 
     const drawRight = (
@@ -466,12 +552,22 @@ export class FactureService {
       });
     };
 
-    drawRight('FACTURE', height - 62, 18, fontBold, brand);
-    drawRight(`N° ${numeroFacture ?? facture.id_facture}`, height - 82, 10, font, muted);
+    page.drawRectangle({
+      x: width - marginX - 190,
+      y: height - 98,
+      width: 190,
+      height: 54,
+      color: rgb(1, 1, 1),
+      borderColor: border,
+      borderWidth: 0.8,
+    });
+
+    drawRight('FACTURE OFFICIELLE', height - 62, 15, fontBold, brandDark);
+    drawRight(`No ${numeroFacture ?? facture.id_facture}`, height - 80, 10, fontBold, brandDark);
     drawRight(
-      `Date émission : ${formatDate(facture.date_emission ?? null)}`,
-      height - 98,
-      10,
+      `Date d'emission : ${formatDate(facture.date_emission ?? null)}`,
+      height - 94,
+      9,
       font,
       muted,
     );
@@ -559,7 +655,7 @@ export class FactureService {
           value: demande.code_demande ?? '--',
         },
         right: {
-          label: 'Type de procédure',
+          label: 'Type de procedure',
           value: demande.typeProcedure?.libelle ?? '--',
         },
       },
@@ -611,12 +707,12 @@ export class FactureService {
     );
     y -= substanceHeight + 8;
 
-    page.drawText('Détail des montants', {
+    page.drawText('Detail des montants', {
       x: marginX,
       y,
       size: 13,
       font: fontBold,
-      color: brand,
+      color: brandDark,
     });
     y -= 18;
 
@@ -639,16 +735,16 @@ export class FactureService {
       y: y - 15,
       size: 9,
       font: fontBold,
-      color: muted,
+      color: rgb(1, 1, 1),
     });
     page.drawText('Base de calcul', {
       x: tableX + col1 + 8,
       y: y - 15,
       size: 9,
       font: fontBold,
-      color: muted,
+      color: rgb(1, 1, 1),
     });
-    drawRight('Montant', y - 15, 9, fontBold, muted);
+    drawRight('Montant', y - 15, 9, fontBold, rgb(1, 1, 1));
 
     y -= headerHeight + 6;
 
@@ -706,39 +802,87 @@ export class FactureService {
       y: y - 26,
       width: tableWidth,
       height: 26,
-      color: brandSoft,
+      color: brand,
     });
     page.drawText('TOTAL', {
       x: tableX + 8,
       y: y - 18,
       size: 11,
       font: fontBold,
-      color: brand,
+      color: rgb(1, 1, 1),
     });
-    drawRight(totalText, y - 18, 11, fontBold, brand);
+    drawRight(totalText, y - 18, 11, fontBold, rgb(1, 1, 1));
     y -= 40;
 
     const footerLines = wrapText(
-      `Cette facture est un récapitulatif des droits et taxes applicables à votre demande. ${totalText} sera exigible après validation de votre dossier. Paiement sécurisé SIGAM.`,
-      contentWidth,
+      `Cette facture est un recapitulatif des droits et taxes applicables a votre demande. ${totalText} sera exigible apres validation de votre dossier. Paiement securise ANAM.`,
+      contentWidth - 20,
       font,
       8,
     );
-    let footerY = 52;
+
+    const noteY = 52;
+    page.drawRectangle({
+      x: marginX,
+      y: noteY - 8,
+      width: contentWidth,
+      height: 34,
+      color: accentSoft,
+      borderColor: border,
+      borderWidth: 0.6,
+    });
+
+    page.drawText('NOTE IMPORTANTE', {
+      x: marginX + 8,
+      y: noteY + 17,
+      size: 8,
+      font: fontBold,
+      color: brandDark,
+    });
+
+    let footerY = noteY + 7;
     footerLines.forEach((line) => {
       page.drawText(line, {
-        x: marginX,
+        x: marginX + 8,
         y: footerY,
         size: 8,
         font,
         color: muted,
       });
-      footerY -= 10;
+      footerY -= 9;
     });
 
     const buffer = Buffer.from(await pdfDoc.save());
     const filename = `facture-${numeroFacture ?? facture.id_facture}.pdf`;
     return { buffer, filename };
+  }
+
+  private async loadAnamLogoAsset(): Promise<LogoAsset | null> {
+    const fileCandidates = ['anamlogo.png', 'anamlogo.jpg', 'anamlogo.jpeg'];
+    const baseCandidates = [
+      path.resolve(process.cwd(), 'client', 'public'),
+      path.resolve(process.cwd(), '..', 'client', 'public'),
+      path.resolve(__dirname, '..', '..', '..', 'client', 'public'),
+      path.resolve(__dirname, '..', '..', 'client', 'public'),
+    ];
+
+    for (const basePath of baseCandidates) {
+      for (const fileName of fileCandidates) {
+        const absolutePath = path.resolve(basePath, fileName);
+        if (!existsSync(absolutePath)) continue;
+        try {
+          const fileBuffer = await readFile(absolutePath);
+          return {
+            bytes: new Uint8Array(fileBuffer),
+            type: fileName.endsWith('.png') ? 'png' : 'jpg',
+          };
+        } catch {
+          // Try next candidate path.
+        }
+      }
+    }
+
+    return null;
   }
 
   private isFacturableDemande(demande: DemandeWithType) {

@@ -29,10 +29,12 @@ const DeferredSection = ({
   children,
   minHeight = 240,
   rootMargin = "280px",
+  sectionId,
 }: {
   children: ReactNode;
   minHeight?: number;
   rootMargin?: string;
+  sectionId?: string;
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const markerRef = useRef<HTMLDivElement | null>(null);
@@ -55,7 +57,11 @@ const DeferredSection = ({
   }, [isVisible, rootMargin]);
 
   return (
-    <div ref={markerRef} style={{ minHeight: isVisible ? undefined : minHeight }}>
+    <div
+      id={sectionId}
+      ref={markerRef}
+      style={{ minHeight: isVisible ? undefined : minHeight }}
+    >
       {isVisible ? children : null}
     </div>
   );
@@ -82,7 +88,7 @@ const Index = () => {
       <Suspense fallback={null}>
         <Statistics />
       </Suspense>
-      <DeferredSection minHeight={620}>
+      <DeferredSection minHeight={620} sectionId="services">
         <Suspense fallback={null}>
           <Services />
         </Suspense>
@@ -92,7 +98,7 @@ const Index = () => {
           <HowItWorks />
         </Suspense>
       </DeferredSection>
-      <DeferredSection minHeight={680}>
+      <DeferredSection minHeight={680} sectionId="actualites">
         <Suspense fallback={null}>
           <News />
         </Suspense>

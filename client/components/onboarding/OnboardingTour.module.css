@@ -1,0 +1,145 @@
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  pointer-events: none;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 10, 20, 0.62);
+  backdrop-filter: blur(1.5px);
+}
+
+.highlight {
+  position: fixed;
+  border-radius: 14px;
+  border: 2px solid #8f2d56;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.15),
+    0 0 0 9999px rgba(6, 10, 20, 0.48),
+    0 14px 36px rgba(6, 10, 20, 0.4);
+  pointer-events: none;
+}
+
+.tooltip {
+  position: fixed;
+  width: min(360px, calc(100vw - 32px));
+  min-height: 220px;
+  border-radius: 16px;
+  border: 1px solid rgba(143, 45, 86, 0.5);
+  background: #ffffff;
+  box-shadow: 0 30px 70px rgba(15, 23, 42, 0.35);
+  padding: 18px 18px 16px;
+  pointer-events: auto;
+}
+
+.close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  border: none;
+  background: transparent;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #4b5563;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.counter {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.12);
+  color: #0f766e;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  margin-bottom: 10px;
+}
+
+.title {
+  margin: 0 0 8px;
+  color: #111827;
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.description {
+  margin: 0;
+  color: #4b5563;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.actions {
+  margin-top: 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.rightActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.secondary,
+.primary {
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  height: 40px;
+  padding: 0 14px;
+  border: none;
+  cursor: pointer;
+}
+
+.secondary {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.secondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.primary {
+  background: linear-gradient(135deg, #8f2d56 0%, #0f766e 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 22px rgba(143, 45, 86, 0.28);
+}
+
+@media (max-width: 768px) {
+  .tooltip {
+    min-height: 200px;
+    padding: 16px 14px 14px;
+  }
+
+  .title {
+    font-size: 18px;
+  }
+
+  .actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rightActions {
+    justify-content: flex-end;
+  }
+}
+

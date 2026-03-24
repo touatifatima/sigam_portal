@@ -2,8 +2,7 @@ import { MapPin, Phone, Mail } from "lucide-react";
 import styles from "./Footer.module.css";
 import { ScrollReveal } from "./ScrollReveal";
 
-const logoJpg = "/logo.jpg";
-const logoWebp = "/logo.webp";
+const logo = "/anamlogo.png";
 
 export const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -37,18 +36,15 @@ export const Footer = () => {
           <ScrollReveal delay={0}>
             <div className={styles.brand}>
               <a href="/acceuil/Home" className={styles.brandLink}>
-                <picture>
-                  <source srcSet={logoWebp} type="image/webp" />
-                  <img
-                    src={logoJpg}
-                    alt="ANAM Logo"
-                    className={styles.brandLogo}
-                    width={96}
-                    height={48}
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </picture>
+                <img
+                  src={logo}
+                  alt="ANAM Logo"
+                  className={styles.brandLogo}
+                  width={120}
+                  height={120}
+                  loading="lazy"
+                  decoding="async"
+                />
                 <div>
                   <span className={styles.brandTitle}>POM</span>
                   <p className={styles.brandSubtitle}>Portail Minier National</p>

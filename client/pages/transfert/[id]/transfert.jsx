@@ -42,14 +42,22 @@ export default function TransfertPage() {
   const [error, setError] = useState(null);
   const [step, setStep] = useState(1);
 
-  const permisId = useMemo(() => (id ? Number(id) : NaN), [id]);
+  const permisRouteKey = useMemo(() => {
+    const raw = Array.isArray(id) ? id[0] : id;
+    const normalized = String(raw || '').trim();
+    return normalized.length > 0 ? normalized : null;
+  }, [id]);
+  const internalPermisId = useMemo(() => {
+    const parsed = Number(permisDetails?.id);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }, [permisDetails?.id]);
 
   const closeNotification = useCallback(() => setNotification(null), []);
 
   const fetchHistory = useCallback(
     async (controller) => {
       try {
-        const response = await axios.get(`${apiURL}/transfert/permis/${permisId}/history`, {
+        const response = await axios.get(`${apiURL}/transfert/permis/${encodeURIComponent(permisRouteKey)}/history`, {
           withCredentials: true,
           signal: controller?.signal,
         });
@@ -61,7 +69,7 @@ export default function TransfertPage() {
         console.error('Transfer history error:', err);
       }
     },
-    [permisId],
+    [permisRouteKey],
   );
 
   const fetchPermisDetails = useCallback(
@@ -69,7 +77,7 @@ export default function TransfertPage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await axios.get(`${apiURL}/transfert/permis/${permisId}/details`, {
+        const response = await axios.get(`${apiURL}/transfert/permis/${encodeURIComponent(permisRouteKey)}/details`, {
           withCredentials: true,
           signal: controller.signal,
         });
@@ -92,11 +100,11 @@ export default function TransfertPage() {
         setLoading(false);
       }
     },
-    [fetchHistory, permisId],
+    [fetchHistory, permisRouteKey],
   );
 
   useEffect(() => {
-    if (!permisId || Number.isNaN(permisId) || !isAuthReady) {
+    if (!permisRouteKey || !isAuthReady) {
       return;
     }
 
@@ -106,7 +114,7 @@ export default function TransfertPage() {
     return () => {
       controller.abort();
     };
-  }, [fetchPermisDetails, permisId, isAuthReady]);
+  }, [fetchPermisDetails, permisRouteKey, isAuthReady]);
 
   const handleOpenSelect = () => {
     setShowSelectModal(true);
@@ -173,8 +181,13 @@ export default function TransfertPage() {
 
     setLoading(true);
     try {
+      if (!internalPermisId) {
+        setNotification({ type: 'error', message: 'Permis invalide' });
+        setLoading(false);
+        return;
+      }
       const payload = {
-        permisId,
+        permisId: internalPermisId,
         date_demande: dateDemande,
         motif_transfert: motif.trim(),
         observations: observations.trim() || undefined,
@@ -213,8 +226,13 @@ export default function TransfertPage() {
   };
 
   const handleViewDetails = () => {
-    if (transferResult?.newDemandeId) {
-      router.push(`/demand_dashboard/${transferResult.newDemandeId}`);
+    const routeKey =
+      transferResult?.newDemandeShortCode ||
+      transferResult?.new_demande_short_code ||
+      transferResult?.newDemandeId ||
+      transferResult?.new_demande_id;
+    if (routeKey) {
+      router.push(`/demand_dashboard/${encodeURIComponent(String(routeKey))}`);
     }
   };
 
@@ -240,7 +258,7 @@ export default function TransfertPage() {
         <div className={styles.breadcrumb}>
           <span onClick={() => router.push('/gestion_permis')}>Gestion des permis</span>
           <span className={styles.divider}>/</span>
-          <span>Transfert du permis #{permisDetails?.code_permis ?? permisId}</span>
+          <span>Transfert du permis #{permisDetails?.code_permis ?? permisRouteKey ?? '--'}</span>
         </div>
 
         <div className={styles.headerMain}>

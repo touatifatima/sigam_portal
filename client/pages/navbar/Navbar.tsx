@@ -1,7 +1,7 @@
 // components/Navbar.tsx
 'use client';
 import { FiSearch, FiChevronDown } from 'react-icons/fi';
-import { User, Settings, LogOut, LayoutDashboard, Map } from 'lucide-react';
+import { User, Settings, LogOut, LayoutDashboard, Map, WandSparkles, Menu } from 'lucide-react';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
@@ -10,6 +10,11 @@ import styles from './Navbar.module.css';
 import {
   resolveNotificationTargetPathAsync,
 } from '@/src/utils/notificationNavigation';
+import {
+  resetOnboardingPages,
+  setHasSeenOnboarding,
+  setOnboardingActive,
+} from '@/src/onboarding/storage';
 
 interface NotificationItem {
   id: number;
@@ -27,6 +32,11 @@ interface NotificationItem {
   permisId?: number | null;
   messageId?: number | null;
 }
+
+type NavQuickLink = {
+  href: string;
+  label: string;
+};
 
 const NOTIFICATIONS_FLAG =
   (process.env.NEXT_PUBLIC_ENABLE_NOTIFICATIONS ??
@@ -48,11 +58,13 @@ export default function Navbar() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotificationsLoading, setIsNotificationsLoading] = useState(false);
   const [navigatingNotificationId, setNavigatingNotificationId] = useState<number | null>(null);
+  const [isCompactMenuOpen, setIsCompactMenuOpen] = useState(false);
   const [notificationsSuppressed, setNotificationsSuppressed] = useState(
     !NOTIFICATIONS_ENABLED,
   );
   const dropdownRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
+  const compactMenuRef = useRef<HTMLDivElement>(null);
   const apiURL =
     process.env.NEXT_PUBLIC_API_URL || (import.meta as any)?.env?.VITE_API_URL || '';
   const isIdentificationsRoute =
@@ -279,12 +291,19 @@ export default function Navbar() {
       if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
         setIsNotificationsOpen(false);
       }
+      if (compactMenuRef.current && !compactMenuRef.current.contains(event.target as Node)) {
+        setIsCompactMenuOpen(false);
+      }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  useEffect(() => {
+    setIsCompactMenuOpen(false);
+  }, [router.asPath]);
 
   const getInitials = (role: string) => {
     return role
@@ -325,15 +344,73 @@ export default function Navbar() {
     });
   };
 
+  const normalizedRoles = useMemo(() => {
+    const rawRoles = Array.isArray(auth?.role) ? auth.role : [auth?.role ?? ''];
+    return rawRoles
+      .flatMap((role) => String(role ?? '').split(','))
+      .map((role) => role.trim().toLowerCase())
+      .filter(Boolean);
+  }, [auth?.role]);
+
+  const isAdmin = normalizedRoles.some(
+    (role) => role === 'admin' || role === 'administrateur',
+  );
+  const isOperateur = normalizedRoles.some(
+    (role) => role === 'operateur' || role === 'operator',
+  );
+  const isInvestisseur = normalizedRoles.some(
+    (role) => role === 'investisseur' || role === 'investor',
+  );
+
+  const roleQuickLinks = useMemo<NavQuickLink[]>(() => {
+    if (isAdmin) {
+      return [
+        { href: '/admin_panel/DossierAdminPage', label: 'Dossiers' },
+        { href: '/admin_panel/gestion-demandes/gestion_demandes', label: 'Demandes' },
+        { href: '/admin_panel/gestion_notifications', label: 'Notifications' },
+      ];
+    }
+
+    if (isOperateur) {
+      return [
+        { href: '/operateur/permisdashboard/mes-permis', label: 'Mes permis' },
+        { href: '/demand_dashboard/mine', label: 'Mes demandes' },
+      ];
+    }
+
+    if (isInvestisseur) {
+      return [
+        { href: '/investisseur/InvestorDashboard', label: 'Dashboard' },
+        { href: '/investisseur/demandes', label: 'Mes demandes' },
+      ];
+    }
+
+    return [];
+  }, [isAdmin, isInvestisseur, isOperateur]);
+
+  const dashboardHref = isAdmin
+    ? '/admin_panel/DossierAdminPage'
+    : isOperateur
+    ? '/operateur/permisdashboard/mes-permis'
+    : '/investisseur/InvestorDashboard';
+
   const initials = auth.role ? getInitials(auth.role) : '';
   const displayUsername = auth.username ?? auth.email ?? '';
   const displayEmail = auth.email ?? '';
-  const isInvestisseur = (auth.role ?? '').toLowerCase() === 'investisseur';
   const canCreateDemande = isInvestisseur && auth.isEntrepriseVerified;
+  const precheckHref = '/investisseur/interactive';
 
   const handleLogout = async () => {
     setIsDropdownOpen(false);
     await logout();
+  };
+
+  const handleRestartOnboarding = async () => {
+    setIsDropdownOpen(false);
+    resetOnboardingPages();
+    setHasSeenOnboarding(false);
+    setOnboardingActive(true);
+    await router.push('/investisseur/InvestorDashboard?onboarding=1');
   };
 
   return (
@@ -357,6 +434,16 @@ export default function Navbar() {
       </div>
 
       <div className={styles['navbar-actions']}>
+        {roleQuickLinks.length > 0 && (
+          <div className={styles['role-nav-links']}>
+            {roleQuickLinks.map((link) => (
+              <Link key={link.href} href={link.href} className={styles['role-nav-link']}>
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        )}
+
         <Link
           href="/carte/carte_public"
           className={styles['nav-map-link']}
@@ -365,6 +452,16 @@ export default function Navbar() {
           <Map size={16} />
           <span>Carte Publique</span>
         </Link>
+
+        {isInvestisseur && (
+          <Link
+            href={precheckHref}
+            className={styles['nav-precheck-cta']}
+            title="Verification prealable"
+          >
+            Verification prealable
+          </Link>
+        )}
 
         {isInvestisseur && (
           <Link
@@ -387,6 +484,68 @@ export default function Navbar() {
             Nouvelle Demande
           </Link>
         )}
+
+        <div className={styles['mobile-nav-wrapper']} ref={compactMenuRef}>
+          <button
+            type="button"
+            className={styles['mobile-nav-trigger']}
+            aria-expanded={isCompactMenuOpen}
+            onClick={() => setIsCompactMenuOpen((prev) => !prev)}
+          >
+            <Menu size={16} />
+            <span>Menu</span>
+          </button>
+
+          {isCompactMenuOpen && (
+            <div className={styles['mobile-nav-menu']}>
+              {roleQuickLinks.map((link) => (
+                <Link
+                  key={`mobile-${link.href}`}
+                  href={link.href}
+                  className={styles['mobile-nav-link']}
+                  onClick={() => setIsCompactMenuOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              ))}
+
+              <Link
+                href="/carte/carte_public"
+                className={styles['mobile-nav-link']}
+                onClick={() => setIsCompactMenuOpen(false)}
+              >
+                Carte Publique
+              </Link>
+
+              {isInvestisseur && (
+                <Link
+                  href={precheckHref}
+                  className={styles['mobile-nav-link']}
+                  onClick={() => setIsCompactMenuOpen(false)}
+                >
+                  Verification prealable
+                </Link>
+              )}
+
+              {isInvestisseur && (
+                <Link
+                  href="/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis"
+                  className={`${styles['mobile-nav-link']} ${
+                    canCreateDemande ? '' : styles['mobile-nav-link-disabled']
+                  }`}
+                  onClick={(event) => {
+                    if (!canCreateDemande) {
+                      event.preventDefault();
+                    }
+                    setIsCompactMenuOpen(false);
+                  }}
+                >
+                  Nouvelle Demande
+                </Link>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className={styles['navbar-user']}>
@@ -510,7 +669,7 @@ export default function Navbar() {
           {isDropdownOpen && (
             <div className={styles['dropdown-menu']} role="menu">
               <Link
-                href="/investisseur/InvestorDashboard"
+                href={dashboardHref}
                 className={styles['dropdown-item']}
                 onClick={() => setIsDropdownOpen(false)}
               >
@@ -545,6 +704,17 @@ export default function Navbar() {
                 <span>Parametres</span>
               </Link>
 
+              {isInvestisseur && (
+                <button
+                  type="button"
+                  onClick={() => void handleRestartOnboarding()}
+                  className={styles['dropdown-item']}
+                >
+                  <WandSparkles className={styles['dropdown-icon']} size={18} />
+                  <span>Relancer le guide</span>
+                </button>
+              )}
+
               <button
                 onClick={handleLogout}
                 className={`${styles['dropdown-item']} ${styles['logout']}`}
@@ -559,4 +729,3 @@ export default function Navbar() {
     </nav>
   );
 }
-

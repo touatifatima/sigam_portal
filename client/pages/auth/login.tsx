@@ -1,6 +1,6 @@
 ﻿'use client';// page login 
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -8,18 +8,29 @@ import { useRouter } from 'next/router';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import styles from '../login.module.css';
 
-const logo = '/assets/logo.jpg';
+const logo = '/anamlogo.png';
+const REMEMBER_ME_EMAIL_KEY = 'sigam_remember_email';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   const router = useRouter();
   const login = useAuthStore((s) => s.login);
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const savedEmail = window.localStorage.getItem(REMEMBER_ME_EMAIL_KEY);
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,8 +66,31 @@ export default function LoginPage() {
       }
 
       login(response.data);
+      if (typeof window !== 'undefined') {
+        if (rememberMe) {
+          window.localStorage.setItem(REMEMBER_ME_EMAIL_KEY, email.trim());
+        } else {
+          window.localStorage.removeItem(REMEMBER_ME_EMAIL_KEY);
+        }
+      }
 
       const user = response.data?.user;
+      const rawRoles = Array.isArray(user?.role)
+        ? user.role
+        : typeof user?.role === 'string'
+          ? user.role.split(',')
+          : Array.isArray(user?.roles)
+            ? user.roles
+            : typeof user?.roles === 'string'
+              ? user.roles.split(',')
+              : [];
+      const isAdmin = rawRoles.some(
+        (role: unknown) => String(role).trim().toUpperCase() === 'ADMIN',
+      );
+      if (isAdmin) {
+        router.push('/permis_dashboard/PermisDashboard');
+        return;
+      }
       const isVerified = Boolean(
         user?.isEntrepriseVerified ??
         user?.entrepriseVerified ??
@@ -95,6 +129,13 @@ export default function LoginPage() {
 
   return (
     <div className={styles.container}>
+      <Link href="/" className={styles.homeButton} aria-label="Retour a l'accueil">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M19 12H5" />
+          <path d="M12 19l-7-7 7-7" />
+        </svg>
+        <span>Accueil</span>
+      </Link>
       {/* SECTION GAUCHE - Identique au sign up */}
       <div className={styles.leftSection}>
         <div className={styles.logoContainer}>
@@ -175,10 +216,15 @@ export default function LoginPage() {
 
             <div className={styles.rememberForgot}>
               <label className={styles.rememberMe}>
-                <input type="checkbox" />
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  disabled={isLoading}
+                />
                 <span>Se souvenir de moi</span>
               </label>
-              <Link href="/forgot-password" className={styles.forgotPassword}>
+              <Link href="/auth/forgot-password" className={styles.forgotPassword}>
                 Mot de passe oublié ?
               </Link>
             </div>

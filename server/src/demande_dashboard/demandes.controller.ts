@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Param, Query, Res } from '@nestjs/common';
+import { Controller, Get, Header, NotFoundException, Param, Query, Res } from '@nestjs/common';
 import { DemandesService } from './demandes.service';
 import { Response } from 'express';
 
@@ -108,6 +108,10 @@ export class DemandesController {
   }
   @Get(':id')
   async one(@Param('id') id: string) {
-    return this.service.getDemandeById(+id);
+    const resolvedId = await this.service.resolveDemandeId(id);
+    if (!resolvedId) {
+      throw new NotFoundException('Demande introuvable');
+    }
+    return this.service.getDemandeById(resolvedId);
   }
 }

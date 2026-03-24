@@ -9,6 +9,29 @@ type SortOrder = 'asc' | 'desc';
 export class DemandesService {
   constructor(private prisma: PrismaService) {}
 
+  private isNumericId(value: string): boolean {
+    return /^\d+$/.test(value);
+  }
+
+  async resolveDemandeId(idOrCode: string): Promise<number | null> {
+    const candidate = String(idOrCode ?? '').trim();
+    if (!candidate) return null;
+
+    if (this.isNumericId(candidate)) {
+      const parsed = Number(candidate);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+
+    const demande = await this.prisma.demandePortail.findFirst({
+      where: { short_code: candidate } as any,
+      select: { id_demande: true },
+    });
+
+    return demande?.id_demande ?? null;
+  }
+
   private toFiniteNumber(value: unknown): number | null {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;

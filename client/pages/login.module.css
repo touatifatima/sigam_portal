@@ -4,6 +4,38 @@
   display: flex;
   min-height: 100vh;
   width: 100%;
+  position: relative;
+}
+
+.homeButton {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  text-decoration: none;
+  color: #4a2c3e;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 10px 24px rgba(41, 19, 31, 0.18);
+  backdrop-filter: blur(6px);
+  font-size: 0.88rem;
+  font-weight: 700;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+}
+
+.homeButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(41, 19, 31, 0.22);
+  background: #ffffff;
+}
+
+.homeButton svg {
+  color: #8b3a62;
 }
 
 /* SECTION GAUCHE - Identique au sign up */
@@ -414,5 +446,12 @@
     flex-direction: column;
     gap: 10px;
     align-items: flex-start;
+  }
+
+  .homeButton {
+    top: 12px;
+    left: 12px;
+    padding: 9px 12px;
+    font-size: 0.8rem;
   }
 }

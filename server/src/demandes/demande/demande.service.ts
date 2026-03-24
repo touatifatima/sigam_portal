@@ -10,6 +10,35 @@ export class DemandeService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
+  private isNumericId(value: string): boolean {
+    return /^\d+$/.test(value);
+  }
+
+  async resolveDemandeId(idOrCode: string): Promise<number> {
+    const candidate = String(idOrCode ?? '').trim();
+    if (!candidate) {
+      throw new NotFoundException('Demande introuvable');
+    }
+
+    if (this.isNumericId(candidate)) {
+      const parsed = Number(candidate);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+
+    const demande = await this.prisma.demandePortail.findFirst({
+      where: { short_code: candidate } as any,
+      select: { id_demande: true },
+    });
+
+    if (!demande?.id_demande) {
+      throw new NotFoundException('Demande introuvable');
+    }
+
+    return demande.id_demande;
+  }
+
   private async resolveDetenteurIdForDemandeCreate(data: {
     id_detenteur?: number;
     utilisateurId: number;

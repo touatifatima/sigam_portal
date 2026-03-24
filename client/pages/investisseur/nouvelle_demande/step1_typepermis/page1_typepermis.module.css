@@ -31,6 +31,8 @@
   padding: 36px 40px 56px;
   max-width: 1320px;
   margin: 0 auto;
+  min-width: 0;
+  width: 100%;
 }
 
 .breadcrumb {
@@ -49,15 +51,18 @@
 .headerRow {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 18px;
   margin-bottom: 14px;
+  flex-wrap: wrap;
 }
 
 .pageTitle {
-  font-size: 34px;
+  font-size: clamp(1.6rem, 2.6vw, 2.125rem);
   font-weight: 800;
   margin: 0;
   letter-spacing: -0.01em;
+  line-height: 1.2;
 }
 
 .pageSubtitle {
@@ -104,6 +109,7 @@
 .stepCard {
   margin-top: 22px;
   width: 100%;
+  overflow: hidden;
 }
 
 .stepTitle {
@@ -197,6 +203,9 @@
   color: var(--text-main);
   font-size: 15px;
   transition: background 0.15s ease, color 0.15s ease;
+  white-space: normal;
+  line-height: 1.35;
+  word-break: break-word;
 }
 .selectItem[data-highlighted] {
   background: var(--accent-soft);
@@ -234,6 +243,29 @@
   overflow: hidden;
   background: #ffffff;
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.06);
+}
+
+.permisDetails h4 {
+  margin: 0;
+  padding: 14px 16px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-main);
+  background: #f7f8fb;
+  border-bottom: 1px solid var(--border);
+}
+
+.permisDetails ul {
+  margin: 0;
+  padding: 14px 18px 16px 32px;
+  display: grid;
+  gap: 8px;
+}
+
+.permisDetails li {
+  color: var(--text-main);
+  line-height: 1.45;
+  word-break: break-word;
 }
 
 .permisDetailsHeader {
@@ -355,13 +387,38 @@
     padding: 24px 22px;
   }
 }
+
+@media (max-width: 768px) {
+  .appContent {
+    display: block;
+    gap: 0;
+  }
+
+  .appContent > aside {
+    display: none !important;
+  }
+
+  .mainContent {
+    padding: 18px 14px 34px;
+  }
+
+  .card {
+    padding: 18px 14px;
+  }
+
+  .stepCard {
+    margin-top: 14px;
+  }
+}
+
 @media (max-width: 600px) {
   .headerRow {
-    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px;
   }
 
   .pageTitle {
-    font-size: 26px;
+    font-size: 1.45rem;
   }
 
   .select,
@@ -378,5 +435,14 @@
   .buttonGroup {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .cancelLink {
+    margin-left: 0;
+    padding: 0;
+  }
+
+  .permisDetails ul {
+    padding: 12px 14px 14px 24px;
   }
 }

@@ -41,6 +41,7 @@ import styles from "@/components/wizard/MesPermis.module.css";
 
 interface Permis {
   id: string;
+  short_code?: string | null;
   code: string;
   type: string;
   titulaire: string;
@@ -117,6 +118,7 @@ const MesPermisOperateur = () => {
       const raw = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
       const mapped: Permis[] = raw.map((item: any) => ({
         id: String(item.id),
+        short_code: item.short_code ?? null,
         code: item.code_permis ?? item.code ?? "N/A",
         type: normalizeTypeLabel(item),
         titulaire: getPermisTitulaireName(item) || item?.detenteur?.nom_societeFR || "N/A",
@@ -380,7 +382,11 @@ const MesPermisOperateur = () => {
                     <div className={styles.cardFooter}>
                       <Button
                         className={styles.viewBtn}
-                        onClick={() => navigate(`/operateur/permisdashboard/${permis.id}`)}
+                        onClick={() =>
+                          navigate(
+                            `/operateur/permisdashboard/${permis.short_code || permis.id}`,
+                          )
+                        }
                       >
                         Voir le permis
                         <ChevronRight className="w-4 h-4" />
@@ -438,7 +444,11 @@ const MesPermisOperateur = () => {
                     <div className={styles.cardFooter}>
                       <Button
                         className={styles.viewBtn}
-                        onClick={() => navigate(`/operateur/permisdashboard/${permis.id}`)}
+                        onClick={() =>
+                          navigate(
+                            `/operateur/permisdashboard/${permis.short_code || permis.id}`,
+                          )
+                        }
                       >
                         <Eye className="w-4 h-4" />
                         Voir

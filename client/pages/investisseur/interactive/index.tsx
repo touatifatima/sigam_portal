@@ -27,6 +27,14 @@ import Sidebar from '../../sidebar/Sidebar';
 import { useViewNavigator } from '../../../src/hooks/useViewNavigator';
 import { useAuthStore } from '../../../src/store/useAuthStore';
 import type { ArcGISMapRef } from '@/components/arcgismap/ArcgisMap';
+import { OnboardingTour, type OnboardingStep } from '@/components/onboarding/OnboardingTour';
+import {
+  getHasSeenOnboarding,
+  getOnboardingActive,
+  getOnboardingPageSeen,
+  markOnboardingPageCompleted,
+  stopOnboardingForever,
+} from '@/src/onboarding/storage';
 
 import 'react-datepicker/dist/react-datepicker.css';
 
@@ -137,6 +145,57 @@ const SEARCH_FIELD_LABELS: Partial<Record<SearchLayerKey, Record<string, string>
   },
 };
 
+const INTERACTIVE_ONBOARDING_STEPS: OnboardingStep[] = [
+  {
+    id: 'interactive-header',
+    target: '[data-onboarding-id="interactive-header"]',
+    title: 'Verification prealable',
+    description:
+      'Cette page vous permet de valider votre perimetre avant la demande officielle pour eviter les rejets et gagner du temps.',
+    placement: 'bottom',
+  },
+  {
+    id: 'interactive-search',
+    target: '[data-onboarding-id="interactive-search"]',
+    title: 'Recherche intelligente',
+    description:
+      'Recherchez rapidement dans les couches metier pour comparer votre zone avec les demandes et titres existants.',
+    placement: 'bottom',
+  },
+  {
+    id: 'interactive-type-card',
+    target: '[data-onboarding-id="interactive-type-card"]',
+    title: 'Choix du type de permis',
+    description:
+      'Selectionnez le type de titre pour charger les contraintes associees (superficie, regime, regles de controle).',
+    placement: 'right',
+  },
+  {
+    id: 'interactive-perimeter-card',
+    target: '[data-onboarding-id="interactive-perimeter-card"]',
+    title: 'Saisie du perimetre',
+    description:
+      'Ajoutez les coordonnees, validez le perimetre puis exportez vos donnees si besoin (CSV/KML).',
+    placement: 'right',
+  },
+  {
+    id: 'interactive-overlap-card',
+    target: '[data-onboarding-id="interactive-overlap-card"]',
+    title: 'Controle des chevauchements',
+    description:
+      'Lancez la verification pour detecter les empietements et corriger avant de continuer vers la creation de demande.',
+    placement: 'right',
+  },
+  {
+    id: 'interactive-map',
+    target: '[data-onboarding-id="interactive-map"]',
+    title: 'Carte ArcGIS prioritaire',
+    description:
+      'La carte affiche votre polygon, les couches actives et les conflits detectes pour un diagnostic visuel immediat.',
+    placement: 'left',
+  },
+];
+
 const buildDefaultPoints = (): DraftPointInput[] => [
   { id: 1, x: '', y: '' },
   { id: 2, x: '', y: '' },
@@ -237,8 +296,16 @@ const convertUtmToWgs84 = (coords: [number, number][], zone: number) =>
 export default function InteractiveDemandePage() {
   const router = useRouter();
   const { currentView, navigateTo } = useViewNavigator('demande-interactive');
-  const { hasPermission } = useAuthStore();
+  const { hasPermission, auth } = useAuthStore();
   const canCreateAxw = hasPermission('create_axw');
+  const isAdmin = useMemo(() => {
+    const rawRoles = Array.isArray((auth as { role?: unknown } | undefined)?.role)
+      ? ((auth as { role?: unknown } | undefined)?.role as unknown[])
+      : typeof auth?.role === 'string'
+        ? auth.role.split(',')
+        : [];
+    return rawRoles.some((role) => String(role).trim().toUpperCase() === 'ADMIN');
+  }, [auth?.role]);
   const mapRef = useRef<ArcGISMapRef | null>(null);
   const csvInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -276,6 +343,13 @@ export default function InteractiveDemandePage() {
   }));
   const searchLayerLabel =
     SEARCH_LAYERS.find((layer) => layer.key === searchLayer)?.label ?? searchLayer;
+  const onboardingSteps = useMemo(
+    () =>
+      isAdmin
+        ? INTERACTIVE_ONBOARDING_STEPS
+        : INTERACTIVE_ONBOARDING_STEPS.filter((step) => step.id !== 'interactive-search'),
+    [isAdmin],
+  );
 
   useEffect(() => {
     if (!searchFieldOptions.length) {
@@ -288,6 +362,10 @@ export default function InteractiveDemandePage() {
   }, [searchLayer, searchFields, searchFieldOptions.length]);
 
   const handleMapSearch = useCallback(async () => {
+    if (!isAdmin) {
+      toast.warning('Recherche reservee aux administrateurs.');
+      return;
+    }
     const code = searchPermisCode.trim();
     if (!code) return;
     if (!mapRef.current?.searchLayerFeature) {
@@ -304,7 +382,7 @@ export default function InteractiveDemandePage() {
     if (!ok) {
       toast.warning(`Aucun resultat dans ${searchLayerLabel}.`);
     }
-  }, [searchPermisCode, searchField, searchFields, searchLayer, searchLayerLabel]);
+  }, [isAdmin, searchPermisCode, searchField, searchFields, searchLayer, searchLayerLabel]);
 
   const [coordModalOpen, setCoordModalOpen] = useState(false);
   const [coordSource, setCoordSource] = useState<'manual' | 'prior' | null>(null);
@@ -324,6 +402,7 @@ export default function InteractiveDemandePage() {
   const [showAllOverlaps, setShowAllOverlaps] = useState(false);
   const [noticeDismissed, setNoticeDismissed] = useState(false);
   const [showPerimeterPreview, setShowPerimeterPreview] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const effectivePermis = useMemo(() => {
     if (selectedPermis) return selectedPermis;
@@ -1529,6 +1608,27 @@ export default function InteractiveDemandePage() {
     setNoticeDismissed(true);
   };
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (getHasSeenOnboarding()) return;
+
+    const active = getOnboardingActive();
+    const alreadySeen = getOnboardingPageSeen('demande-verification');
+    if (active && !alreadySeen) {
+      setShowOnboarding(true);
+    }
+  }, []);
+
+  const handleCloseOnboarding = () => {
+    setShowOnboarding(false);
+    stopOnboardingForever();
+  };
+
+  const handleCompleteOnboarding = () => {
+    setShowOnboarding(false);
+    markOnboardingPageCompleted('demande-verification');
+  };
+
   return (
     <div className={styles.appContainer}>
       <Navbar />
@@ -1541,64 +1641,66 @@ export default function InteractiveDemandePage() {
             <span>Verification prealable</span>
           </div>
 
-          <div className={styles.headerRow}>
+          <div className={styles.headerRow} data-onboarding-id="interactive-header">
             <div className={styles.headerText}>
               <h1 className={styles.title}>Verification prealable interactive</h1>
               <p className={styles.subtitle}>
                 Projetez vos coordonnees pour verifier les chevauchements avant de lancer la demande reelle.
               </p>
             </div>
-            <div className={styles.headerSearch}>
-              <div className={styles.headerSearchSelectGroup}>
-                <select
-                  value={searchLayer}
-                  onChange={(e) => setSearchLayer(e.target.value as SearchLayerKey)}
-                  className={styles.headerSearchSelect}
-                  title="Couche de recherche"
-                >
-                  {SEARCH_LAYERS.map((layer) => (
-                    <option key={layer.key} value={layer.key}>
-                      {layer.label}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={searchField}
-                  onChange={(e) => setSearchField(e.target.value)}
-                  className={styles.headerSearchSelect}
-                  title="Attribut de recherche"
-                  disabled={!searchFieldOptions.length}
-                >
-                  {searchFieldOptions.length ? (
-                    searchFieldOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
+            {isAdmin && (
+              <div className={styles.headerSearch} data-onboarding-id="interactive-search">
+                <div className={styles.headerSearchSelectGroup}>
+                  <select
+                    value={searchLayer}
+                    onChange={(e) => setSearchLayer(e.target.value as SearchLayerKey)}
+                    className={styles.headerSearchSelect}
+                    title="Couche de recherche"
+                  >
+                    {SEARCH_LAYERS.map((layer) => (
+                      <option key={layer.key} value={layer.key}>
+                        {layer.label}
                       </option>
-                    ))
-                  ) : (
-                    <option value="">Aucun attribut</option>
-                  )}
-                </select>
+                    ))}
+                  </select>
+                  <select
+                    value={searchField}
+                    onChange={(e) => setSearchField(e.target.value)}
+                    className={styles.headerSearchSelect}
+                    title="Attribut de recherche"
+                    disabled={!searchFieldOptions.length}
+                  >
+                    {searchFieldOptions.length ? (
+                      searchFieldOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="">Aucun attribut</option>
+                    )}
+                  </select>
+                </div>
+                <input
+                  value={searchPermisCode}
+                  onChange={(e) => setSearchPermisCode(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter') return;
+                    e.preventDefault();
+                    handleMapSearch();
+                  }}
+                  placeholder={`Rechercher sur ${searchLayerLabel.toLowerCase()}...`}
+                  className={styles.headerSearchInput}
+                />
+                <button
+                  type="button"
+                  className={styles.headerSearchButton}
+                  onClick={handleMapSearch}
+                >
+                  Rechercher
+                </button>
               </div>
-              <input
-                value={searchPermisCode}
-                onChange={(e) => setSearchPermisCode(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key !== 'Enter') return;
-                  e.preventDefault();
-                  handleMapSearch();
-                }}
-                placeholder={`Rechercher sur ${searchLayerLabel.toLowerCase()}...`}
-                className={styles.headerSearchInput}
-              />
-              <button
-                type="button"
-                className={styles.headerSearchButton}
-                onClick={handleMapSearch}
-              >
-                Rechercher
-              </button>
-            </div>
+            )}
             <button
               type="button"
               className={styles.resetBtn}
@@ -1696,7 +1798,7 @@ export default function InteractiveDemandePage() {
 
           <div className={styles.contentGrid}>
             <section className={styles.leftPanel}>
-              <div className={styles.card}>
+              <div className={styles.card} data-onboarding-id="interactive-type-card">
                 <div className={styles.cardHeader}>
                   <h3>1. Type de titre</h3>
                 </div>
@@ -1754,7 +1856,7 @@ export default function InteractiveDemandePage() {
                 </div>
               </div>
 
-              <div className={styles.card}>
+              <div className={styles.card} data-onboarding-id="interactive-perimeter-card">
                 <div className={styles.cardHeader}>
                   <h3>2. Perimetre</h3>
                 </div>
@@ -1805,7 +1907,7 @@ export default function InteractiveDemandePage() {
                 </div>
               </div>
 
-              <div className={styles.card}>
+              <div className={styles.card} data-onboarding-id="interactive-overlap-card">
                 <div className={styles.cardHeader}>
                   <h3>3. Chevauchements</h3>
                 </div>
@@ -1902,7 +2004,7 @@ export default function InteractiveDemandePage() {
               </div>
             </section>
 
-            <section className={styles.mapPanel}>
+            <section className={styles.mapPanel} data-onboarding-id="interactive-map">
               <ArcGISMap
                 ref={mapRef}
                 points={mapPoints}
@@ -2201,9 +2303,14 @@ export default function InteractiveDemandePage() {
               </div>
             </div>
           )}
+          <OnboardingTour
+            isOpen={showOnboarding}
+            steps={onboardingSteps}
+            onClose={handleCloseOnboarding}
+            onComplete={handleCompleteOnboarding}
+          />
         </main>
       </div>
     </div>
   );
 }
-

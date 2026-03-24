@@ -21,6 +21,14 @@ import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { OnboardingTour, type OnboardingStep } from '@/components/onboarding/OnboardingTour';
+import {
+  getHasSeenOnboarding,
+  getOnboardingActive,
+  getOnboardingPageSeen,
+  markOnboardingPageCompleted,
+  stopOnboardingForever,
+} from '@/src/onboarding/storage';
 import {
   Select,
   SelectContent,
@@ -30,6 +38,41 @@ import {
 } from '@/components/ui/select';
 
 const ArcGISMap = dynamic(() => import('@/components/arcgismap/ArcgisMap'), { ssr: false });
+
+const CADASTRE_ONBOARDING_STEPS: OnboardingStep[] = [
+  {
+    id: 'cadastre-map',
+    target: '[data-onboarding-id="cadastre-map"]',
+    title: 'Carte interactive ArcGIS',
+    description:
+      'Dessinez ou controlez votre perimetre ici. La carte affiche les couches metier et la zone en temps reel.',
+    placement: 'left',
+  },
+  {
+    id: 'cadastre-points-panel',
+    target: '[data-onboarding-id="cadastre-points-panel"]',
+    title: 'Coordonnees du perimetre',
+    description:
+      'Ajoutez les sommets, ajustez les coordonnees UTM et gardez au moins 3 points pour former une geometrie valide.',
+    placement: 'left',
+  },
+  {
+    id: 'cadastre-overlap-check',
+    target: '[data-onboarding-id="cadastre-overlap-check"]',
+    title: 'Controle des chevauchements',
+    description:
+      'Lancez la reverification pour detecter les empietements avec les titres et contraintes actives.',
+    placement: 'top',
+  },
+  {
+    id: 'cadastre-next',
+    target: '[data-onboarding-id="cadastre-next"]',
+    title: 'Valider et continuer',
+    description:
+      'Quand les controles sont conformes, passez a l etape suivante du dossier.',
+    placement: 'top',
+  },
+];
 
 export type CoordinateSystem = 'UTM';
 
@@ -201,6 +244,7 @@ export default function CadastrePage() {
   const [coordSource, setCoordSource] = useState<'provisoire' | 'validees'>('provisoire');
   const [provisionalPoints, setProvisionalPoints] = useState<Point[]>([]);
   const [validatedPoints, setValidatedPoints] = useState<Point[]>([]);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 	  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
 	  const [existingPolygons, setExistingPolygons] = useState<ExistingPolygon[]>([]);
   const [showFuseaux, setShowFuseaux] = useState(false);
@@ -224,6 +268,17 @@ export default function CadastrePage() {
     }, 200);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (getHasSeenOnboarding()) return;
+    const active = getOnboardingActive();
+    const alreadySeen = getOnboardingPageSeen('demande-cadastre');
+    if (active && !alreadySeen) {
+      setShowOnboarding(true);
+    }
+  }, []);
+
   const [historyProcedures, setHistoryProcedures] = useState<{ procId: number; typeLabel: string; codeDemande?: string }[]>([]);
   const [selectedHistoryProcId, setSelectedHistoryProcId] = useState<number | null>(null);
   const historyProcCacheRef = useRef<Map<number, { typeLabel: string; codeDemande?: string }>>(new Map());
@@ -378,6 +433,16 @@ export default function CadastrePage() {
   // Stable signature of current displayed points to avoid re-applying same dataset
   
   const router = useRouter();
+
+  const handleCloseOnboarding = () => {
+    setShowOnboarding(false);
+    stopOnboardingForever();
+  };
+
+  const handleCompleteOnboarding = () => {
+    setShowOnboarding(false);
+    markOnboardingPageCompleted('demande-cadastre');
+  };
 
   // When a title/perimeter polygon is clicked on the ArcGIS map:
   // - Extract `code_permis` from layer attributes
@@ -1674,7 +1739,7 @@ const handleMapClick = useCallback((x: number, y: number) => {
               </div>
 
               <div className={styles.cadastreGrid}>
-                <aside className={styles.pointsPanel}>
+                <aside className={styles.pointsPanel} data-onboarding-id="cadastre-points-panel">
                   <div className={styles.pointsHeader}>
                     <div>
                       <h3>Coordonnées des sommets</h3>
@@ -1775,7 +1840,7 @@ const handleMapClick = useCallback((x: number, y: number) => {
                     Télécharger un modèle Excel
                   </button>
 
-                  <div className={styles.areaCard}>
+                  <div className={styles.areaCard} data-onboarding-id="cadastre-overlap-check">
                     <span>Superficie calculée</span>
                     <strong>{Number.isFinite(superficie) ? superficie.toFixed(2) : '0.00'} ha</strong>
                   </div>
@@ -1836,7 +1901,7 @@ const handleMapClick = useCallback((x: number, y: number) => {
 
 </aside>
 
-                <section className={styles.mapPanel}>
+                <section className={styles.mapPanel} data-onboarding-id="cadastre-map">
                   <div className={styles.mapHeader}>
                     <h3>Visualisation du périmètre</h3>
                   </div>
@@ -1903,6 +1968,7 @@ const handleMapClick = useCallback((x: number, y: number) => {
                   </button>
                   <button
                     className={`${styles['btn']} ${styles['btn-primary']}`}
+                    data-onboarding-id="cadastre-next"
                     onClick={handleNext}
                     disabled={shouldDisableNext}
                   >
@@ -1916,6 +1982,12 @@ const handleMapClick = useCallback((x: number, y: number) => {
               {error && <div className={`${styles['etapeMessage']} ${styles['error']}`}>{error}</div>}
             </div>
           </main>
+          <OnboardingTour
+            isOpen={showOnboarding}
+            steps={CADASTRE_ONBOARDING_STEPS}
+            onClose={handleCloseOnboarding}
+            onComplete={handleCompleteOnboarding}
+          />
         </div>
       </div>
     );
@@ -1992,7 +2064,10 @@ const handleMapClick = useCallback((x: number, y: number) => {
                     </div>
               <div className={`${styles['app-layout']} ${isMapFullscreen ? styles['appLayoutFullscreen'] : ''}`}>
                 {/* UPDATED MAP SECTION */}
-                <section className={`${styles['map-container']} ${isMapFullscreen ? styles['mapContainerFullscreen'] : ''}`}>
+                <section
+                  className={`${styles['map-container']} ${isMapFullscreen ? styles['mapContainerFullscreen'] : ''}`}
+                  data-onboarding-id="cadastre-map"
+                >
                   <div className={styles['map-header']}>
                     <h2>
                       <FiMapPin /> Carte ANAM ArcGIS Enterprise
@@ -2205,7 +2280,7 @@ const handleMapClick = useCallback((x: number, y: number) => {
                   </div>
                 </section>
 
-                <section className={styles['data-panel']}>
+                <section className={styles['data-panel']} data-onboarding-id="cadastre-points-panel">
                   <div className={styles['panel-tabs']}>
                     <button
                       className={`${styles['tab-btn']} ${activeTab === 'coordinates' ? styles['active'] : ''}`}
@@ -2402,7 +2477,7 @@ const handleMapClick = useCallback((x: number, y: number) => {
                             <p>Aucun chevauchement détecté (couches sélectionnées)</p>
                           )}
                           
-                          <div className={styles['validation-actions']}>
+                          <div className={styles['validation-actions']} data-onboarding-id="cadastre-overlap-check">
                             <button
                               className={styles['map-btn']}
                               onClick={checkMiningTitleOverlaps}
@@ -2639,6 +2714,7 @@ const handleMapClick = useCallback((x: number, y: number) => {
                     </button>
                     <button
                       className={`${styles['btn']} ${styles['btn-primary']}`}
+                      data-onboarding-id="cadastre-next"
                       onClick={handleNext}
                       disabled={isLoading || savingEtape || (!isFormComplete && !isStepSaved)}
                     >
@@ -2781,6 +2857,12 @@ const handleMapClick = useCallback((x: number, y: number) => {
               <span>{error}</span>
             </div>
           )}
+          <OnboardingTour
+            isOpen={showOnboarding}
+            steps={CADASTRE_ONBOARDING_STEPS}
+            onClose={handleCloseOnboarding}
+            onComplete={handleCompleteOnboarding}
+          />
         </main>
       </div>
     </div>

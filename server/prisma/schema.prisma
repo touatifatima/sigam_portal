@@ -28,6 +28,9 @@ model UtilisateurPortail {
   emailVerified                  Boolean                 @default(false)
   verificationCode               String?
   verificationCodeExpires        DateTime?
+  passwordResetTokenHash         String?                 @db.VarChar(128)
+  passwordResetTokenExpires      DateTime?
+  passwordResetTokenUsedAt       DateTime?
   auditLogs                      AuditLogPortail[]
   conversationsInitiees          Conversation[]          @relation("ConversationUser1")
   conversationsRecues            Conversation[]          @relation("ConversationUser2")
@@ -391,6 +394,7 @@ model PersonnePhysiquePortail {
 
 model DetenteurMoralePortail {
   id_detenteur            Int                       @id @default(autoincrement())
+  short_code             String                    @unique(map: "detenteurmorale_short_code_key") @default(uuid()) @db.Uuid
   idInterne               Int?                      @unique
   date_constitution       DateTime
   id_pays                 Int?
@@ -526,6 +530,7 @@ model PermisTemplate {
 
 model demandePortail {
   id_demande               Int                           @id @default(autoincrement())
+  short_code              String                        @unique(map: "demande_short_code_key") @default(uuid()) @db.Uuid
   id_proc                  Int?
   id_wilaya                Int?
   id_daira                 Int?
@@ -823,6 +828,7 @@ model demandeMin {
 
 model PermisPortail {
   id                     Int                     @id @default(autoincrement())
+  short_code             String                  @unique(map: "PermisPortail_short_code_key") @default(uuid()) @db.Uuid
   id_typePermis          Int
   id_antenne             Int?
   id_detenteur           Int?
@@ -1331,6 +1337,7 @@ model CoordonneePortail {
 
 model InscriptionProvisoirePortail {
   id                  Int              @id @default(autoincrement())
+  short_code          String           @unique(map: "inscription_provisoire_short_code_key") @default(uuid()) @db.Uuid
   id_proc             Int              @unique
   id_demande          Int              @unique
   points              Json

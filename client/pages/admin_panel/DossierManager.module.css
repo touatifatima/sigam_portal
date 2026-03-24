@@ -57,7 +57,17 @@
 .headerIcon { color: var(--primary); }
 
 /* Search */
-.searchContainer { position: relative; width: 100%; max-width: 400px; }
+.searchContainer {
+  width: 100%;
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.searchInputWrapper {
+  position: relative;
+  width: 100%;
+}
 .searchInput {
   width: 100%;
   padding: 0.5rem 2rem 0.5rem 2.5rem;
@@ -90,6 +100,41 @@
   border: none;
   color: #b5a0ab;
   cursor: pointer;
+}
+.searchFiltersRow {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+.searchFilterSelect {
+  min-width: 210px;
+  max-width: 280px;
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+.searchFilterSelect:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(139, 58, 98, 0.1);
+}
+.filterResetButton {
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.filterResetButton:hover {
+  background: var(--primary-light);
+  border-color: #d7b4c5;
 }
 
 /* Tabs */

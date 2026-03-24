@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Globe } from "lucide-react";
 import styles from "./Header.module.css";
-const logoJpg = "/logo.jpg";
-const logoWebp = "/logo.webp";
+const logo = "/anamlogo.png";
 
 export const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -20,9 +19,9 @@ export const Header = () => {
 
   const navLinks = [
     { label: "Accueil", href: "/" },
-    { label: "Services", href: "/auth/login" },
+    { label: "Services", href: "#services" },
     { label: "Carte Minière", href: "/carte/carte_public" },
-    { label: "Actualités", href: "/auth/login" },
+    { label: "Actualites", href: "#actualites" },
     { label: "Contact", href: "/auth/login" },
   ];
 
@@ -35,18 +34,15 @@ export const Header = () => {
       <div className={`container ${styles.container}`}>
         {/* Logo */}
         <a href="/" className={styles.logoLink}>
-          <picture>
-            <source srcSet={logoWebp} type="image/webp" />
-            <img
-              src={logoJpg}
-              alt="ANAM Logo"
-              className={styles.logoImage}
-              width={96}
-              height={48}
-              decoding="async"
-              fetchPriority="high"
-            />
-          </picture>
+          <img
+            src={logo}
+            alt="ANAM Logo"
+            className={styles.logoImage}
+            width={120}
+            height={120}
+            decoding="async"
+            fetchPriority="high"
+          />
           <div className={styles.logoText}>
             <span className={styles.logoTitle}>POM</span>
             <span className={styles.logoSubtitle}>Portail Minier</span>

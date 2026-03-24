@@ -4,7 +4,6 @@ import {
   Get,
   NotFoundException,
   Param,
-  ParseIntPipe,
   Req,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -45,10 +44,11 @@ export class PermisOperateurController {
   @Get(':id')
   async getPermisDetails(
     @Req() req: Request,
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
   ) {
+    const permisId = await this.permisService.resolvePermisId(id);
     const detenteurId = await this.resolveDetenteurId(req);
-    const permis: any = await this.permisService.findOneWithDetails(id);
+    const permis: any = await this.permisService.findOneWithDetails(permisId);
     const ownerId = permis?.id_detenteur ?? permis?.detenteur?.id_detenteur ?? null;
     if (!ownerId || ownerId !== detenteurId) {
       throw new NotFoundException(`Permis ${id} non trouve`);
@@ -59,42 +59,45 @@ export class PermisOperateurController {
   @Get(':id/documents')
   async getPermisDocuments(
     @Req() req: Request,
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
   ) {
+    const permisId = await this.permisService.resolvePermisId(id);
     const detenteurId = await this.resolveDetenteurId(req);
-    const permis: any = await this.permisService.findOneWithDetails(id);
+    const permis: any = await this.permisService.findOneWithDetails(permisId);
     const ownerId = permis?.id_detenteur ?? permis?.detenteur?.id_detenteur ?? null;
     if (!ownerId || ownerId !== detenteurId) {
       throw new NotFoundException(`Permis ${id} non trouve`);
     }
-    return this.permisService.getAllDocumentsForPermis(id);
+    return this.permisService.getAllDocumentsForPermis(permisId);
   }
 
   @Get(':id/obligations')
   async getPermisObligations(
     @Req() req: Request,
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
   ) {
+    const permisId = await this.permisService.resolvePermisId(id);
     const detenteurId = await this.resolveDetenteurId(req);
-    const permis: any = await this.permisService.findOneWithDetails(id);
+    const permis: any = await this.permisService.findOneWithDetails(permisId);
     const ownerId = permis?.id_detenteur ?? permis?.detenteur?.id_detenteur ?? null;
     if (!ownerId || ownerId !== detenteurId) {
       throw new NotFoundException(`Permis ${id} non trouve`);
     }
-    return this.permisService.getObligationsForPermis(id);
+    return this.permisService.getObligationsForPermis(permisId);
   }
 
   @Get(':id/historique')
   async getPermisHistorique(
     @Req() req: Request,
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
   ) {
+    const permisId = await this.permisService.resolvePermisId(id);
     const detenteurId = await this.resolveDetenteurId(req);
-    const permis: any = await this.permisService.findOneWithDetails(id);
+    const permis: any = await this.permisService.findOneWithDetails(permisId);
     const ownerId = permis?.id_detenteur ?? permis?.detenteur?.id_detenteur ?? null;
     if (!ownerId || ownerId !== detenteurId) {
       throw new NotFoundException(`Permis ${id} non trouve`);
     }
-    return this.permisService.getHistorique(id);
+    return this.permisService.getHistorique(permisId);
   }
 }

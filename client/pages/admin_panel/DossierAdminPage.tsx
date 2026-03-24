@@ -53,6 +53,8 @@ export default function DossierManager() {
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('dossiers');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedPermisFilter, setSelectedPermisFilter] = useState('');
+  const [selectedProcedureFilter, setSelectedProcedureFilter] = useState('');
   const { currentView, navigateTo } = useViewNavigator('manage_documents');
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
   const DocumentBadge = ({ doc, dossierId, onRemove }: {
@@ -219,16 +221,36 @@ export default function DossierManager() {
     }
   };
 
+  const normalizeSearchValue = (value: string): string =>
+    (value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+
   // Filter functions
-  const filteredDossiers = dossiers.filter(dossier =>
-    dossier.typePermis.lib_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    dossier.typeProcedure.libelle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    dossier.id_dossier.toString().includes(searchTerm)
-  );
+  const normalizedSearchTerm = normalizeSearchValue(searchTerm);
+
+  const filteredDossiers = dossiers.filter((dossier) => {
+    const matchesSearch =
+      !normalizedSearchTerm ||
+      normalizeSearchValue(dossier.typePermis?.lib_type || '').includes(normalizedSearchTerm) ||
+      normalizeSearchValue(dossier.typePermis?.code_type || '').includes(normalizedSearchTerm) ||
+      normalizeSearchValue(dossier.typeProcedure?.libelle || '').includes(normalizedSearchTerm) ||
+      dossier.id_dossier.toString().includes(searchTerm.trim());
+
+    const matchesPermis =
+      !selectedPermisFilter || String(dossier.typePermis?.id ?? dossier.id_typePermis) === selectedPermisFilter;
+
+    const matchesProcedure =
+      !selectedProcedureFilter || String(dossier.typeProcedure?.id ?? dossier.id_typeproc) === selectedProcedureFilter;
+
+    return matchesSearch && matchesPermis && matchesProcedure;
+  });
 
   const filteredDocuments = documents.filter(doc =>
-    doc.nom_doc.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    doc.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    normalizeSearchValue(doc.nom_doc || '').includes(normalizedSearchTerm) ||
+    normalizeSearchValue(doc.description || '').includes(normalizedSearchTerm) ||
     doc.id_doc.toString().includes(searchTerm)
   );
 
@@ -259,7 +281,7 @@ export default function DossierManager() {
                 </div>
 
                 <div className={styles.searchContainer}>
-                  <div className={`${styles.flex} ${styles.itemsCenter}`}>
+                  <div className={styles.searchInputWrapper}>
                     <FiSearch className={styles.searchIcon} />
                     <input
                       type="text"
@@ -270,6 +292,7 @@ export default function DossierManager() {
                     />
                     {searchTerm && (
                       <button
+                        type="button"
                         onClick={() => setSearchTerm('')}
                         className={styles.searchClear}
                       >
@@ -277,6 +300,47 @@ export default function DossierManager() {
                       </button>
                     )}
                   </div>
+                  {activeTab === 'dossiers' && (
+                    <div className={styles.searchFiltersRow}>
+                      <select
+                        className={styles.searchFilterSelect}
+                        value={selectedPermisFilter}
+                        onChange={(e) => setSelectedPermisFilter(e.target.value)}
+                      >
+                        <option value="">Tous les types permis</option>
+                        {typePermis.map((permis) => (
+                          <option key={`filter-permis-${permis.id}`} value={String(permis.id)}>
+                            {permis.lib_type} ({permis.code_type})
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        className={styles.searchFilterSelect}
+                        value={selectedProcedureFilter}
+                        onChange={(e) => setSelectedProcedureFilter(e.target.value)}
+                      >
+                        <option value="">Toutes les procedures</option>
+                        {typeProcedures.map((proc) => (
+                          <option key={`filter-proc-${proc.id}`} value={String(proc.id)}>
+                            {proc.libelle}
+                          </option>
+                        ))}
+                      </select>
+                      {(searchTerm || selectedPermisFilter || selectedProcedureFilter) && (
+                        <button
+                          type="button"
+                          className={styles.filterResetButton}
+                          onClick={() => {
+                            setSearchTerm('');
+                            setSelectedPermisFilter('');
+                            setSelectedProcedureFilter('');
+                          }}
+                        >
+                          Reinitialiser
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </header>
 

@@ -11,6 +11,35 @@ export class Permisdashboard2Service {
     private readonly notificationsService: NotificationsService,
   ) {}
 
+  private isNumericId(value: string): boolean {
+    return /^\d+$/.test(value);
+  }
+
+  async resolvePermisId(idOrCode: string): Promise<number> {
+    const candidate = String(idOrCode ?? '').trim();
+    if (!candidate) {
+      throw new NotFoundException('Permis introuvable');
+    }
+
+    if (this.isNumericId(candidate)) {
+      const parsed = Number(candidate);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+
+    const permis = await this.prisma.permisPortail.findFirst({
+      where: { short_code: candidate } as any,
+      select: { id: true },
+    });
+
+    if (!permis?.id) {
+      throw new NotFoundException('Permis introuvable');
+    }
+
+    return permis.id;
+  }
+
   async findAll(antenneId?: number) {
     // Reuse the richer include tree so list views
     // (dashboard, tables) have access to demandes,

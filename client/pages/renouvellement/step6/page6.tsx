@@ -13,7 +13,7 @@ import { useViewNavigator } from '@/src/hooks/useViewNavigator';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 // Use public URL for logo instead of importing from /public
-const logo = '/assets/logo.jpg';
+const logo = '/anamlogo.png';
 import { BsFilePerson, BsSave } from 'react-icons/bs';
 import router from 'next/router';
 import { Phase, Procedure, ProcedureEtape, ProcedurePhase, StatutProcedure } from '@/src/types/procedure';
@@ -186,7 +186,7 @@ export default function AvisWaliStep() {
     });
 
     // Header
-    doc.addImage("/logo.jpg", "PNG", 15, 10, 30, 30);
+    doc.addImage("/anamlogo.png", "PNG", 15, 10, 30, 30);
     doc.setFontSize(10);
     doc.setTextColor(100);
     doc.text("Ministére de l'énergie et des Mines", 50, 15);

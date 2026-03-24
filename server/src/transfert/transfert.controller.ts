@@ -49,12 +49,14 @@ export class TransfertController {
   }
 
   @Get('permis/:permisId/history')
-  async getHistoryByPermis(@Param('permisId', ParseIntPipe) permisId: number) {
+  async getHistoryByPermis(@Param('permisId') permisIdOrCode: string) {
+    const permisId = await this.service.resolvePermisId(permisIdOrCode);
     return this.service.getHistoryByPermis(permisId);
   }
 
   @Get('permis/:permisId/details')
-  async getPermisDetails(@Param('permisId', ParseIntPipe) permisId: number) {
+  async getPermisDetails(@Param('permisId') permisIdOrCode: string) {
+    const permisId = await this.service.resolvePermisId(permisIdOrCode);
     return this.service.getPermisDetails(permisId);
   }
 

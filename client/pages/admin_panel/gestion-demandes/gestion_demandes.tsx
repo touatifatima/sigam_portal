@@ -61,6 +61,7 @@ type UserMini = {
 
 type DemandeItem = {
   id_demande: number;
+  short_code?: string | null;
   code_demande?: string | null;
   statut_demande?: string | null;
   date_demande?: string | null;
@@ -705,15 +706,18 @@ export default function GestionDemandesAdminPage() {
     setMotifModalOpen(false);
   };
 
-  const handleViewDetails = async (id: number) => {
+  const handleViewDetails = async (idOrCode: string) => {
     if (!apiURL) return;
     setDetailModalOpen(true);
     setDetailLoading(true);
     setDetailData(null);
     try {
-      const res = await axios.get<DetailsResponse>(`${apiURL}/demandes_dashboard/${id}`, {
-        withCredentials: true,
-      });
+      const res = await axios.get<DetailsResponse>(
+        `${apiURL}/demandes_dashboard/${encodeURIComponent(idOrCode)}`,
+        {
+          withCredentials: true,
+        },
+      );
       setDetailData(res.data ?? null);
     } catch (err) {
       console.error('Erreur details demande', err);
@@ -723,8 +727,8 @@ export default function GestionDemandesAdminPage() {
     }
   };
 
-  const handleOpenDetailsPage = (id: number) => {
-    router.push(`/admin_panel/gestion-demandes/${id}`);
+  const handleOpenDetailsPage = (idOrCode: string) => {
+    router.push(`/admin_panel/gestion-demandes/${encodeURIComponent(idOrCode)}`);
   };
 
   const mapRowsForExport = useCallback((rows: DemandeItem[]) => {
@@ -1188,7 +1192,9 @@ export default function GestionDemandesAdminPage() {
                         <tr
                           key={item.id_demande}
                           className={styles.dataRow}
-                          onClick={() => handleViewDetails(item.id_demande)}
+                          onClick={() =>
+                            handleViewDetails(item.short_code || String(item.id_demande))
+                          }
                         >
                           <td className={styles.checkboxCol}>
                             <input
@@ -1238,7 +1244,13 @@ export default function GestionDemandesAdminPage() {
                               </button>
                               {openActionMenu === item.id_demande && (
                                 <div className={styles.actionMenu}>
-                                  <button onClick={() => handleOpenDetailsPage(item.id_demande)}>
+                                  <button
+                                    onClick={() =>
+                                      handleOpenDetailsPage(
+                                        item.short_code || String(item.id_demande),
+                                      )
+                                    }
+                                  >
                                     <FiEye /> Afficher details
                                   </button>
                                   <button onClick={() => handleDownloadRecapRow(item)}>
@@ -1263,7 +1275,13 @@ export default function GestionDemandesAdminPage() {
                                   >
                                     <FiAlertCircle /> Demander complement
                                   </button>
-                                  <button onClick={() => handleViewDetails(item.id_demande)}>
+                                  <button
+                                    onClick={() =>
+                                      handleViewDetails(
+                                        item.short_code || String(item.id_demande),
+                                      )
+                                    }
+                                  >
                                     <FiFileText /> Vue rapide (popup)
                                   </button>
                                 </div>

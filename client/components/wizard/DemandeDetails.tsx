@@ -29,6 +29,7 @@ import {
   Eye,
   Banknote,
   MessageSquareText,
+  Loader2,
 } from "lucide-react";
 import { InvestorLayout } from "@/components/investor/InvestorLayout";
 import EntityMessagesPanel from "@/components/chat/EntityMessagesPanel";
@@ -179,14 +180,72 @@ const resolveTitulaire = (...payloads: any[]): string | null => {
   return null;
 };
 
+const safeText = (value: unknown, fallback = "--"): string => {
+  if (value === null || value === undefined) return fallback;
+  if (typeof value === "string") {
+    const normalized = value.trim();
+    return normalized.length > 0 ? normalized : fallback;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return fallback;
+};
+
+const formatDateTime = (value?: string | null) => {
+  if (!value) return "--";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--";
+  return date.toLocaleString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const toFileSafe = (value: string) =>
+  value
+    .normalize("NFKD")
+    .replace(/[^\w.-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 80);
+
+const loadImageAsDataUrl = async (src: string): Promise<string | null> => {
+  if (typeof window === "undefined") return null;
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(null);
+          return;
+        }
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL("image/png"));
+      } catch {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+};
+
 const DemandeDetails = () => {
   const { id, code, demandeId } = useParams();
   const navigate = useNavigate();
 
   const demandeKey = useMemo(() => {
     const raw = id || demandeId || code || "";
-    const parsed = Number(raw);
-    return Number.isFinite(parsed) ? parsed : null;
+    const normalized = String(raw).trim();
+    return normalized.length > 0 ? normalized : null;
   }, [id, demandeId, code]);
   const backPath = useMemo(() => {
     if (typeof window === "undefined") return "/investisseur/demandes";
@@ -221,6 +280,7 @@ const DemandeDetails = () => {
     "general" | "documents" | "paiements" | "historique" | "messages"
   >("general");
   const [autoFocusMessagesComposer, setAutoFocusMessagesComposer] = useState(false);
+  const [isPdfGenerating, setIsPdfGenerating] = useState(false);
   const mapRef = useRef<ArcGISMapRef | null>(null);
   const messagesSectionRef = useRef<HTMLDivElement | null>(null);
 
@@ -259,11 +319,18 @@ const DemandeDetails = () => {
       setError(null);
 
       try {
-        const demandeRes = await axios.get(`${apiURL}/demandes/${demandeKey}`, {
-          withCredentials: true,
-        });
+        const demandeRes = await axios.get(
+          `${apiURL}/demandes/${encodeURIComponent(demandeKey)}`,
+          {
+            withCredentials: true,
+          },
+        );
         if (!active) return;
         const demandeData = demandeRes.data as DemandeDetail;
+        const resolvedDemandeId = Number(demandeData?.id_demande);
+        if (!Number.isFinite(resolvedDemandeId) || resolvedDemandeId <= 0) {
+          throw new Error("Demande introuvable");
+        }
         setDemande(demandeData);
 
         const idProc = demandeData?.id_proc;
@@ -280,17 +347,17 @@ const DemandeDetails = () => {
           entrepriseRes,
         ] = await Promise.all([
             axios
-              .get(`${apiURL}/api/substances/demande/${demandeKey}/substances`, {
+              .get(`${apiURL}/api/substances/demande/${resolvedDemandeId}/substances`, {
                 withCredentials: true,
               })
               .catch(() => null),
             axios
-              .get(`${apiURL}/api/procedure/${demandeKey}/documents`, {
+              .get(`${apiURL}/api/procedure/${resolvedDemandeId}/documents`, {
                 withCredentials: true,
               })
               .catch(() => null),
             axios
-              .get(`${apiURL}/api/facture/demande/${demandeKey}`, {
+              .get(`${apiURL}/api/facture/demande/${resolvedDemandeId}`, {
                 withCredentials: true,
               })
               .catch(() => null),
@@ -302,7 +369,7 @@ const DemandeDetails = () => {
                   .catch(() => null)
               : Promise.resolve(null),
             axios
-              .get(`${apiURL}/verification-geo/demande/${demandeKey}`, {
+              .get(`${apiURL}/verification-geo/demande/${resolvedDemandeId}`, {
                 withCredentials: true,
               })
               .catch(() => null),
@@ -563,16 +630,241 @@ const DemandeDetails = () => {
     return { percent, label };
   }, [timelineItems]);
 
-  const handleDownloadPDF = () => {
-    if (!apiURL) {
-      toast.error("API URL manquant.");
-      return;
+  const handleDownloadPDF = async () => {
+    if (isPdfGenerating) return;
+    if (!demande) return;
+
+    setIsPdfGenerating(true);
+    try {
+      const [{ default: JsPdf }, { default: autoTable }, logoDataUrl] = await Promise.all([
+        import("jspdf"),
+        import("jspdf-autotable"),
+        loadImageAsDataUrl("/anamlogo.png"),
+      ]);
+
+      const code = demande.code_demande || `DEM-${demande.id_demande}`;
+      const typePermis = demande.typePermis?.lib_type || demande.typePermis?.code_type || "--";
+      const typeProcedure = demande.typeProcedure?.libelle || "--";
+      const titulaire =
+        titulaireOverride ||
+        demande.detenteur?.nom_societeFR ||
+        demande.detenteur?.nom_societeAR ||
+        "--";
+
+      const commune =
+        demande.commune?.nom_communeFR ||
+        demande.communes?.find((item) => item.principale)?.commune?.nom_communeFR ||
+        demande.communes?.[0]?.commune?.nom_communeFR ||
+        "--";
+
+      const daira =
+        demande.daira?.nom_dairaFR ||
+        demande.communes?.find((item) => item.principale)?.commune?.daira?.nom_dairaFR ||
+        demande.communes?.[0]?.commune?.daira?.nom_dairaFR ||
+        "--";
+
+      const wilaya =
+        demande.wilaya?.nom_wilayaFR ||
+        demande.communes?.find((item) => item.principale)?.commune?.daira?.wilaya?.nom_wilayaFR ||
+        demande.communes?.[0]?.commune?.daira?.wilaya?.nom_wilayaFR ||
+        "--";
+
+      const superficieValue = pickFirstNumber(
+        superficieCadastrale,
+        demande.superficie,
+        demande.superficie_ha,
+        demande.superficieHa,
+        demande.surface,
+      );
+      const superficieLabel =
+        typeof superficieValue === "number" ? `${superficieValue.toFixed(2)} ha` : "--";
+
+      const timelineRows = timelineItems.map((item, idx) => [
+        String(idx + 1),
+        safeText(item.etape),
+        safeText(item.statut),
+        formatDate(item.date),
+      ]);
+
+      const substancesRows = substances.map((item, idx) => [
+        String(idx + 1),
+        safeText(item),
+      ]);
+
+      const documentsRows = documents.map((item, idx) => [
+        String(idx + 1),
+        safeText(item.nom),
+        safeText(item.statut),
+        safeText(item.size),
+        formatDate(item.date),
+      ]);
+
+      const coordinatesRows = perimetrePoints.map((point, idx) => [
+        String(idx + 1),
+        Number(point.x).toFixed(3),
+        Number(point.y).toFixed(3),
+        safeText(point.zone ?? perimetreZone),
+        safeText(point.system),
+        safeText(point.hemisphere ?? perimetreHemisphere),
+      ]);
+
+      const paiementsRows = paiements.length
+        ? paiements.map((item) => [
+            safeText(item.libelle),
+            safeText(item.montant),
+            safeText(item.statut),
+            formatDate(item.date),
+          ])
+        : [
+            [
+              "Facture",
+              factureMontant != null
+                ? `${factureMontant.toLocaleString("fr-FR")} DZD`
+                : "--",
+              safeText(factureStatut),
+              "--",
+            ],
+          ];
+
+      const doc = new JsPdf({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const marginX = 14;
+      const bodyWidth = pageWidth - marginX * 2;
+      let currentY = 40;
+
+      doc.setFillColor(125, 38, 74);
+      doc.rect(0, 0, pageWidth, 32, "F");
+      doc.setFillColor(42, 157, 143);
+      doc.rect(0, 32, pageWidth, 2, "F");
+
+      if (logoDataUrl) {
+        try {
+          doc.addImage(logoDataUrl, "PNG", 14, 5, 22, 22);
+        } catch {
+          // keep PDF generation even if logo cannot be rendered
+        }
+      }
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(15);
+      doc.text("PORTAIL ANAM", 40, 12);
+      doc.setFontSize(12);
+      doc.text("Recapitulatif professionnel de la demande", 40, 19);
+      doc.setFontSize(9.5);
+      doc.text(`Code: ${code}`, pageWidth - 14, 11, { align: "right" });
+      doc.text(`Date: ${formatDateTime(new Date().toISOString())}`, pageWidth - 14, 17, {
+        align: "right",
+      });
+      doc.text(`Reference interne: #${demande.id_demande}`, pageWidth - 14, 23, {
+        align: "right",
+      });
+
+      const addSectionTitle = (title: string) => {
+        if (currentY > pageHeight - 25) {
+          doc.addPage();
+          currentY = 18;
+        }
+        doc.setFillColor(234, 247, 245);
+        doc.roundedRect(marginX, currentY - 4, bodyWidth, 8, 2, 2, "F");
+        doc.setTextColor(93, 31, 58);
+        doc.setFontSize(11);
+        doc.text(title, marginX + 2, currentY + 1);
+        currentY += 8;
+      };
+
+      const runTable = (head: string[][], body: string[][]) => {
+        autoTable(doc, {
+          startY: currentY,
+          margin: { left: marginX, right: marginX },
+          head,
+          body,
+          theme: "grid",
+          headStyles: {
+            fillColor: [42, 157, 143],
+            textColor: [255, 255, 255],
+            fontSize: 9,
+          },
+          styles: {
+            fontSize: 8.5,
+            cellPadding: 2.2,
+            textColor: [39, 39, 42],
+          },
+          alternateRowStyles: { fillColor: [248, 251, 250] },
+        });
+        currentY = ((doc as any).lastAutoTable?.finalY || currentY) + 6;
+      };
+
+      addSectionTitle("Informations generales");
+      runTable(
+        [["Champ", "Valeur"]],
+        [
+          ["Code demande", code],
+          ["Statut", safeText(demande.statut_demande)],
+          ["Type permis", typePermis],
+          ["Type procedure", typeProcedure],
+          ["Date depot", formatDate(demande.date_demande || demande.procedure?.date_debut_proc || null)],
+          ["Titulaire", safeText(titulaire)],
+          ["Wilaya", safeText(wilaya)],
+          ["Daira", safeText(daira)],
+          ["Commune", safeText(commune)],
+          ["Lieu-dit", safeText(demande.lieu_ditFR)],
+          ["Superficie", superficieLabel],
+        ],
+      );
+
+      addSectionTitle("Substances");
+      runTable(
+        [["#", "Substance"]],
+        substancesRows.length > 0 ? substancesRows : [["1", "Aucune substance"]],
+      );
+
+      addSectionTitle("Perimetre et coordonnees");
+      runTable(
+        [["Point", "X", "Y", "Zone", "Systeme", "Hemisphere"]],
+        coordinatesRows.length > 0
+          ? coordinatesRows
+          : [["--", "--", "--", "--", "--", "--"]],
+      );
+
+      addSectionTitle("Documents fournis");
+      runTable(
+        [["#", "Document", "Statut", "Taille", "Date"]],
+        documentsRows.length > 0
+          ? documentsRows
+          : [["1", "Aucun document", "--", "--", "--"]],
+      );
+
+      addSectionTitle("Historique de traitement");
+      runTable(
+        [["#", "Etape", "Statut", "Date"]],
+        timelineRows.length > 0 ? timelineRows : [["1", "Aucune etape", "--", "--"]],
+      );
+
+      addSectionTitle("Paiement");
+      runTable([["Libelle", "Montant", "Statut", "Date"]], paiementsRows);
+
+      const pageCount = doc.getNumberOfPages();
+      for (let page = 1; page <= pageCount; page += 1) {
+        doc.setPage(page);
+        doc.setDrawColor(226, 232, 240);
+        doc.line(marginX, pageHeight - 14, pageWidth - marginX, pageHeight - 14);
+        doc.setFontSize(8.5);
+        doc.setTextColor(107, 114, 128);
+        doc.text("Document genere automatiquement par le Portail ANAM.", marginX, pageHeight - 8);
+        doc.text(`Page ${page}/${pageCount}`, pageWidth - marginX, pageHeight - 8, {
+          align: "right",
+        });
+      }
+
+      doc.save(`demande_${toFileSafe(code)}_recapitulatif.pdf`);
+      toast.success("Recapitulatif PDF telecharge avec succes.");
+    } catch (error) {
+      console.error("Erreur generation recapitulatif PDF", error);
+      toast.error("Impossible de generer le recapitulatif PDF.");
+    } finally {
+      setIsPdfGenerating(false);
     }
-    if (!factureId) {
-      toast.info("Aucune facture disponible pour cette demande.");
-      return;
-    }
-    window.open(`${apiURL}/api/facture/${factureId}/pdf`, "_blank");
   };
 
   if (isLoading) {
@@ -670,9 +962,17 @@ const DemandeDetails = () => {
               <ArrowLeft className="w-4 h-4" />
               Retour a la liste
             </Button>
-            <Button onClick={handleDownloadPDF} className={styles.pdfButton}>
-              <Download className="w-4 h-4" />
-              Telecharger recapitulatif PDF
+            <Button
+              onClick={() => void handleDownloadPDF()}
+              className={styles.pdfButton}
+              disabled={isPdfGenerating}
+            >
+              {isPdfGenerating ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              {isPdfGenerating ? "Generation..." : "Telecharger recapitulatif PDF"}
             </Button>
           </div>
 

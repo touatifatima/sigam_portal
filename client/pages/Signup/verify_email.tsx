@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { Mail, ArrowLeft, CheckCircle2, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
 import styles from './VerifyEmail.module.css';
 
-const logo = '/assets/logo.jpg';
+const logo = '/anamlogo.png';
 
 export default function VerifyEmailPage() {
   const router = useRouter();

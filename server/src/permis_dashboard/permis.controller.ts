@@ -112,21 +112,24 @@ export class PermisDashboard2Controller {
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a permis' })
   async deletePermis(@Param('id') id: string) {
-    return this.permisService.delete(+id);
+    const permisId = await this.permisService.resolvePermisId(id);
+    return this.permisService.delete(permisId);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update permis details' })
   async updatePermis(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body() body: UpdatePermisDashboardDto,
   ) {
-    return this.permisService.updateDetails(id, body);
+    const permisId = await this.permisService.resolvePermisId(id);
+    return this.permisService.updateDetails(permisId, body);
   }
 
   @Get(':id')
   async findOne(@Param('id') id: string) {
-    return this.permisService.findOneWithDetails(+id);
+    const permisId = await this.permisService.resolvePermisId(id);
+    return this.permisService.findOneWithDetails(permisId);
   }
 
   @Get(':id/documents')
@@ -136,9 +139,8 @@ export class PermisDashboard2Controller {
   @ApiResponse({ status: 200, description: 'Documents organized by procedure' })
   @ApiResponse({ status: 404, description: 'Permis not found' })
   async getDocumentsForPermis(@Param('id') id: string) {
-    const documents = await this.permisService.getAllDocumentsForPermis(
-      parseInt(id),
-    );
+    const permisId = await this.permisService.resolvePermisId(id);
+    const documents = await this.permisService.getAllDocumentsForPermis(permisId);
     return { data: documents };
   }
 
@@ -147,55 +149,71 @@ export class PermisDashboard2Controller {
     summary: 'Get permis history by code_permis',
   })
   async getHistorique(@Param('id') id: string) {
-    return this.permisService.getHistorique(parseInt(id));
+    const permisId = await this.permisService.resolvePermisId(id);
+    return this.permisService.getHistorique(permisId);
   }
 
   @Post(':id/expire')
   @ApiOperation({ summary: 'Validate expiration and move permit perimeter' })
   async expirePermis(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body('typeProcedureId') typeProcedureId?: number,
     @Body('procId') procId?: number,
   ) {
-    return this.permisService.expirePermis(id, procId, typeProcedureId);
+    const permisId = await this.permisService.resolvePermisId(id);
+    return this.permisService.expirePermis(permisId, procId, typeProcedureId);
   }
 
   @Post(':id/expiration/start')
   @ApiOperation({ summary: 'Start expiration procedure' })
   async startExpiration(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body('typeProcedureId') typeProcedureId?: number,
   ) {
-    return this.permisService.startExpiration(id, typeProcedureId);
+    const permisId = await this.permisService.resolvePermisId(id);
+    return this.permisService.startExpiration(permisId, typeProcedureId);
   }
 
   @Post(':id/expiration/validate')
   @ApiOperation({ summary: 'Validate expiration procedure' })
   async validateExpiration(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body('procId') procId?: number,
     @Body('observations') observations?: string,
   ) {
-    return this.permisService.expirePermis(id, procId, undefined, observations);
+    const permisId = await this.permisService.resolvePermisId(id);
+    return this.permisService.expirePermis(
+      permisId,
+      procId,
+      undefined,
+      observations,
+    );
   }
 
   @Post(':id/annulation/start')
   @ApiOperation({ summary: 'Start cancellation procedure' })
   async startAnnulation(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body('typeProcedureId') typeProcedureId?: number,
   ) {
-    return this.permisService.startAnnulation(id, typeProcedureId);
+    const permisId = await this.permisService.resolvePermisId(id);
+    return this.permisService.startAnnulation(permisId, typeProcedureId);
   }
 
   @Post(':id/annulation/validate')
   @ApiOperation({ summary: 'Validate cancellation procedure' })
   async validateAnnulation(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body('procId') procId?: number,
     @Body('observations') observations?: string,
   ) {
-    return this.permisService.annulePermis(id, procId, undefined, observations);
+    const permisId = await this.permisService.resolvePermisId(id);
+    return this.permisService.annulePermis(
+      permisId,
+      procId,
+      undefined,
+      observations,
+    );
   }
 
 

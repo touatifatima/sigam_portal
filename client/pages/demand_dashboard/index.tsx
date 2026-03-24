@@ -11,6 +11,7 @@ import router from '@/src/next-compat/router';
 
 type Demande = {
   id_demande: number;
+  short_code?: string | null;
   code_demande: string | null;
   date_demande: string | null;
   statut_demande: string;
@@ -352,7 +353,10 @@ export default function DemandesPage() {
                       <td className={styles.numberCell}>{d.budget_prevu ? `${d.budget_prevu.toLocaleString()} DA` : '—'}</td>
                       <td className={styles.numberCell}>{d.superficie ? `${d.superficie.toLocaleString()} ha` : '—'}</td>
                       <td>
-                        <a className={styles.linkBtn} href={`/demand_dashboard/${d.id_demande}`}>
+                        <a
+                          className={styles.linkBtn}
+                          href={`/demand_dashboard/${d.short_code || d.id_demande}`}
+                        >
                           Voir
                         </a>
                       </td>

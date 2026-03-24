@@ -144,6 +144,150 @@
   }
 }
 
+.successOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(20, 14, 18, 0.56);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2rem;
+  animation: fadeInOverlay 0.26s ease-out;
+}
+
+.successModal {
+  width: min(820px, 96vw);
+  background: #ffffff;
+  border-radius: 22px;
+  box-shadow: 0 26px 80px rgba(35, 17, 27, 0.35);
+  border: 1px solid rgba(139, 58, 98, 0.16);
+  padding: 2rem 2rem 1.6rem;
+  text-align: center;
+  animation: scaleInModal 0.24s ease-out;
+}
+
+.successIconWrap {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 1rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ebfff6 0%, #ddf8ff 100%);
+  border: 1px solid rgba(24, 134, 112, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.successIcon {
+  width: 36px;
+  height: 36px;
+  color: #178671;
+}
+
+.successTitle {
+  margin: 0 0 1rem;
+  color: #2d1b27;
+  font-size: 1.95rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.successText {
+  margin: 0 auto 0.7rem;
+  max-width: 680px;
+  font-size: 1.03rem;
+  line-height: 1.65;
+  color: #654a59;
+}
+
+.successActions {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: center;
+  gap: 0.95rem;
+  flex-wrap: wrap;
+}
+
+.downloadButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 260px;
+  height: 52px;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+  background: linear-gradient(135deg, #8b3a62 0%, #178671 100%);
+  box-shadow: 0 14px 30px -12px rgba(33, 91, 96, 0.62);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.downloadButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 34px -12px rgba(33, 91, 96, 0.68);
+}
+
+.finishButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 220px;
+  height: 52px;
+  border: 1px solid #ded5da;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #4e3e47;
+  background: #f3f1f3;
+  cursor: pointer;
+  transition: transform 0.2s ease, background-color 0.2s ease, opacity 0.2s ease;
+}
+
+.finishButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: #ece7ea;
+}
+
+.downloadButton:disabled,
+.finishButton:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.goodbyeMessage {
+  margin: 1.05rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #8b3a62;
+}
+
+@keyframes fadeInOverlay {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleInModal {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @media (max-width: 768px) {
   .container {
     padding: 1rem;
@@ -164,6 +308,25 @@
   }
 
   .confirmButton {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .successModal {
+    padding: 1.5rem 1rem 1.2rem;
+    border-radius: 16px;
+  }
+
+  .successTitle {
+    font-size: 1.45rem;
+  }
+
+  .successText {
+    font-size: 0.95rem;
+  }
+
+  .downloadButton,
+  .finishButton {
     width: 100%;
     min-width: unset;
   }

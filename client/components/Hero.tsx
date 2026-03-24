@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+﻿import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import heroSlide1Jpg from "@/src/assets/hero-slide-1.jpg";
@@ -42,7 +42,7 @@ const slides: Slide[] = [
     subtitle:
       "Des montagnes du Hoggar aux plaines du Tell, decouvrez un patrimoine minier exceptionnel a travers notre carte interactive.",
     cta: "Explorer la carte",
-    ctaLink: "/auth/login",
+    ctaLink: "/carte/carte_public",
   },
   {
     image: heroSlide3Jpg,
@@ -51,7 +51,7 @@ const slides: Slide[] = [
     highlight: "l'investissement minier",
     subtitle:
       "POM: une plateforme moderne de suivi en temps reel, d'analyse geologique et de gestion numerique de vos permis.",
-    cta: "Decouvrir SIGAM",
+    cta: "Decouvrir POM",
     ctaLink: "/auth/login",
   },
   {
