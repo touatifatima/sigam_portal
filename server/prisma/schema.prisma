@@ -43,6 +43,7 @@ model UtilisateurPortail {
   detenteur                      DetenteurMoralePortail? @relation(fields: [detenteurId], references: [id_detenteur])
   role                           Role?                   @relation(fields: [roleId], references: [id])
   notifications                  NotificationPortail[]   @relation("UserNotifications")
+  operatedPermis                 PermisPortail?          @relation("PermisOperator")
 
   @@index([detenteurId], map: "utilisateurs_portail_detenteurId_idx")
   @@map("utilisateurs_portail")
@@ -832,6 +833,7 @@ model PermisPortail {
   id_typePermis          Int
   id_antenne             Int?
   id_detenteur           Int?
+  operatorId             Int?                    @unique
   id_statut              Int?
   code_permis            String?
   date_adjudication      DateTime?
@@ -855,12 +857,13 @@ model PermisPortail {
   is_signed              Boolean?                @default(false)
   date_remise_titre      DateTime?
   nom_remise_titre       String?
-  qr_code                String?
+  qr_code                String?                 @unique(map: "PermisPortail_qr_code_key")
   date_heure_systeme     DateTime?
   qr_inserer_par         String?
   code_wilaya            String?
   antenne                Antenne?                @relation(fields: [id_antenne], references: [id_antenne])
   detenteur              DetenteurMoralePortail? @relation(fields: [id_detenteur], references: [id_detenteur])
+  operator               UtilisateurPortail?     @relation("PermisOperator", fields: [operatorId], references: [id])
   statut                 StatutPermis?           @relation(fields: [id_statut], references: [id])
   typePermis             TypePermis              @relation(fields: [id_typePermis], references: [id])
   CahierCharge           CahierChargePortail[]
@@ -880,6 +883,7 @@ model PermisPortail {
   @@index([date_expiration(sort: Desc)], map: "idx_permis_date_expiration")
   @@index([id_detenteur, date_expiration(sort: Desc)], map: "idx_permis_id_detenteur_date_expiration")
   @@index([code_permis], map: "idx_permis_code_permis")
+  @@index([operatorId], map: "idx_permis_operator_id")
   @@map("PermisPortail")
 }
 

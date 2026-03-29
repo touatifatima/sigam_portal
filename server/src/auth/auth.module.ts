@@ -33,5 +33,6 @@ import { AuditLogModule } from '../audit-log/audit-log.module';
     PermissionsGuard,
   ],
   controllers: [AuthController],
+  exports: [AuthService],
 })
 export class AuthModule {}

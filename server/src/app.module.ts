@@ -15,6 +15,7 @@ import { ProcedureModule } from './dashboard/procedure.module';
 import { ProcedureOperateurModule } from './dashboard/operateur/procedure.module';//
 import { ProcedureEtapeModule } from './procedure_etape/procedure-etape.module';
 import { AuthModule } from './auth/auth.module';
+import { OperatorAccessModule } from './operator_access/operator-access.module';
 import { AdminModule } from './role/admin.module';
 import { TypePermisModule } from './demandes/type permis/type_permis.module';
 import { AdminDossierModule } from './role/admin_dossier_administratif.module';
@@ -98,7 +99,7 @@ import { PhasesEtapesConfigModule } from './configurations/phases-etapes/phases-
     RedevancesconfModule,StatutPermisconfModule,TypePermisconfModule,DecisionTrackingModule,ComitenModule,DecisionModule,
     SeanceModule,ExpertMinierModule,SessionModule,AuditLogModule,PermisDashboardfModule,TimelineModule,CahierChargeModule,
     GeneratePdfModule,GeneratePermisModule,WilayaModule,DairaModule,CommuneModule,AdminDossierModule,CoordonneesModule,VerificationGeoModule,
-    TypePermisModule,AuthModule,AdminModule,PrismaModule,ProcedureEtapeModule,ProcedureModule,ProcedureOperateurModule,ComiteDirectionModule,SocieteModule,
+    TypePermisModule,AuthModule,OperatorAccessModule,AdminModule,PrismaModule,ProcedureEtapeModule,ProcedureModule,ProcedureOperateurModule,ComiteDirectionModule,SocieteModule,
     InteractionWaliModule,CapacitesModule,SubstancesModule,DocumentsModule,DemandeSummaryControllerModule,SubstancesconfModule,
     StatutsJuridiquesconfconfModule,WilayasconfModule,DairasconfModule,CommunesconfModule,AntennesconfModule,DetenteurMorale_confModule,
     TypePermis_confModule,StatutPermis_confModule,Permis_confModule,Antenne_confModule,DemandesDashboardModule,TransfertModule,GisModule,VerificationGeoModule,
