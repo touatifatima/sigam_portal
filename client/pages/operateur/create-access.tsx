@@ -168,7 +168,7 @@ export default function OperatorCreateAccessPage() {
       setSuccessMessage('Acces active avec succes');
 
       window.setTimeout(() => {
-        void router.push(`/operator/dashboard?codeqr=${encodeURIComponent(codeqr)}`);
+        void router.push(`/operateur/dashboard?codeqr=${encodeURIComponent(codeqr)}`);
       }, 1200);
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Code invalide ou expire.');
@@ -300,7 +300,7 @@ export default function OperatorCreateAccessPage() {
         )}
 
         <div className={styles.footerLinks}>
-          <Link href={`/operator/access?codeqr=${encodeURIComponent(codeqr)}`}>
+          <Link href={`/operateur/access?codeqr=${encodeURIComponent(codeqr)}`}>
             Retour a l&apos;acces operateur
           </Link>
           <Link href="/auth/login">Connexion generale</Link>

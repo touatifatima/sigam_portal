@@ -3,6 +3,7 @@ import { Controller, Post, Body, Get, Req, Res } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { Request, Response } from 'express';
+import type { CookieOptions } from 'express';
 
 @Controller('auth')
 export class AuthController {
@@ -22,9 +23,29 @@ export class AuthController {
     return req.ip || req.socket.remoteAddress || 'unknown';
   }
 
+  private buildAuthCookieOptions(req: Request): CookieOptions {
+    const forwardedProto = String(req.headers['x-forwarded-proto'] || '')
+      .split(',')[0]
+      .trim()
+      .toLowerCase();
+    const isHttps =
+      req.secure || forwardedProto === 'https' || req.protocol === 'https';
+
+    const domain = (process.env.COOKIE_DOMAIN || '').trim();
+    return {
+      httpOnly: true,
+      secure: isHttps,
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000,
+      path: '/',
+      ...(domain ? { domain } : {}),
+    };
+  }
+
   @Post('login')
   async login(
     @Body() body: { email: string; password: string },
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.validateUser(body.email, body.password);
@@ -51,16 +72,9 @@ export class AuthController {
 
     const { token, user: userData } = await this.authService.login(result.user);
 
-    res.cookie('auth_token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 24 * 60 * 60 * 1000,
-      path: '/',
-      ...(process.env.NODE_ENV === 'production' ? { domain: '.yourdomain.com' } : {}),
-    });
+    res.cookie('auth_token', token, this.buildAuthCookieOptions(req));
 
-    return { user: userData };
+    return { token, user: userData };
   }
 
   @Post('logout')
@@ -73,9 +87,10 @@ export class AuthController {
       await this.authService.logout(token);
     }
 
+    const cookieOptions = this.buildAuthCookieOptions(req);
     res.clearCookie('auth_token', {
-      path: '/',
-      ...(process.env.NODE_ENV === 'production' ? { domain: '.yourdomain.com' } : {}),
+      path: cookieOptions.path,
+      ...(cookieOptions.domain ? { domain: cookieOptions.domain } : {}),
     });
 
     return { message: 'Logged out successfully' };
@@ -89,18 +104,12 @@ export class AuthController {
   @Post('verify-email')
   async verifyEmail(
     @Body() body: { email: string; code: string },
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
     const { token, user } = await this.authService.verifyEmail(body.email, body.code);
-    res.cookie('auth_token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 24 * 60 * 60 * 1000,
-      path: '/',
-      ...(process.env.NODE_ENV === 'production' ? { domain: '.yourdomain.com' } : {}),
-    });
-    return { user };
+    res.cookie('auth_token', token, this.buildAuthCookieOptions(req));
+    return { token, user };
   }
 
   @Post('resend-verification')

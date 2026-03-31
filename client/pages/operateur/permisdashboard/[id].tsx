@@ -1102,7 +1102,9 @@ const PermisDetailsOperateur = () => {
           ? obligationsRes.data
           : [];
         const mappedObligations = obligationsRaw.map((item: any) => {
-          const montant = Number(item?.montant ?? item?.montant_du ?? item?.montant_a_payer ?? 0);
+          const montant = Number(
+            item?.montant_attendu ?? item?.montant ?? item?.montant_du ?? item?.montant_a_payer ?? 0,
+          );
           return {
             id: item?.id_obligation ?? item?.id,
             libelle:
@@ -1215,6 +1217,10 @@ const PermisDetailsOperateur = () => {
   const totalEnRetard = obligations
     .filter((o) => o.statut === "EN_RETARD")
     .reduce((sum, o) => sum + o.montant, 0);
+  const perimetrePointsDisplay = perimetrePoints.map((point, index) => ({
+    ...point,
+    id: index + 1,
+  }));
 
   const filteredFusionCandidates = fusionCandidates.filter((candidate) => {
     const q = fusionSearch.trim().toLowerCase();
@@ -1448,7 +1454,7 @@ const PermisDetailsOperateur = () => {
                       )}
                     </div>
                     <PerimeterCoordinatesTable
-                      points={perimetrePoints}
+                      points={perimetrePointsDisplay}
                       title="Coordonnees du perimetre"
                       emptyMessage="Aucun perimetre defini pour ce permis."
                     />

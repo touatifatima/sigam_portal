@@ -79,12 +79,17 @@ if (typeof window !== 'undefined' && !window.__SIGAM_API_PATCHED__) {
       if (attachUserHeaders) {
         if (auth?.id) headers.set('X-User-Id', String(auth.id));
         if (auth?.username || auth?.email) headers.set('X-User-Name', String(auth.username || auth.email));
+        if (auth?.token) {
+          headers.set('Authorization', `Bearer ${auth.token}`);
+        }
       } else {
         // Ensure we do not leak these to third-party hosts (e.g., ArcGIS)
         headers.delete('X-User-Id');
         headers.delete('x-user-id');
         headers.delete('X-User-Name');
         headers.delete('x-user-name');
+        headers.delete('Authorization');
+        headers.delete('authorization');
       }
       config.headers = Object.fromEntries(headers.entries()) as any;
       // Attach navigation abort signal if not provided
@@ -152,11 +157,16 @@ if (typeof window !== 'undefined' && !window.__SIGAM_API_PATCHED__) {
         if (toInternal) {
           if (auth?.id) headers.set('X-User-Id', String(auth.id));
           if (auth?.username || auth?.email) headers.set('X-User-Name', String(auth.username || auth.email));
+          if (auth?.token) {
+            headers.set('Authorization', `Bearer ${auth.token}`);
+          }
         } else {
           headers.delete('X-User-Id');
           headers.delete('x-user-id');
           headers.delete('X-User-Name');
           headers.delete('x-user-name');
+          headers.delete('Authorization');
+          headers.delete('authorization');
         }
         // Do not force Content-Type; let callers set it appropriately
         const nextInit: RequestInit = { ...(init || {}), headers };

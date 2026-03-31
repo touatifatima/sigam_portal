@@ -2,18 +2,27 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { execFile } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
+import { promisify } from 'util';
+import { EnumTypeFonction } from '@prisma/client';
 import { AuthService } from '../auth/auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SessionService } from '../session/session.service';
 
 const OPERATOR_ROLE_NAMES = ['operateur', 'operator'];
+const execFileAsync = promisify(execFile);
 
 @Injectable()
 export class OperatorAccessService {
+  private readonly logger = new Logger(OperatorAccessService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly authService: AuthService,
@@ -26,6 +35,131 @@ export class OperatorAccessService {
 
   private normalizeCodeQr(codeqr: string) {
     return String(codeqr || '').trim();
+  }
+
+  private extractCodePermisCandidate(codeqr: string) {
+    const raw = this.normalizeCodeQr(codeqr);
+    if (!raw) {
+      return '';
+    }
+
+    try {
+      const parsed = new URL(raw);
+      const fromQuery =
+        parsed.searchParams.get('codeqr') ||
+        parsed.searchParams.get('code_permis') ||
+        parsed.searchParams.get('code');
+      if (fromQuery) {
+        return this.normalizeCodeQr(fromQuery);
+      }
+      const lastPath = parsed.pathname.split('/').filter(Boolean).pop();
+      return this.normalizeCodeQr(lastPath || raw);
+    } catch {
+      return raw;
+    }
+  }
+
+  private getPermisInclude() {
+    return {
+      operator: {
+        include: {
+          role: {
+            include: {
+              rolePermissions: {
+                include: { permission: true },
+              },
+            },
+          },
+        },
+      },
+      detenteur: {
+        select: {
+          id_detenteur: true,
+          short_code: true,
+          nom_societeFR: true,
+          nom_societeAR: true,
+          email: true,
+          telephone: true,
+        },
+      },
+      typePermis: {
+        select: {
+          id: true,
+          lib_type: true,
+          code_type: true,
+        },
+      },
+      statut: {
+        select: {
+          id: true,
+          lib_statut: true,
+        },
+      },
+    } as const;
+  }
+
+  private async findPermisByQr(codeqr: string) {
+    return this.prisma.permisPortail.findFirst({
+      where: { qr_code: codeqr },
+      include: this.getPermisInclude(),
+    });
+  }
+
+  private async findPermisByCodePermis(codePermis: string) {
+    return this.prisma.permisPortail.findFirst({
+      where: { code_permis: codePermis },
+      orderBy: { id: 'desc' },
+      include: this.getPermisInclude(),
+    });
+  }
+
+  private async bindQrCodeToPermisIfMissing(permisId: number, scannedCodeQr: string) {
+    const code = this.normalizeCodeQr(scannedCodeQr);
+    if (!code) {
+      return;
+    }
+
+    try {
+      await this.prisma.permisPortail.update({
+        where: { id: permisId },
+        data: { qr_code: code },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Impossible de lier qr_code="${code}" au permis ${permisId}: ${String(
+          (error as Error)?.message || error,
+        )}`,
+      );
+    }
+  }
+
+  private async tryAutoImportPermisFromCsv(codePermis: string) {
+    const normalized = this.normalizeCodeQr(codePermis);
+    if (!normalized || !/^[A-Za-z0-9._-]+$/.test(normalized)) {
+      return false;
+    }
+
+    const scriptPath = path.resolve(process.cwd(), 'prisma', 'import_permis_case.ts');
+    if (!fs.existsSync(scriptPath)) {
+      return false;
+    }
+
+    try {
+      await execFileAsync('npx', ['ts-node', scriptPath, `--code-permis=${normalized}`], {
+        cwd: process.cwd(),
+        windowsHide: true,
+        timeout: 2 * 60 * 1000,
+      });
+      this.logger.log(`Import CSV auto execute pour code_permis=${normalized}`);
+      return true;
+    } catch (error) {
+      this.logger.warn(
+        `Import CSV auto impossible pour code_permis=${normalized}: ${String(
+          (error as Error)?.message || error,
+        )}`,
+      );
+      return false;
+    }
   }
 
   private isStrongPassword(password: string) {
@@ -101,48 +235,36 @@ export class OperatorAccessService {
       throw new BadRequestException('Le code QR est requis.');
     }
 
-    const permis = await this.prisma.permisPortail.findFirst({
-      where: { qr_code: normalizedCodeQr },
-      include: {
-        operator: {
-          include: {
-            role: {
-              include: {
-                rolePermissions: {
-                  include: { permission: true },
-                },
-              },
-            },
-          },
-        },
-        detenteur: {
-          select: {
-            id_detenteur: true,
-            short_code: true,
-            nom_societeFR: true,
-            nom_societeAR: true,
-            email: true,
-            telephone: true,
-          },
-        },
-        typePermis: {
-          select: {
-            id: true,
-            lib_type: true,
-            code_type: true,
-          },
-        },
-        statut: {
-          select: {
-            id: true,
-            lib_statut: true,
-          },
-        },
-      },
-    });
+    const codePermisCandidate = this.extractCodePermisCandidate(normalizedCodeQr);
+
+    let permis = await this.findPermisByQr(normalizedCodeQr);
+    if (!permis && codePermisCandidate && codePermisCandidate !== normalizedCodeQr) {
+      permis = await this.findPermisByQr(codePermisCandidate);
+    }
+
+    if (!permis && codePermisCandidate) {
+      permis = await this.findPermisByCodePermis(codePermisCandidate);
+      if (permis && !permis.qr_code) {
+        await this.bindQrCodeToPermisIfMissing(permis.id, normalizedCodeQr);
+        permis = await this.findPermisByQr(normalizedCodeQr);
+      }
+    }
+
+    if (!permis && codePermisCandidate) {
+      const imported = await this.tryAutoImportPermisFromCsv(codePermisCandidate);
+      if (imported) {
+        permis = await this.findPermisByCodePermis(codePermisCandidate);
+        if (permis && !permis.qr_code) {
+          await this.bindQrCodeToPermisIfMissing(permis.id, normalizedCodeQr);
+          permis = await this.findPermisByQr(normalizedCodeQr);
+        }
+      }
+    }
 
     if (!permis) {
-      throw new NotFoundException('Aucun permis trouve pour ce QR code.');
+      throw new NotFoundException(
+        'Aucun permis trouve pour ce QR code. Verifiez le code ou importez le permis.',
+      );
     }
 
     return permis;
@@ -193,6 +315,164 @@ export class OperatorAccessService {
     };
   }
 
+  private async getDetenteurIdentificationDetails(idDetenteur?: number | null) {
+    const detenteurId = Number(idDetenteur || 0);
+    if (!Number.isFinite(detenteurId) || detenteurId <= 0) {
+      return null;
+    }
+
+    const detenteur = await this.prisma.detenteurMoralePortail.findUnique({
+      where: { id_detenteur: detenteurId },
+      include: {
+        pays: true,
+        nationaliteRef: true,
+        FormeJuridiqueDetenteur: {
+          include: {
+            statutJuridique: true,
+          },
+          orderBy: { id_formeDetenteur: 'desc' },
+          take: 1,
+        },
+        registreCommerce: {
+          orderBy: { date_enregistrement: 'desc' },
+          take: 1,
+        },
+        fonctions: {
+          where: {
+            type_fonction: {
+              in: [
+                EnumTypeFonction.Representant,
+                EnumTypeFonction.Actionnaire,
+                EnumTypeFonction.Representant_Actionnaire,
+              ],
+            },
+          },
+          include: {
+            personne: {
+              include: {
+                pays: true,
+                nationaliteRef: true,
+              },
+            },
+          },
+          orderBy: { id_fonctionDetent: 'asc' },
+        },
+      },
+    });
+
+    if (!detenteur) {
+      return null;
+    }
+
+    const representantRow =
+      detenteur.fonctions.find((row) => row.type_fonction === EnumTypeFonction.Representant) ||
+      detenteur.fonctions.find(
+        (row) => row.type_fonction === EnumTypeFonction.Representant_Actionnaire,
+      ) ||
+      null;
+
+    const mapPersonne = (personne: any) => {
+      if (!personne) return null;
+      return {
+        id_personne: personne.id_personne,
+        nomFR: personne.nomFR ?? null,
+        prenomFR: personne.prenomFR ?? null,
+        nomAR: personne.nomAR ?? null,
+        prenomAR: personne.prenomAR ?? null,
+        qualification: personne.qualification ?? null,
+        telephone: personne.telephone ?? null,
+        email: personne.email ?? null,
+        num_carte_identite: personne.num_carte_identite ?? null,
+        pays: personne.pays
+          ? {
+              id_pays: personne.pays.id_pays,
+              nom_pays: personne.pays.nom_pays,
+            }
+          : null,
+        nationaliteRef: personne.nationaliteRef
+          ? {
+              id_nationalite: personne.nationaliteRef.id_nationalite,
+              libelle: personne.nationaliteRef.libelle,
+            }
+          : null,
+      };
+    };
+
+    const representant = representantRow
+      ? {
+          id_fonctionDetent: representantRow.id_fonctionDetent,
+          type_fonction: representantRow.type_fonction,
+          taux_participation: representantRow.taux_participation ?? null,
+          personne: mapPersonne(representantRow.personne),
+        }
+      : null;
+
+    const actionnaires = detenteur.fonctions
+      .filter(
+        (row) =>
+          row.type_fonction === EnumTypeFonction.Actionnaire ||
+          row.type_fonction === EnumTypeFonction.Representant_Actionnaire,
+      )
+      .map((row) => ({
+        id_actionnaire: row.id_fonctionDetent,
+        id_fonctionDetent: row.id_fonctionDetent,
+        type_fonction: row.type_fonction,
+        taux_participation: row.taux_participation ?? null,
+        personne: mapPersonne(row.personne),
+      }));
+
+    const registre = detenteur.registreCommerce?.[0] ?? null;
+    const forme = detenteur.FormeJuridiqueDetenteur?.[0] ?? null;
+
+    return {
+      detenteur: {
+        id_detenteur: detenteur.id_detenteur,
+        short_code: detenteur.short_code,
+        nom_societeFR: detenteur.nom_societeFR ?? null,
+        nom_societeAR: detenteur.nom_societeAR ?? null,
+        adresse_siege: detenteur.adresse_siege ?? null,
+        telephone: detenteur.telephone ?? null,
+        email: detenteur.email ?? null,
+        fax: detenteur.fax ?? null,
+        site_web: detenteur.site_web ?? null,
+        date_constitution: detenteur.date_constitution ?? null,
+        pays: detenteur.pays
+          ? {
+              id_pays: detenteur.pays.id_pays,
+              nom_pays: detenteur.pays.nom_pays,
+            }
+          : null,
+        nationaliteRef: detenteur.nationaliteRef
+          ? {
+              id_nationalite: detenteur.nationaliteRef.id_nationalite,
+              libelle: detenteur.nationaliteRef.libelle,
+            }
+          : null,
+        statut_juridique: forme?.statutJuridique
+          ? {
+              id_statut: forme.statutJuridique.id_statutJuridique,
+              code_statut: forme.statutJuridique.code_statut,
+              statut_fr: forme.statutJuridique.statut_fr,
+              statut_ar: forme.statutJuridique.statut_ar,
+            }
+          : null,
+      },
+      representant,
+      registre: registre
+        ? {
+            id: registre.id,
+            numero_rc: registre.numero_rc ?? null,
+            date_enregistrement: registre.date_enregistrement ?? null,
+            capital_social: registre.capital_social ?? null,
+            nis: registre.nis ?? null,
+            nif: registre.nif ?? null,
+            adresse_legale: registre.adresse_legale ?? null,
+          }
+        : null,
+      actionnaires,
+    };
+  }
+
   async getAccessContext(codeqr: string) {
     const permis = await this.findPermisByQrOrThrow(codeqr);
 
@@ -237,11 +517,15 @@ export class OperatorAccessService {
     }
 
     const auth = await this.authService.login(operator);
+    const detenteurIdentification = await this.getDetenteurIdentificationDetails(
+      permis.id_detenteur,
+    );
 
     return {
       ...auth,
       permit: this.mapPermisSummary(permis),
       detenteur: this.mapDetenteurSummary(permis),
+      detenteurIdentification,
     };
   }
 
@@ -416,10 +700,15 @@ export class OperatorAccessService {
       throw new UnauthorizedException('Le compte verifie ne correspond pas au permis scanne.');
     }
 
+    const detenteurIdentification = await this.getDetenteurIdentificationDetails(
+      permis.id_detenteur,
+    );
+
     return {
       ...auth,
       permit: this.mapPermisSummary(permis),
       detenteur: this.mapDetenteurSummary(permis),
+      detenteurIdentification,
       message: 'Acces active avec succes',
     };
   }
@@ -502,6 +791,35 @@ export class OperatorAccessService {
       throw new UnauthorizedException('Ce permis n\'est pas lie a votre compte operateur.');
     }
 
+    const userDetenteurId =
+      Number.isFinite(Number((user as any)?.detenteurId)) &&
+      Number((user as any)?.detenteurId) > 0
+        ? Number((user as any)?.detenteurId)
+        : null;
+    const permisDetenteurId =
+      Number.isFinite(Number(permis?.id_detenteur)) && Number(permis?.id_detenteur) > 0
+        ? Number(permis.id_detenteur)
+        : null;
+
+    if (!isAdmin) {
+      if (userDetenteurId && permisDetenteurId && userDetenteurId !== permisDetenteurId) {
+        throw new UnauthorizedException(
+          "Le detenteur du compte operateur ne correspond pas au detenteur du permis scanne.",
+        );
+      }
+
+      if (!userDetenteurId && permisDetenteurId) {
+        await this.prisma.utilisateurPortail.update({
+          where: { id: user.id },
+          data: { detenteurId: permisDetenteurId },
+        });
+      }
+    }
+
+    const detenteurIdentification = await this.getDetenteurIdentificationDetails(
+      permisDetenteurId,
+    );
+
     return {
       operator: {
         id: user.id,
@@ -512,6 +830,7 @@ export class OperatorAccessService {
       },
       permit: this.mapPermisSummary(permis),
       detenteur: this.mapDetenteurSummary(permis),
+      detenteurIdentification,
       highlightedPermitId: permis.id,
     };
   }

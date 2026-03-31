@@ -9,22 +9,33 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { OperatorAccessService } from './operator-access.service';
+import type { CookieOptions } from 'express';
 
 @Controller('operator')
 export class OperatorAccessController {
   constructor(private readonly operatorAccessService: OperatorAccessService) {}
 
-  private setAuthCookie(res: Response, token: string) {
-    res.cookie('auth_token', token, {
+  private buildAuthCookieOptions(req: Request): CookieOptions {
+    const forwardedProto = String(req.headers['x-forwarded-proto'] || '')
+      .split(',')[0]
+      .trim()
+      .toLowerCase();
+    const isHttps =
+      req.secure || forwardedProto === 'https' || req.protocol === 'https';
+    const domain = (process.env.COOKIE_DOMAIN || '').trim();
+
+    return {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isHttps,
       sameSite: 'lax',
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
-      ...(process.env.NODE_ENV === 'production'
-        ? { domain: '.yourdomain.com' }
-        : {}),
-    });
+      ...(domain ? { domain } : {}),
+    };
+  }
+
+  private setAuthCookie(req: Request, res: Response, token: string) {
+    res.cookie('auth_token', token, this.buildAuthCookieOptions(req));
   }
 
   @Get('access')
@@ -35,10 +46,11 @@ export class OperatorAccessController {
   @Post('access/login')
   async loginWithCodeQr(
     @Body() body: { codeqr: string; password: string },
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.operatorAccessService.loginWithCodeQr(body);
-    this.setAuthCookie(res, result.token);
+    this.setAuthCookie(req, res, result.token);
 
     return {
       token: result.token,
@@ -56,10 +68,11 @@ export class OperatorAccessController {
   @Post('verify-access')
   async verifyAccess(
     @Body() body: { codeqr: string; email: string; code: string },
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.operatorAccessService.verifyAccess(body);
-    this.setAuthCookie(res, result.token);
+    this.setAuthCookie(req, res, result.token);
 
     return {
       token: result.token,

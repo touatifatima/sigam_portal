@@ -374,7 +374,7 @@ export default function Navbar() {
     if (isOperateur) {
       return [
         { href: '/operateur/permisdashboard/mes-permis', label: 'Mes permis' },
-        { href: '/demand_dashboard/mine', label: 'Mes demandes' },
+        { href: '/investisseur/demandes', label: 'Mes demandes' },
       ];
     }
 
@@ -391,7 +391,7 @@ export default function Navbar() {
   const dashboardHref = isAdmin
     ? '/admin_panel/DossierAdminPage'
     : isOperateur
-    ? '/operateur/permisdashboard/mes-permis'
+    ? '/investisseur/InvestorDashboard'
     : '/investisseur/InvestorDashboard';
 
   const initials = auth.role ? getInitials(auth.role) : '';

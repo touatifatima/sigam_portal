@@ -102,7 +102,7 @@ export default function OperatorAccessPage() {
         login({ token: response.data.token, user: response.data.user });
       }
 
-      await router.push(`/operator/dashboard?codeqr=${encodeURIComponent(codeqr)}`);
+      await router.push(`/operateur/dashboard?codeqr=${encodeURIComponent(codeqr)}`);
     } catch (err: any) {
       const apiMessage = err?.response?.data?.message || err?.response?.data?.error;
       if (apiMessage === 'EMAIL_NOT_VERIFIED_OPERATOR') {
@@ -163,7 +163,7 @@ export default function OperatorAccessPage() {
               type="button"
               className={styles.secondaryBtn}
               onClick={() =>
-                void router.push(`/operator/create-access?codeqr=${encodeURIComponent(codeqr)}`)
+                void router.push(`/operateur/create-access?codeqr=${encodeURIComponent(codeqr)}`)
               }
             >
               Reconfigurer mon acces operateur
@@ -184,7 +184,7 @@ export default function OperatorAccessPage() {
               type="button"
               className={styles.primaryBtn}
               onClick={() =>
-                void router.push(`/operator/create-access?codeqr=${encodeURIComponent(codeqr)}`)
+                void router.push(`/operateur/create-access?codeqr=${encodeURIComponent(codeqr)}`)
               }
             >
               Creer mon acces operateur

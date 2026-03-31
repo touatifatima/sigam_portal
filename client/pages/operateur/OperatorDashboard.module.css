@@ -67,6 +67,48 @@
   color: #4b5563;
 }
 
+.cardWide {
+  grid-column: 1 / -1;
+}
+
+.muted {
+  color: #6b7280;
+  margin-top: 8px;
+}
+
+.actionnaireList {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.actionnaireItem {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #fbfcff;
+}
+
+.actionnaireName {
+  color: #1f2937;
+  font-weight: 700;
+}
+
+.actionnaireMeta {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.actionnaireRate {
+  color: #0f766e;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
 .actions {
   margin-top: 20px;
   display: flex;

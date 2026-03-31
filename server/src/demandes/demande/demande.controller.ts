@@ -22,6 +22,17 @@ export class DemandesController {
     private readonly sessionService: SessionService,
   ) {}
 
+  private extractAuthToken(req: any): string | null {
+    const cookieToken = req?.cookies?.auth_token;
+    if (cookieToken) return cookieToken;
+
+    const authHeader = req?.headers?.authorization;
+    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      return authHeader.slice('Bearer '.length).trim();
+    }
+    return null;
+  }
+
   @Put(':id')
   async updateDemande(
     @Param('id') id: string,
@@ -33,7 +44,7 @@ export class DemandesController {
 ////////////// Get demandes for the currently authenticated user
   @Get('mes-demandes')
   async getMesDemandes(@Req() req: any) {
-    const token = req.cookies?.auth_token;
+    const token = this.extractAuthToken(req);
     if (!token) {
       throw new HttpException('Non authentifie', HttpStatus.UNAUTHORIZED);
     }

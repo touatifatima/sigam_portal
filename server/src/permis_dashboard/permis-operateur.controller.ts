@@ -18,8 +18,19 @@ export class PermisOperateurController {
     private readonly sessionService: SessionService,
   ) {}
 
+  private extractAuthToken(req: Request): string | null {
+    const cookieToken = req.cookies?.auth_token;
+    if (cookieToken) return cookieToken;
+
+    const authHeader = req.headers?.authorization;
+    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      return authHeader.slice('Bearer '.length).trim();
+    }
+    return null;
+  }
+
   private async resolveDetenteurId(req: Request): Promise<number> {
-    const token = req.cookies?.auth_token;
+    const token = this.extractAuthToken(req);
     if (!token) {
       throw new UnauthorizedException('Session invalide');
     }
