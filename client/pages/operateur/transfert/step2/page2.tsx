@@ -150,7 +150,7 @@ export default function Step5_Documents() {
     if (!idProc || !missingSummary) return;
     try {
       const key = 'sigam_missing_required_docs';
-      const raw = window.localStorage.getItem(key);
+      const raw = window.sessionStorage.getItem(key);
       let store: Record<string, any> = {};
       if (raw) {
         try { store = JSON.parse(raw) || {}; } catch { store = {}; }
@@ -169,7 +169,7 @@ export default function Step5_Documents() {
           deadline: deadlines?.instruction || deadlines?.miseEnDemeure || null,
           updatedAt: new Date().toISOString(),
         };
-      window.localStorage.setItem(key, JSON.stringify(store));
+      window.sessionStorage.setItem(key, JSON.stringify(store));
       window.dispatchEvent(new CustomEvent('sigam:missing-docs', { detail: store[idProc] }));
     } catch {}
   }, [idProc, idDemande, missingSummary, deadlines]);
@@ -197,7 +197,7 @@ export default function Step5_Documents() {
 
     // Stocker dans localStorage
     if (typeof window !== 'undefined') {
-      const existing = window.localStorage.getItem('sigam_missing_required_docs');
+      const existing = window.sessionStorage.getItem('sigam_missing_required_docs');
       
       // Déclarer le type correctement
       let procedures: Record<number, any> = {};
@@ -216,7 +216,7 @@ export default function Step5_Documents() {
       }
 
       procedures[idProc] = missingDocsPayload;
-      window.localStorage.setItem('sigam_missing_required_docs', JSON.stringify(procedures));
+      window.sessionStorage.setItem('sigam_missing_required_docs', JSON.stringify(procedures));
       
       // Déclencher un événement personnalisé pour notifier le ProgressStepper
       window.dispatchEvent(new CustomEvent('sigam:missing-docs', { 
@@ -229,12 +229,12 @@ export default function Step5_Documents() {
   // Nettoyer le localStorage quand la procédure est terminée
   useEffect(() => {
     if (statutProc === 'TERMINEE' && idProc && typeof window !== 'undefined') {
-      const existing = window.localStorage.getItem('sigam_missing_required_docs');
+      const existing = window.sessionStorage.getItem('sigam_missing_required_docs');
       if (existing) {
         try {
           const procedures = JSON.parse(existing);
           delete procedures[idProc];
-          window.localStorage.setItem('sigam_missing_required_docs', JSON.stringify(procedures));
+          window.sessionStorage.setItem('sigam_missing_required_docs', JSON.stringify(procedures));
         } catch (e) {
           // Ignorer les erreurs de parsing
         }
@@ -1043,6 +1043,8 @@ export default function Step5_Documents() {
     </div>
   );
 }
+
+
 
 
 

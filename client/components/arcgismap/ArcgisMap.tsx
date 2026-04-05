@@ -35,6 +35,10 @@ import esriId from '@arcgis/core/identity/IdentityManager';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useAuthStore } from '../../src/store/useAuthStore';
+import {
+  getSessionBackedItem,
+  setSessionBackedItem,
+} from '../../src/utils/sessionBackedStorage';
 import { FiMousePointer, FiLayers, FiDownload, FiFileText, FiTool } from 'react-icons/fi';
 
 // Configure ArcGIS Enterprise portal
@@ -45,7 +49,7 @@ const CREDENTIALS_KEY = 'sigam_arcgis_credentials';
 const loadPersistedCredentials = () => {
   if (typeof window === 'undefined') return;
   try {
-    const raw = window.localStorage.getItem(CREDENTIALS_KEY);
+    const raw = getSessionBackedItem(CREDENTIALS_KEY);
     if (!raw) return;
     const json = JSON.parse(raw);
     esriId.initialize(json);
@@ -57,7 +61,7 @@ const persistCredentials = () => {
   if (typeof window === 'undefined') return;
   try {
     const json = esriId.toJSON();
-    window.localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(json));
+    setSessionBackedItem(CREDENTIALS_KEY, JSON.stringify(json));
   } catch (e) {
     console.warn('Failed to persist ArcGIS credentials', e);
   }
@@ -3602,43 +3606,11 @@ export interface ArcGISMapRef {
   };
 
   const resolvePreparedByName = () => {
-    let name = '';
-    if (typeof window !== 'undefined') {
-      try {
-        name =
-          window.localStorage.getItem('auth_user_name') ||
-          window.localStorage.getItem('auth_user_username') ||
-          '';
-        if (!name) {
-          const raw = window.localStorage.getItem('auth');
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            name =
-              [parsed?.prenom, parsed?.nom].filter(Boolean).join(' ').trim() ||
-              parsed?.fullName ||
-              parsed?.username ||
-              parsed?.email ||
-              '';
-          }
-        }
-        if (!name) {
-          const legacy = window.localStorage.getItem('auth-storage');
-          if (legacy) {
-            const parsed = JSON.parse(legacy);
-            const authState = parsed?.state?.auth ?? {};
-            name =
-              [authState?.prenom, authState?.nom].filter(Boolean).join(' ').trim() ||
-              authState?.fullName ||
-              authState?.username ||
-              authState?.email ||
-              '';
-          }
-        }
-      } catch {}
-    }
-    if (!name) {
-      name = auth?.username || auth?.email || '';
-    }
+    const name =
+      [auth?.Prenom, auth?.nom].filter(Boolean).join(' ').trim() ||
+      auth?.username ||
+      auth?.email ||
+      '';
     return String(name || '').trim();
   };
 

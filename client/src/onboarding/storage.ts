@@ -2,12 +2,22 @@ const HAS_SEEN_ONBOARDING_KEY = "hasSeenOnboarding";
 const ONBOARDING_ACTIVE_KEY = "onboardingActive";
 const ONBOARDING_PAGE_PREFIX = "onboardingPageSeen:";
 
-const REQUIRED_ONBOARDING_PAGES = [
+const INVESTOR_ONBOARDING_PAGES = [
   "investor-dashboard",
   "demande-verification",
   "demande-start",
   "demande-documents",
   "demande-cadastre",
+] as const;
+
+const CADASTRE_ONBOARDING_PAGES = [
+  "cadastre-dashboard",
+  "demande-verification",
+] as const;
+
+const ONBOARDING_FLOWS = [
+  INVESTOR_ONBOARDING_PAGES,
+  CADASTRE_ONBOARDING_PAGES,
 ] as const;
 
 const hasWindow = () => typeof window !== "undefined";
@@ -47,8 +57,8 @@ export const markOnboardingPageCompleted = (pageKey: string): void => {
 
   if (!hasWindow()) return;
 
-  const allCompleted = REQUIRED_ONBOARDING_PAGES.every((requiredKey) =>
-    getOnboardingPageSeen(requiredKey),
+  const allCompleted = ONBOARDING_FLOWS.some((requiredPages) =>
+    requiredPages.every((requiredKey) => getOnboardingPageSeen(requiredKey)),
   );
 
   if (allCompleted) {
@@ -59,7 +69,8 @@ export const markOnboardingPageCompleted = (pageKey: string): void => {
 
 export const resetOnboardingPages = (): void => {
   if (!hasWindow()) return;
-  REQUIRED_ONBOARDING_PAGES.forEach((pageKey) => {
+  const uniquePages = new Set(ONBOARDING_FLOWS.flat());
+  uniquePages.forEach((pageKey) => {
     window.localStorage.removeItem(`${ONBOARDING_PAGE_PREFIX}${pageKey}`);
   });
 };

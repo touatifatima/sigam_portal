@@ -15,6 +15,14 @@ import {
   setHasSeenOnboarding,
   setOnboardingActive,
 } from '@/src/onboarding/storage';
+import {
+  getDefaultDashboardPath,
+  isAdminRole,
+  isCadastreRole,
+  isInvestisseurRole,
+  isOperateurRole,
+  normalizeRoles,
+} from '@/src/utils/roleNavigation';
 
 interface NotificationItem {
   id: number;
@@ -70,6 +78,9 @@ export default function Navbar() {
   const isIdentificationsRoute =
     router.pathname?.includes('/admin/identifications-entreprises') ||
     router.asPath?.startsWith('/admin/identifications-entreprises');
+  const isCadastreDashboardRoute =
+    router.pathname?.includes('/cadastre/dashboard') ||
+    router.asPath?.startsWith('/cadastre/dashboard');
   const disableLiveNotifications = Boolean(isIdentificationsRoute);
   const notificationHeaders = useMemo(() => {
     const userId = Number(auth?.id || 0);
@@ -344,22 +355,20 @@ export default function Navbar() {
     });
   };
 
-  const normalizedRoles = useMemo(() => {
-    const rawRoles = Array.isArray(auth?.role) ? auth.role : [auth?.role ?? ''];
-    return rawRoles
-      .flatMap((role) => String(role ?? '').split(','))
-      .map((role) => role.trim().toLowerCase())
-      .filter(Boolean);
-  }, [auth?.role]);
+  const normalizedRoles = useMemo(() => normalizeRoles(auth?.role), [auth?.role]);
 
-  const isAdmin = normalizedRoles.some(
-    (role) => role === 'admin' || role === 'administrateur',
+  const isAdmin = useMemo(() => isAdminRole(normalizedRoles), [normalizedRoles]);
+  const isOperateur = useMemo(
+    () => isOperateurRole(normalizedRoles),
+    [normalizedRoles],
   );
-  const isOperateur = normalizedRoles.some(
-    (role) => role === 'operateur' || role === 'operator',
+  const isInvestisseur = useMemo(
+    () => isInvestisseurRole(normalizedRoles),
+    [normalizedRoles],
   );
-  const isInvestisseur = normalizedRoles.some(
-    (role) => role === 'investisseur' || role === 'investor',
+  const isCadastre = useMemo(
+    () => isCadastreRole(normalizedRoles),
+    [normalizedRoles],
   );
 
   const roleQuickLinks = useMemo<NavQuickLink[]>(() => {
@@ -378,6 +387,12 @@ export default function Navbar() {
       ];
     }
 
+    if (isCadastre) {
+      return [
+        { href: '/cadastre/dashboard', label: 'Dashboard' },
+      ];
+    }
+
     if (isInvestisseur) {
       return [
         { href: '/investisseur/InvestorDashboard', label: 'Dashboard' },
@@ -386,13 +401,9 @@ export default function Navbar() {
     }
 
     return [];
-  }, [isAdmin, isInvestisseur, isOperateur]);
+  }, [isAdmin, isCadastre, isInvestisseur, isOperateur]);
 
-  const dashboardHref = isAdmin
-    ? '/admin_panel/DossierAdminPage'
-    : isOperateur
-    ? '/investisseur/InvestorDashboard'
-    : '/investisseur/InvestorDashboard';
+  const dashboardHref = getDefaultDashboardPath(normalizedRoles);
 
   const initials = auth.role ? getInitials(auth.role) : '';
   const displayUsername = auth.username ?? auth.email ?? '';
@@ -410,28 +421,33 @@ export default function Navbar() {
     resetOnboardingPages();
     setHasSeenOnboarding(false);
     setOnboardingActive(true);
-    await router.push('/investisseur/InvestorDashboard?onboarding=1');
+    await router.push(`${dashboardHref}?onboarding=1`);
   };
 
   return (
-    <nav className={styles['navbar']}>
+    <nav
+      className={`${styles['navbar']} ${
+        isCadastreDashboardRoute ? styles['navbar-cadastre'] : ''
+      }`}
+    >
       <div className={styles['navbar-header']}>
         <div className={styles['app-logo']}>
           <span>POM</span>
-          <span className={styles['app-version']}>Portail</span>
         </div>
       </div>
 
-      <div className={styles['navbar-search']}>
-        <div className={styles['search-container']}>
-          <FiSearch className={styles['search-icon']} />
-          <input
-            type="text"
-            className={styles['search-input']}
-            placeholder="Rechercher..."
-          />
+      {!isCadastreDashboardRoute && (
+        <div className={styles['navbar-search']}>
+          <div className={styles['search-container']}>
+            <FiSearch className={styles['search-icon']} />
+            <input
+              type="text"
+              className={styles['search-input']}
+              placeholder="Rechercher..."
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       <div className={styles['navbar-actions']}>
         {roleQuickLinks.length > 0 && (
@@ -453,7 +469,7 @@ export default function Navbar() {
           <span>Carte Publique</span>
         </Link>
 
-        {isInvestisseur && (
+        {(isInvestisseur || isCadastre) && (
           <Link
             href={precheckHref}
             className={styles['nav-precheck-cta']}
@@ -517,7 +533,7 @@ export default function Navbar() {
                 Carte Publique
               </Link>
 
-              {isInvestisseur && (
+              {(isInvestisseur || isCadastre) && (
                 <Link
                   href={precheckHref}
                   className={styles['mobile-nav-link']}
@@ -704,7 +720,7 @@ export default function Navbar() {
                 <span>Parametres</span>
               </Link>
 
-              {isInvestisseur && (
+              {(isInvestisseur || isCadastre) && (
                 <button
                   type="button"
                   onClick={() => void handleRestartOnboarding()}

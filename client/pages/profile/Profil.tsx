@@ -171,14 +171,38 @@ const Profil = () => {
     <InvestorLayout>
       <div className={styles.container}>
         <div className={styles.header}>
-          <h1 className={styles.title}>Mon Profil</h1>
-          <p className={styles.subtitle}>
-            Consultez vos informations personnelles et les details de votre entreprise
-          </p>
+          <div className={styles.headerContent}>
+            <div className={styles.headerIntro}>
+              <span className={styles.eyebrow}>Espace profil</span>
+              <h1 className={styles.title}>Mon Profil</h1>
+              <p className={styles.subtitle}>
+                Consultez vos informations personnelles et les details de votre entreprise
+              </p>
+            </div>
+
+            <div className={styles.headerChips}>
+              <span className={styles.headerChip}>
+                <Shield className="w-4 h-4" />
+                {auth.role || "Investisseur"}
+              </span>
+              <span
+                className={`${styles.headerChip} ${
+                  auth.isEntrepriseVerified ? styles.headerChipSuccess : styles.headerChipWarning
+                }`}
+              >
+                {auth.isEntrepriseVerified ? (
+                  <CheckCircle2 className="w-4 h-4" />
+                ) : (
+                  <AlertCircle className="w-4 h-4" />
+                )}
+                {auth.isEntrepriseVerified ? "Entreprise verifiee" : "Identification a completer"}
+              </span>
+            </div>
+          </div>
         </div>
 
         <div className={styles.content}>
-          <Card className={styles.card}>
+          <Card className={`${styles.card} ${styles.personalCard}`}>
             <CardHeader className={styles.cardHeader}>
               <div className={styles.cardTitleRow}>
                 <CardTitle className={styles.cardTitle}>
@@ -266,7 +290,7 @@ const Profil = () => {
 
           {auth.isEntrepriseVerified && entrepriseProfile && !isLoadingEntreprise ? (
             <>
-              <Card className={styles.card}>
+              <Card className={`${styles.card} ${styles.companyCard}`}>
                 <CardHeader className={styles.cardHeader}>
                   <div className={styles.cardTitleRow}>
                     <CardTitle className={styles.cardTitle}>
@@ -363,7 +387,7 @@ const Profil = () => {
                 </CardContent>
               </Card>
 
-              <Card className={styles.card}>
+              <Card className={`${styles.card} ${styles.representativeCard}`}>
                 <CardHeader className={styles.cardHeader}>
                   <CardTitle className={styles.cardTitle}>
                     <Briefcase className="w-5 h-5" />
@@ -429,7 +453,7 @@ const Profil = () => {
                 </CardContent>
               </Card>
 
-              <Card className={styles.card}>
+              <Card className={`${styles.card} ${styles.registryCard}`}>
                 <CardHeader className={styles.cardHeader}>
                   <CardTitle className={styles.cardTitle}>
                     <FileText className="w-5 h-5" />
@@ -487,7 +511,7 @@ const Profil = () => {
                 </CardContent>
               </Card>
 
-              <Card className={styles.card}>
+              <Card className={`${styles.card} ${styles.shareholdersCard}`}>
                 <CardHeader className={styles.cardHeader}>
                   <CardTitle className={styles.cardTitle}>
                     <Users className="w-5 h-5" />
@@ -497,7 +521,7 @@ const Profil = () => {
                 </CardHeader>
                 <CardContent className={styles.cardContent}>
                   {actionnaires.length === 0 ? (
-                    <div className={styles.notConfirmedContent}>
+                    <div className={`${styles.notConfirmedContent} ${styles.compactEmptyState}`}>
                       <AlertCircle className={styles.notConfirmedIcon} />
                       <p className={styles.notConfirmedText}>Aucun actionnaire renseigne.</p>
                     </div>
@@ -558,8 +582,8 @@ const Profil = () => {
               </div>
             </>
           ) : (
-            <Card className={styles.card}>
-              <CardContent className={styles.notConfirmedContent}>
+            <Card className={`${styles.card} ${styles.statusCard}`}>
+              <CardContent className={`${styles.notConfirmedContent} ${styles.cardEmptyState}`}>
                 <AlertCircle className={styles.notConfirmedIcon} />
                 <h3 className={styles.notConfirmedTitle}>
                   Identification entreprise incomplete
@@ -583,7 +607,7 @@ const Profil = () => {
           {auth.isEntrepriseVerified && entrepriseProfile && !isLoadingEntreprise && (
             <>
               <Separator />
-              <div className={styles.notConfirmedContent}>
+              <div className={`${styles.notConfirmedContent} ${styles.footerNote}`}>
                 <AlertCircle className={styles.notConfirmedIcon} />
                 <p className={styles.notConfirmedText}>
                   Pour modifier ces informations, veuillez soumettre une demande specifique (renonciation, amodiation, etc.).

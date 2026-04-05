@@ -9,6 +9,10 @@ import styles from './page1_typepermis.module.css';
 import Navbar from '../../../navbar/Navbar';
 import Sidebar from '../../../sidebar/Sidebar';
 import { cleanLocalStorageForNewDemande } from '../../../../utils/cleanLocalStorage';
+import {
+  setSessionBackedItem,
+  writeSessionBackedJson,
+} from '@/src/utils/sessionBackedStorage';
 import { useViewNavigator } from '../../../../src/hooks/useViewNavigator';
 import { useAuthReady } from '../../../../src/hooks/useAuthReady';
 import { useLoading } from '@/components/globalspinner/LoadingContext';
@@ -294,22 +298,19 @@ console.log('auth in start procedure', auth);
       const idProc = procedure?.id_proc ?? procedure?.id_proc;
 
       if (id_demande) {
-        localStorage.setItem('id_demande', String(id_demande));
+        setSessionBackedItem('id_demande', String(id_demande));
       }
       if (idProc) {
-        localStorage.setItem('id_proc', String(idProc));
+        setSessionBackedItem('id_proc', String(idProc));
       }
-      localStorage.setItem('code_demande', demandeCode ?? '');
-      localStorage.setItem('selected_permis', JSON.stringify(permis));
-      localStorage.setItem(
-        'permis_details',
-        JSON.stringify({
-          duree_initiale: permis.duree_initiale,
-          nbr_renouv_max: permis.nbr_renouv_max,
-          superficie_max: permis.superficie_max ?? null,
-          duree_renouv: permis.duree_renouv,
-        }),
-      );
+      setSessionBackedItem('code_demande', demandeCode ?? '');
+      writeSessionBackedJson('selected_permis', permis);
+      writeSessionBackedJson('permis_details', {
+        duree_initiale: permis.duree_initiale,
+        nbr_renouv_max: permis.nbr_renouv_max,
+        superficie_max: permis.superficie_max ?? null,
+        duree_renouv: permis.duree_renouv,
+      });
 // Navigate to step 1 page document
       if (idProc) {
         await router.push(`/investisseur/nouvelle_demande/step5/page5?id=${idProc}`);

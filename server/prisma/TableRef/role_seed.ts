@@ -6,6 +6,7 @@ const prisma = new PrismaClient();
       { name: 'admin' },
       { name: 'investisseur' },
       { name: 'operateur' },
+      { name: 'cadastre' },
       { name: 'user' }
     ],
     skipDuplicates: true,
@@ -49,6 +50,12 @@ async function main9() {
     create: { name: 'user' },
   });
 
+  const cadastreRole = await prisma.role.upsert({
+    where: { name: 'cadastre' },
+    update: {},
+    create: { name: 'cadastre' },
+  });
+
   const allPermissions = await prisma.permission.findMany();
 
   // Link all permissions to admin
@@ -85,6 +92,40 @@ async function main9() {
       create: {
         roleId: userRole.id,
         permissionId: viewDashboard.id,
+      },
+    });
+
+    await prisma.rolePermission.upsert({
+      where: {
+        roleId_permissionId: {
+          roleId: cadastreRole.id,
+          permissionId: viewDashboard.id,
+        },
+      },
+      update: {},
+      create: {
+        roleId: cadastreRole.id,
+        permissionId: viewDashboard.id,
+      },
+    });
+  }
+
+  const dashboardPermission = await prisma.permission.findFirst({
+    where: { name: 'dashboard' },
+  });
+
+  if (dashboardPermission) {
+    await prisma.rolePermission.upsert({
+      where: {
+        roleId_permissionId: {
+          roleId: cadastreRole.id,
+          permissionId: dashboardPermission.id,
+        },
+      },
+      update: {},
+      create: {
+        roleId: cadastreRole.id,
+        permissionId: dashboardPermission.id,
       },
     });
   }

@@ -18,6 +18,10 @@ import styles from "./Dashboard.module.css";
 import Navbar from "@/pages/navbar/Navbar";
 import { useAuthStore } from "@/src/store/useAuthStore";
 import { useAuthReady } from "@/src/hooks/useAuthReady";
+import {
+  getDefaultDashboardPath,
+  isCadastreRole,
+} from "@/src/utils/roleNavigation";
 import { OnboardingTour, type OnboardingStep } from "@/components/onboarding/OnboardingTour";
 import {
   getHasSeenOnboarding,
@@ -191,12 +195,17 @@ export default function Dashboard() {
     if (!isAuthReady) return;
     if (!auth?.email && !auth?.username) {
       navigate("/");
+      return;
     }
-  }, [auth?.email, auth?.username, isAuthReady, navigate]);
+    if (isCadastreRole(auth?.role)) {
+      navigate(getDefaultDashboardPath(auth?.role), { replace: true });
+    }
+  }, [auth?.email, auth?.role, auth?.username, isAuthReady, navigate]);
 
   useEffect(() => {
     let isActive = true;
     if (!apiURL) return () => undefined;
+    if (isCadastreRole(auth?.role)) return () => undefined;
 
     const loadStats = async () => {
       try {
@@ -240,7 +249,7 @@ export default function Dashboard() {
     return () => {
       isActive = false;
     };
-  }, [apiURL]);
+  }, [apiURL, auth?.role]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -271,6 +280,7 @@ export default function Dashboard() {
       admin: "Administrateur",
       operateur: "Operateur",
       operator: "Operateur",
+      cadastre: "Cadastre",
     };
     const rawRoles = Array.isArray(auth?.role)
       ? auth?.role

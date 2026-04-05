@@ -131,7 +131,7 @@ export default function Step5_Documents() {
     if (!idProc || !missingSummary) return;
     try {
       const key = 'sigam_missing_required_docs';
-      const raw = window.localStorage.getItem(key);
+      const raw = window.sessionStorage.getItem(key);
       let store: Record<string, any> = {};
       if (raw) {
         try { store = JSON.parse(raw) || {}; } catch { store = {}; }
@@ -148,7 +148,7 @@ export default function Step5_Documents() {
         deadline: deadlines?.miseEnDemeure || null,
         updatedAt: new Date().toISOString(),
       };
-      window.localStorage.setItem(key, JSON.stringify(store));
+      window.sessionStorage.setItem(key, JSON.stringify(store));
       window.dispatchEvent(new CustomEvent('sigam:missing-docs', { detail: store[idProc] }));
     } catch {}
   }, [idProc, idDemande, missingSummary, deadlines]);
@@ -174,7 +174,7 @@ export default function Step5_Documents() {
 
     // Stocker dans localStorage
     if (typeof window !== 'undefined') {
-      const existing = window.localStorage.getItem('sigam_missing_required_docs');
+      const existing = window.sessionStorage.getItem('sigam_missing_required_docs');
       
       // Déclarer le type correctement
       let procedures: Record<number, any> = {};
@@ -193,7 +193,7 @@ export default function Step5_Documents() {
       }
 
       procedures[idProc] = missingDocsPayload;
-      window.localStorage.setItem('sigam_missing_required_docs', JSON.stringify(procedures));
+      window.sessionStorage.setItem('sigam_missing_required_docs', JSON.stringify(procedures));
       
       // Déclencher un événement personnalisé pour notifier le ProgressStepper
       window.dispatchEvent(new CustomEvent('sigam:missing-docs', { 
@@ -206,12 +206,12 @@ export default function Step5_Documents() {
   // Nettoyer le localStorage quand la procédure est terminée
   useEffect(() => {
     if (statutProc === 'TERMINEE' && idProc && typeof window !== 'undefined') {
-      const existing = window.localStorage.getItem('sigam_missing_required_docs');
+      const existing = window.sessionStorage.getItem('sigam_missing_required_docs');
       if (existing) {
         try {
           const procedures = JSON.parse(existing);
           delete procedures[idProc];
-          window.localStorage.setItem('sigam_missing_required_docs', JSON.stringify(procedures));
+          window.sessionStorage.setItem('sigam_missing_required_docs', JSON.stringify(procedures));
         } catch (e) {
           // Ignorer les erreurs de parsing
         }
@@ -511,7 +511,7 @@ export default function Step5_Documents() {
             <div className={styles['missing-docs-section']}>
               {hasBlockingMissingDocs && (
                 <div className={styles['blocking-docs']}>
-                  <h4>❌ Documents causant un rejet immédiat:</h4>
+                  <h4>? Documents causant un rejet immédiat:</h4>
                   <ul>
                     {missingSummary.blocking.map((doc, index) => (
                       <li key={index}>
@@ -525,7 +525,7 @@ export default function Step5_Documents() {
 
               {hasBlockingNextMissingDocs && (
                 <div className={styles['blocking-next-docs']}>
-                  <h4>⚠️ Documents bloquant la progression:</h4>
+                  <h4>?? Documents bloquant la progression:</h4>
                   <ul>
                     {missingSummary.blockingNext.map((doc, index) => (
                       <li key={index}>{doc.nom_doc}</li>
@@ -541,7 +541,7 @@ export default function Step5_Documents() {
 
               {missingSummary.warnings.length > 0 && (
                 <div className={styles['warning-docs']}>
-                  <h4>ℹ️ Documents avec avertissement:</h4>
+                  <h4>?? Documents avec avertissement:</h4>
                   <ul>
                     {missingSummary.warnings.map((doc, index) => (
                       <li key={index}>{doc.nom_doc}</li>
@@ -677,7 +677,7 @@ export default function Step5_Documents() {
 
   const rejectDemande = async () => {
     if (!rejectionReason) {
-      toast.warning("⚠️ Veuillez spécifier un motif de rejet");
+      toast.warning("?? Veuillez spécifier un motif de rejet");
       return;
     }
 
@@ -687,11 +687,11 @@ export default function Step5_Documents() {
         motif_rejet: rejectionReason,
       });
 
-      toast.success("✅ Demande rejetée avec succés");
+      toast.success("? Demande rejetée avec succés");
       setRefetchTrigger(prev => prev + 1);
     } catch (err) {
       console.error("Erreur lors du rejet", err);
-      toast.error("❌ Erreur lors du rejet");
+      toast.error("? Erreur lors du rejet");
     }
   };
 
@@ -819,13 +819,13 @@ export default function Step5_Documents() {
         
     //     {hasBlockingMissingDocs && (
     //       <p className={styles['blocking-alert']}>
-    //         ❌ Des documents causant un rejet immédiat sont manquants
+    //         ? Des documents causant un rejet immédiat sont manquants
     //       </p>
     //     )}
         
     //     {hasBlockingNextMissingDocs && (
     //       <p className={styles['blocking-next-alert']}>
-    //         ⚠️ Des documents bloquant la progression sont manquants
+    //         ?? Des documents bloquant la progression sont manquants
     //       </p>
     //     )}
     //   </div>
@@ -1261,3 +1261,5 @@ export default function Step5_Documents() {
     </div>
   );
 }
+
+

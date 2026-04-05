@@ -238,7 +238,7 @@ export const Hero = () => {
         {[
           { value: "2380+", label: "Licences" },
           { value: "89Mrd", label: "Investissements" },
-          { value: "48", label: "Wilayas" },
+          { value: "69", label: "Wilayas" },
         ].map((stat) => (
           <div key={stat.label} className={styles.sideStatItem}>
             <div className={styles.sideStatValue}>{stat.value}</div>

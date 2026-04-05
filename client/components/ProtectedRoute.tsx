@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
 
 export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   const { auth, isLoaded } = useAuthStore();
-  const isAuthenticated = !!auth.token;
+  const isAuthenticated = Boolean(auth.id || auth.email || auth.username || auth.role);
   const hasRole = (role?: string) =>
     role ? (auth.role ?? '').toLowerCase() === role.toLowerCase() : true;
 

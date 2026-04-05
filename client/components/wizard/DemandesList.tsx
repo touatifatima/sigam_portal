@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Search, 
@@ -19,11 +18,13 @@ import {
   XCircle, 
   Filter,
   ArrowRight,
-  ArrowLeft,
-  Sparkles,
   LayoutGrid,
   List,
   Loader2,
+  Compass,
+  Hammer,
+  Map,
+  Gem,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { InvestorLayout } from "@/components/investor/InvestorLayout";
@@ -31,10 +32,16 @@ import styles from "./DemandesList.module.css";
 
 type DemandeListItem = {
   id_demande: number;
+  id_proc?: number | null;
   short_code?: string | null;
   code_demande?: string | null;
   date_demande?: string | null;
   statut_demande?: string | null;
+  progression?: number | null;
+  superficie?: number | string | null;
+  superficie_ha?: number | string | null;
+  superficieHa?: number | string | null;
+  surface?: number | string | null;
   typePermis?: { lib_type?: string | null; code_type?: string | null };
   typeProcedure?: { libelle?: string | null };
   wilaya?: { nom_wilayaFR?: string | null };
@@ -202,6 +209,257 @@ const apiURL =
     (import.meta as any).env?.VITE_API_URL) as string) ||
   "";
 
+type DemandeProgress = {
+  percent: number;
+};
+
+type DemandeCardExtra = {
+  substancesLabel: string;
+  superficieLabel: string;
+  phaseLabel: string;
+  progress: DemandeProgress;
+};
+
+type ProcedureEtapeItem = {
+  statut?: string | null;
+  date_debut?: string | null;
+  date_fin?: string | null;
+  etape?: { lib_etape?: string | null; ordre_etape?: number | null } | null;
+};
+
+type ProcedurePhaseItem = {
+  ordre?: number | null;
+  statut?: string | null;
+  phase?: {
+    libelle?: string | null;
+    etapes?: Array<{
+      procedureEtapes?: Array<{ statut?: string | null }> | null;
+    }> | null;
+  } | null;
+};
+
+const normalizeStatusKey = (value?: string | null): string =>
+  (value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .trim();
+
+const resolveProgress = (statut: string | null | undefined, progression?: number | null): DemandeProgress => {
+  const statusKey = normalizeStatusKey(statut);
+  const progressValue =
+    typeof progression === "number" && Number.isFinite(progression)
+      ? Math.max(0, Math.min(100, progression))
+      : null;
+
+  if (statusKey === "ACCEPTEE" || statusKey === "VALIDEE") {
+    return { percent: 100 };
+  }
+  if (statusKey === "REJETEE" || statusKey === "REJETE") {
+    return { percent: 100 };
+  }
+  if (statusKey === "EN_ATTENTE") {
+    return { percent: progressValue ?? 52 };
+  }
+  if (statusKey === "EN_COURS") {
+    return { percent: progressValue ?? 58 };
+  }
+  if (progressValue !== null) {
+    return { percent: progressValue };
+  }
+  return { percent: 20 };
+};
+
+const resolveProgressFromProcedureSteps = (
+  procedureEtapes?: ProcedureEtapeItem[] | null,
+): DemandeProgress | null => {
+  if (!procedureEtapes) return null;
+
+  const timelineItems = (procedureEtapes || [])
+    .map((item, index) => {
+      const statutRaw = (item.statut || "EN_ATTENTE").toUpperCase();
+      const state =
+        statutRaw === "TERMINEE"
+          ? "completed"
+          : statutRaw === "EN_COURS"
+          ? "active"
+          : "pending";
+
+      return {
+        ordre: item.etape?.ordre_etape ?? index + 1,
+        state,
+      };
+    })
+    .sort((a, b) => (a.ordre ?? 0) - (b.ordre ?? 0));
+
+  const total = timelineItems.length;
+  if (!total) {
+    return { percent: 0 };
+  }
+
+  const completed = timelineItems.filter((item) => item.state === "completed").length;
+  return {
+    percent: Math.round((completed / total) * 100),
+  };
+};
+
+const resolvePhaseLabel = (
+  procedurePhases?: ProcedurePhaseItem[] | null,
+): string => {
+  const phases = (procedurePhases || [])
+    .map((item, index) => {
+      const label = safeText(item.phase?.libelle, "");
+      if (!label) return null;
+
+      const nestedStatuses = (item.phase?.etapes || [])
+        .flatMap((etape) => etape.procedureEtapes || [])
+        .map((procedureEtape) => normalizeStatusKey(procedureEtape.statut))
+        .filter(Boolean);
+
+      const statusKey = normalizeStatusKey(item.statut);
+      const derivedStatus =
+        statusKey ||
+        (nestedStatuses.some((status) => status === "EN_COURS")
+          ? "EN_COURS"
+          : nestedStatuses.length > 0 &&
+            nestedStatuses.every((status) => status === "TERMINEE")
+          ? "TERMINEE"
+          : "EN_ATTENTE");
+
+      return {
+        label,
+        ordre: item.ordre ?? index + 1,
+        status: derivedStatus,
+      };
+    })
+    .filter((item): item is { label: string; ordre: number; status: string } => item !== null)
+    .sort((a, b) => a.ordre - b.ordre);
+
+  if (phases.length === 0) return "--";
+
+  const activePhase = phases.find((item) => item.status === "EN_COURS");
+  if (activePhase) return activePhase.label;
+
+  const nextOpenPhase = phases.find((item) => item.status !== "TERMINEE");
+  if (nextOpenPhase) return nextOpenPhase.label;
+
+  return phases[phases.length - 1]?.label || "--";
+};
+
+const buildSubstancesLabel = (items: string[]): string => {
+  const clean = Array.from(
+    new Set(
+      items
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0 && item !== "--"),
+    ),
+  );
+  if (clean.length === 0) return "--";
+  if (clean.length <= 2) return clean.join(" / ");
+  return `${clean.slice(0, 2).join(" / ")} +${clean.length - 2}`;
+};
+
+const extractSubstanceNames = (payload: unknown): string[] => {
+  const names: string[] = [];
+  if (!payload) return names;
+
+  const pushName = (value: unknown) => {
+    if (typeof value === "string" && value.trim()) {
+      names.push(value.trim());
+    }
+  };
+
+  const stack: unknown[] = [payload];
+  const seen = new Set<unknown>();
+  let visited = 0;
+
+  while (stack.length > 0 && visited < 5000) {
+    const current = stack.pop();
+    visited += 1;
+    if (!current || typeof current !== "object") continue;
+    if (seen.has(current)) continue;
+    seen.add(current);
+
+    if (Array.isArray(current)) {
+      current.forEach((item) => stack.push(item));
+      continue;
+    }
+
+    const record = current as Record<string, unknown>;
+    pushName(record.nom_subFR);
+    pushName(record.nom_subAr);
+    pushName(record.nom_subAR);
+    pushName(record.nom);
+    pushName(record.libelle);
+    pushName(record.code_sub);
+
+    for (const [key, value] of Object.entries(record)) {
+      const lower = key.toLowerCase();
+      if (
+        lower.includes("substance") ||
+        lower.includes("nom_sub") ||
+        lower === "substances"
+      ) {
+        if (typeof value === "string") {
+          pushName(value);
+        } else {
+          stack.push(value);
+        }
+        continue;
+      }
+      if (value && typeof value === "object") {
+        stack.push(value);
+      }
+    }
+  }
+
+  return Array.from(new Set(names));
+};
+
+const buildCardExtra = (
+  demande: DemandeListItem,
+  detail?: DemandeDetail | null,
+  substancesPayload?: unknown,
+  procedureEtapes?: ProcedureEtapeItem[] | null,
+  procedurePhases?: ProcedurePhaseItem[] | null,
+): DemandeCardExtra => {
+  const superficieValue = pickFirstNumber(
+    detail?.superficie,
+    detail?.superficie_ha,
+    detail?.superficieHa,
+    detail?.surface,
+    ...extractSurfaceValues(detail),
+    demande.superficie,
+    demande.superficie_ha,
+    demande.superficieHa,
+    demande.surface,
+    ...extractSurfaceValues(demande),
+  );
+
+  const superficieLabel =
+    typeof superficieValue === "number" ? `${superficieValue.toFixed(2)} ha` : "--";
+
+  const substancesLabel = buildSubstancesLabel(
+    extractSubstanceNames(substancesPayload ?? detail ?? demande),
+  );
+
+  const progressFromProcedure = resolveProgressFromProcedureSteps(procedureEtapes);
+
+  return {
+    substancesLabel,
+    superficieLabel,
+    phaseLabel: resolvePhaseLabel(procedurePhases),
+    progress:
+      progressFromProcedure ??
+      resolveProgress(
+        detail?.statut_demande ?? demande.statut_demande,
+        toNumber((detail as Record<string, unknown> | null | undefined)?.progression) ??
+          demande.progression ??
+          null,
+      ),
+  };
+};
+
 const DemandesList = () => {
   const navigate = useNavigate();
   const [demandes, setDemandes] = useState<DemandeListItem[]>([]);
@@ -213,22 +471,11 @@ const DemandesList = () => {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [pdfLoadingId, setPdfLoadingId] = useState<number | null>(null);
+  const [extrasById, setExtrasById] = useState<Record<number, DemandeCardExtra>>({});
+  const [extrasLoading, setExtrasLoading] = useState<Record<number, true>>({});
   const pageSize = 10;
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const saved = window.localStorage.getItem("sigam_demandes_view");
-    if (saved === "grid" || saved === "list") {
-      setViewMode(saved);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("sigam_demandes_view", viewMode);
-  }, [viewMode]);
 
   useEffect(() => {
     let active = true;
@@ -270,38 +517,55 @@ const DemandesList = () => {
   }, [searchTerm, statusFilter, typeFilter, dateFrom, dateTo]);
 
   const getStatutConfig = (statut: string) => {
+    const statusKey = normalizeStatusKey(statut);
     const configs = {
       EN_COURS: { 
         label: "En cours", 
         icon: Clock, 
-        className: styles.badgeWarning
+        className: styles.badgeWarning,
+        cardClass: styles.cardWarning,
+        progressClass: styles.progressWarning,
       },
       EN_ATTENTE: {
         label: "En attente",
         icon: Clock,
-        className: styles.badgeWarning
+        className: styles.badgeWaiting,
+        cardClass: styles.cardWaiting,
+        progressClass: styles.progressWaiting,
       },
       ACCEPTEE: { 
-        label: "Acceptée", 
+        label: "Acceptee", 
         icon: CheckCircle2, 
-        className: styles.badgeSuccess
+        className: styles.badgeSuccess,
+        cardClass: styles.cardSuccess,
+        progressClass: styles.progressSuccess,
       },
       REJETEE: { 
-        label: "Rejetée", 
+        label: "Rejetee", 
         icon: XCircle, 
-        className: styles.badgeDanger
+        className: styles.badgeDanger,
+        cardClass: styles.cardDanger,
+        progressClass: styles.progressDanger,
       },
     };
-    return configs[statut as keyof typeof configs] || configs.EN_COURS;
+    return configs[statusKey as keyof typeof configs] || configs.EN_COURS;
   };
 
-  const getTypeIcon = (type: string) => {
+  const getTypeVisual = (type: string) => {
     const normalized = (type || "").toLowerCase();
-    if (normalized.includes("prospect")) return "🗺️";
-    if (normalized.includes("explor")) return "🔍";
-    if (normalized.includes("exploit")) return "⛏️";
-    if (normalized.includes("carri")) return "🏗️";
-    return "📄";
+    if (normalized.includes("prospect")) {
+      return { icon: Map, className: styles.typeProspection };
+    }
+    if (normalized.includes("explor")) {
+      return { icon: Compass, className: styles.typeExploration };
+    }
+    if (normalized.includes("exploit")) {
+      return { icon: Hammer, className: styles.typeExploitation };
+    }
+    if (normalized.includes("carri")) {
+      return { icon: Gem, className: styles.typeCarriere };
+    }
+    return { icon: FileText, className: styles.typeDefault };
   };
 
   const resolveDate = (demande: DemandeListItem) =>
@@ -328,8 +592,9 @@ const DemandesList = () => {
         wilaya.toLowerCase().includes(search) ||
         commune.toLowerCase().includes(search);
 
-      const statut = d.statut_demande || "EN_COURS";
-      const matchesStatus = statusFilter === "tous" || statut === statusFilter;
+      const statut = normalizeStatusKey(d.statut_demande || "EN_COURS");
+      const matchesStatus =
+        statusFilter === "tous" || statut === normalizeStatusKey(statusFilter);
       const matchesType =
         typeFilter === "tous" || typePermis === typeFilter;
 
@@ -345,9 +610,9 @@ const DemandesList = () => {
 
   const stats = useMemo(() => {
     const total = demandes.length;
-    const enCours = demandes.filter((d) => d.statut_demande === "EN_COURS").length;
-    const acceptees = demandes.filter((d) => d.statut_demande === "ACCEPTEE").length;
-    const rejetees = demandes.filter((d) => d.statut_demande === "REJETEE").length;
+    const enCours = demandes.filter((d) => normalizeStatusKey(d.statut_demande) === "EN_COURS").length;
+    const acceptees = demandes.filter((d) => normalizeStatusKey(d.statut_demande) === "ACCEPTEE").length;
+    const rejetees = demandes.filter((d) => normalizeStatusKey(d.statut_demande) === "REJETEE").length;
     return { total, enCours, acceptees, rejetees };
   }, [demandes]);
 
@@ -367,8 +632,121 @@ const DemandesList = () => {
 
   const paginatedDemandes = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
+
     return filteredDemandes.slice(startIndex, startIndex + pageSize);
   }, [filteredDemandes, currentPage, pageSize]);
+
+  const pendingExtraIds = useMemo(
+    () =>
+      paginatedDemandes
+        .map((item) => item.id_demande)
+        .filter((id) => !extrasById[id] && !extrasLoading[id]),
+    [paginatedDemandes, extrasById, extrasLoading],
+  );
+
+  const pendingExtraIdsKey = pendingExtraIds.join(",");
+
+  useEffect(() => {
+    if (!apiURL || isLoading || pendingExtraIds.length === 0) return;
+
+    let active = true;
+    const ids = [...pendingExtraIds];
+
+    setExtrasLoading((prev) => {
+      const next = { ...prev };
+      ids.forEach((id) => {
+        next[id] = true;
+      });
+      return next;
+    });
+
+    (async () => {
+      const loaded = await Promise.all(
+        ids.map(async (id) => {
+          const fallbackDemande =
+            paginatedDemandes.find((item) => item.id_demande === id) ||
+            demandes.find((item) => item.id_demande === id);
+          if (!fallbackDemande) return null;
+
+          const [demandeRes, substancesRes] = await Promise.all([
+            axios.get(`${apiURL}/demandes/${id}`, { withCredentials: true }).catch(() => null),
+            axios
+              .get(`${apiURL}/api/substances/demande/${id}/substances`, {
+                withCredentials: true,
+              })
+              .catch(() => null),
+          ]);
+
+          const detailPayload = (demandeRes?.data || null) as DemandeDetail | null;
+          const substancesPayload = substancesRes?.data ?? detailPayload ?? fallbackDemande;
+          const resolvedProcId = Number(
+            detailPayload?.id_proc ?? fallbackDemande.id_proc ?? 0,
+          );
+          const procedureRes =
+            resolvedProcId > 0
+              ? await axios
+                  .get(`${apiURL}/api/procedure-etape/procedure/${resolvedProcId}`, {
+                    withCredentials: true,
+                  })
+                  .catch(() => null)
+              : null;
+          const procedureEtapes = Array.isArray(procedureRes?.data?.ProcedureEtape)
+            ? (procedureRes?.data?.ProcedureEtape as ProcedureEtapeItem[])
+            : [];
+          const procedurePhases = Array.isArray(procedureRes?.data?.ProcedurePhase)
+            ? (procedureRes?.data?.ProcedurePhase as ProcedurePhaseItem[])
+            : [];
+          const extra = buildCardExtra(
+            fallbackDemande,
+            detailPayload,
+            substancesPayload,
+            procedureEtapes,
+            procedurePhases,
+          );
+          return { id, extra };
+        }),
+      );
+
+      if (!active) return;
+
+      setExtrasById((prev) => {
+        const next = { ...prev };
+        loaded.forEach((item) => {
+          if (!item) return;
+          next[item.id] = item.extra;
+        });
+        return next;
+      });
+
+      setExtrasLoading((prev) => {
+        const next = { ...prev };
+        ids.forEach((id) => {
+          delete next[id];
+        });
+        return next;
+      });
+    })().catch(() => {
+      if (!active) return;
+      setExtrasLoading((prev) => {
+        const next = { ...prev };
+        ids.forEach((id) => {
+          delete next[id];
+        });
+        return next;
+      });
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [
+    apiURL,
+    isLoading,
+    pendingExtraIdsKey,
+    pendingExtraIds,
+    paginatedDemandes,
+    demandes,
+  ]);
 
   const handleDownloadPdf = async (demandeId: number) => {
     if (!apiURL) return;
@@ -754,112 +1132,285 @@ const DemandesList = () => {
     }
   };
 
+  const renderGridCard = (demande: DemandeListItem, index: number) => {
+    const statutValue = demande.statut_demande || "EN_COURS";
+    const statutConfig = getStatutConfig(statutValue);
+    const StatusIcon = statutConfig.icon;
+    const typeLabel =
+      demande.typePermis?.lib_type ||
+      demande.typePermis?.code_type ||
+      "Permis";
+    const typeVisual = getTypeVisual(typeLabel);
+    const TypeIcon = typeVisual.icon;
+    const codeLabel = demande.code_demande || `DEM-${demande.id_demande}`;
+    const locationLabel =
+      demande.wilaya?.nom_wilayaFR ||
+      demande.commune?.nom_communeFR ||
+      "Lieu non defini";
+    const dateLabel = formatDate(resolveDate(demande));
+    const loadedExtra = extrasById[demande.id_demande];
+    const cardExtra = loadedExtra || buildCardExtra(demande);
+    const isPdfLoading = pdfLoadingId === demande.id_demande;
+
+    return (
+      <Card
+        key={demande.id_demande}
+        className={`${styles.gridCard} ${statutConfig.cardClass}`}
+        style={{ animationDelay: `${index * 0.06}s` }}
+      >
+        <div className={styles.gridCardTop}>
+          <div className={styles.gridCardBadges}>
+            <span className={`${styles.statusBadge} ${statutConfig.className}`}>
+              <StatusIcon className="w-3.5 h-3.5" />
+              {statutConfig.label}
+            </span>
+            <span className={`${styles.typePill} ${typeVisual.className}`}>
+              <TypeIcon className="w-3.5 h-3.5" />
+              {typeLabel}
+            </span>
+          </div>
+          <span className={styles.gridCardCode}>{codeLabel}</span>
+        </div>
+
+        <div className={styles.gridCardMeta}>
+          <span className={styles.metaTag}>
+            <MapPin className="w-4 h-4" />
+            {locationLabel}
+          </span>
+          <span className={styles.metaTag}>
+            <Calendar className="w-4 h-4" />
+            {dateLabel}
+          </span>
+          {cardExtra.phaseLabel !== "--" && (
+            <span className={styles.metaTag}>
+              Phase: {cardExtra.phaseLabel}
+            </span>
+          )}
+        </div>
+
+        <div className={styles.gridCardFooter}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={styles.downloadBtn}
+            disabled={isPdfLoading}
+            onClick={() => handleDownloadPdf(demande.id_demande)}
+          >
+            {isPdfLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
+            {isPdfLoading ? "Generation..." : "PDF"}
+          </Button>
+          <Button
+            onClick={() =>
+              navigate(`/investisseur/demandes/${demande.short_code || demande.id_demande}`)
+            }
+            className={styles.viewBtn}
+            size="sm"
+          >
+            <Eye className="w-4 h-4" />
+            Details
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </Card>
+    );
+  };
+
+  const renderTableRow = (demande: DemandeListItem, index: number) => {
+    const statutValue = demande.statut_demande || "EN_COURS";
+    const statutConfig = getStatutConfig(statutValue);
+    const StatusIcon = statutConfig.icon;
+    const typeLabel =
+      demande.typePermis?.lib_type ||
+      demande.typePermis?.code_type ||
+      "Permis";
+    const typeVisual = getTypeVisual(typeLabel);
+    const TypeIcon = typeVisual.icon;
+    const codeLabel = demande.code_demande || `DEM-${demande.id_demande}`;
+    const locationLabel =
+      demande.wilaya?.nom_wilayaFR ||
+      demande.commune?.nom_communeFR ||
+      "Lieu non defini";
+    const dateLabel = formatDate(resolveDate(demande));
+    const loadedExtra = extrasById[demande.id_demande];
+    const cardExtra = loadedExtra || buildCardExtra(demande);
+    const isPdfLoading = pdfLoadingId === demande.id_demande;
+
+    return (
+      <div
+        key={demande.id_demande}
+        className={styles.tableRow}
+        style={{ animationDelay: `${index * 0.04}s` }}
+      >
+        <div className={styles.tableCell}>
+          <span className={styles.mobileLabel}>Code</span>
+          <div className={styles.codeBlock}>
+            <span className={styles.codeValue}>{codeLabel}</span>
+          </div>
+        </div>
+
+        <div className={styles.tableCell}>
+          <span className={styles.mobileLabel}>Type</span>
+          <span className={`${styles.typePill} ${typeVisual.className}`}>
+            <TypeIcon className="w-3.5 h-3.5" />
+            {typeLabel}
+          </span>
+        </div>
+
+        <div className={styles.tableCell}>
+          <span className={styles.mobileLabel}>Wilaya</span>
+          <span className={styles.valueText}>{locationLabel}</span>
+        </div>
+
+        <div className={styles.tableCell}>
+          <span className={styles.mobileLabel}>Date depot</span>
+          <span className={styles.valueText}>{dateLabel}</span>
+        </div>
+
+        <div className={styles.tableCell}>
+          <span className={styles.mobileLabel}>Statut</span>
+          <span className={`${styles.statusBadge} ${statutConfig.className}`}>
+            <StatusIcon className="w-3.5 h-3.5" />
+            {statutConfig.label}
+          </span>
+        </div>
+
+        <div className={styles.tableCell}>
+          <span className={styles.mobileLabel}>Phase</span>
+          <span className={styles.phasePill}>{cardExtra.phaseLabel}</span>
+        </div>
+
+        <div className={`${styles.tableCell} ${styles.actionsCell}`}>
+          <span className={styles.mobileLabel}>Actions</span>
+          <div className={styles.actionsGroup}>
+            <button
+              type="button"
+              className={styles.iconAction}
+              onClick={() => handleDownloadPdf(demande.id_demande)}
+              disabled={isPdfLoading}
+              aria-label="Telecharger le PDF"
+            >
+              {isPdfLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+            </button>
+            <Button
+              onClick={() =>
+                navigate(`/investisseur/demandes/${demande.short_code || demande.id_demande}`)
+              }
+              className={styles.detailsLink}
+              size="sm"
+            >
+              Details
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <InvestorLayout>
       <div className={styles.container}>
-        {/* Hero Header */}
         <div className={styles.heroHeader}>
           <div className={styles.heroContent}>
             <div className={styles.heroText}>
-              <div className={styles.heroLabel}>
-                <Sparkles className="w-4 h-4" />
-                <span>Portail Investisseur</span>
-              </div>
-              <h1 className={styles.heroTitle}>Mes Demandes</h1>
+              <span className={styles.heroEyebrow}>Portefeuille minier</span>
+              <h1 className={styles.heroTitle}>Demandes et autorisations</h1>
               <p className={styles.heroSubtitle}>
-                Suivez l'état de vos demandes de permis miniers en temps réel
+                {!isLoading && !error
+                  ? `${filteredDemandes.length} resultat${filteredDemandes.length > 1 ? "s" : ""} visible${filteredDemandes.length > 1 ? "s" : ""} avec un suivi clair de vos dossiers miniers.`
+                  : "Suivi professionnel des permis, autorisations et dossiers en instruction."}
               </p>
+              {error && <p className={styles.heroError}>{error}</p>}
             </div>
             <div className={styles.heroActions}>
+              <div className={styles.viewModeWrap}>
+                <span className={styles.viewModeLabel}>Affichage</span>
+                <div className={styles.viewToggle}>
+                  <button
+                    type="button"
+                    className={`${styles.toggleBtn} ${viewMode === "grid" ? styles.active : ""}`}
+                    onClick={() => setViewMode("grid")}
+                    title="Vue grille"
+                    aria-label="Vue grille"
+                  >
+                    <LayoutGrid className="w-5 h-5" />
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.toggleBtn} ${viewMode === "list" ? styles.active : ""}`}
+                    onClick={() => setViewMode("list")}
+                    title="Vue liste"
+                    aria-label="Vue liste"
+                  >
+                    <List className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
               <Button
                 type="button"
-                variant="outline"
-                onClick={() => navigate("/investisseur/InvestorDashboard")}
-                className={styles.dashboardButton}
-                size="lg"
-              >
-                <ArrowLeft className="w-5 h-5" />
-                Retour au dashboard
-              </Button>
-              <Button 
-                onClick={() => navigate('/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis')} 
+                onClick={() => navigate("/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis")}
                 className={styles.newButton}
-                size="lg"
+                size="sm"
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-4 h-4" />
                 Nouvelle demande
               </Button>
             </div>
           </div>
-
-          {/* Stats Cards */}
-          <div className={styles.statsGrid}>
-            <div className={styles.statCard}>
-              <div className={styles.statIcon}>
-                <FileText className="w-5 h-5" />
-              </div>
-              <div className={styles.statInfo}>
-                <span className={styles.statValue}>{stats.total}</span>
-                <span className={styles.statLabel}>Total</span>
+          <div className={styles.summaryStrip}>
+            <div className={`${styles.summaryCard} ${styles.summaryNeutral}`}>
+              <span className={styles.summaryIcon}>
+                <FileText className="w-4 h-4" />
+              </span>
+              <div>
+                <span className={styles.summaryLabel}>Total</span>
+                <strong className={styles.summaryValue}>{stats.total}</strong>
               </div>
             </div>
-            <div className={`${styles.statCard} ${styles.statWarning}`}>
-              <div className={styles.statIcon}>
-                <Clock className="w-5 h-5" />
-              </div>
-              <div className={styles.statInfo}>
-                <span className={styles.statValue}>{stats.enCours}</span>
-                <span className={styles.statLabel}>En cours</span>
-              </div>
-            </div>
-            <div className={`${styles.statCard} ${styles.statSuccess}`}>
-              <div className={styles.statIcon}>
-                <CheckCircle2 className="w-5 h-5" />
-              </div>
-              <div className={styles.statInfo}>
-                <span className={styles.statValue}>{stats.acceptees}</span>
-                <span className={styles.statLabel}>Acceptées</span>
+            <div className={`${styles.summaryCard} ${styles.summaryWarning}`}>
+              <span className={styles.summaryIcon}>
+                <Clock className="w-4 h-4" />
+              </span>
+              <div>
+                <span className={styles.summaryLabel}>En cours</span>
+                <strong className={styles.summaryValue}>{stats.enCours}</strong>
               </div>
             </div>
-            <div className={`${styles.statCard} ${styles.statDanger}`}>
-              <div className={styles.statIcon}>
-                <XCircle className="w-5 h-5" />
+            <div className={`${styles.summaryCard} ${styles.summarySuccess}`}>
+              <span className={styles.summaryIcon}>
+                <CheckCircle2 className="w-4 h-4" />
+              </span>
+              <div>
+                <span className={styles.summaryLabel}>Acceptees</span>
+                <strong className={styles.summaryValue}>{stats.acceptees}</strong>
               </div>
-              <div className={styles.statInfo}>
-                <span className={styles.statValue}>{stats.rejetees}</span>
-                <span className={styles.statLabel}>Rejetées</span>
+            </div>
+            <div className={`${styles.summaryCard} ${styles.summaryDanger}`}>
+              <span className={styles.summaryIcon}>
+                <XCircle className="w-4 h-4" />
+              </span>
+              <div>
+                <span className={styles.summaryLabel}>Rejetees</span>
+                <strong className={styles.summaryValue}>{stats.rejetees}</strong>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Filters Section */}
         <Card className={styles.filtersCard}>
           <CardContent className={styles.filtersContent}>
             <div className={styles.filtersHeader}>
               <div className={styles.filtersTitle}>
                 <Filter className="w-4 h-4" />
                 <span>Filtres</span>
-              </div>
-              <div className={styles.viewToggle}>
-                <button
-                  type="button"
-                  className={`${styles.toggleBtn} ${viewMode === "grid" ? styles.active : ""}`}
-                  onClick={() => setViewMode("grid")}
-                  title="Vue grille"
-                  aria-label="Vue grille"
-                >
-                  <LayoutGrid className="w-5 h-5" />
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.toggleBtn} ${viewMode === "list" ? styles.active : ""}`}
-                  onClick={() => setViewMode("list")}
-                  title="Vue liste"
-                  aria-label="Vue liste"
-                >
-                  <List className="w-5 h-5" />
-                </button>
               </div>
             </div>
             <div className={styles.filtersGrid}>
@@ -896,10 +1447,10 @@ const DemandesList = () => {
                     En attente
                   </SelectItem>
                   <SelectItem className={styles.selectItem} value="ACCEPTEE">
-                    Acceptée
+                    Acceptee
                   </SelectItem>
                   <SelectItem className={styles.selectItem} value="REJETEE">
-                    Rejetée
+                    Rejetee
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -942,15 +1493,13 @@ const DemandesList = () => {
           </CardContent>
         </Card>
 
-        {/* Results Count */}
-        <div className={styles.resultsInfo}>
-          {!isLoading && !error && (
+        {!isLoading && !error && (
+          <div className={styles.resultsInfo}>
             <span className={styles.resultsCount}>
-              {filteredDemandes.length} demande{filteredDemandes.length !== 1 ? 's' : ''} trouvée{filteredDemandes.length !== 1 ? 's' : ''}
+              {filteredDemandes.length} resultat{filteredDemandes.length > 1 ? "s" : ""}
             </span>
-          )}
-          {error && <span className={styles.errorText}>{error}</span>}
-        </div>
+          </div>
+        )}
 
         {viewMode === "grid" ? (
           <div className={styles.demandesGrid}>
@@ -966,202 +1515,43 @@ const DemandesList = () => {
                 </Card>
               ))
             ) : (
-              paginatedDemandes.map((demande, index) => {
-                const statutValue = demande.statut_demande || "EN_COURS";
-                const statutConfig = getStatutConfig(statutValue);
-                const StatusIcon = statutConfig.icon;
-                const typeLabel =
-                  demande.typePermis?.lib_type ||
-                  demande.typePermis?.code_type ||
-                  "Permis";
-                const codeLabel = demande.code_demande || `DEM-${demande.id_demande}`;
-                const locationLabel =
-                  demande.wilaya?.nom_wilayaFR ||
-                  demande.commune?.nom_communeFR ||
-                  "???";
-                const dateStr = resolveDate(demande);
-                const dateLabel = dateStr
-                  ? new Date(dateStr).toLocaleDateString("fr-FR")
-                  : "--";
-                const progression =
-                  typeof (demande as any).progression === "number"
-                    ? (demande as any).progression
-                    : null;
-
-                return (
-                  <Card
-                    key={demande.id_demande}
-                    className={styles.demandeCard}
-                    style={{ animationDelay: `${index * 0.08}s` }}
-                  >
-                    <div className={styles.cardHeader}>
-                      <div className={styles.cardType}>
-                        <span className={styles.typeEmoji}>
-                          {getTypeIcon(typeLabel)}
-                        </span>
-                        <span className={styles.typeName}>{typeLabel}</span>
-                      </div>
-                      <div className={`${styles.statusBadge} ${statutConfig.className}`}>
-                        <StatusIcon className="w-3.5 h-3.5" />
-                        <span>{statutConfig.label}</span>
-                      </div>
-                    </div>
-
-                    <div className={styles.cardBody}>
-                      <h3 className={styles.cardCode}>{codeLabel}</h3>
-
-                      <div className={styles.cardMeta}>
-                        <div className={styles.metaItem}>
-                          <MapPin className="w-4 h-4" />
-                          <span>{locationLabel}</span>
-                        </div>
-                        <div className={styles.metaItem}>
-                          <Calendar className="w-4 h-4" />
-                          <span>{dateLabel}</span>
-                        </div>
-                      </div>
-
-                      {statutValue === "EN_COURS" && typeof progression === "number" && (
-                        <div className={styles.progressSection}>
-                          <div className={styles.progressHeader}>
-                            <span>Progression</span>
-                            <span className={styles.progressValue}>{progression}%</span>
-                          </div>
-                          <div className={styles.progressBar}>
-                            <div
-                              className={styles.progressFill}
-                              style={{ width: `${progression}%` }}
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className={styles.cardFooter}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className={styles.downloadBtn}
-                        disabled={pdfLoadingId === demande.id_demande}
-                        onClick={() => handleDownloadPdf(demande.id_demande)}
-                      >
-                        {pdfLoadingId === demande.id_demande ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Download className="w-4 h-4" />
-                        )}
-                        {pdfLoadingId === demande.id_demande ? "Generation..." : "PDF"}
-                      </Button>
-                      <Button
-                        onClick={() =>
-                          navigate(`/investisseur/demandes/${demande.short_code || demande.id_demande}`)
-                        }
-                        className={styles.viewBtn}
-                        size="sm"
-                      >
-                        <Eye className="w-4 h-4" />
-                        Voir détails
-                        <ArrowRight className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </Card>
-                );
-              })
+              paginatedDemandes.map(renderGridCard)
             )}
           </div>
         ) : (
-          <div className={styles.demandesList}>
+          <div className={styles.tableWrapper}>
+            <div className={styles.tableHead}>
+              <div className={styles.tableHeadCell}># Code</div>
+              <div className={styles.tableHeadCell}>Type</div>
+              <div className={styles.tableHeadCell}>
+                <MapPin className="w-4 h-4" />
+                Wilaya
+              </div>
+              <div className={styles.tableHeadCell}>
+                <Calendar className="w-4 h-4" />
+                Date depot
+              </div>
+              <div className={styles.tableHeadCell}>Statut</div>
+              <div className={styles.tableHeadCell}>Phase</div>
+              <div className={styles.tableHeadCell}>Actions</div>
+            </div>
+
+            <div className={styles.demandesList}>
             {isLoading ? (
               Array.from({ length: 6 }).map((_, index) => (
-                <Card
+                <div
                   key={`skeleton-list-${index}`}
-                  className={`${styles.demandeCard} ${styles.demandeCardList} ${styles.skeletonCard}`}
+                  className={`${styles.tableRow} ${styles.skeletonCard}`}
                 >
                   <div className={styles.skeletonLine} />
                   <div className={styles.skeletonLine} />
                   <div className={styles.skeletonLine} />
-                </Card>
+                </div>
               ))
             ) : (
-              paginatedDemandes.map((demande, index) => {
-                const statutValue = demande.statut_demande || "EN_COURS";
-                const statutConfig = getStatutConfig(statutValue);
-                const StatusIcon = statutConfig.icon;
-                const typeLabel =
-                  demande.typePermis?.lib_type ||
-                  demande.typePermis?.code_type ||
-                  "Permis";
-                const codeLabel =
-                  demande.code_demande || `DEM-${demande.id_demande}`;
-                const locationLabel =
-                  demande.wilaya?.nom_wilayaFR ||
-                  demande.commune?.nom_communeFR ||
-                  "--";
-                const dateStr = resolveDate(demande);
-                const dateLabel = dateStr
-                  ? new Date(dateStr).toLocaleDateString("fr-FR")
-                  : "--";
-
-                return (
-                  <Card
-                    key={demande.id_demande}
-                    className={`${styles.demandeCard} ${styles.demandeCardList}`}
-                    style={{ animationDelay: `${index * 0.06}s` }}
-                  >
-                    <span className={`${styles.statusBadge} ${statutConfig.className}`}>
-                      <StatusIcon className="w-3.5 h-3.5" />
-                      {statutConfig.label}
-                    </span>
-
-                    <div className={styles.cardBody}>
-                      <h3 className={styles.cardCode}>{codeLabel}</h3>
-
-                      <div className={styles.cardMeta}>
-                        <div className={styles.metaItem}>
-                          <span className={styles.typeEmoji}>{getTypeIcon(typeLabel)}</span>
-                          <span>{typeLabel}</span>
-                        </div>
-                        <div className={styles.metaItem}>
-                          <MapPin className="w-4 h-4" />
-                          <span>{locationLabel}</span>
-                        </div>
-                        <div className={styles.metaItem}>
-                          <Calendar className="w-4 h-4" />
-                          <span>{dateLabel}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className={styles.cardFooter}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className={styles.downloadBtn}
-                        disabled={pdfLoadingId === demande.id_demande}
-                        onClick={() => handleDownloadPdf(demande.id_demande)}
-                      >
-                        {pdfLoadingId === demande.id_demande ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Download className="w-4 h-4" />
-                        )}
-                        {pdfLoadingId === demande.id_demande ? "Generation..." : "PDF"}
-                      </Button>
-                      <Button
-                        onClick={() =>
-                          navigate(`/investisseur/demandes/${demande.short_code || demande.id_demande}`)
-                        }
-                        className={styles.viewBtn}
-                        size="sm"
-                      >
-                        <Eye className="w-4 h-4" />
-                        Détails
-                      </Button>
-                    </div>
-                  </Card>
-                );
-              })
+              paginatedDemandes.map(renderTableRow)
             )}
+            </div>
           </div>
         )}
 
@@ -1173,7 +1563,7 @@ const DemandesList = () => {
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
             >
-              Précédent
+              Precedent
             </button>
             <span className={styles.pageInfo}>
               Page {currentPage} / {totalPages}
@@ -1197,8 +1587,8 @@ const DemandesList = () => {
             <div className={styles.emptyIcon}>
               <FileText className="w-12 h-12" />
             </div>
-            <h3>Aucune demande trouvée</h3>
-            <p>Modifiez vos filtres ou créez une nouvelle demande</p>
+            <h3>Aucune demande trouvee</h3>
+            <p>Modifiez vos filtres ou creez une nouvelle demande</p>
             <Button 
               onClick={() => navigate('/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis')}
               className={styles.newButton}
@@ -1207,6 +1597,12 @@ const DemandesList = () => {
               Nouvelle demande
             </Button>
           </div>
+        )}
+
+        {!isLoading && !error && filteredDemandes.length > 0 && (
+          <p className={styles.helpLine}>
+            Besoin d'aide ? Contactez l'administration des mines pour toute question.
+          </p>
         )}
       </div>
     </InvestorLayout>

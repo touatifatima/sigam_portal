@@ -14,6 +14,10 @@ import ProgressStepper from '@/components/ProgressStepper';
 import { STEP_LABELS } from '@/src/constants/steps';
 import router from 'next/router';
 import { Phase, Procedure, ProcedureEtape, ProcedurePhase, StatutProcedure } from '@/src/types/procedure';
+import {
+  getSessionBackedItem,
+  removeSessionBackedItem,
+} from '@/src/utils/sessionBackedStorage';
 const PermisDesigner = dynamic(() => import('../../../../components/PermisDesigner'), {
   ssr: false,
   loading: () => <div>Loading designer...</div>
@@ -229,16 +233,16 @@ const handleSavePermis = async (permisData: any): Promise<{id: number, code_perm
   const resolveCodeNumber = async (): Promise<string | undefined> => {
     try {
       // 1) Direct stored value
-      const stored = localStorage.getItem('prior_code_number');
+      const stored = getSessionBackedItem('prior_code_number');
       if (stored && stored.trim()) return stored.trim();
 
       // 2) Parse from prior code like "APM 2"
-      const priorCode = localStorage.getItem('prior_code_permis');
+      const priorCode = getSessionBackedItem('prior_code_permis');
       const m = priorCode?.trim().match(/(\d+)$/);
       if (m && m[1]) return m[1];
 
       // 3) Fetch prior permis info and parse
-      const priorPermisId = localStorage.getItem('prior_permis_id');
+      const priorPermisId = getSessionBackedItem('prior_permis_id');
       if (priorPermisId && apiURL) {
         try {
           const pr = await axios.get(`${apiURL}/Permisdashboard/${priorPermisId}`, { withCredentials: true });
@@ -262,7 +266,7 @@ const handleSavePermis = async (permisData: any): Promise<{id: number, code_perm
     const response = await axios.post(`${apiURL}/api/permis/save-permis`, payload, { withCredentials: true });
 
     // Clear only after a successful save
-    try { if (codeNumber) localStorage.removeItem('prior_code_number'); } catch {}
+    try { if (codeNumber) removeSessionBackedItem('prior_code_number'); } catch {}
 
     return response.data;
   } catch (error) {

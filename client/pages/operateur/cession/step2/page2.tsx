@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 //documents page
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import axios from "axios";
@@ -163,7 +163,7 @@ export default function CessionDocumentsStep() {
     if (!idProc || !missingSummary) return;
     try {
       const key = 'sigam_missing_required_docs';
-      const raw = window.localStorage.getItem(key);
+      const raw = window.sessionStorage.getItem(key);
       let store: Record<string, any> = {};
       if (raw) {
         try { store = JSON.parse(raw) || {}; } catch { store = {}; }
@@ -177,12 +177,12 @@ export default function CessionDocumentsStep() {
           phase: 'FIRST',
           // Keep allowed prefixes if already computed elsewhere
           allowedPrefixes: existing.allowedPrefixes || undefined,
-          // Utilise le délai d'instruction (10 jours ouvrables) si disponible,
-          // sinon garde le comportement précédent basé sur la mise en demeure.
+          // Utilise le dÃ©lai d'instruction (10 jours ouvrables) si disponible,
+          // sinon garde le comportement prÃ©cÃ©dent basÃ© sur la mise en demeure.
           deadline: deadlines?.instruction || deadlines?.miseEnDemeure || null,
           updatedAt: new Date().toISOString(),
         };
-      window.localStorage.setItem(key, JSON.stringify(store));
+      window.sessionStorage.setItem(key, JSON.stringify(store));
       window.dispatchEvent(new CustomEvent('sigam:missing-docs', { detail: store[idProc] }));
     } catch {}
   }, [idProc, idDemande, missingSummary, deadlines]);
@@ -210,15 +210,15 @@ export default function CessionDocumentsStep() {
 
     // Stocker dans localStorage
     if (typeof window !== 'undefined') {
-      const existing = window.localStorage.getItem('sigam_missing_required_docs');
+      const existing = window.sessionStorage.getItem('sigam_missing_required_docs');
       
-      // Déclarer le type correctement
+      // DÃ©clarer le type correctement
       let procedures: Record<number, any> = {};
       
       if (existing) {
         try {
           const parsed = JSON.parse(existing);
-          // S'assurer que c'est un objet avec des clés numériques
+          // S'assurer que c'est un objet avec des clÃ©s numÃ©riques
           if (parsed && typeof parsed === 'object') {
             procedures = parsed;
           }
@@ -229,9 +229,9 @@ export default function CessionDocumentsStep() {
       }
 
       procedures[idProc] = missingDocsPayload;
-      window.localStorage.setItem('sigam_missing_required_docs', JSON.stringify(procedures));
+      window.sessionStorage.setItem('sigam_missing_required_docs', JSON.stringify(procedures));
       
-      // Déclencher un événement personnalisé pour notifier le ProgressStepper
+      // DÃ©clencher un Ã©vÃ©nement personnalisÃ© pour notifier le ProgressStepper
       window.dispatchEvent(new CustomEvent('sigam:missing-docs', { 
         detail: missingDocsPayload 
       }));
@@ -239,15 +239,15 @@ export default function CessionDocumentsStep() {
   }
 }, [missingSummary, idProc, idDemande]);
 
-  // Nettoyer le localStorage quand la procédure est terminée
+  // Nettoyer le localStorage quand la procÃ©dure est terminÃ©e
   useEffect(() => {
     if (statutProc === 'TERMINEE' && idProc && typeof window !== 'undefined') {
-      const existing = window.localStorage.getItem('sigam_missing_required_docs');
+      const existing = window.sessionStorage.getItem('sigam_missing_required_docs');
       if (existing) {
         try {
           const procedures = JSON.parse(existing);
           delete procedures[idProc];
-          window.localStorage.setItem('sigam_missing_required_docs', JSON.stringify(procedures));
+          window.sessionStorage.setItem('sigam_missing_required_docs', JSON.stringify(procedures));
         } catch (e) {
           // Ignorer les erreurs de parsing
         }
@@ -276,20 +276,20 @@ export default function CessionDocumentsStep() {
   useEffect(() => {
     const idProcStr = searchParams?.get('id');
     if (!idProcStr) {
-      setLoadingState("ID de procédure non trouvé dans les paramétres");
-      setError("ID de procédure non trouvé dans les paramétres");
+      setLoadingState("ID de procÃ©dure non trouvÃ© dans les paramÃ©tres");
+      setError("ID de procÃ©dure non trouvÃ© dans les paramÃ©tres");
       return;
     }
 
     const parsedId = parseInt(idProcStr, 10);
     if (isNaN(parsedId)) {
-      setLoadingState("ID de procédure invalide");
-      setError("ID de procédure invalide");
+      setLoadingState("ID de procÃ©dure invalide");
+      setError("ID de procÃ©dure invalide");
       return;
     }
 
     setIdProc(parsedId);
-    setLoadingState("Chargement des données de la procédure...");
+    setLoadingState("Chargement des donnÃ©es de la procÃ©dure...");
     setError(null); // Clear error once idProc is set
   }, [searchParams]);
 
@@ -314,13 +314,13 @@ export default function CessionDocumentsStep() {
           setCurrentEtape({ id_etape: activeEtape.id_etape });
         }
         
-        setLoadingState("Données de procédure chargées, récupération de la demande...");
+        setLoadingState("DonnÃ©es de procÃ©dure chargÃ©es, rÃ©cupÃ©ration de la demande...");
         setError(null);
       } catch (error) {
         if (axios.isCancel(error)) return;
         console.error('Error fetching procedure data:', error);
-        setLoadingState("Erreur lors du chargement des données de procédure");
-        setError("Erreur lors du chargement des données de procédure");
+        setLoadingState("Erreur lors du chargement des donnÃ©es de procÃ©dure");
+        setError("Erreur lors du chargement des donnÃ©es de procÃ©dure");
       }
     };
 
@@ -345,13 +345,13 @@ export default function CessionDocumentsStep() {
         });
         setIdDemande(res.data.id_demande.toString());
         setStatutProc(res.data.procedure.statut_proc);
-        setLoadingState("Données de demande chargées, récupération des documents...");
+        setLoadingState("DonnÃ©es de demande chargÃ©es, rÃ©cupÃ©ration des documents...");
         setError(null);
       } catch (err) {
         if (axios.isCancel(err)) return;
-        console.error("Erreur lors de la récupération de la demande", err);
-        setLoadingState("Erreur lors de la récupération de la demande");
-        setError("Erreur lors de la récupération de la demande");
+        console.error("Erreur lors de la rÃ©cupÃ©ration de la demande", err);
+        setLoadingState("Erreur lors de la rÃ©cupÃ©ration de la demande");
+        setError("Erreur lors de la rÃ©cupÃ©ration de la demande");
       }
     };
 
@@ -747,7 +747,7 @@ export default function CessionDocumentsStep() {
 
       setMissingSummary(response.data.missingSummary);
       setDeadlines(response.data.deadlines);
-      setSuccess("Dossier mis à jour avec succés");
+      setSuccess("Dossier mis Ã  jour avec succÃ©s");
       
       return response.data;
     } catch (err) {
@@ -764,7 +764,7 @@ export default function CessionDocumentsStep() {
     try {
       const result = await submitDossier();
       if (!result) return;
-      toast.success('Mise en demeure lancée. Le délai de 30 jours est démarré.');
+      toast.success('Mise en demeure lancÃ©e. Le dÃ©lai de 30 jours est dÃ©marrÃ©.');
       // Ouvrir directement le PDF de mise en demeure
       if (apiURL) {
         window.open(`${apiURL}/api/demande/${idDemande}/mise-en-demeure.pdf`, '_blank');
@@ -882,7 +882,7 @@ export default function CessionDocumentsStep() {
     return status !== 'present';
   });
 
-  // Vérifier si la navigation est bloquée
+  // VÃ©rifier si la navigation est bloquÃ©e
   const isNavigationBlocked = false;
 
   // Debounced navigation handlers
@@ -970,9 +970,9 @@ export default function CessionDocumentsStep() {
       <div className="loading-container">
         <div className="spinner"></div>
         <p>{loadingState}</p>
-        {!idProc && <p>En attente de l'ID de procédure...</p>}
-        {idProc && !procedureData && <p>Chargement des données de procédure...</p>}
-        {procedureData && !idDemande && <p>Chargement des données de demande...</p>}
+        {!idProc && <p>En attente de l'ID de procÃ©dure...</p>}
+        {idProc && !procedureData && <p>Chargement des donnÃ©es de procÃ©dure...</p>}
+        {procedureData && !idDemande && <p>Chargement des donnÃ©es de demande...</p>}
         {idDemande && documents.length === 0 && <p>Chargement des documents...</p>}
       </div>
     );
@@ -1014,7 +1014,7 @@ export default function CessionDocumentsStep() {
                 <Card className={styles.progressCard}>
                   <CardContent className={styles.progressContent}>
                     <div className={styles.progressHeader}>
-                      <span className={styles.progressLabel}>Documents téléversés</span>
+                      <span className={styles.progressLabel}>Documents tÃ©lÃ©versÃ©s</span>
                       <span className={styles.progressCount}>
                         {presents}/{total}
                       </span>
@@ -1078,9 +1078,9 @@ export default function CessionDocumentsStep() {
                       const isDisabled = statutProc === 'TERMINEE' || !statutProc || isNavigating;
                       const statusLabel =
                         status === 'present'
-                          ? 'Présent'
+                          ? 'PrÃ©sent'
                           : status === 'uploading'
-                          ? 'Téléversement...'
+                          ? 'TÃ©lÃ©versement...'
                           : 'Manquant';
 
                       return (
@@ -1149,7 +1149,7 @@ export default function CessionDocumentsStep() {
                                 Voir le fichier joint
                               </a>
                             ) : (
-                              <span className={styles.noFile}>Aucun fichier téléversé</span>
+                              <span className={styles.noFile}>Aucun fichier tÃ©lÃ©versÃ©</span>
                             )}
 
                             <div className={styles.uploadArea}>
@@ -1166,7 +1166,7 @@ export default function CessionDocumentsStep() {
                                 <div className={styles.uploadText}>
                                   <span>Glisser-d?poser ou</span>
                                   <Button asChild variant="outline" size="sm" className={styles.uploadButton}>
-                                    <span>{resolvedFileUrl ? 'Modifier' : 'Téléverser'}</span>
+                                    <span>{resolvedFileUrl ? 'Modifier' : 'TÃ©lÃ©verser'}</span>
                                   </Button>
                                 </div>
                               </label>
@@ -1213,7 +1213,7 @@ export default function CessionDocumentsStep() {
                   disabled={isLoading || isSubmitting || statutProc === 'TERMINEE' || isNavigating}
                 >
                   <FiChevronLeft className={styles['btn-icon']} />
-                  Précédent
+                  PrÃ©cÃ©dent
                 </button>
 
                 <button
@@ -1232,7 +1232,7 @@ export default function CessionDocumentsStep() {
                   {isSubmitting ? (
                     <span className={styles['btn-loading']}>
                       <span className={styles['spinner-small']}></span>
-                      {isSubmitting ? "Soumission..." : "Vérification..."}
+                      {isSubmitting ? "Soumission..." : "VÃ©rification..."}
                     </span>
                   ) : (
                     <>
@@ -1258,6 +1258,8 @@ export default function CessionDocumentsStep() {
     </div>
   );
 }
+
+
 
 
 

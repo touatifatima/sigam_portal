@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuthStore } from '../../src/store/useAuthStore';
+import { getPostLoginPath } from '../../src/utils/roleNavigation';
 import styles from '../login.module.css';
 
 const logo = '/anamlogo.png';
@@ -84,13 +85,6 @@ export default function LoginPage() {
             : typeof user?.roles === 'string'
               ? user.roles.split(',')
               : [];
-      const isAdmin = rawRoles.some(
-        (role: unknown) => String(role).trim().toUpperCase() === 'ADMIN',
-      );
-      if (isAdmin) {
-        router.push('/permis_dashboard/PermisDashboard');
-        return;
-      }
       const isVerified = Boolean(
         user?.isEntrepriseVerified ??
         user?.entrepriseVerified ??
@@ -101,13 +95,13 @@ export default function LoginPage() {
         user?.first_login_after_confirmation
       );
 
-      if (isVerified && shouldShowWelcome) {
-        router.push('/investisseur/Identification/bienvenue');
-      } else if (isVerified) {
-        router.push('/investisseur/InvestorDashboard');
-      } else {
-        router.push('/investisseur/Identification/identification-entreprise');
-      }
+      router.push(
+        getPostLoginPath({
+          role: rawRoles,
+          isEntrepriseVerified: isVerified,
+          shouldShowWelcome,
+        }),
+      );
       
     } catch (err: any) {
       console.error('Login error:', err);

@@ -13,6 +13,7 @@ import {
 } from "@/src/onboarding/storage";
 import styles from "./Bienvenue.module.css";
 import { useAuthStore } from "@/src/store/useAuthStore";
+import { getDefaultDashboardPath, isCadastreRole } from "@/src/utils/roleNavigation";
 
 const Bienvenue = () => {
   const navigate = useNavigate();
@@ -25,12 +26,13 @@ const Bienvenue = () => {
     if (!isLoaded) return;
     if (!auth?.id) return;
 
-    if (!auth.isEntrepriseVerified) {
-      navigate("/investisseur/InvestorDashboard", { replace: true });
+    if (isCadastreRole(auth.role) || !auth.isEntrepriseVerified) {
+      navigate(getDefaultDashboardPath(auth.role), { replace: true });
     }
   }, [
     auth?.id,
     auth?.isEntrepriseVerified,
+    auth?.role,
     isLoaded,
     navigate,
   ]);

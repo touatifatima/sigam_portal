@@ -14,6 +14,7 @@ import { useAuthStore } from '../../src/store/useAuthStore';
 import {
   resolveNotificationTargetPathAsync,
 } from '../../src/utils/notificationNavigation';
+import { getDefaultDashboardPath } from '../../src/utils/roleNavigation';
 import styles from './notification.module.css';
 
 type NotificationItem = {
@@ -79,6 +80,10 @@ export default function NotificationsPage() {
       'x-user-name': auth?.username || auth?.email || '',
     };
   }, [auth?.email, auth?.id, auth?.username]);
+  const dashboardHref = useMemo(
+    () => getDefaultDashboardPath(auth?.role),
+    [auth?.role],
+  );
 
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [navigatingId, setNavigatingId] = useState<number | null>(null);
@@ -273,7 +278,7 @@ export default function NotificationsPage() {
             <button className={styles.secondaryBtn} onClick={markAllAsRead}>
               Tout marquer comme lu
             </button>
-            <Link href="/investisseur/InvestorDashboard" className={styles.linkBtn}>
+            <Link href={dashboardHref} className={styles.linkBtn}>
               Retour tableau de bord
             </Link>
           </div>

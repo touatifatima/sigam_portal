@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import styles from './PermisDashboard.module.css';
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { 
@@ -678,7 +678,7 @@ const expiringTimeline = useMemo(() => {
       setModalOpen(true);
     } catch (err) {
       console.error('Failed to fetch detailed data:', err);
-      setError('?chec du chargement des données d?taill?es');
+      setError('?chec du chargement des donnÃ©es d?taill?es');
     } finally {
       setLoading(false);
     }
@@ -743,7 +743,7 @@ const expiringTimeline = useMemo(() => {
     try {
       await axios.delete(`${apiURL}/Permisdashboard/${permisId}`);
       setPermisList(prev => prev.filter(p => p.id !== permisId));
-      alert('Permis supprim? avec succès');
+      alert('Permis supprim? avec succÃ¨s');
     } catch (error) {
       console.error('Error deleting permis:', error);
       alert('Erreur lors de la suppression du permis');
@@ -886,7 +886,7 @@ const expiringTimeline = useMemo(() => {
       
     } catch (error) {
       console.error('Export error:', error);
-      alert('Erreur lors de l\'exportation des données');
+      alert('Erreur lors de l\'exportation des donnÃ©es');
     } finally {
       setExporting(false);
     }
@@ -966,7 +966,7 @@ const expiringTimeline = useMemo(() => {
             >
               <option value="all">Tous les statuts</option>
               <option value="active">En vigueur</option>
-              <option value="expired">Expirés</option>
+              <option value="expired">ExpirÃ©s</option>
             </select>
             
             <select 
@@ -987,7 +987,7 @@ const expiringTimeline = useMemo(() => {
               className={styles.advancedFilterButton}
               onClick={() => setAdvancedFilters(!advancedFilters)}
             >
-              <FiFilter /> Filtres avancés
+              <FiFilter /> Filtres avancÃ©s
             </button>
           </div>
           
@@ -1279,7 +1279,7 @@ const expiringTimeline = useMemo(() => {
       <div className={styles.dashboardContainer}>
         <div className={styles.loading}>
           <FiRefreshCw className={styles.spinner} size={24} />
-          <span>Chargement des données...</span>
+          <span>Chargement des donnÃ©es...</span>
         </div>
       </div>
     );
@@ -1314,12 +1314,15 @@ const expiringTimeline = useMemo(() => {
                 {/* Dashboard Header */}
                 <div className={styles.header}>
                   <div className={styles.headerTitle}>
-                    <h1>Tableau de Bord POM</h1>
-                    <p>Bienvenue, {auth?.username || 'Utilisateur'}</p>
+                    <h1>Dashboard des permis</h1>
+                    <p>
+                      Pilotage centralise des titres miniers, activites et echeances
+                      pour {auth?.username || 'Utilisateur'}
+                    </p>
                   </div>
                   <div className={styles.headerActions}>
                     <div className={styles.timestamp}>
-                      Dernière mise à jour: {format(now, 'dd MMMM yyyy HH:mm', { locale: fr })}
+                      Derniere mise a jour: {format(now, 'dd MMMM yyyy HH:mm', { locale: fr })}
                     </div>
                     <button 
                       onClick={() => {
@@ -1383,7 +1386,7 @@ const expiringTimeline = useMemo(() => {
                   >
                     <FiCalendar className={styles.cardIcon} />
                     <div className={styles.cardContent}>
-                      <h4>Permis expirés</h4>
+                      <h4>Permis expirÃ©s</h4>
                       <p>{stats.expires.toLocaleString()}</p>
                       <div className={styles.cardPercentage}>
                         {stats.actifs > 0 ? `${Math.round((stats.expires / stats.actifs) * 100)}% des En vigueur` : 'N/A'}
@@ -1398,7 +1401,7 @@ const expiringTimeline = useMemo(() => {
                   >
                     <FiAlertTriangle className={styles.cardIcon} />
                     <div className={styles.cardContent}>
-                      <h4>Expirent bientôt</h4>
+                      <h4>Expirent bientÃ´t</h4>
                       <p>{expiringSoonPermis.length.toLocaleString()}</p>
                       <div className={styles.cardWarning}>
                         Dans les 6 mois
@@ -1416,7 +1419,7 @@ const expiringTimeline = useMemo(() => {
                         <FiTrendingUp />
                         <span>
                           {evolutionTrend
-                            ? `Permis ${evolutionTrend.permisDelta >= 0 ? '+' : ''}${evolutionTrend.permisDelta} • Demandes ${evolutionTrend.demandesDelta >= 0 ? '+' : ''}${evolutionTrend.demandesDelta} vs. derniere annee`
+                            ? `Permis ${evolutionTrend.permisDelta >= 0 ? '+' : ''}${evolutionTrend.permisDelta} â€¢ Demandes ${evolutionTrend.demandesDelta >= 0 ? '+' : ''}${evolutionTrend.demandesDelta} vs. derniere annee`
                             : 'Donnees annuelles en cours de consolidation'}
                         </span>
                       </div>
@@ -1518,7 +1521,7 @@ const expiringTimeline = useMemo(() => {
                               <div className={styles.typeLegendText}>
                                 <span className={styles.typeLegendName}>{entry.name}</span>
                                 <span className={styles.typeLegendMeta}>
-                                  {entry.value.toLocaleString()} · {percent.toFixed(1)}%
+                                  {entry.value.toLocaleString()} Â· {percent.toFixed(1)}%
                                 </span>
                               </div>
                             </div>
@@ -1720,3 +1723,5 @@ const expiringTimeline = useMemo(() => {
     </div>
   );
 }
+
+

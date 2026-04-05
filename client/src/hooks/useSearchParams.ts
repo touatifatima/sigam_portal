@@ -2,6 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
+import {
+  getSessionBackedItem,
+  setSessionBackedItem,
+} from '../utils/sessionBackedStorage';
 
 const CACHE_KEY = '__sigam_query_cache__';
 
@@ -21,7 +25,7 @@ function getSearchFromAsPath(asPath?: string | null) {
 function readCache(): CacheShape {
   if (typeof window === 'undefined') return {};
   try {
-    const raw = window.localStorage.getItem(CACHE_KEY);
+    const raw = getSessionBackedItem(CACHE_KEY);
     if (!raw) {
       return {};
     }
@@ -39,7 +43,7 @@ function readCache(): CacheShape {
 function writeCache(cache: CacheShape) {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+    setSessionBackedItem(CACHE_KEY, JSON.stringify(cache));
   } catch (error) {
     console.warn('Failed to persist search param cache', error);
   }

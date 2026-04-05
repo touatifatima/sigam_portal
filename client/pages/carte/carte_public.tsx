@@ -1,6 +1,12 @@
 ﻿import React, { useEffect, useMemo } from 'react';  ///public carte page, accessible sans login, avec un lien vers experience builder et un iframe pour afficher la carte
 import Link from 'next/link';
 import { useAuthStore } from '@/src/store/useAuthStore';
+import {
+  getDefaultDashboardPath,
+  isAdminRole,
+  isCadastreRole,
+  isOperateurRole,
+} from '@/src/utils/roleNavigation';
 import styles from './carte_public.module.css';
 
 const EXPERIENCE_BUILDER_URL =
@@ -36,21 +42,27 @@ export default function CartePublicPage() {
   }, [isLoaded, initialize]);
 
   const role = normalizeRole(auth.role);
-  const isConnected = Boolean(auth.id || auth.email || auth.username || auth.token);
-  const isAdmin = role.includes('admin') || hasPermission('Admin-Panel');
-  const isOperateur = role.includes('operateur');
-  const isInvestisseur = role.includes('investisseur');
+  const isConnected = Boolean(auth.id || auth.email || auth.username || auth.role);
+  const isAdmin = isAdminRole(role) || hasPermission('Admin-Panel');
+  const isOperateur = isOperateurRole(role);
+  const isCadastre = isCadastreRole(role);
 
   const userLabel = useMemo(() => getDisplayName(auth), [auth]);
 
-  const listHref = isOperateur || isAdmin ? '/operateur/permisdashboard/mes-permis' : '/investisseur/demandes';
-  const listLabel = isOperateur || isAdmin ? 'Mes permis' : 'Mes demandes';
-
-  const spaceHref = isAdmin
-    ? '/permis_dashboard/PermisDashboard'
-    : isOperateur
+  const listHref = isCadastre
+    ? '/investisseur/interactive'
+    : isOperateur || isAdmin
       ? '/operateur/permisdashboard/mes-permis'
-      : '/investisseur/InvestorDashboard';
+      : '/investisseur/demandes';
+  const listLabel = isCadastre
+    ? 'Verification prealable'
+    : isOperateur || isAdmin
+      ? 'Mes permis'
+      : 'Mes demandes';
+
+  const spaceHref = isOperateur
+    ? '/operateur/permisdashboard/mes-permis'
+    : getDefaultDashboardPath(role);
 
   return (
     <div className={styles.page}>

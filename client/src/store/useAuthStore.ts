@@ -4,6 +4,7 @@
 import { create, type StoreApi } from 'zustand';
 import type { UseBoundStore } from 'zustand';
 import axios from 'axios';
+import { purgeLocalStorageKeys } from '../utils/sessionBackedStorage';
 
 interface AuthData {
   antenneId: any;
@@ -50,64 +51,10 @@ interface AuthStore {
 
 const apiURL = process.env.NEXT_PUBLIC_API_URL;
 
-function readAuthFromStorage(): AuthData | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
+const LEGACY_AUTH_STORAGE_KEYS = ['auth', 'auth-storage'];
 
-  try {
-    // Primary key used by this app
-    const raw = window.localStorage.getItem('auth');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      return {
-        token: parsed.token ?? null,
-        id: parsed.id ?? null,
-        username: parsed.username ?? null,
-        email: parsed.email ?? null,
-        nom: parsed.nom ?? null,
-        Prenom: parsed.Prenom ?? null,
-        telephone: parsed.telephone ?? null,
-        createdAt: parsed.createdAt ?? null,
-        role: parsed.role ?? null,
-        permissions: Array.isArray(parsed.permissions) ? parsed.permissions : [],
-        isEntrepriseVerified: Boolean(parsed.isEntrepriseVerified),
-        identificationStatus: parsed.identificationStatus ?? null,
-        firstLoginAfterConfirmation: Boolean(
-          parsed.firstLoginAfterConfirmation ?? parsed.first_login_after_confirmation,
-        ),
-      };
-    }
-
-    // Backward-compat: some environments store under 'auth-storage'
-    const legacy = window.localStorage.getItem('auth-storage');
-    if (legacy) {
-      const parsed = JSON.parse(legacy);
-      const s = parsed?.state?.auth ?? {};
-      return {
-        token: s.token ?? null,
-        id: s.id ?? null,
-        username: s.username ?? null,
-        email: s.email ?? null,
-        nom: s.nom ?? null,
-        Prenom: s.Prenom ?? null,
-        telephone: s.telephone ?? null,
-        createdAt: s.createdAt ?? null,
-        role: s.role ?? null,
-        permissions: Array.isArray(s.permissions) ? s.permissions : [],
-        isEntrepriseVerified: Boolean(s.isEntrepriseVerified),
-        identificationStatus: s.identificationStatus ?? null,
-        firstLoginAfterConfirmation: Boolean(
-          s.firstLoginAfterConfirmation ?? s.first_login_after_confirmation,
-        ),
-      };
-    }
-
-    return null;
-  } catch (error) {
-    console.warn('Failed to read auth from storage', error);
-    return null;
-  }
+function purgeLegacyAuthStorage() {
+  purgeLocalStorageKeys(LEGACY_AUTH_STORAGE_KEYS);
 }
 
 // Ensure a single global store instance across any module duplication
@@ -149,24 +96,19 @@ function createAuthStore(): BoundStore {
         ),
       };
 
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('auth', JSON.stringify(newAuth));
-      }
+      purgeLegacyAuthStorage();
 
       set({ auth: newAuth, isLoaded: true });
     },
 
     logout: async () => {
-      const { token } = get().auth;
       try {
         await axios.post(`${apiURL}/auth/logout`, {}, { withCredentials: true });
       } catch (error) {
         console.error('Logout error:', error);
       }
 
-      if (typeof window !== 'undefined') {
-        window.localStorage.removeItem('auth');
-      }
+      purgeLegacyAuthStorage();
 
       set({
         auth: { ...emptyAuthState },
@@ -179,110 +121,46 @@ function createAuthStore(): BoundStore {
     },
 
     initialize: async () => {
-      let authState = get().auth;
-
-      if (!authState.token) {
-        const stored = readAuthFromStorage();
-        if (stored) {
-          authState = stored;
-          set({ auth: stored });
-        }
-      }
-
-      const token = authState.token;
-
-      if (!token) {
-        try {
-          const response = await axios.get(`${apiURL}/auth/me`, {
-            withCredentials: true,
-          });
-          if (response.data?.user) {
-            const updatedAuth = {
-              token: null,
-              id: response.data.user.id,
-              username: response.data.user.username,
-              email: response.data.user.email,
-              nom: (response.data.user as any).nom ?? null,
-              Prenom: (response.data.user as any).Prenom ?? null,
-              telephone: (response.data.user as any).telephone ?? null,
-              createdAt: (response.data.user as any).createdAt ?? null,
-              role: response.data.user.role,
-              permissions: response.data.user.permissions,
-              isEntrepriseVerified:
-                (response.data.user as any).isEntrepriseVerified ??
-                (response.data.user as any).entrepriseVerified ??
-                (response.data.user as any).entreprise_verified ??
-                authState.isEntrepriseVerified,
-              identificationStatus:
-                (response.data.user as any).identificationStatus ??
-                (response.data.user as any).identification_status ??
-                null,
-              firstLoginAfterConfirmation: Boolean(
-                (response.data.user as any).firstLoginAfterConfirmation ??
-                  (response.data.user as any).first_login_after_confirmation,
-              ),
-            };
-
-            if (typeof window !== 'undefined') {
-              window.localStorage.setItem('auth', JSON.stringify(updatedAuth));
-            }
-
-            set({ auth: updatedAuth, isLoaded: true });
-            return;
-          }
-        } catch (error) {
-          console.warn('Auth cookie verification failed', error);
-        }
-        set({ isLoaded: true });
-        return;
-      }
+      const authState = get().auth;
+      purgeLegacyAuthStorage();
 
       try {
-        const response = await axios.post(
-          `${apiURL}/auth/verify`,
-          { token },
-          { withCredentials: true }
-        );
+        const response = await axios.get(`${apiURL}/auth/me`, {
+          withCredentials: true,
+        });
 
         if (response.data?.user) {
           const updatedAuth = {
-            token,
-          id: response.data.user.id,
-          username: response.data.user.username,
-          email: response.data.user.email,
-          nom: (response.data.user as any).nom ?? null,
-          Prenom: (response.data.user as any).Prenom ?? null,
-          telephone: (response.data.user as any).telephone ?? null,
-          createdAt: (response.data.user as any).createdAt ?? null,
-          role: response.data.user.role,
-          permissions: response.data.user.permissions,
-          isEntrepriseVerified:
-            (response.data.user as any).isEntrepriseVerified ??
-            (response.data.user as any).entrepriseVerified ??
-            (response.data.user as any).entreprise_verified ??
+            token: null,
+            id: response.data.user.id,
+            username: response.data.user.username,
+            email: response.data.user.email,
+            nom: (response.data.user as any).nom ?? null,
+            Prenom: (response.data.user as any).Prenom ?? null,
+            telephone: (response.data.user as any).telephone ?? null,
+            createdAt: (response.data.user as any).createdAt ?? null,
+            role: response.data.user.role,
+            permissions: response.data.user.permissions,
+            isEntrepriseVerified:
+              (response.data.user as any).isEntrepriseVerified ??
+              (response.data.user as any).entrepriseVerified ??
+              (response.data.user as any).entreprise_verified ??
               authState.isEntrepriseVerified,
-          identificationStatus:
-            (response.data.user as any).identificationStatus ??
-            (response.data.user as any).identification_status ??
-            null,
-          firstLoginAfterConfirmation: Boolean(
-            (response.data.user as any).firstLoginAfterConfirmation ??
-              (response.data.user as any).first_login_after_confirmation,
-          ),
+            identificationStatus:
+              (response.data.user as any).identificationStatus ??
+              (response.data.user as any).identification_status ??
+              null,
+            firstLoginAfterConfirmation: Boolean(
+              (response.data.user as any).firstLoginAfterConfirmation ??
+                (response.data.user as any).first_login_after_confirmation,
+            ),
           };
-
-          if (typeof window !== 'undefined') {
-            window.localStorage.setItem('auth', JSON.stringify(updatedAuth));
-          }
 
           set({ auth: updatedAuth, isLoaded: true });
           return;
         }
       } catch (error) {
-        console.warn('Token verification failed, clearing session');
-        if (typeof window !== 'undefined') {
-          window.localStorage.removeItem('auth');
-        }
+        console.warn('Auth cookie verification failed', error);
 
         set({
           auth: { ...emptyAuthState },
@@ -305,9 +183,6 @@ function createAuthStore(): BoundStore {
         isEntrepriseVerified: value,
         identificationStatus: value ? 'CONFIRMEE' : current.identificationStatus ?? null,
       };
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('auth', JSON.stringify(nextAuth));
-      }
       set({ auth: nextAuth });
     },
   }));

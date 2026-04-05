@@ -3,9 +3,9 @@
 import { useEffect } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
 
-// Hydrate auth from localStorage and verify token if present.
-// This runs once on app start via ClientLayout, so Navbar/Sidebar
-// get user + permissions on hard refresh even without a token field.
+// Hydrate auth from the httpOnly session cookie.
+// This runs once on app start via ClientLayout so Navbar/Sidebar
+// recover the authenticated user after a hard refresh.
 export function useSessionLoader() {
   const initialize = useAuthStore((s) => s.initialize);
 

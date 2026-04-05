@@ -1,5 +1,9 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from '@/src/hooks/useSearchParams';
+import {
+  getSessionBackedItem,
+  setSessionBackedItem,
+} from '@/src/utils/sessionBackedStorage';
 
 export const useDemandeInfo = () => {
   const searchParams = useSearchParams();
@@ -13,14 +17,14 @@ export const useDemandeInfo = () => {
     const queryCode = searchParams?.get('code');
     const queryId = searchParams?.get('id');
 
-    const localCode = localStorage.getItem('code_demande');
-    const localId = localStorage.getItem('id_demande');
+    const storedCode = getSessionBackedItem('code_demande');
+    const storedId = getSessionBackedItem('id_demande');
 
-    const finalCode = queryCode || localCode;
-    const finalId = queryId || localId;
+    const finalCode = queryCode || storedCode;
+    const finalId = queryId || storedId;
 
-    if (finalCode) localStorage.setItem('code_demande', finalCode);
-    if (finalId) localStorage.setItem('id_demande', finalId);
+    if (finalCode) setSessionBackedItem('code_demande', finalCode);
+    if (finalId) setSessionBackedItem('id_demande', finalId);
 
     setCode(finalCode ?? null);
     setId(finalId ?? null);

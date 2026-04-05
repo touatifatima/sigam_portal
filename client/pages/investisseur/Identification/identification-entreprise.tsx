@@ -9,6 +9,7 @@ import { Building2, CheckCircle, ChevronRight, Download, LogOut } from "lucide-r
 import { InvestorLayout } from "@/components/investor/InvestorLayout";
 import styles from "./IdentificationEntreprise.module.css";
 import { useAuthStore } from "@/src/store/useAuthStore";
+import { getDefaultDashboardPath, isCadastreRole } from "@/src/utils/roleNavigation";
 
 type IdentificationPayload = Record<string, unknown> & {
   actionnaires?: Array<Record<string, unknown>>;
@@ -89,10 +90,10 @@ const IdentificationEntreprise = () => {
 
   useEffect(() => {
     if (!isLoaded) return;
-    if (auth.isEntrepriseVerified) {
-      navigate("/investisseur/InvestorDashboard");
+    if (isCadastreRole(auth.role) || auth.isEntrepriseVerified) {
+      navigate(getDefaultDashboardPath(auth.role), { replace: true });
     }
-  }, [auth.isEntrepriseVerified, isLoaded, navigate]);
+  }, [auth.isEntrepriseVerified, auth.role, isLoaded, navigate]);
 
   const handleConfirm = async () => {
     setIsSubmitting(true);

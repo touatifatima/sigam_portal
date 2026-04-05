@@ -15,6 +15,11 @@ import '@/styles/globals.css'
 import 'react-toastify/dist/ReactToastify.css'
 import setupApiInterceptors from '@/src/hooks/api-interceptor'
 import { useLoading } from '@/components/globalspinner/LoadingContext'
+import {
+  getDefaultDashboardPath,
+  isCadastreAllowedPath,
+  isCadastreRole,
+} from '@/src/utils/roleNavigation'
 
 function PendingIdentificationGuard() {
   const location = useLocation()
@@ -35,7 +40,7 @@ function PendingIdentificationGuard() {
     }
 
     if (!isPending && onPendingPage && auth?.id && auth?.isEntrepriseVerified) {
-      navigate('/investisseur/InvestorDashboard', { replace: true })
+      navigate(getDefaultDashboardPath(auth?.role), { replace: true })
       return
     }
 
@@ -50,6 +55,24 @@ function PendingIdentificationGuard() {
     location.pathname,
     navigate,
   ])
+
+  return null
+}
+
+function CadastreRouteGuard() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const isLoaded = useAuthStore((s) => s.isLoaded)
+  const auth = useAuthStore((s) => s.auth)
+
+  useEffect(() => {
+    if (!isLoaded) return
+    if (!auth?.id) return
+    if (!isCadastreRole(auth?.role)) return
+    if (isCadastreAllowedPath(location.pathname)) return
+
+    navigate(getDefaultDashboardPath(auth?.role), { replace: true })
+  }, [auth?.id, auth?.role, isLoaded, location.pathname, navigate])
 
   return null
 }
@@ -231,6 +254,7 @@ function AppShell() {
           <NavigatorBinder />
           <RouteEventsBridge />
           <PendingIdentificationGuard />
+          <CadastreRouteGuard />
           <ClientLayout>
             <GlobalSpinner />
             <RemountOnRouteChange>

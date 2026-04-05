@@ -51,6 +51,7 @@ export default function Sidebar({ currentView, navigateTo }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [hoveredMenu, setHoveredMenu] = useState<ViewType | null>(null);
+  const isCadastreStyledView = currentView === 'demande-interactive';
 
   const rawRoles = Array.isArray(auth?.role) ? auth.role : [auth?.role ?? ''];
   const roleTokens = rawRoles
@@ -128,7 +129,9 @@ export default function Sidebar({ currentView, navigateTo }: SidebarProps) {
   return (
     <>
       <button
-        className={styles.sidebarMobileToggle}
+        className={`${styles.sidebarMobileToggle} ${
+          isCadastreStyledView ? styles.sidebarMobileToggleCadastre : ''
+        }`}
         onClick={() => setIsMobileOpen((prev) => !prev)}
         aria-label={isMobileOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
       >
@@ -144,7 +147,9 @@ export default function Sidebar({ currentView, navigateTo }: SidebarProps) {
       )}
 
       <aside
-        className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''} ${
+        className={`${styles.sidebar} ${
+          isCadastreStyledView ? styles.sidebarCadastre : ''
+        } ${isCollapsed ? styles.collapsed : ''} ${
           isMobileOpen ? styles.open : ''
         }`}
       >

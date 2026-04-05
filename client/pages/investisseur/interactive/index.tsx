@@ -8,6 +8,7 @@ import axios from 'axios';
 import DatePicker from 'react-datepicker';
 import {
   FiAlertTriangle,
+  FiArrowLeft,
   FiCheckCircle,
   FiChevronRight,
   FiChevronUp,
@@ -28,6 +29,12 @@ import { useViewNavigator } from '../../../src/hooks/useViewNavigator';
 import { useAuthStore } from '../../../src/store/useAuthStore';
 import type { ArcGISMapRef } from '@/components/arcgismap/ArcgisMap';
 import { OnboardingTour, type OnboardingStep } from '@/components/onboarding/OnboardingTour';
+import { getDefaultDashboardPath } from '@/src/utils/roleNavigation';
+import {
+  readSessionBackedJson,
+  removeSessionBackedItem,
+  writeSessionBackedJson,
+} from '@/src/utils/sessionBackedStorage';
 import {
   getHasSeenOnboarding,
   getOnboardingActive,
@@ -306,6 +313,7 @@ export default function InteractiveDemandePage() {
         : [];
     return rawRoles.some((role) => String(role).trim().toUpperCase() === 'ADMIN');
   }, [auth?.role]);
+  const dashboardHref = useMemo(() => getDefaultDashboardPath(auth?.role), [auth?.role]);
   const mapRef = useRef<ArcGISMapRef | null>(null);
   const csvInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -604,9 +612,7 @@ export default function InteractiveDemandePage() {
   const loadDraft = (): DraftState | null => {
     if (typeof window === 'undefined') return null;
     try {
-      const raw = window.localStorage.getItem(DRAFT_KEY);
-      if (!raw) return null;
-      return JSON.parse(raw) as DraftState;
+      return readSessionBackedJson<DraftState | null>(DRAFT_KEY, null);
     } catch {
       return null;
     }
@@ -615,14 +621,14 @@ export default function InteractiveDemandePage() {
   const saveDraft = (next: DraftState) => {
     if (typeof window === 'undefined') return;
     try {
-      window.localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
+      writeSessionBackedJson(DRAFT_KEY, next);
     } catch {}
   };
 
   const clearDraft = () => {
     if (typeof window === 'undefined') return;
     try {
-      window.localStorage.removeItem(DRAFT_KEY);
+      removeSessionBackedItem(DRAFT_KEY);
     } catch {}
   };
 
@@ -1629,6 +1635,10 @@ export default function InteractiveDemandePage() {
     markOnboardingPageCompleted('demande-verification');
   };
 
+  const handleReturnToDashboard = useCallback(() => {
+    router.push(dashboardHref);
+  }, [dashboardHref, router]);
+
   return (
     <div className={styles.appContainer}>
       <Navbar />
@@ -1643,6 +1653,15 @@ export default function InteractiveDemandePage() {
 
           <div className={styles.headerRow} data-onboarding-id="interactive-header">
             <div className={styles.headerText}>
+              <button
+                type="button"
+                className={styles.backButton}
+                onClick={handleReturnToDashboard}
+                aria-label="Retour au tableau de bord"
+              >
+                <FiArrowLeft />
+                <span>Retour au tableau de bord</span>
+              </button>
               <h1 className={styles.title}>Verification prealable interactive</h1>
               <p className={styles.subtitle}>
                 Projetez vos coordonnees pour verifier les chevauchements avant de lancer la demande reelle.

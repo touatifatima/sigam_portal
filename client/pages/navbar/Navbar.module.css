@@ -19,6 +19,81 @@
   box-shadow: 0 10px 24px rgba(139, 58, 98, 0.2);
 }
 
+.navbar-cadastre {
+  position: sticky;
+  top: 0;
+  z-index: 120;
+  margin: 0;
+  padding: 0.35rem 1.35rem;
+  min-height: 74px;
+  background: linear-gradient(180deg, rgba(6, 14, 24, 0.86), rgba(9, 18, 30, 0.72));
+  color: #f4f8ff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 18px 40px rgba(4, 10, 18, 0.34);
+  backdrop-filter: blur(16px);
+}
+
+.navbar-cadastre .app-logo {
+  color: #ffffff;
+}
+
+.navbar-cadastre .navbar-search .search-input {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f4f8ff;
+}
+
+.navbar-cadastre .navbar-search .search-input::placeholder {
+  color: rgba(232, 239, 248, 0.68);
+}
+
+.navbar-cadastre .navbar-search .search-input:focus {
+  border-color: rgba(255, 255, 255, 0.24);
+  box-shadow: 0 0 0 3px rgba(141, 47, 95, 0.16);
+}
+
+.navbar-cadastre .navbar-search .search-icon,
+.navbar-cadastre .role-nav-link,
+.navbar-cadastre .nav-map-link,
+.navbar-cadastre .nav-precheck-cta,
+.navbar-cadastre .user-name,
+.navbar-cadastre .user-email,
+.navbar-cadastre .avatar-initials,
+.navbar-cadastre .dropdown-arrow {
+  color: #eef4fb;
+}
+
+.navbar-cadastre .role-nav-link,
+.navbar-cadastre .nav-map-link,
+.navbar-cadastre .nav-precheck-cta,
+.navbar-cadastre .mobile-nav-trigger,
+.navbar-cadastre .notification-icon,
+.navbar-cadastre .profile-button {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.09);
+  box-shadow: 0 12px 26px rgba(4, 10, 18, 0.24);
+}
+
+.navbar-cadastre .role-nav-link:hover,
+.navbar-cadastre .nav-map-link:hover,
+.navbar-cadastre .nav-precheck-cta:hover,
+.navbar-cadastre .mobile-nav-trigger:hover,
+.navbar-cadastre .notification-icon:hover,
+.navbar-cadastre .profile-button:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 16px 30px rgba(4, 10, 18, 0.28);
+}
+
+.navbar-cadastre .notification-icon svg {
+  color: #f4f8ff;
+}
+
+.navbar-cadastre .user-avatar {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
 .app-logo {
   display: flex;
   align-items: baseline;

@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import styles from './ProgressStepper.module.css';
 import { Phase, ProcedurePhase, EtapeProc, ProcedureEtape } from '../src/types/procedure';
 import axios from 'axios';
+import { getSessionBackedItem } from '../src/utils/sessionBackedStorage';
 
 const MISSING_DOCS_STORAGE_KEY = 'sigam_missing_required_docs';
 
@@ -104,7 +105,7 @@ const ProgressStepper: React.FC<Props> = ({
     };
 
     const readStorage = () => {
-      const raw = window.localStorage.getItem(key);
+      const raw = getSessionBackedItem(key);
       if (!raw) {
         setMissingDocsPayload(null);
         return;
@@ -539,6 +540,8 @@ const ProgressStepper: React.FC<Props> = ({
 };
 
 export default ProgressStepper;
+
+
 
 
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -979,17 +979,27 @@ const DemandeDetails = () => {
           <div className={styles.heroContent}>
             <div className={styles.heroInfo}>
               <div className={styles.heroLabel}>
-                <Sparkles className="w-4 h-4" />
-                <span>Demande de permis</span>
+                <FileCheck className="w-4 h-4" />
+                <span>{typePermisLabel}</span>
               </div>
               <h1 className={styles.heroTitle}>{codeDemande}</h1>
-              <p className={styles.heroSubtitle}>
-                {typePermisLabel} • {typeProcedureLabel}
-              </p>
+              <div className={styles.heroMetaRow}>
+                <span className={styles.heroMetaItem}>
+                  <Building2 className="w-4 h-4" />
+                  <span>{detenteurLabel}</span>
+                </span>
+                <span className={styles.heroMetaItem}>
+                  <Calendar className="w-4 h-4" />
+                  <span>Deposee le {dateDepotLabel}</span>
+                </span>
+              </div>
+              <p className={styles.heroSubtitle}>{typeProcedureLabel}</p>
             </div>
-            <div className={`${styles.heroStatus} ${statutConfig.className}`}>
-              <StatusIcon className="w-5 h-5" />
-              <span>{statutConfig.label}</span>
+            <div className={styles.heroAside}>
+              <div className={`${styles.heroStatus} ${statutConfig.className}`}>
+                <StatusIcon className="w-5 h-5" />
+                <span>{statutConfig.label}</span>
+              </div>
             </div>
           </div>
 
@@ -1199,7 +1209,7 @@ const DemandeDetails = () => {
                         <h4>{doc.nom}</h4>
                         <p>
                           <span>{doc.size || "--"}</span>
-                          <span>•</span>
+                          <span>â€¢</span>
                           <span>Televerse le {docDate}</span>
                         </p>
                       </div>

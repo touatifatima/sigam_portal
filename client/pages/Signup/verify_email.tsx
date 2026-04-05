@@ -6,6 +6,7 @@ import axios from 'axios';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Mail, ArrowLeft, CheckCircle2, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
+import { getPostLoginPath } from '@/src/utils/roleNavigation';
 import styles from './VerifyEmail.module.css';
 
 const logo = '/anamlogo.png';
@@ -122,15 +123,13 @@ export default function VerifyEmailPage() {
           user?.firstLoginAfterConfirmation ??
             user?.first_login_after_confirmation,
         );
-        if (verified) {
-          if (shouldShowWelcome) {
-            router.push('/investisseur/Identification/bienvenue');
-          } else {
-            router.push('/investisseur/InvestorDashboard');
-          }
-        } else {
-          router.push('/investisseur/Identification/identification-entreprise');
-        }
+        router.push(
+          getPostLoginPath({
+            role: user?.role ?? user?.roles,
+            isEntrepriseVerified: verified,
+            shouldShowWelcome,
+          }),
+        );
       }, 1500);
     } catch (err: any) {
       const message =

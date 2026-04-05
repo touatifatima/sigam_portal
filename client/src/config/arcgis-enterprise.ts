@@ -10,6 +10,10 @@
 import './arcgis-config';
 import esriConfig from '@arcgis/core/config';
 import esriId from '@arcgis/core/identity/IdentityManager';
+import {
+  getSessionBackedItem,
+  setSessionBackedItem,
+} from '../utils/sessionBackedStorage';
 
 const CREDENTIALS_KEY = 'sigam_arcgis_credentials';
 const INTERCEPTOR_KEY = '__SIGAM_ARCGIS_INTERCEPTOR__';
@@ -19,7 +23,7 @@ const isBrowser = typeof window !== 'undefined';
 const restoreCredentials = () => {
   if (!isBrowser) return;
   try {
-    const raw = window.localStorage.getItem(CREDENTIALS_KEY);
+    const raw = getSessionBackedItem(CREDENTIALS_KEY);
     if (!raw) return;
     const json = JSON.parse(raw);
     esriId.initialize(json);
@@ -32,7 +36,7 @@ const persistCredentials = () => {
   if (!isBrowser) return;
   try {
     const json = esriId.toJSON();
-    window.localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(json));
+    setSessionBackedItem(CREDENTIALS_KEY, JSON.stringify(json));
   } catch (e) {
     console.warn('Failed to persist ArcGIS credentials', e);
   }
@@ -106,4 +110,3 @@ if (isBrowser) {
 }
 
 export {};
-
