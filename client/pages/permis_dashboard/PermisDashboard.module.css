@@ -2625,8 +2625,8 @@ display: flex;
   --pom-amber-soft: #fdf4df;
   --pom-blue-soft: #edf4ff;
   --pom-slate: #22324d;
-  --pom-text: #31435f;
-  --pom-muted: #6b7a93;
+  --pom-text: black;
+  --pom-muted: #1d2024;
   --pom-border: rgba(138, 50, 94, 0.12);
   background:
     radial-gradient(circle at top left, rgba(138, 50, 94, 0.07), transparent 22%),

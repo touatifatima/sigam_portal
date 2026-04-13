@@ -50,6 +50,8 @@ const MesPermis = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatut, setFilterStatut] = useState("all");
   const [filterType, setFilterType] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   // Mock data - à remplacer par les vraies données
   const [permis] = useState<Permis[]>([
@@ -152,15 +154,31 @@ const MesPermis = () => {
     return emojis[type] || "📋";
   };
 
+  const formatFilterDate = (value: string) =>
+    new Date(`${value}T00:00:00`).toLocaleDateString("fr-FR");
+
   const filteredPermis = permis.filter((p) => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
     const matchSearch =
-      p.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.titulaire.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.wilaya.toLowerCase().includes(searchTerm.toLowerCase());
+      normalizedSearch.length === 0 ||
+      p.code.toLowerCase().includes(normalizedSearch) ||
+      p.type.toLowerCase().includes(normalizedSearch) ||
+      p.titulaire.toLowerCase().includes(normalizedSearch) ||
+      p.wilaya.toLowerCase().includes(normalizedSearch);
     const matchStatut = filterStatut === "all" || p.statut === filterStatut;
     const matchType = filterType === "all" || p.type === filterType;
-    return matchSearch && matchStatut && matchType;
+    const matchDateFrom = !dateFrom || p.dateOctroi >= dateFrom;
+    const matchDateTo = !dateTo || p.dateOctroi <= dateTo;
+    return matchSearch && matchStatut && matchType && matchDateFrom && matchDateTo;
   });
+
+  const activeFilterTags = [
+    searchTerm.trim().length > 0 ? `"${searchTerm.trim()}"` : null,
+    filterStatut !== "all" ? getStatutConfig(filterStatut).label : null,
+    filterType !== "all" ? filterType : null,
+    dateFrom ? `Du ${formatFilterDate(dateFrom)}` : null,
+    dateTo ? `Au ${formatFilterDate(dateTo)}` : null,
+  ].filter(Boolean) as string[];
 
   return (
     <InvestorLayout>
@@ -256,14 +274,17 @@ const MesPermis = () => {
         <Card className={styles.filtersCard}>
           <CardContent className={styles.filtersContent}>
             <div className={styles.filtersHeader}>
-              <Filter className="w-4 h-4" />
-              Filtres
+              <div className={styles.filtersTitle}>
+                <Filter className="w-4 h-4" />
+                <span>Filtres</span>
+              </div>
             </div>
+
             <div className={styles.filtersGrid}>
               <div className={styles.searchWrapper}>
                 <Search className={styles.searchIcon} />
                 <Input
-                  placeholder="Rechercher par code, titulaire, wilaya..."
+                  placeholder="Rechercher par code, type ou wilaya..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className={styles.searchInput}
@@ -277,40 +298,95 @@ const MesPermis = () => {
                   <span>Rechercher</span>
                 </button>
               </div>
+
               <Select value={filterStatut} onValueChange={setFilterStatut}>
                 <SelectTrigger className={styles.selectTrigger}>
-                  <SelectValue placeholder="Statut" />
+                  <SelectValue placeholder="Statut" className={styles.selectValue} />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les statuts</SelectItem>
-                  <SelectItem value="ACTIF">Actif</SelectItem>
-                  <SelectItem value="EXPIRE">Expiré</SelectItem>
-                  <SelectItem value="SUSPENDU">Suspendu</SelectItem>
-                  <SelectItem value="EN_RENOUVELLEMENT">En renouvellement</SelectItem>
+                <SelectContent className={styles.selectContent}>
+                  <SelectItem className={styles.selectItem} value="all">
+                    Tous les statuts
+                  </SelectItem>
+                  <SelectItem className={styles.selectItem} value="ACTIF">
+                    Actif
+                  </SelectItem>
+                  <SelectItem className={styles.selectItem} value="EXPIRE">
+                    Expiré
+                  </SelectItem>
+                  <SelectItem className={styles.selectItem} value="SUSPENDU">
+                    Suspendu
+                  </SelectItem>
+                  <SelectItem className={styles.selectItem} value="EN_RENOUVELLEMENT">
+                    En renouvellement
+                  </SelectItem>
                 </SelectContent>
               </Select>
+
               <Select value={filterType} onValueChange={setFilterType}>
                 <SelectTrigger className={styles.selectTrigger}>
-                  <SelectValue placeholder="Type" />
+                  <SelectValue placeholder="Type de permis" className={styles.selectValue} />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les types</SelectItem>
-                  <SelectItem value="Exploitation">Exploitation</SelectItem>
-                  <SelectItem value="Exploration">Exploration</SelectItem>
-                  <SelectItem value="Prospection">Prospection</SelectItem>
+                <SelectContent className={styles.selectContent}>
+                  <SelectItem className={styles.selectItem} value="all">
+                    Tous les types
+                  </SelectItem>
+                  <SelectItem className={styles.selectItem} value="Exploitation">
+                    Exploitation
+                  </SelectItem>
+                  <SelectItem className={styles.selectItem} value="Exploration">
+                    Exploration
+                  </SelectItem>
+                  <SelectItem className={styles.selectItem} value="Prospection">
+                    Prospection
+                  </SelectItem>
                 </SelectContent>
               </Select>
+
+              <div className={styles.dateField}>
+                <span className={styles.dateLabel}>Du</span>
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  max={dateTo || undefined}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className={styles.dateInput}
+                />
+              </div>
+
+              <div className={styles.dateField}>
+                <span className={styles.dateLabel}>Au</span>
+                <Input
+                  type="date"
+                  value={dateTo}
+                  min={dateFrom || undefined}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className={styles.dateInput}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Results Info */}
         <div className={styles.resultsInfo}>
-          <span className={styles.resultsCount}>
-            {filteredPermis.length} permis trouvé{filteredPermis.length > 1 ? "s" : ""}
-          </span>
-        </div>
+          <div className={styles.resultsSummary}>
+            <span className={styles.resultsCount}>
+              {filteredPermis.length} permis trouvé{filteredPermis.length > 1 ? "s" : ""}
+            </span>
 
+            <div className={styles.resultsMeta}>
+              {activeFilterTags.length > 0 ? (
+                activeFilterTags.map((tag) => (
+                  <span key={tag} className={styles.resultTag}>
+                    {tag}
+                  </span>
+                ))
+              ) : (
+                <span className={styles.resultTagMuted}>Aucun filtre appliqué</span>
+              )}
+            </div>
+          </div>
+        </div>
         {/* Permits Display */}
         {filteredPermis.length > 0 ? (
           viewMode === "grid" ? (
@@ -446,3 +522,4 @@ const MesPermis = () => {
 };
 
 export default MesPermis;
+

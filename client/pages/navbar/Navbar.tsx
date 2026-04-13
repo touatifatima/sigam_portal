@@ -1,6 +1,6 @@
 // components/Navbar.tsx
 'use client';
-import { FiSearch, FiChevronDown } from 'react-icons/fi';
+import { FiChevronDown } from 'react-icons/fi';
 import { User, Settings, LogOut, LayoutDashboard, Map, WandSparkles, Menu } from 'lucide-react';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -435,19 +435,6 @@ export default function Navbar() {
           <span>POM</span>
         </div>
       </div>
-
-      {!isCadastreDashboardRoute && (
-        <div className={styles['navbar-search']}>
-          <div className={styles['search-container']}>
-            <FiSearch className={styles['search-icon']} />
-            <input
-              type="text"
-              className={styles['search-input']}
-              placeholder="Rechercher..."
-            />
-          </div>
-        </div>
-      )}
 
       <div className={styles['navbar-actions']}>
         {roleQuickLinks.length > 0 && (

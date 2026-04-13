@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,7 +47,11 @@ type DemandeListItem = {
   wilaya?: { nom_wilayaFR?: string | null };
   daira?: { nom_dairaFR?: string | null };
   commune?: { nom_communeFR?: string | null };
-  procedure?: { date_debut_proc?: string | null };
+  procedure?: {
+    date_debut_proc?: string | null;
+    ProcedureEtape?: ProcedureEtapeItem[] | null;
+    currentProcedureEtape?: ProcedureEtapeItem | null;
+  } | null;
 };
 
 type DemandeDetail = {
@@ -78,7 +82,11 @@ type DemandeDetail = {
       } | null;
     } | null;
   }>;
-  procedure?: { date_debut_proc?: string | null } | null;
+  procedure?: {
+    date_debut_proc?: string | null;
+    ProcedureEtape?: ProcedureEtapeItem[] | null;
+    currentProcedureEtape?: ProcedureEtapeItem | null;
+  } | null;
 };
 
 const safeText = (value: unknown, fallback = "--"): string => {
@@ -220,22 +228,14 @@ type DemandeCardExtra = {
   progress: DemandeProgress;
 };
 
-type ProcedureEtapeItem = {
+type ProcedureStepStatusItem = {
   statut?: string | null;
   date_debut?: string | null;
   date_fin?: string | null;
-  etape?: { lib_etape?: string | null; ordre_etape?: number | null } | null;
 };
 
-type ProcedurePhaseItem = {
-  ordre?: number | null;
-  statut?: string | null;
-  phase?: {
-    libelle?: string | null;
-    etapes?: Array<{
-      procedureEtapes?: Array<{ statut?: string | null }> | null;
-    }> | null;
-  } | null;
+type ProcedureEtapeItem = ProcedureStepStatusItem & {
+  etape?: { lib_etape?: string | null; ordre_etape?: number | null } | null;
 };
 
 const normalizeStatusKey = (value?: string | null): string =>
@@ -243,7 +243,14 @@ const normalizeStatusKey = (value?: string | null): string =>
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase()
-    .trim();
+    .trim()
+    .replace(/[\s-]+/g, "_");
+
+const toTimestamp = (value?: string | null): number => {
+  if (!value) return -1;
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : -1;
+};
 
 const resolveProgress = (statut: string | null | undefined, progression?: number | null): DemandeProgress => {
   const statusKey = normalizeStatusKey(statut);
@@ -277,7 +284,7 @@ const resolveProgressFromProcedureSteps = (
 
   const timelineItems = (procedureEtapes || [])
     .map((item, index) => {
-      const statutRaw = (item.statut || "EN_ATTENTE").toUpperCase();
+      const statutRaw = normalizeStatusKey(item.statut || "EN_ATTENTE");
       const state =
         statutRaw === "TERMINEE"
           ? "completed"
@@ -303,48 +310,56 @@ const resolveProgressFromProcedureSteps = (
   };
 };
 
-const resolvePhaseLabel = (
-  procedurePhases?: ProcedurePhaseItem[] | null,
-): string => {
-  const phases = (procedurePhases || [])
-    .map((item, index) => {
-      const label = safeText(item.phase?.libelle, "");
-      if (!label) return null;
+const resolveCurrentProcedureStep = (
+  procedureEtapes?: ProcedureEtapeItem[] | null,
+): ProcedureEtapeItem | null => {
+  if (!procedureEtapes || procedureEtapes.length === 0) return null;
 
-      const nestedStatuses = (item.phase?.etapes || [])
-        .flatMap((etape) => etape.procedureEtapes || [])
-        .map((procedureEtape) => normalizeStatusKey(procedureEtape.statut))
-        .filter(Boolean);
+  const pickMostRecent = (
+    items: ProcedureEtapeItem[],
+    primaryField: "date_debut" | "date_fin",
+  ): ProcedureEtapeItem | null =>
+    items
+      .slice()
+      .sort((a, b) => {
+        const aTime =
+          primaryField === "date_fin"
+            ? Math.max(toTimestamp(a.date_fin), toTimestamp(a.date_debut))
+            : Math.max(toTimestamp(a.date_debut), toTimestamp(a.date_fin));
+        const bTime =
+          primaryField === "date_fin"
+            ? Math.max(toTimestamp(b.date_fin), toTimestamp(b.date_debut))
+            : Math.max(toTimestamp(b.date_debut), toTimestamp(b.date_fin));
+        return bTime - aTime;
+      })[0] || null;
 
-      const statusKey = normalizeStatusKey(item.statut);
-      const derivedStatus =
-        statusKey ||
-        (nestedStatuses.some((status) => status === "EN_COURS")
-          ? "EN_COURS"
-          : nestedStatuses.length > 0 &&
-            nestedStatuses.every((status) => status === "TERMINEE")
-          ? "TERMINEE"
-          : "EN_ATTENTE");
+  const enCours = procedureEtapes.filter(
+    (item) => normalizeStatusKey(item.statut) === "EN_COURS",
+  );
+  if (enCours.length > 0) {
+    return pickMostRecent(enCours, "date_debut");
+  }
 
-      return {
-        label,
-        ordre: item.ordre ?? index + 1,
-        status: derivedStatus,
-      };
-    })
-    .filter((item): item is { label: string; ordre: number; status: string } => item !== null)
-    .sort((a, b) => a.ordre - b.ordre);
+  const terminees = procedureEtapes.filter(
+    (item) => normalizeStatusKey(item.statut) === "TERMINEE",
+  );
+  if (terminees.length > 0) {
+    return pickMostRecent(terminees, "date_fin");
+  }
 
-  if (phases.length === 0) return "--";
-
-  const activePhase = phases.find((item) => item.status === "EN_COURS");
-  if (activePhase) return activePhase.label;
-
-  const nextOpenPhase = phases.find((item) => item.status !== "TERMINEE");
-  if (nextOpenPhase) return nextOpenPhase.label;
-
-  return phases[phases.length - 1]?.label || "--";
+  return pickMostRecent(procedureEtapes, "date_debut");
 };
+
+const resolveCurrentStepItemLabel = (
+  currentProcedureEtape?: ProcedureEtapeItem | null,
+): string | null => {
+  const label = safeText(currentProcedureEtape?.etape?.lib_etape, "");
+  return label || null;
+};
+
+const resolveCurrentStepLabel = (
+  procedureEtapes?: ProcedureEtapeItem[] | null,
+): string | null => resolveCurrentStepItemLabel(resolveCurrentProcedureStep(procedureEtapes));
 
 const buildSubstancesLabel = (items: string[]): string => {
   const clean = Array.from(
@@ -421,8 +436,16 @@ const buildCardExtra = (
   detail?: DemandeDetail | null,
   substancesPayload?: unknown,
   procedureEtapes?: ProcedureEtapeItem[] | null,
-  procedurePhases?: ProcedurePhaseItem[] | null,
 ): DemandeCardExtra => {
+  const resolvedProcedureEtapes =
+    procedureEtapes ??
+    detail?.procedure?.ProcedureEtape ??
+    demande.procedure?.ProcedureEtape ??
+    null;
+  const resolvedCurrentProcedureEtape =
+    detail?.procedure?.currentProcedureEtape ??
+    demande.procedure?.currentProcedureEtape ??
+    resolveCurrentProcedureStep(resolvedProcedureEtapes);
   const superficieValue = pickFirstNumber(
     detail?.superficie,
     detail?.superficie_ha,
@@ -443,12 +466,15 @@ const buildCardExtra = (
     extractSubstanceNames(substancesPayload ?? detail ?? demande),
   );
 
-  const progressFromProcedure = resolveProgressFromProcedureSteps(procedureEtapes);
+  const progressFromProcedure = resolveProgressFromProcedureSteps(resolvedProcedureEtapes);
 
   return {
     substancesLabel,
     superficieLabel,
-    phaseLabel: resolvePhaseLabel(procedurePhases),
+    phaseLabel:
+      resolveCurrentStepItemLabel(resolvedCurrentProcedureEtape) ||
+      resolveCurrentStepLabel(resolvedProcedureEtapes) ||
+      "--",
     progress:
       progressFromProcedure ??
       resolveProgress(
@@ -679,29 +705,10 @@ const DemandesList = () => {
 
           const detailPayload = (demandeRes?.data || null) as DemandeDetail | null;
           const substancesPayload = substancesRes?.data ?? detailPayload ?? fallbackDemande;
-          const resolvedProcId = Number(
-            detailPayload?.id_proc ?? fallbackDemande.id_proc ?? 0,
-          );
-          const procedureRes =
-            resolvedProcId > 0
-              ? await axios
-                  .get(`${apiURL}/api/procedure-etape/procedure/${resolvedProcId}`, {
-                    withCredentials: true,
-                  })
-                  .catch(() => null)
-              : null;
-          const procedureEtapes = Array.isArray(procedureRes?.data?.ProcedureEtape)
-            ? (procedureRes?.data?.ProcedureEtape as ProcedureEtapeItem[])
-            : [];
-          const procedurePhases = Array.isArray(procedureRes?.data?.ProcedurePhase)
-            ? (procedureRes?.data?.ProcedurePhase as ProcedurePhaseItem[])
-            : [];
           const extra = buildCardExtra(
             fallbackDemande,
             detailPayload,
             substancesPayload,
-            procedureEtapes,
-            procedurePhases,
           );
           return { id, extra };
         }),
@@ -1181,11 +1188,9 @@ const DemandesList = () => {
             <Calendar className="w-4 h-4" />
             {dateLabel}
           </span>
-          {cardExtra.phaseLabel !== "--" && (
-            <span className={styles.metaTag}>
-              Phase: {cardExtra.phaseLabel}
-            </span>
-          )}
+          <span className={styles.metaTag}>
+            Etape: {cardExtra.phaseLabel}
+          </span>
         </div>
 
         <div className={styles.gridCardFooter}>
@@ -1422,14 +1427,7 @@ const DemandesList = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className={styles.searchInput}
                 />
-                <button
-                  type="button"
-                  className={styles.searchBtn}
-                  aria-label="Rechercher"
-                >
-                  <Search className="w-4 h-4" />
-                  <span>Rechercher</span>
-                </button>
+              
               </div>
 
               <Select value={statusFilter} onValueChange={setStatusFilter}>

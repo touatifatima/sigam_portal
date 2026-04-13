@@ -436,18 +436,18 @@ export interface ArcGISMapRef {
   };
   const TITRE_TYPES_KEY = 'sigam_arcgis_titre_types';
   const TITRE_TYPE_OPTIONS: Array<{ code: string; label: string; color: [number, number, number] }> = [
-    { code: 'TXC', label: 'TXC', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] },
-    { code: 'TXM', label: 'TXM', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] },
-    { code: 'TEC', label: 'TEC', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] },
-    { code: 'TEM', label: 'TEM', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] },
-    { code: 'PM', label: 'PM', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] },
-    { code: 'ARM', label: 'ARM', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] },
-    { code: 'CS', label: 'CS', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] },
-    { code: 'PE', label: 'PE', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] },
-    { code: 'PRA', label: 'PRA', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] },
-    { code: 'ARC', label: 'ARC', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] },
-    { code: 'PPM', label: 'PPM', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] },
-    { code: 'SANS_TYPE', label: 'Sans type', color: [COLOR_TITRES[0], COLOR_TITRES[1], COLOR_TITRES[2]] }
+    { code: 'TXC', label: 'TXC', color: [226, 0, 64] },
+    { code: 'TXM', label: 'TXM', color: [0, 102, 204] },
+    { code: 'TEC', label: 'TEC', color:  [0, 153, 51] },
+    { code: 'TEM', label: 'TEM', color: [139, 92, 246] },
+    { code: 'PM', label: 'PM', color: [255, 153, 0]},
+    { code: 'ARM', label: 'ARM', color: [153, 102, 0] },
+    { code: 'CS', label: 'CS', color: [0, 153, 204]},
+    { code: 'PE', label: 'PE', color:[153, 204, 0]},
+    { code: 'PRA', label: 'PRA', color: [204, 0, 153] },
+    { code: 'ARC', label: 'ARC', color: [0, 0, 153]  },
+    { code: 'PPM', label: 'PPM', color: [64, 64, 64] },
+    { code: 'SANS_TYPE', label: 'Sans type', color:  [176, 176, 176] }
   ];
   const TITRE_TYPE_ALIASES: Record<string, string[]> = {
     TXC: ['TXC', 'PXC'],
@@ -4891,7 +4891,7 @@ export interface ArcGISMapRef {
         }
         .toolbar-btn:hover {
           border-color: #8b5cf6;
-          color: #6d28d9;
+          color: #232e6f;
           background: #f5f3ff;
           transform: translateY(-1px);
           box-shadow: 0 6px 14px rgba(139, 92, 246, 0.2);

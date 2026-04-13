@@ -49,7 +49,7 @@ const cards: CardConfig[] = [
   {
     title: "Mes Entreprises",
     description: "Gerer vos entreprises, actionnaires et informations legales",
-    route: "/investisseur/entreprises",
+    route: "/investisseur/profil",
     tone: "rose",
     icon: <Building2 size={26} />,
   },
@@ -94,7 +94,7 @@ const DASHBOARD_ONBOARDING_STEPS: OnboardingStep[] = [
   {
     id: "dashboard-hero",
     target: '[data-onboarding-id="dashboard-hero"]',
-    title: "Votre espace personnel",
+    title: "Votre espace personnel de Guichet Unique Minier",
     description:
       "Ici vous retrouvez un resume global de votre activite miniere avec vos actions prioritaires.",
     placement: "bottom",
@@ -328,7 +328,8 @@ export default function Dashboard() {
           <div className={styles.heroContent}>
             <h1 className={styles.heroTitle}>Bienvenue, {displayName}</h1>
             <p className={styles.heroSubtitle}>
-              Gerez vos activites minieres depuis votre espace personnel
+              Gerez vos activites minieres depuis votre espace personnel de
+              Guichet Unique Minier.
             </p>
             <div className={styles.roleBadge}>
               <ShieldCheck size={16} />

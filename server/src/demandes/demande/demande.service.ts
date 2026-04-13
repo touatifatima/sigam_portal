@@ -10,6 +10,68 @@ export class DemandeService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
+  private toTimestamp(value?: Date | string | null): number {
+    if (!value) return -1;
+    const parsed = new Date(value).getTime();
+    return Number.isFinite(parsed) ? parsed : -1;
+  }
+
+  private resolveCurrentProcedureEtape<
+    T extends {
+      statut?: string | null;
+      date_debut?: Date | string | null;
+      date_fin?: Date | string | null;
+    },
+  >(procedureEtapes?: T[] | null): T | null {
+    if (!Array.isArray(procedureEtapes) || procedureEtapes.length === 0) {
+      return null;
+    }
+
+    const pickMostRecent = (
+      items: T[],
+      primaryField: 'date_debut' | 'date_fin',
+    ): T | null =>
+      items
+        .slice()
+        .sort((a, b) => {
+          const aTime =
+            primaryField === 'date_fin'
+              ? Math.max(this.toTimestamp(a.date_fin), this.toTimestamp(a.date_debut))
+              : Math.max(this.toTimestamp(a.date_debut), this.toTimestamp(a.date_fin));
+          const bTime =
+            primaryField === 'date_fin'
+              ? Math.max(this.toTimestamp(b.date_fin), this.toTimestamp(b.date_debut))
+              : Math.max(this.toTimestamp(b.date_debut), this.toTimestamp(b.date_fin));
+          return bTime - aTime;
+        })[0] ?? null;
+
+    const enCours = procedureEtapes.filter((item) => item?.statut === 'EN_COURS');
+    if (enCours.length > 0) {
+      return pickMostRecent(enCours, 'date_debut');
+    }
+
+    const terminees = procedureEtapes.filter((item) => item?.statut === 'TERMINEE');
+    if (terminees.length > 0) {
+      return pickMostRecent(terminees, 'date_fin');
+    }
+
+    return pickMostRecent(procedureEtapes, 'date_debut');
+  }
+
+  private attachCurrentProcedureEtape<T extends { procedure?: any | null }>(demande: T): T {
+    if (!demande?.procedure) return demande;
+
+    return {
+      ...demande,
+      procedure: {
+        ...demande.procedure,
+        currentProcedureEtape: this.resolveCurrentProcedureEtape(
+          demande.procedure?.ProcedureEtape,
+        ),
+      },
+    };
+  }
+
   private isNumericId(value: string): boolean {
     return /^\d+$/.test(value);
   }
@@ -64,7 +126,14 @@ export class DemandeService {
     const demande = await this.prisma.demandePortail.findUnique({
       where: { id_demande },
       include: {
-        procedure: true, // keep procedure (without typeProcedure)
+        procedure: {
+          include: {
+            ProcedureEtape: {
+              include: { etape: true },
+              orderBy: [{ date_debut: 'desc' }, { id_etape: 'desc' }],
+            },
+          },
+        },
         typePermis: true,
         wilaya: true,
         daira: true,
@@ -87,7 +156,7 @@ export class DemandeService {
       throw new NotFoundException('Demande introuvable');
     }
 
-    const enriched = mergeTypeSpecificFields(demande);
+    const enriched = this.attachCurrentProcedureEtape(mergeTypeSpecificFields(demande) as any);
     const primaryDetenteur = enriched.detenteurdemande?.[0]?.detenteur ?? null;
     const { detenteurdemande, ...rest } = enriched as any;
     return {
@@ -458,7 +527,14 @@ if (!createdProc?.id_proc) {
     const demandes = await this.prisma.demandePortail.findMany({
       where: { utilisateurId: userId },
       include: {
-        procedure: true,
+        procedure: {
+          include: {
+            ProcedureEtape: {
+              include: { etape: true },
+              orderBy: [{ date_debut: 'desc' }, { id_etape: 'desc' }],
+            },
+          },
+        },
         typeProcedure: true,
         typePermis: true,
         wilaya: true,
@@ -472,7 +548,9 @@ if (!createdProc?.id_proc) {
     });
 
     return demandes.map((demande) => {
-      const enriched = mergeTypeSpecificFields(demande as any);
+      const enriched = this.attachCurrentProcedureEtape(
+        mergeTypeSpecificFields(demande as any),
+      );
       const primaryDetenteur = enriched.detenteurdemande?.[0]?.detenteur ?? null;
       const { detenteurdemande, ...rest } = enriched as any;
       return {

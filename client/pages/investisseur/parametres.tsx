@@ -3,21 +3,22 @@ import { useNavigate } from "react-router-dom";
 import {
   Bell,
   Blocks,
-  Compass,
+  ChevronRight,
+  Clock3,
+  Globe2,
   LockKeyhole,
   LogOut,
   Mail,
-  Map,
-  Route,
-  Settings2,
+  MoonStar,
+  Palette,
+  ShieldAlert,
   ShieldCheck,
   Sparkles,
+  SunMedium,
   UserCog,
 } from "lucide-react";
 import { InvestorLayout } from "@/components/investor/InvestorLayout";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "@/src/hooks/use-toast";
 import { useAuthStore } from "@/src/store/useAuthStore";
 import {
@@ -28,35 +29,111 @@ import {
   setOnboardingActive,
   stopOnboardingForever,
 } from "@/src/onboarding/storage";
-import {
-  getDefaultDashboardPath,
-  isCadastreRole,
-} from "@/src/utils/roleNavigation";
+import { getDefaultDashboardPath } from "@/src/utils/roleNavigation";
 import styles from "./parametres.module.css";
 
 type BrowserNotificationState = NotificationPermission | "unsupported";
 
+type LocalPreferences = {
+  darkMode: boolean;
+  language: string;
+  timezone: string;
+  permitAlerts: boolean;
+  dossierUpdates: boolean;
+  promotionalEmails: boolean;
+};
+
+const DEFAULT_PREFERENCES: LocalPreferences = {
+  darkMode: false,
+  language: "fr",
+  timezone: "GMT+1",
+  permitAlerts: true,
+  dossierUpdates: true,
+  promotionalEmails: false,
+};
+
 export default function Parametres() {
   const navigate = useNavigate();
-  const { auth, logout, isLoaded } = useAuthStore();
+  const { auth, logout } = useAuthStore();
   const [guideEnabled, setGuideEnabled] = useState(true);
   const [browserNotifications, setBrowserNotifications] =
     useState<BrowserNotificationState>("unsupported");
+  const [darkMode, setDarkMode] = useState(DEFAULT_PREFERENCES.darkMode);
+  const [language, setLanguage] = useState(DEFAULT_PREFERENCES.language);
+  const [timezone, setTimezone] = useState(DEFAULT_PREFERENCES.timezone);
+  const [permitAlerts, setPermitAlerts] = useState(DEFAULT_PREFERENCES.permitAlerts);
+  const [dossierUpdates, setDossierUpdates] = useState(DEFAULT_PREFERENCES.dossierUpdates);
+  const [promotionalEmails, setPromotionalEmails] = useState(
+    DEFAULT_PREFERENCES.promotionalEmails
+  );
+  const [activeSection, setActiveSection] = useState("experience");
+  const [preferencesReady, setPreferencesReady] = useState(false);
 
-  const cadastreMode = isCadastreRole(auth.role);
   const dashboardPath = getDefaultDashboardPath(auth.role);
+  const preferencesStorageKey = `sigam_preferences_${auth.email || auth.username || "user"}`;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+
     setGuideEnabled(getOnboardingActive() || !getHasSeenOnboarding());
 
-    if (!("Notification" in window)) {
+    if ("Notification" in window) {
+      setBrowserNotifications(window.Notification.permission);
+    } else {
       setBrowserNotifications("unsupported");
-      return;
     }
 
-    setBrowserNotifications(window.Notification.permission);
-  }, []);
+    const saved = window.localStorage.getItem(preferencesStorageKey);
+    let resolvedDarkMode =
+      document.documentElement.classList.contains("dark") ||
+      window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ||
+      DEFAULT_PREFERENCES.darkMode;
+
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as Partial<LocalPreferences>;
+        resolvedDarkMode = parsed.darkMode ?? resolvedDarkMode;
+        setLanguage(parsed.language || DEFAULT_PREFERENCES.language);
+        setTimezone(parsed.timezone || DEFAULT_PREFERENCES.timezone);
+        setPermitAlerts(parsed.permitAlerts ?? DEFAULT_PREFERENCES.permitAlerts);
+        setDossierUpdates(parsed.dossierUpdates ?? DEFAULT_PREFERENCES.dossierUpdates);
+        setPromotionalEmails(
+          parsed.promotionalEmails ?? DEFAULT_PREFERENCES.promotionalEmails
+        );
+      } catch {
+        window.localStorage.removeItem(preferencesStorageKey);
+      }
+    }
+
+    setDarkMode(resolvedDarkMode);
+    document.documentElement.classList.toggle("dark", resolvedDarkMode);
+    setPreferencesReady(true);
+  }, [preferencesStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !preferencesReady) return;
+
+    const payload: LocalPreferences = {
+      darkMode,
+      language,
+      timezone,
+      permitAlerts,
+      dossierUpdates,
+      promotionalEmails,
+    };
+
+    document.documentElement.classList.toggle("dark", darkMode);
+    window.localStorage.setItem(preferencesStorageKey, JSON.stringify(payload));
+  }, [
+    darkMode,
+    dossierUpdates,
+    language,
+    permitAlerts,
+    preferencesReady,
+    preferencesStorageKey,
+    promotionalEmails,
+    timezone,
+  ]);
 
   const identityLabel = useMemo(() => {
     if (auth.Prenom || auth.nom) {
@@ -65,6 +142,22 @@ export default function Parametres() {
 
     return auth.username || "Utilisateur";
   }, [auth.Prenom, auth.nom, auth.username]);
+
+  const initials = useMemo(() => {
+    return identityLabel
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase();
+  }, [identityLabel]);
+
+  const sidebarItems = [
+    { id: "experience", label: "Apparence", icon: Palette },
+    { id: "notifications", label: "Notifications", icon: Bell },
+    { id: "security", label: "Zone sensible", icon: ShieldAlert },
+  ];
 
   const accountItems = [
     {
@@ -83,66 +176,16 @@ export default function Parametres() {
       icon: <ShieldCheck className="w-4 h-4" />,
     },
     {
-      label: "Statut entreprise",
-      value: auth.isEntrepriseVerified ? "Verifiee" : "A completer",
+      label: "Statut",
+      value: auth.isEntrepriseVerified ? "Entreprise verifiee" : "A completer",
       icon: <Blocks className="w-4 h-4" />,
     },
   ];
 
-  const quickLinks = cadastreMode
-    ? [
-        {
-          title: "Dashboard cadastre",
-          description: "Revenir a votre espace principal de verification.",
-          action: () => navigate(dashboardPath),
-        },
-        {
-          title: "Verification prealable",
-          description: "Acceder directement a l'analyse cartographique.",
-          action: () => navigate("/investisseur/interactive"),
-        },
-        {
-          title: "Carte publique",
-          description: "Consulter la carte miniere publique.",
-          action: () => navigate("/carte/carte_public"),
-        },
-      ]
-    : [
-        {
-          title: "Mon profil",
-          description: "Revoir les informations personnelles et entreprise.",
-          action: () => navigate("/investisseur/profil"),
-        },
-        {
-          title: "Mes demandes",
-          description: "Suivre l'avancement de vos dossiers.",
-          action: () => navigate("/investisseur/demandes"),
-        },
-        {
-          title: "Notifications",
-          description: "Consulter les alertes et retours importants.",
-          action: () => navigate("/notification"),
-        },
-      ];
-
-  const recommendations = cadastreMode
-    ? [
-        "Choix du fond cartographique par defaut (satellite, topographique, cadastral).",
-        "Selection du systeme de coordonnees et des unites d'affichage.",
-        "Activation des couches de superposition metier (perimetres, limites, servitudes).",
-        "Reglage des alertes de chevauchement et des seuils de tolerance.",
-      ]
-    : [
-        "Notifications email sur chaque changement de statut de demande.",
-        "Rappels automatiques pour documents manquants ou expirants.",
-        "Preference d'ouverture des listes en vue compacte ou detaillee.",
-        "Reglages d'export et de telechargement des recapitulatifs PDF.",
-      ];
-
   const formatNotificationState = (value: BrowserNotificationState) => {
     if (value === "unsupported") return "Non pris en charge";
     if (value === "granted") return "Activees";
-    if (value === "denied") return "Bloquees par le navigateur";
+    if (value === "denied") return "Bloquees";
     return "Non configurees";
   };
 
@@ -163,7 +206,7 @@ export default function Parametres() {
     stopOnboardingForever();
     toast({
       title: "Guide desactive",
-      description: "Le guide automatique ne s'affichera plus tant que vous ne le relancez pas.",
+      description: "Le guide automatique est maintenant coupe pour ce navigateur.",
     });
   };
 
@@ -205,233 +248,381 @@ export default function Parametres() {
     });
   };
 
+  const scrollToSection = (sectionId: string) => {
+    setActiveSection(sectionId);
+    if (typeof document === "undefined") return;
+
+    document.getElementById(sectionId)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
   return (
     <InvestorLayout>
-      <div className={styles.container}>
-        <div className={styles.hero}>
-          <div className={styles.heroContent}>
-            <div className={styles.heroCopy}>
-              <span className={styles.eyebrow}>Parametres & preferences</span>
-              <h1 className={styles.title}>Parametres</h1>
-              <p className={styles.subtitle}>
-                Centralisez vos reglages de compte, vos options d'utilisation et les acces rapides
-                les plus utiles pour votre espace.
-              </p>
-            </div>
+      <div className={styles.page} data-theme={darkMode ? "dark" : "light"}>
+        <div className={styles.shell}>
+          <aside className={styles.sidebar}>
+            <div className={`${styles.sidebarCard} ${styles.identityCard}`}>
+              <div className={styles.avatarCircle}>{initials || "U"}</div>
+              <h2 className={styles.identityName}>{identityLabel}</h2>
+              <p className={styles.identityEmail}>{auth.email || "email@exemple.com"}</p>
 
-            <div className={styles.heroBadges}>
-              <span className={styles.heroBadge}>
-                <Settings2 className="w-4 h-4" />
-                Espace personnel
-              </span>
-              <span
-                className={`${styles.heroBadge} ${
-                  auth.isEntrepriseVerified ? styles.heroBadgeSuccess : styles.heroBadgeWarning
-                }`}
-              >
-                <ShieldCheck className="w-4 h-4" />
-                {auth.isEntrepriseVerified ? "Entreprise verifiee" : "Entreprise a completer"}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.grid}>
-          <section className={`${styles.panel} ${styles.accountPanel}`}>
-            <div className={styles.panelHeader}>
-              <div>
-                <span className={styles.panelEyebrow}>Compte</span>
-                <h2 className={styles.panelTitle}>Resume du compte</h2>
+              <div className={styles.identityBadges}>
+                <span className={`${styles.badge} ${styles.badgePrimary}`}>
+                  {auth.role || "Investisseur"}
+                </span>
+                <span
+                  className={`${styles.badge} ${
+                    auth.isEntrepriseVerified ? styles.badgeSuccess : styles.badgeWarning
+                  }`}
+                >
+                  {auth.isEntrepriseVerified ? "Verifiee" : "A completer"}
+                </span>
               </div>
-              <Badge className={styles.roleBadge}>{auth.role || "Investisseur"}</Badge>
-            </div>
 
-            <div className={styles.accountGrid}>
-              {accountItems.map((item) => (
-                <div key={item.label} className={styles.metricCard}>
-                  <div className={styles.metricIcon}>{item.icon}</div>
-                  <div className={styles.metricBody}>
-                    <span className={styles.metricLabel}>{item.label}</span>
-                    <strong className={styles.metricValue}>{item.value}</strong>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className={styles.actionsRow}>
               <Button className={styles.primaryButton} onClick={() => navigate("/investisseur/profil")}>
                 Voir mon profil
               </Button>
-              <Button
-                variant="outline"
-                className={styles.secondaryButton}
-                onClick={() => navigate(dashboardPath)}
-              >
-                Retour dashboard
-              </Button>
             </div>
-          </section>
 
-          <section className={`${styles.panel} ${styles.preferencesPanel}`}>
-            <div className={styles.panelHeader}>
-              <div>
-                <span className={styles.panelEyebrow}>Parcours</span>
-                <h2 className={styles.panelTitle}>Guide d'utilisation</h2>
+            <div className={styles.sidebarCard}>
+              <div className={styles.sidebarCardHeader}>
+                <span className={styles.sidebarEyebrow}>Navigation</span>
+                <h3 className={styles.sidebarTitle}>Sections</h3>
               </div>
-              <Sparkles className={styles.panelIcon} />
+
+              <div className={styles.sidebarNav}>
+                {sidebarItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={`${styles.sidebarNavButton} ${
+                        activeSection === item.id ? styles.sidebarNavButtonActive : ""
+                      }`}
+                      onClick={() => scrollToSection(item.id)}
+                    >
+                      <span className={styles.sidebarNavLead}>
+                        <span className={styles.sidebarNavIcon}>
+                          <Icon className="w-4 h-4" />
+                        </span>
+                        {item.label}
+                      </span>
+                      <ChevronRight className={styles.sidebarNavArrow} />
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            <div className={styles.preferenceItem}>
-              <div>
-                <strong className={styles.preferenceTitle}>Guide automatique</strong>
-                <p className={styles.preferenceText}>
-                  Activez ou desactivez l'affichage automatique du guide lors d'une prochaine visite.
+            <div className={styles.sidebarCard}>
+              <div className={styles.sidebarCardHeader}>
+                <span className={styles.sidebarEyebrow}>Resume</span>
+                <h3 className={styles.sidebarTitle}>Compte utilisateur</h3>
+              </div>
+
+              <div className={styles.accountGrid}>
+                {accountItems.map((item) => (
+                  <div key={item.label} className={styles.accountCard}>
+                    <div className={styles.accountIcon}>{item.icon}</div>
+                    <div>
+                      <span className={styles.accountLabel}>{item.label}</span>
+                      <strong className={styles.accountValue}>{item.value}</strong>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </aside>
+
+          <main className={styles.main}>
+            <div className={styles.hero}>
+              <div className={styles.heroCopy}>
+                <span className={styles.eyebrow}>Parametres</span>
+                <h1 className={styles.title}>Preferences de compte et notifications</h1>
+                <p className={styles.subtitle}>
+                  Une page plus propre et plus professionnelle pour gerer vos habitudes
+                  d'utilisation, vos alertes et vos actions sensibles.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => handleGuideToggle(!guideEnabled)}
-                className={`${styles.toggleButton} ${guideEnabled ? styles.toggleButtonActive : ""}`}
-                aria-pressed={guideEnabled}
-              >
-                <span className={styles.toggleThumb} />
-              </button>
-            </div>
 
-            <div className={styles.preferenceActions}>
-              <Button variant="outline" className={styles.secondaryButton} onClick={handleResetGuide}>
-                Reinitialiser le guide
-              </Button>
-              <Button
-                variant="outline"
-                className={styles.secondaryButton}
-                onClick={() => navigate(dashboardPath)}
-              >
-                Revenir au dashboard
-              </Button>
-            </div>
-          </section>
-
-          <section className={`${styles.panel} ${styles.notificationsPanel}`}>
-            <div className={styles.panelHeader}>
-              <div>
-                <span className={styles.panelEyebrow}>Alertes</span>
-                <h2 className={styles.panelTitle}>Notifications navigateur</h2>
-              </div>
-              <Bell className={styles.panelIcon} />
-            </div>
-
-            <div className={styles.statusBox}>
-              <span className={styles.statusLabel}>Etat actuel</span>
-              <strong className={styles.statusValue}>
-                {formatNotificationState(browserNotifications)}
-              </strong>
-            </div>
-
-            <p className={styles.preferenceText}>
-              Activez les notifications locales du navigateur pour recevoir plus vite les alertes
-              visibles sur cet appareil.
-            </p>
-
-            <Button className={styles.primaryButton} onClick={handleRequestBrowserNotifications}>
-              Autoriser les notifications
-            </Button>
-          </section>
-
-          <section className={`${styles.panel} ${styles.securityPanel}`}>
-            <div className={styles.panelHeader}>
-              <div>
-                <span className={styles.panelEyebrow}>Securite</span>
-                <h2 className={styles.panelTitle}>Session et acces</h2>
-              </div>
-              <LockKeyhole className={styles.panelIcon} />
-            </div>
-
-            <div className={styles.securityList}>
-              <div className={styles.securityItem}>
-                <span className={styles.securityKey}>Chargement session</span>
-                <strong className={styles.securityValue}>{isLoaded ? "Session chargee" : "Verification..."}</strong>
-              </div>
-              <div className={styles.securityItem}>
-                <span className={styles.securityKey}>Compte courant</span>
-                <strong className={styles.securityValue}>{identityLabel}</strong>
-              </div>
-              <div className={styles.securityItem}>
-                <span className={styles.securityKey}>Navigation principale</span>
-                <strong className={styles.securityValue}>
-                  {cadastreMode ? "Cadastre / verification" : "Investisseur / demandes"}
-                </strong>
+              <div className={styles.heroActions}>
+                <Button variant="outline" className={styles.secondaryButton} onClick={() => navigate(dashboardPath)}>
+                  Retour dashboard
+                </Button>
+                <Button className={styles.primaryButton} onClick={() => navigate("/investisseur/profil")}>
+                  Mon profil
+                </Button>
               </div>
             </div>
 
-            <div className={styles.actionsRow}>
-              <Button
-                variant="outline"
-                className={styles.secondaryButton}
-                onClick={() => navigate("/auth/forgot-password")}
-              >
-                Gerer le mot de passe
-              </Button>
-              <Button className={styles.dangerButton} onClick={() => void logout()}>
-                <LogOut className="w-4 h-4" />
-                Se deconnecter
-              </Button>
-            </div>
-          </section>
-
-          <section className={`${styles.panel} ${styles.shortcutsPanel}`}>
-            <div className={styles.panelHeader}>
-              <div>
-                <span className={styles.panelEyebrow}>Raccourcis</span>
-                <h2 className={styles.panelTitle}>Acces utiles</h2>
-              </div>
-              <Compass className={styles.panelIcon} />
-            </div>
-
-            <div className={styles.shortcutList}>
-              {quickLinks.map((item) => (
-                <button key={item.title} type="button" className={styles.shortcutCard} onClick={item.action}>
-                  <div>
-                    <strong className={styles.shortcutTitle}>{item.title}</strong>
-                    <p className={styles.shortcutText}>{item.description}</p>
+            <div className={styles.panelGrid}>
+              <section id="experience" className={styles.panel}>
+                <div className={styles.panelHeader}>
+                  <div className={styles.panelHeading}>
+                    <div className={styles.panelIcon}>
+                      <Palette className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className={styles.panelEyebrow}>Apparence</span>
+                      <h2 className={styles.panelTitle}>Theme et affichage</h2>
+                    </div>
                   </div>
-                </button>
-              ))}
-            </div>
-          </section>
+                </div>
 
-          <section className={`${styles.panel} ${styles.recommendationsPanel}`}>
-            <div className={styles.panelHeader}>
-              <div>
-                <span className={styles.panelEyebrow}>A ajouter ensuite</span>
-                <h2 className={styles.panelTitle}>Parametres recommandes</h2>
+                <div className={styles.settingList}>
+                  <div className={styles.settingRow}>
+                    <div className={styles.settingCopy}>
+                      <strong className={styles.settingTitle}>Mode sombre</strong>
+                      <p className={styles.settingText}>
+                        Active un affichage sombre pour cette page et les composants compatibles.
+                      </p>
+                    </div>
+                    <div className={styles.themeSwitch}>
+                      <span className={styles.themeIconLabel}>
+                        {darkMode ? <MoonStar className="w-4 h-4" /> : <SunMedium className="w-4 h-4" />}
+                        {darkMode ? "Sombre" : "Clair"}
+                      </span>
+                      <button
+                        type="button"
+                        className={`${styles.toggleButton} ${
+                          darkMode ? styles.toggleButtonActive : ""
+                        }`}
+                        onClick={() => setDarkMode((prev) => !prev)}
+                        aria-pressed={darkMode}
+                        aria-label="Activer le mode sombre"
+                      >
+                        <span className={styles.toggleThumb} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className={styles.settingRow}>
+                    <div className={styles.settingCopy}>
+                      <strong className={styles.settingTitle}>Guide automatique</strong>
+                      <p className={styles.settingText}>
+                        Active ou non le guide de prise en main pour les prochaines visites.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className={`${styles.toggleButton} ${
+                        guideEnabled ? styles.toggleButtonActive : ""
+                      }`}
+                      onClick={() => handleGuideToggle(!guideEnabled)}
+                      aria-pressed={guideEnabled}
+                    >
+                      <span className={styles.toggleThumb} />
+                    </button>
+                  </div>
+
+                  <div className={styles.settingRow}>
+                    <div className={styles.settingCopy}>
+                      <strong className={styles.settingTitle}>Langue</strong>
+                      <p className={styles.settingText}>
+                        Preference locale utilisee sur ce navigateur.
+                      </p>
+                    </div>
+                    <select
+                      className={styles.selectControl}
+                      value={language}
+                      onChange={(event) => setLanguage(event.target.value)}
+                    >
+                      <option value="fr">Francais</option>
+                      <option value="ar">Arabe</option>
+                      <option value="en">Anglais</option>
+                    </select>
+                  </div>
+
+                  <div className={styles.settingRow}>
+                    <div className={styles.settingCopy}>
+                      <strong className={styles.settingTitle}>Fuseau horaire</strong>
+                      <p className={styles.settingText}>
+                        Utilise pour l'affichage des dates et heures cote interface.
+                      </p>
+                    </div>
+                    <select
+                      className={styles.selectControl}
+                      value={timezone}
+                      onChange={(event) => setTimezone(event.target.value)}
+                    >
+                      <option value="GMT+1">GMT+1</option>
+                      <option value="UTC">UTC</option>
+                      <option value="GMT+2">GMT+2</option>
+                    </select>
+                  </div>
+                </div>
+              </section>
+
+              <section id="notifications" className={styles.panel}>
+                <div className={styles.panelHeader}>
+                  <div className={styles.panelHeading}>
+                    <div className={styles.panelIcon}>
+                      <Bell className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className={styles.panelEyebrow}>Notifications</span>
+                      <h2 className={styles.panelTitle}>Alertes et mises a jour</h2>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={styles.settingList}>
+                  <div className={styles.settingRow}>
+                    <div className={styles.settingCopy}>
+                      <strong className={styles.settingTitle}>Notifications navigateur</strong>
+                      <p className={styles.settingText}>
+                        Etat actuel: {formatNotificationState(browserNotifications)}.
+                      </p>
+                    </div>
+                    <Button className={styles.primaryButton} onClick={handleRequestBrowserNotifications}>
+                      Autoriser
+                    </Button>
+                  </div>
+
+                  <div className={styles.settingRow}>
+                    <div className={styles.settingCopy}>
+                      <strong className={styles.settingTitle}>Alertes permis</strong>
+                      <p className={styles.settingText}>
+                        Notifications locales liees aux renouvellements et echeances.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className={`${styles.toggleButton} ${
+                        permitAlerts ? styles.toggleButtonActive : ""
+                      }`}
+                      onClick={() => setPermitAlerts((prev) => !prev)}
+                      aria-pressed={permitAlerts}
+                    >
+                      <span className={styles.toggleThumb} />
+                    </button>
+                  </div>
+
+                  <div className={styles.settingRow}>
+                    <div className={styles.settingCopy}>
+                      <strong className={styles.settingTitle}>Mises a jour dossiers</strong>
+                      <p className={styles.settingText}>
+                        Resume local des changements importants sur vos demandes.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className={`${styles.toggleButton} ${
+                        dossierUpdates ? styles.toggleButtonActive : ""
+                      }`}
+                      onClick={() => setDossierUpdates((prev) => !prev)}
+                      aria-pressed={dossierUpdates}
+                    >
+                      <span className={styles.toggleThumb} />
+                    </button>
+                  </div>
+
+                  <div className={styles.settingRow}>
+                    <div className={styles.settingCopy}>
+                      <strong className={styles.settingTitle}>Emails promotionnels</strong>
+                      <p className={styles.settingText}>
+                        Active ou non les emails non critiques sur ce compte.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className={`${styles.toggleButton} ${
+                        promotionalEmails ? styles.toggleButtonActive : ""
+                      }`}
+                      onClick={() => setPromotionalEmails((prev) => !prev)}
+                      aria-pressed={promotionalEmails}
+                    >
+                      <span className={styles.toggleThumb} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className={styles.inlineNote}>
+                  <Sparkles className="w-4 h-4" />
+                  Certaines preferences, y compris le theme, sont sauvegardees localement.
+                </div>
+              </section>
+            </div>
+
+            <section id="security" className={`${styles.panel} ${styles.sensitivePanel}`}>
+              <div className={styles.panelHeader}>
+                <div className={styles.panelHeading}>
+                  <div className={styles.panelIcon}>
+                    <ShieldAlert className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className={styles.panelEyebrow}>Zone sensible</span>
+                    <h2 className={styles.panelTitle}>Securite et actions sensibles</h2>
+                  </div>
+                </div>
               </div>
-              {cadastreMode ? <Map className={styles.panelIcon} /> : <Route className={styles.panelIcon} />}
-            </div>
 
-            <p className={styles.preferenceText}>
-              Voici les reglages les plus pertinents a ajouter ensuite pour faire de cette page une
-              vraie page parametres metier.
-            </p>
+              <div className={styles.sensitiveList}>
+                <div className={styles.sensitiveRow}>
+                  <div>
+                    <strong className={styles.settingTitle}>Changer le mot de passe</strong>
+                    <p className={styles.settingText}>
+                      Mettez a jour vos identifiants de connexion depuis la page dediee.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className={styles.secondaryButton}
+                    onClick={() => navigate("/auth/forgot-password")}
+                  >
+                    Modifier
+                  </Button>
+                </div>
 
-            <ul className={styles.recommendationList}>
-              {recommendations.map((item) => (
-                <li key={item} className={styles.recommendationItem}>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </section>
-        </div>
+                <div className={styles.sensitiveRow}>
+                  <div>
+                    <strong className={styles.settingTitle}>Reinitialiser le guide</strong>
+                    <p className={styles.settingText}>
+                      Relancez le parcours de prise en main si vous souhaitez revoir les etapes.
+                    </p>
+                  </div>
+                  <Button variant="outline" className={styles.secondaryButton} onClick={handleResetGuide}>
+                    Reinitialiser
+                  </Button>
+                </div>
 
-        <Separator className={styles.separator} />
+                <div className={styles.sensitiveRow}>
+                  <div>
+                    <strong className={styles.settingTitle}>Se deconnecter</strong>
+                    <p className={styles.settingText}>
+                      Fermez la session active sur cet appareil.
+                    </p>
+                  </div>
+                  <Button className={styles.dangerButton} onClick={() => void logout()}>
+                    <LogOut className="w-4 h-4" />
+                    Deconnexion
+                  </Button>
+                </div>
+              </div>
 
-        <div className={styles.footerNote}>
-          <p>
-            Cette page contient deja les reglages utiles cote frontend. Pour aller plus loin, la
-            prochaine etape logique est d'ajouter les preferences persistantes cote backend
-            (notifications email, couches carte, preferences d'export, sécurité multi-session).
-          </p>
+              <div className={styles.footerMeta}>
+                <div className={styles.footerMetaItem}>
+                  {darkMode ? <MoonStar className="w-4 h-4" /> : <SunMedium className="w-4 h-4" />}
+                  <span>Theme: {darkMode ? "Sombre" : "Clair"}</span>
+                </div>
+                <div className={styles.footerMetaItem}>
+                  <Clock3 className="w-4 h-4" />
+                  <span>Fuseau actif: {timezone}</span>
+                </div>
+                <div className={styles.footerMetaItem}>
+                  <Globe2 className="w-4 h-4" />
+                  <span>Langue: {language === "fr" ? "Francais" : language === "ar" ? "Arabe" : "Anglais"}</span>
+                </div>
+                <div className={styles.footerMetaItem}>
+                  <LockKeyhole className="w-4 h-4" />
+                  <span>Preferences locales securisees par navigateur</span>
+                </div>
+              </div>
+            </section>
+          </main>
         </div>
       </div>
     </InvestorLayout>

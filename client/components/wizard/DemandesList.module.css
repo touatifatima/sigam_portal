@@ -291,6 +291,7 @@
 .searchInput,
 .selectTrigger,
 .dateInput {
+  width: 100%;
   min-height: 48px;
   border-radius: 16px;
   border: 1px solid var(--stroke-strong);
@@ -352,6 +353,7 @@
   box-shadow: 0 24px 36px rgba(44, 20, 34, 0.12);
   padding: 0.4rem;
   min-width: clamp(280px, 28vw, 420px);
+  max-width: min(420px, calc(100vw - 1rem));
 }
 
 .selectContent [data-radix-select-viewport] {
@@ -484,12 +486,14 @@
   font-size: 0.92rem;
   font-weight: 800;
   letter-spacing: 0.01em;
+  overflow-wrap: anywhere;
 }
 
 .valueText {
   color: #5f5570;
   font-size: 0.94rem;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .typePill {
@@ -497,6 +501,7 @@
   align-items: center;
   gap: 0.42rem;
   min-height: 34px;
+  max-width: 100%;
   padding: 0 0.78rem;
   border-radius: 10px;
   font-size: 0.84rem;
@@ -539,6 +544,7 @@
   align-items: center;
   gap: 0.34rem;
   min-height: 34px;
+  max-width: 100%;
   padding: 0 0.82rem;
   border-radius: 999px;
   border: 1px solid transparent;
@@ -739,6 +745,7 @@
   align-items: center;
   gap: 0.34rem;
   min-height: 34px;
+  max-width: 100%;
   padding: 0 0.72rem;
   border-radius: 999px;
   border: 1px solid rgba(141, 73, 105, 0.12);
@@ -834,6 +841,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.72rem;
+  flex-wrap: wrap;
 }
 
 .pageButton {
@@ -965,12 +973,24 @@
     padding: 1rem;
   }
 
+  .tableCell {
+    display: grid;
+    align-content: start;
+    gap: 0.2rem;
+  }
+
   .mobileLabel {
     display: block;
   }
 
   .actionsCell {
     justify-self: stretch;
+  }
+
+  .actionsGroup {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 }
 
@@ -1005,6 +1025,10 @@
     justify-content: center;
   }
 
+  .searchBtn {
+    min-height: 46px;
+  }
+
   .heroActions {
     flex-direction: column;
     align-items: stretch;
@@ -1013,10 +1037,36 @@
   .viewModeWrap {
     width: 100%;
     justify-content: space-between;
+    flex-wrap: wrap;
+    row-gap: 0.45rem;
   }
 
   .tableRow {
     grid-template-columns: 1fr;
+  }
+
+  .summaryCard {
+    min-height: auto;
+  }
+
+  .summaryValue {
+    font-size: 1.35rem;
+  }
+
+  .typePill,
+  .statusBadge,
+  .phasePill,
+  .metaTag {
+    white-space: normal;
+    line-height: 1.3;
+  }
+
+  .phasePill {
+    text-overflow: clip;
+  }
+
+  .progressInline {
+    gap: 0.5rem;
   }
 
   .gridCardFooter,
@@ -1035,5 +1085,56 @@
 
   .iconAction {
     height: 38px;
+  }
+
+  .pagination {
+    gap: 0.55rem;
+  }
+
+  .pageButton,
+  .pageInfo {
+    display: block;
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .heroHeader {
+    padding: 1rem 0.9rem 0.9rem;
+  }
+
+  .heroTitle {
+    font-size: 1.42rem;
+  }
+
+  .heroSubtitle {
+    font-size: 0.9rem;
+  }
+
+  .filtersContent {
+    padding: 0.9rem;
+  }
+
+  .searchWrapper {
+    gap: 0.45rem;
+  }
+
+  .searchInput,
+  .selectTrigger,
+  .dateInput,
+  .searchBtn {
+    min-height: 44px;
+    border-radius: 14px;
+  }
+
+  .tableRow,
+  .gridCard,
+  .emptyState {
+    padding: 0.9rem;
+  }
+
+  .pageButton {
+    min-height: 40px;
   }
 }
