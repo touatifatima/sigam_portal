@@ -6,16 +6,19 @@ import heroSlide2Jpg from "@/src/assets/hero-slide-2.jpg";
 import heroSlide3Jpg from "@/src/assets/hero-slide-3.jpg";
 import heroSlide4Jpg from "@/src/assets/hero-slide-4.jpg";
 import heroSlide5Jpg from "@/src/assets/hero-slide-5.jpg";
+import heroSlide6Jpg from "@/src/assets/hero-slide-6.jpg";
+import heroFinJpg from "@/src/assets/hero-fin.jpg";
 import heroSlide1Webp from "@/src/assets/hero-slide-1.webp";
 import heroSlide2Webp from "@/src/assets/hero-slide-2.webp";
 import heroSlide3Webp from "@/src/assets/hero-slide-3.webp";
 import heroSlide4Webp from "@/src/assets/hero-slide-4.webp";
 import heroSlide5Webp from "@/src/assets/hero-slide-5.webp";
+
 import styles from "./Hero.module.css";
 
 type Slide = {
   image: string;
-  imageWebp: string;
+  imageWebp?: string;
   title: string;
   highlight: string;
   subtitle: string;
@@ -74,6 +77,24 @@ const slides: Slide[] = [
     cta: "Commencer maintenant",
     ctaLink: "/Signup/page",
   },
+  {
+    image: heroSlide6Jpg,
+    title: "Pilotez vos operations minieres avec",
+    highlight: "visibilite et securite",
+    subtitle:
+      "Suivez les activites sur site, structurez vos demarches administratives et avancez avec une vision claire de vos projets miniers.",
+    cta: "Suivre mes demarches",
+    ctaLink: "/auth/login",
+  },
+  {
+    image: heroFinJpg,
+    title: "Ouvrez la voie a vos projets",
+    highlight: "souterrains strategiques",
+    subtitle:
+      "De l'exploration aux travaux en profondeur, accedez a un portail unique pour encadrer vos permis et vos investissements.",
+    cta: "Voir les opportunites",
+    ctaLink: "/Signup/page",
+  },
 ];
 
 export const Hero = () => {
@@ -101,8 +122,10 @@ export const Hero = () => {
     const preload = document.createElement("link");
     preload.rel = "preload";
     preload.as = "image";
-    preload.href = slides[0].imageWebp;
-    preload.type = "image/webp";
+    preload.href = slides[0].imageWebp ?? slides[0].image;
+    if (slides[0].imageWebp) {
+      preload.type = "image/webp";
+    }
     (preload as HTMLLinkElement & { fetchPriority?: string }).fetchPriority = "high";
     document.head.appendChild(preload);
 
@@ -128,7 +151,7 @@ export const Hero = () => {
     });
 
     const preload = new Image();
-    preload.src = slides[nextIndex].imageWebp;
+    preload.src = slides[nextIndex].imageWebp ?? slides[nextIndex].image;
   }, [current]);
 
   return (
@@ -140,7 +163,9 @@ export const Hero = () => {
         >
           {loadedSlides.has(i) ? (
             <>
-              <source type="image/webp" srcSet={slide.imageWebp} />
+              {slide.imageWebp ? (
+                <source type="image/webp" srcSet={slide.imageWebp} />
+              ) : null}
               <img
                 src={slide.image}
                 alt=""

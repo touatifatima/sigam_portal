@@ -1,0 +1,28 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@10.9.3
+2 info using node@v22.18.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\ANAM1503\Desktop\sigam_vite\.npmrc
+5 silly config load:file:C:\Users\ANAM1503\.npmrc
+6 silly config load:file:C:\Users\ANAM1503\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm exec tsc -p client/tsconfig.json --noEmit --pretty false
+8 verbose argv "exec" "--" "tsc" "-p" "client/tsconfig.json" "--noEmit" "--pretty" "false"
+9 verbose logfile logs-max:10 dir:C:\Users\ANAM1503\Desktop\sigam_vite\UsersANAM1503AppDataLocalnpm-cache\_logs\2026-04-19T13_49_48_253Z-
+10 verbose logfile C:\Users\ANAM1503\Desktop\sigam_vite\UsersANAM1503AppDataLocalnpm-cache\_logs\2026-04-19T13_49_48_253Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+13 http fetch GET 200 https://registry.npmjs.org/npm 432ms
+14 http fetch GET 200 https://registry.npmjs.org/tsc 373ms (cache revalidated)
+15 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+16 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+17 verbose cwd C:\Users\ANAM1503\Desktop\sigam_vite
+18 verbose os Windows_NT 10.0.20348
+19 verbose node v22.18.0
+20 verbose npm  v10.9.3
+21 notice
+21 notice New major version of npm available! 10.9.3 -> 11.12.1
+21 notice Changelog: https://github.com/npm/cli/releases/tag/v11.12.1
+21 notice To update run: npm install -g npm@11.12.1
+21 notice  { force: true, [Symbol(proc-log.meta)]: true }
+22 verbose exit 1
+23 verbose code 1

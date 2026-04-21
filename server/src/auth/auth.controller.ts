@@ -144,6 +144,52 @@ export class AuthController {
     return { user };
   }
 
+  @Get('profile-update/status')
+  async profileUpdateStatus(@Req() req: Request) {
+    const token = req.cookies?.auth_token;
+    return this.authService.getProfileUpdateStatus(token);
+  }
+
+  @Post('profile-update/request')
+  async requestProfileUpdate(
+    @Body()
+    body: {
+      Prenom?: string;
+      nom?: string;
+      email?: string;
+      telephone?: string | null;
+      password?: string;
+      confirmPassword?: string;
+    },
+    @Req() req: Request,
+  ) {
+    const token = req.cookies?.auth_token;
+    return this.authService.requestProfileUpdate(token, body);
+  }
+
+  @Get('profile-update/request')
+  profileUpdateRequestHelp() {
+    return {
+      message:
+        "Endpoint actif. Utilisez POST /auth/profile-update/request pour lancer l'envoi OTP.",
+    };
+  }
+
+  @Post('profile-update/resend')
+  async resendProfileUpdateOtp(@Req() req: Request) {
+    const token = req.cookies?.auth_token;
+    return this.authService.resendProfileUpdateOtp(token);
+  }
+
+  @Post('profile-update/verify')
+  async verifyProfileUpdate(
+    @Body() body: { code: string },
+    @Req() req: Request,
+  ) {
+    const token = req.cookies?.auth_token;
+    return this.authService.verifyProfileUpdate(token, body);
+  }
+
   @Post('verify')
   async verify(@Body() body: { token: string }) {
     return {

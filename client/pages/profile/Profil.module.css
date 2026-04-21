@@ -297,6 +297,26 @@
   gap: 0.7rem;
 }
 
+.actionButtonWrap {
+  display: flex;
+  width: 100%;
+}
+
+.actionTooltip {
+  max-width: 320px;
+  border-color: rgba(8, 80, 65, 0.16);
+  background: #ffffff;
+  color: var(--ink-950);
+  line-height: 1.55;
+}
+
+.actionHint {
+  margin: 0.85rem 0 0;
+  color: var(--ink-700);
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
 .main {
   display: flex;
   flex-direction: column;
@@ -369,6 +389,11 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
+}
+
+.heroActions .actionHint {
+  flex-basis: 100%;
+  margin-top: 0.1rem;
 }
 
 .primaryButton,
@@ -677,37 +702,149 @@
 @media (max-width: 1200px) {
   .shell {
     grid-template-columns: 1fr;
+    gap: 1.2rem;
+  }
+
+  .main {
+    order: 1;
   }
 
   .sidebar {
     position: static;
+    order: 2;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .identityCard {
+    grid-column: 1 / -1;
+  }
+
+  .sideCard {
+    height: 100%;
+  }
+}
+
+@media (max-width: 1024px) {
+  .fieldGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    padding: 1.4rem 1.5rem;
+  }
+
+  .title {
+    font-size: clamp(1.7rem, 4vw, 2.2rem);
+  }
+
+  .sectionLead {
+    max-width: 100%;
   }
 }
 
 @media (max-width: 900px) {
+  .sidebar {
+    grid-template-columns: 1fr;
+  }
+
   .fieldGrid,
   .actionnaireFields {
+    grid-template-columns: 1fr;
+  }
+
+  .actionnaireGrid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 768px) {
   .page {
-    padding: 1.2rem 0.9rem 2rem;
+    padding: 1rem 0.75rem 1.7rem;
+  }
+
+  .shell {
+    gap: 0.9rem;
   }
 
   .hero,
   .sectionCard,
   .sideCard {
-    border-radius: 24px;
+    border-radius: 22px;
   }
 
   .hero {
-    padding: 1.3rem;
+    padding: 1.2rem;
+  }
+
+  .identityCard,
+  .sideCard,
+  .sectionCard {
+    padding: 1rem;
+  }
+
+  .avatarShell {
+    width: 98px;
+  }
+
+  .avatarCircle {
+    width: 98px;
+    height: 98px;
+  }
+
+  .avatarEditButton {
+    width: 34px;
+    height: 34px;
+    right: 4px;
+    bottom: 4px;
+  }
+
+  .userName {
+    font-size: 1.25rem;
   }
 
   .title {
-    font-size: 1.8rem;
+    font-size: 1.55rem;
+    line-height: 1.14;
+  }
+
+  .subtitle,
+  .sectionText,
+  .noticeText,
+  .actionHint {
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+
+  .sectionHeader {
+    margin-bottom: 0.9rem;
+  }
+
+  .sectionLead {
+    gap: 0.8rem;
+  }
+
+  .sectionIcon {
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 14px;
+  }
+
+  .fieldBox {
+    min-height: 56px;
+    padding: 0.72rem 0.8rem;
+    gap: 0.65rem;
+  }
+
+  .fieldIcon {
+    width: 1.95rem;
+    height: 1.95rem;
+    border-radius: 12px;
+  }
+
+  .fieldValue {
+    font-size: 0.94rem;
   }
 
   .heroActions,
@@ -727,6 +864,7 @@
     overflow-x: auto;
     padding-bottom: 0.2rem;
     scrollbar-width: none;
+    scroll-snap-type: x mandatory;
   }
 
   .sideNavList::-webkit-scrollbar {
@@ -734,7 +872,18 @@
   }
 
   .sideNavButton {
-    min-width: 220px;
+    min-width: 200px;
+    padding: 0.8rem 0.9rem;
+    scroll-snap-align: start;
+  }
+
+  .sideNavArrow {
+    display: none;
+  }
+
+  .actionnaireCard {
+    padding: 1rem;
+    border-radius: 20px;
   }
 }
 
@@ -749,5 +898,52 @@
 
   .sectionHeader {
     align-items: stretch;
+  }
+
+  .badgeRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .statusPill {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .sideNavList {
+    display: grid;
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .sideNavButton {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 420px) {
+  .page {
+    padding: 0.8rem 0.6rem 1.35rem;
+  }
+
+  .title {
+    font-size: 1.4rem;
+  }
+
+  .fieldLabel,
+  .sectionEyebrow,
+  .sideEyebrow {
+    letter-spacing: 0.08em;
+  }
+
+  .emptyState {
+    min-height: 220px;
+  }
+
+  .emptyStateIcon {
+    width: 3.5rem;
+    height: 3.5rem;
+    padding: 0.75rem;
+    border-radius: 18px;
   }
 }

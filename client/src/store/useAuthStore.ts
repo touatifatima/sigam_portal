@@ -7,7 +7,7 @@ import axios from 'axios';
 import { purgeLocalStorageKeys } from '../utils/sessionBackedStorage';
 
 interface AuthData {
-  antenneId: any;
+  antenneId?: number | null;
   token: string | null;
   id: number | null;
   username: string | null;
@@ -16,6 +16,7 @@ interface AuthData {
   Prenom?: string | null;
   telephone?: string | null;
   createdAt?: string | null;
+  lastProfileUpdateAt?: string | null;
   role: string | null;
   permissions: string[];
   isEntrepriseVerified: boolean;
@@ -24,6 +25,7 @@ interface AuthData {
 }
 
 const emptyAuthState: AuthData = {
+  antenneId: null,
   token: null,
   id: null,
   username: null,
@@ -32,6 +34,7 @@ const emptyAuthState: AuthData = {
   Prenom: null,
   telephone: null,
   createdAt: null,
+  lastProfileUpdateAt: null,
   role: null,
   permissions: [],
   isEntrepriseVerified: false,
@@ -69,7 +72,11 @@ function createAuthStore(): BoundStore {
 
     login: (data) => {
       const storedVerified = get().auth.isEntrepriseVerified;
-      const newAuth = {
+      const newAuth: AuthData = {
+        antenneId:
+          (data.user as any).antenneId ??
+          (data.user as any).id_antenne ??
+          null,
         token: data.token,
         id: data.user.id,
         username: data.user.username,
@@ -78,6 +85,7 @@ function createAuthStore(): BoundStore {
         Prenom: (data.user as any).Prenom ?? null,
         telephone: (data.user as any).telephone ?? null,
         createdAt: (data.user as any).createdAt ?? null,
+        lastProfileUpdateAt: (data.user as any).lastProfileUpdateAt ?? null,
         role: data.user.role,
         permissions: data.user.permissions,
         isEntrepriseVerified:
@@ -130,7 +138,12 @@ function createAuthStore(): BoundStore {
         });
 
         if (response.data?.user) {
-          const updatedAuth = {
+          const updatedAuth: AuthData = {
+            antenneId:
+              (response.data.user as any).antenneId ??
+              (response.data.user as any).id_antenne ??
+              authState.antenneId ??
+              null,
             token: null,
             id: response.data.user.id,
             username: response.data.user.username,
@@ -139,6 +152,8 @@ function createAuthStore(): BoundStore {
             Prenom: (response.data.user as any).Prenom ?? null,
             telephone: (response.data.user as any).telephone ?? null,
             createdAt: (response.data.user as any).createdAt ?? null,
+            lastProfileUpdateAt:
+              (response.data.user as any).lastProfileUpdateAt ?? null,
             role: response.data.user.role,
             permissions: response.data.user.permissions,
             isEntrepriseVerified:

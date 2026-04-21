@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
 import { DayPicker } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
@@ -42,8 +42,23 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         ...classNames,
       }}
       components={{
-        IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,
-        IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" />,
+        Chevron: ({ className: chevronClassName, orientation, ..._props }) => {
+          const iconClassName = cn("h-4 w-4", chevronClassName);
+
+          if (orientation === "left") {
+            return <ChevronLeft className={iconClassName} />;
+          }
+
+          if (orientation === "right") {
+            return <ChevronRight className={iconClassName} />;
+          }
+
+          if (orientation === "up") {
+            return <ChevronUp className={iconClassName} />;
+          }
+
+          return <ChevronDown className={iconClassName} />;
+        },
       }}
       {...props}
     />

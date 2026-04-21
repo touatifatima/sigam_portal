@@ -21,9 +21,21 @@ const IDENTIFICATION_EVENT_TYPES = [
 
 type IdentificationAccessState = 'ALLOW' | 'PENDING' | 'REJECTED';
 type ForgotPasswordLimitEntry = { count: number; windowStart: number };
+type ProfileUpdateAttemptEntry = { count: number; blockedUntil?: number };
+
+type PendingProfileUpdateData = {
+  Prenom: string;
+  nom: string;
+  email: string;
+  telephone: string | null;
+  passwordHash: string | null;
+  passwordChanged: boolean;
+};
 
 const FORGOT_PASSWORD_SUCCESS_MESSAGE =
   "Un email de reinitialisation a ete envoye a l'adresse indiquee. Si un compte est associe a cet email, vous recevrez un lien dans les prochaines minutes. Verifiez votre boite de reception (et vos spams). Le lien est valide pendant 15 minutes.";
+const PROFILE_UPDATE_COOLDOWN_MS = 48 * 60 * 60 * 1000;
+const PROFILE_UPDATE_OTP_TTL_MS = 10 * 60 * 1000;
 
 @Injectable()
 export class AuthService {
@@ -42,6 +54,11 @@ export class AuthService {
     { count: number; blockedUntil?: number }
   >();
   private forgotPasswordIpLimits = new Map<string, ForgotPasswordLimitEntry>();
+  private profileUpdateResendLimits = new Map<
+    string,
+    { count: number; windowStart: number; cooldownUntil: number }
+  >();
+  private profileUpdateAttemptLimits = new Map<string, ProfileUpdateAttemptEntry>();
   private mailer?: nodemailer.Transporter;
 
   private getMailer() {
@@ -93,6 +110,71 @@ export class AuthService {
 
   private generateOtp() {
     return String(Math.floor(100000 + Math.random() * 900000));
+  }
+
+  private normalizePhone(phone?: string | null) {
+    const value = (phone || '').trim();
+    if (!value) return null;
+    const digitsOnly = value.replace(/\D/g, '');
+    return digitsOnly || null;
+  }
+
+  private isValidEmail(email: string) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  private isValidPhone(phone: string | null) {
+    if (!phone) return true;
+    return /^0\d{9}$/.test(phone);
+  }
+
+  private formatRemainingHoursMessage(remainingMs: number) {
+    const totalMinutes = Math.max(1, Math.ceil(remainingMs / (60 * 1000)));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    if (hours <= 0) {
+      return `Vous avez deja modifie vos informations personnelles recemment. Cette action est disponible a nouveau dans ${minutes} minute${minutes > 1 ? 's' : ''}.`;
+    }
+
+    if (minutes === 0) {
+      return `Vous avez deja modifie vos informations personnelles recemment. Cette action est disponible a nouveau dans ${hours} heure${hours > 1 ? 's' : ''}.`;
+    }
+
+    return `Vous avez deja modifie vos informations personnelles recemment. Cette action est disponible a nouveau dans ${hours} heure${hours > 1 ? 's' : ''} et ${minutes} minute${minutes > 1 ? 's' : ''}.`;
+  }
+
+  private getProfileUpdateStatusPayload(user: any) {
+    const now = Date.now();
+    const lastProfileUpdateAt = user.lastProfileUpdateAt
+      ? new Date(user.lastProfileUpdateAt)
+      : null;
+    const nextAvailableAt = lastProfileUpdateAt
+      ? new Date(lastProfileUpdateAt.getTime() + PROFILE_UPDATE_COOLDOWN_MS)
+      : null;
+    const remainingMs = nextAvailableAt
+      ? Math.max(0, nextAvailableAt.getTime() - now)
+      : 0;
+    const pendingExpiresAt = user.profileUpdateOtpExpiresAt
+      ? new Date(user.profileUpdateOtpExpiresAt)
+      : null;
+    const resendAvailableAt = user.profileUpdateOtpRequestedAt
+      ? new Date(new Date(user.profileUpdateOtpRequestedAt).getTime() + 60 * 1000)
+      : null;
+
+    return {
+      canEdit: remainingMs <= 0,
+      lastProfileUpdateAt,
+      nextAvailableAt,
+      remainingMs,
+      cooldownMessage:
+        remainingMs > 0 ? this.formatRemainingHoursMessage(remainingMs) : null,
+      hasPendingRequest:
+        Boolean(user.profileUpdatePendingData) &&
+        (pendingExpiresAt ? pendingExpiresAt.getTime() > now : false),
+      pendingExpiresAt,
+      resendAvailableAt,
+    };
   }
 
   private generatePasswordResetToken() {
@@ -336,6 +418,122 @@ export class AuthService {
     });
   }
 
+  private async sendProfileUpdateOtpEmail(
+    email: string,
+    prenom: string | undefined,
+    code: string,
+  ) {
+    const from = process.env.SMTP_FROM || process.env.SMTP_USER || '';
+    const name = prenom || 'Utilisateur';
+    const siteUrl = (process.env.PORTAIL_URL || 'https://pom.anam.dz')
+      .trim()
+      .replace(/\/+$/, '');
+    const supportEmail = (process.env.SUPPORT_EMAIL || 'support@anam.dz').trim();
+    const logoUrl = (process.env.MAIL_LOGO_URL || `${siteUrl}/logo.jpg`).trim();
+    const subject = `Validation de modification de profil ANAM - ${code}`;
+    const text = [
+      `Bonjour ${name},`,
+      '',
+      'Un changement de vos informations personnelles a ete demande sur votre compte ANAM.',
+      '',
+      `Code OTP: ${code}`,
+      '',
+      'Ce code est valable 10 minutes.',
+      'Si vous n etes pas a l origine de cette demande, ne partagez pas ce code et contactez le support.',
+      '',
+      "L'equipe ANAM",
+      siteUrl,
+      supportEmail,
+    ].join('\n');
+
+    const safeName = this.escapeHtml(name);
+    const safeCode = this.escapeHtml(code);
+    const safeSiteUrl = this.escapeHtml(siteUrl);
+    const safeSupportEmail = this.escapeHtml(supportEmail);
+    const safeLogoUrl = this.escapeHtml(logoUrl);
+    const html = `
+      <div style="margin:0;padding:0;background:#f3f7fb;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f3f7fb;padding:24px 0;">
+          <tr>
+            <td align="center">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:#ffffff;border:1px solid #dbe3ef;border-radius:14px;overflow:hidden;">
+                <tr>
+                  <td style="padding:24px 24px 8px 24px;text-align:center;">
+                    <img src="${safeLogoUrl}" alt="ANAM" style="display:block;margin:0 auto 12px auto;max-width:140px;height:auto;" />
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 24px 8px 24px;">
+                    <h1 style="margin:0 0 12px 0;font-size:22px;line-height:1.3;color:#0f172a;">Validation de modification de profil</h1>
+                    <p style="margin:0 0 12px 0;font-size:15px;line-height:1.7;">Bonjour ${safeName},</p>
+                    <p style="margin:0 0 16px 0;font-size:15px;line-height:1.7;">
+                      Une demande de mise a jour de vos informations personnelles a ete initiee sur votre compte ANAM.
+                      Saisissez le code ci-dessous pour confirmer cette operation.
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 24px 16px 24px;">
+                    <div style="text-align:center;border:2px solid #085041;border-radius:10px;padding:18px;background:#f3fbf8;">
+                      <span style="font-size:34px;letter-spacing:6px;font-weight:700;color:#085041;">${safeCode}</span>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 24px 16px 24px;">
+                    <p style="margin:0 0 8px 0;font-size:14px;line-height:1.7;color:#0f172a;">
+                      Ce code est valable <strong>10 minutes</strong>.
+                    </p>
+                    <p style="margin:0;font-size:14px;line-height:1.7;color:#475569;">
+                      Si vous n'etes pas a l'origine de cette demande, ignorez cet email et contactez le support.
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:16px 24px 24px 24px;border-top:1px solid #e2e8f0;">
+                    <p style="margin:0 0 8px 0;font-size:13px;line-height:1.6;color:#64748b;">Merci,<br />L'equipe ANAM</p>
+                    <p style="margin:0;font-size:13px;line-height:1.6;color:#64748b;">
+                      <a href="${safeSiteUrl}" style="color:#085041;text-decoration:none;">${safeSiteUrl}</a>
+                      &nbsp;|&nbsp;
+                      <a href="mailto:${safeSupportEmail}" style="color:#085041;text-decoration:none;">${safeSupportEmail}</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </div>
+    `;
+
+    await this.getMailer().sendMail({
+      from,
+      to: email,
+      subject,
+      text,
+      html,
+    });
+  }
+
+  private async getAuthenticatedUserSession(token: string) {
+    const cleanToken = (token || '').trim();
+    if (!cleanToken) {
+      throw new HttpException('Session invalide.', HttpStatus.UNAUTHORIZED);
+    }
+
+    const session = await this.sessionService.validateSession(cleanToken);
+    if (!session?.user?.id) {
+      throw new HttpException('Session invalide.', HttpStatus.UNAUTHORIZED);
+    }
+
+    const user = await this.findUserWithRoleById(session.user.id);
+    if (!user) {
+      throw new HttpException('Utilisateur introuvable.', HttpStatus.UNAUTHORIZED);
+    }
+
+    return { session, user, token: cleanToken };
+  }
+
   private async findUserWithRoleByEmail(email: string) {
     return this.prisma.utilisateurPortail.findUnique({
       where: { email },
@@ -476,6 +674,7 @@ export class AuthService {
           Prenom: user.Prenom,
           telephone: user.telephone,
           createdAt: user.createdAt,
+          lastProfileUpdateAt: user.lastProfileUpdateAt,
           entreprise_verified: user.entreprise_verified ?? false,
           identification_status: identificationStatus,
           first_login_after_confirmation: shouldShowWelcomeAfterConfirmation,
@@ -528,6 +727,7 @@ export class AuthService {
         Prenom: currentUser.Prenom,
         telephone: currentUser.telephone,
         createdAt: currentUser.createdAt,
+        lastProfileUpdateAt: currentUser.lastProfileUpdateAt,
         entreprise_verified: currentUser.entreprise_verified ?? false,
         identification_status: identificationStatus,
         first_login_after_confirmation: shouldShowWelcomeAfterConfirmation,
@@ -537,6 +737,202 @@ export class AuthService {
         ) || [],
       };
     });
+  }
+
+  async getProfileUpdateStatus(token: string) {
+    const { user } = await this.getAuthenticatedUserSession(token);
+    return this.getProfileUpdateStatusPayload(user);
+  }
+
+  async requestProfileUpdate(
+    token: string,
+    body: {
+      Prenom?: string;
+      nom?: string;
+      email?: string;
+      telephone?: string | null;
+      password?: string;
+      confirmPassword?: string;
+    },
+  ) {
+    const { user } = await this.getAuthenticatedUserSession(token);
+    this.assertProfileUpdateWindow(user);
+
+    const pendingData = await this.buildPendingProfileUpdateData(user, body);
+    const otpCode = this.generateOtp();
+    const otpHash = await bcrypt.hash(otpCode, 10);
+    const expiresAt = new Date(Date.now() + PROFILE_UPDATE_OTP_TTL_MS);
+    const resendKey = `profile-update:${user.id}`;
+
+    this.checkProfileUpdateResendLimit(resendKey);
+
+    await this.prisma.utilisateurPortail.update({
+      where: { id: user.id },
+      data: {
+        profileUpdatePendingData: pendingData as any,
+        profileUpdateOtpHash: otpHash,
+        profileUpdateOtpExpiresAt: expiresAt,
+        profileUpdateOtpRequestedAt: new Date(),
+      },
+    });
+
+    await this.sendProfileUpdateOtpEmail(user.email, user.Prenom, otpCode);
+
+    return {
+      message:
+        'Un code OTP a ete envoye a votre adresse email actuelle pour confirmer les modifications.',
+      expiresAt,
+      resendAvailableAt: new Date(Date.now() + 60 * 1000),
+    };
+  }
+
+  async resendProfileUpdateOtp(token: string) {
+    const { user } = await this.getAuthenticatedUserSession(token);
+    this.assertProfileUpdateWindow(user);
+
+    if (!user.profileUpdatePendingData) {
+      throw new BadRequestException(
+        'Aucune demande de modification en attente a confirmer.',
+      );
+    }
+
+    const resendKey = `profile-update:${user.id}`;
+    this.checkProfileUpdateResendLimit(resendKey);
+
+    const otpCode = this.generateOtp();
+    const otpHash = await bcrypt.hash(otpCode, 10);
+    const expiresAt = new Date(Date.now() + PROFILE_UPDATE_OTP_TTL_MS);
+
+    await this.prisma.utilisateurPortail.update({
+      where: { id: user.id },
+      data: {
+        profileUpdateOtpHash: otpHash,
+        profileUpdateOtpExpiresAt: expiresAt,
+        profileUpdateOtpRequestedAt: new Date(),
+      },
+    });
+
+    await this.sendProfileUpdateOtpEmail(user.email, user.Prenom, otpCode);
+
+    return {
+      message: 'Un nouveau code OTP a ete envoye.',
+      expiresAt,
+      resendAvailableAt: new Date(Date.now() + 60 * 1000),
+    };
+  }
+
+  async verifyProfileUpdate(token: string, body: { code: string }) {
+    const { user, session } = await this.getAuthenticatedUserSession(token);
+    this.assertProfileUpdateWindow(user);
+
+    const attemptKey = `profile-update:${user.id}`;
+    this.checkProfileUpdateAttemptLimit(attemptKey);
+
+    const pendingData = user.profileUpdatePendingData as PendingProfileUpdateData | null;
+    if (
+      !pendingData ||
+      !user.profileUpdateOtpHash ||
+      !user.profileUpdateOtpExpiresAt ||
+      user.profileUpdateOtpExpiresAt.getTime() < Date.now()
+    ) {
+      this.recordProfileUpdateFailedAttempt(attemptKey);
+      throw new BadRequestException(
+        'Le code OTP est invalide ou expire. Veuillez recommencer.',
+      );
+    }
+
+    const code = String(body?.code || '').trim();
+    if (!/^\d{6}$/.test(code)) {
+      throw new BadRequestException('Veuillez saisir un code OTP a 6 chiffres.');
+    }
+
+    const isValid = await bcrypt.compare(code, user.profileUpdateOtpHash);
+    if (!isValid) {
+      this.recordProfileUpdateFailedAttempt(attemptKey);
+      throw new BadRequestException('Le code OTP est invalide ou expire.');
+    }
+
+    const now = new Date();
+    const updateData: Record<string, any> = {
+      Prenom: pendingData.Prenom,
+      nom: pendingData.nom,
+      email: pendingData.email,
+      telephone: pendingData.telephone,
+      lastProfileUpdateAt: now,
+      profileUpdatePendingData: null,
+      profileUpdateOtpHash: null,
+      profileUpdateOtpExpiresAt: null,
+      profileUpdateOtpRequestedAt: null,
+    };
+
+    if (pendingData.passwordChanged && pendingData.passwordHash) {
+      updateData.password = pendingData.passwordHash;
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.utilisateurPortail.update({
+        where: { id: user.id },
+        data: updateData,
+      }),
+      ...(pendingData.passwordChanged
+        ? [
+            this.prisma.sessionPortail.deleteMany({
+              where: {
+                userId: user.id,
+                NOT: { token: session.token },
+              },
+            }),
+          ]
+        : []),
+    ]);
+
+    this.clearProfileUpdateAttemptLimit(attemptKey);
+
+    const updatedUser = await this.findUserWithRoleById(user.id);
+    if (!updatedUser) {
+      throw new HttpException(
+        'Impossible de recharger le profil apres modification.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    const identificationState = await this.resolveIdentificationAccessState(
+      updatedUser.id,
+      Boolean(updatedUser.entreprise_verified),
+      updatedUser.detenteurId,
+    );
+    const hasEntreprise = Boolean(updatedUser.detenteurId);
+    const identificationStatus = hasEntreprise
+      ? updatedUser.entreprise_verified
+        ? 'CONFIRMEE'
+        : identificationState === 'PENDING'
+          ? 'EN_ATTENTE'
+          : 'EN_ATTENTE'
+      : null;
+
+    return {
+      message: 'Vos informations personnelles ont ete mises a jour avec succes.',
+      user: {
+        id: updatedUser.id,
+        username: updatedUser.username,
+        email: updatedUser.email,
+        nom: updatedUser.nom,
+        Prenom: updatedUser.Prenom,
+        telephone: updatedUser.telephone,
+        createdAt: updatedUser.createdAt,
+        lastProfileUpdateAt: updatedUser.lastProfileUpdateAt,
+        entreprise_verified: updatedUser.entreprise_verified ?? false,
+        identification_status: identificationStatus,
+        first_login_after_confirmation: Boolean(
+          updatedUser.first_login_after_confirmation,
+        ),
+        role: updatedUser.role?.name,
+        permissions:
+          updatedUser.role?.rolePermissions.map(
+            (rp: any) => rp.permission.name,
+          ) || [],
+      },
+    };
   }
 
   async logout(token: string) {
@@ -593,6 +989,176 @@ export class AuthService {
     this.otpAttemptLimits.set(key, entry);
   }
 
+  private checkProfileUpdateResendLimit(userKey: string) {
+    const now = Date.now();
+    const oneHour = 60 * 60 * 1000;
+    const cooldownMs = 60 * 1000;
+
+    let entry = this.profileUpdateResendLimits.get(userKey);
+    if (!entry || now - entry.windowStart > oneHour) {
+      entry = { count: 0, windowStart: now, cooldownUntil: 0 };
+    }
+
+    if (entry.count >= 3 && now - entry.windowStart < oneHour) {
+      throw new HttpException(
+        'Limite de renvoi OTP atteinte. Reessayez dans une heure.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    if (entry.cooldownUntil > now) {
+      const wait = Math.ceil((entry.cooldownUntil - now) / 1000);
+      throw new HttpException(
+        `Veuillez attendre ${wait}s avant de renvoyer un nouveau code.`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    entry.count += 1;
+    entry.cooldownUntil = now + cooldownMs;
+    this.profileUpdateResendLimits.set(userKey, entry);
+  }
+
+  private checkProfileUpdateAttemptLimit(userKey: string) {
+    const now = Date.now();
+    const entry = this.profileUpdateAttemptLimits.get(userKey) || { count: 0 };
+    if (entry.blockedUntil && now < entry.blockedUntil) {
+      const wait = Math.ceil((entry.blockedUntil - now) / 1000);
+      throw new HttpException(
+        `Trop de tentatives OTP. Reessayez dans ${wait}s.`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+    return entry;
+  }
+
+  private recordProfileUpdateFailedAttempt(userKey: string) {
+    const now = Date.now();
+    const entry = this.profileUpdateAttemptLimits.get(userKey) || { count: 0 };
+    entry.count += 1;
+    if (entry.count >= 5) {
+      entry.blockedUntil = now + 15 * 60 * 1000;
+    }
+    this.profileUpdateAttemptLimits.set(userKey, entry);
+  }
+
+  private clearProfileUpdateAttemptLimit(userKey: string) {
+    this.profileUpdateAttemptLimits.delete(userKey);
+  }
+
+  private assertProfileUpdateWindow(user: any) {
+    const status = this.getProfileUpdateStatusPayload(user);
+    if (!status.canEdit) {
+      throw new HttpException(
+        status.cooldownMessage ||
+          'Vous avez deja modifie vos informations personnelles recemment.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+    return status;
+  }
+
+  private async buildPendingProfileUpdateData(
+    user: any,
+    body: {
+      Prenom?: string;
+      nom?: string;
+      email?: string;
+      telephone?: string | null;
+      password?: string;
+      confirmPassword?: string;
+    },
+  ): Promise<PendingProfileUpdateData> {
+    const nextPrenom = (body.Prenom || '').trim();
+    const nextNom = (body.nom || '').trim();
+    const nextEmail = this.normalizeEmail(body.email || '');
+    const nextTelephone = this.normalizePhone(body.telephone);
+    const password = body.password || '';
+    const confirmPassword = body.confirmPassword || '';
+
+    if (!nextPrenom) {
+      throw new BadRequestException('Le prenom est requis.');
+    }
+
+    if (!nextNom) {
+      throw new BadRequestException('Le nom est requis.');
+    }
+
+    if (!nextEmail || !this.isValidEmail(nextEmail)) {
+      throw new BadRequestException('Veuillez entrer une adresse email valide.');
+    }
+
+    if (!this.isValidPhone(nextTelephone)) {
+      throw new BadRequestException(
+        'Veuillez entrer un numero de telephone valide (10 chiffres commencant par 0).',
+      );
+    }
+
+    if (nextEmail !== this.normalizeEmail(user.email)) {
+      const existingEmail = await this.prisma.utilisateurPortail.findFirst({
+        where: {
+          email: nextEmail,
+          NOT: { id: user.id },
+        },
+        select: { id: true },
+      });
+      if (existingEmail) {
+        throw new BadRequestException('Cette adresse email est deja utilisee.');
+      }
+    }
+
+    if (nextTelephone !== this.normalizePhone(user.telephone)) {
+      const existingPhone = await this.prisma.utilisateurPortail.findFirst({
+        where: {
+          telephone: nextTelephone,
+          NOT: { id: user.id },
+          deletedAt: null,
+        },
+        select: { id: true },
+      });
+      if (existingPhone) {
+        throw new BadRequestException(
+          'Ce numero de telephone est deja utilise.',
+        );
+      }
+    }
+
+    let passwordHash: string | null = null;
+    if (password || confirmPassword) {
+      if (password !== confirmPassword) {
+        throw new BadRequestException(
+          'La confirmation du mot de passe ne correspond pas.',
+        );
+      }
+      if (!this.isStrongPassword(password)) {
+        throw new BadRequestException(
+          'Le mot de passe doit contenir au moins 8 caracteres, une majuscule, un chiffre et un symbole.',
+        );
+      }
+      passwordHash = await bcrypt.hash(password, 10);
+    }
+
+    const hasChanges =
+      nextPrenom !== user.Prenom ||
+      nextNom !== user.nom ||
+      nextEmail !== this.normalizeEmail(user.email) ||
+      nextTelephone !== this.normalizePhone(user.telephone) ||
+      Boolean(passwordHash);
+
+    if (!hasChanges) {
+      throw new BadRequestException('Aucune modification detectee.');
+    }
+
+    return {
+      Prenom: nextPrenom,
+      nom: nextNom,
+      email: nextEmail,
+      telephone: nextTelephone,
+      passwordHash,
+      passwordChanged: Boolean(passwordHash),
+    };
+  }
+
   async register(body: {
     email: string;
     password: string;
@@ -623,15 +1189,14 @@ export class AuthService {
       where: { email: normalizedEmail },
     });
 
-    const phone = body.telephone?.trim() || '';
+    const phone = this.normalizePhone(body.telephone);
     if (!phone) {
-      throw new Error('TÃ©lÃ©phone requis');
+      throw new Error('Telephone requis');
     }
-    const isValidPhone =
-      /^0\d{9}$/.test(phone) || /^\+\d{8,15}$/.test(phone);
+    const isValidPhone = this.isValidPhone(phone);
     if (!isValidPhone) {
       throw new Error(
-        'Veuillez entrer un numéro de téléphone valide (10 chiffres)',
+        'Veuillez entrer un numéro de téléphone valide (10 chiffres commençant par 0)',
       );
     }
     if (phone) {
@@ -690,7 +1255,7 @@ export class AuthService {
 
     await this.sendOtpEmail(normalizedEmail, body.Prenom, otpCode);
 
-    return { message: 'Code envoyÃ©', userId: user.id };
+    return { message: 'Code envoyé', userId: user.id };
   }
 
   async verifyEmail(email: string, code: string) {
@@ -771,7 +1336,7 @@ export class AuthService {
 
     await this.sendOtpEmail(normalizedEmail, user.Prenom, otpCode);
 
-    return { message: 'Code renvoyÃ©' };
+    return { message: 'Code renvoyé' };
   }
 
   async forgotPassword(email: string, ipAddress: string) {

@@ -3,6 +3,12 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { InvestorLayout } from "@/components/investor/InvestorLayout";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { toast } from "@/src/hooks/use-toast";
 import {
   AlertCircle,
@@ -32,6 +38,28 @@ interface EntrepriseProfile {
   registre: any;
   actionnaires: any[];
 }
+
+type ProfileUpdateStatus = {
+  canEdit: boolean;
+  lastProfileUpdateAt: string | null;
+  nextAvailableAt: string | null;
+  remainingMs: number;
+  cooldownMessage: string | null;
+  hasPendingRequest: boolean;
+  pendingExpiresAt: string | null;
+  resendAvailableAt: string | null;
+};
+
+const emptyProfileUpdateStatus: ProfileUpdateStatus = {
+  canEdit: true,
+  lastProfileUpdateAt: null,
+  nextAvailableAt: null,
+  remainingMs: 0,
+  cooldownMessage: null,
+  hasPendingRequest: false,
+  pendingExpiresAt: null,
+  resendAvailableAt: null,
+};
 
 type ProfileFieldProps = {
   label: string;
@@ -69,6 +97,12 @@ const Profil = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState("personal");
+  const [profileUpdateStatus, setProfileUpdateStatus] =
+    useState<ProfileUpdateStatus>(emptyProfileUpdateStatus);
+  const [isProfileUpdateStatusLoading, setIsProfileUpdateStatusLoading] =
+    useState(true);
+  const [profileUpdateStatusError, setProfileUpdateStatusError] =
+    useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const profilePhotoStorageKey = `sigam_profile_photo_${auth.email || auth.username || "user"}`;
@@ -115,13 +149,49 @@ const Profil = () => {
     }
   }, [profilePhotoStorageKey]);
 
-  const handleEditBlocked = () => {
-    toast({
-      title: "Modification indisponible",
-      description:
-        "Pour modifier ces informations, veuillez soumettre une demande specifique.",
-    });
-  };
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (!apiURL) {
+      setProfileUpdateStatusError("Verification de securite indisponible.");
+      setIsProfileUpdateStatusLoading(false);
+      return;
+    }
+
+    let isCancelled = false;
+
+    const fetchProfileUpdateStatus = async () => {
+      setIsProfileUpdateStatusLoading(true);
+      setProfileUpdateStatusError(null);
+
+      try {
+        const response = await axios.get(`${apiURL}/auth/profile-update/status`, {
+          withCredentials: true,
+        });
+
+        if (isCancelled) return;
+        setProfileUpdateStatus({
+          ...emptyProfileUpdateStatus,
+          ...response.data,
+        });
+      } catch (error: any) {
+        if (isCancelled) return;
+        setProfileUpdateStatusError(
+          error?.response?.data?.message ||
+            "Impossible de verifier la disponibilite de la modification.",
+        );
+      } finally {
+        if (!isCancelled) {
+          setIsProfileUpdateStatusLoading(false);
+        }
+      }
+    };
+
+    void fetchProfileUpdateStatus();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [apiURL, isLoaded]);
 
   const handleSelectPhoto = () => {
     fileInputRef.current?.click();
@@ -256,6 +326,87 @@ const Profil = () => {
     });
   };
 
+  const profileUpdateDisabledReason = useMemo(() => {
+    if (!isLoaded || isProfileUpdateStatusLoading) {
+      return "Verification de disponibilite en cours.";
+    }
+
+    if (!apiURL) {
+      return "Configuration API manquante.";
+    }
+
+    if (profileUpdateStatusError) {
+      return profileUpdateStatusError;
+    }
+
+    if (!profileUpdateStatus.canEdit) {
+      return (
+        profileUpdateStatus.cooldownMessage ||
+        "Vous avez deja modifie vos informations personnelles recemment."
+      );
+    }
+
+    return null;
+  }, [
+    apiURL,
+    isLoaded,
+    isProfileUpdateStatusLoading,
+    profileUpdateStatus.canEdit,
+    profileUpdateStatus.cooldownMessage,
+    profileUpdateStatusError,
+  ]);
+
+  const profileUpdateHint = useMemo(() => {
+    if (profileUpdateDisabledReason) {
+      return profileUpdateDisabledReason;
+    }
+
+    if (profileUpdateStatus.lastProfileUpdateAt) {
+      return `Derniere modification confirmee le ${formatDate(profileUpdateStatus.lastProfileUpdateAt)}. Validation OTP requise pour tout nouveau changement.`;
+    }
+
+    return "Toute modification sensible sera confirmee par OTP envoye sur votre adresse email actuelle.";
+  }, [profileUpdateDisabledReason, profileUpdateStatus.lastProfileUpdateAt]);
+
+  const openProfileUpdatePage = () => {
+    if (profileUpdateDisabledReason) return;
+    navigate("/investisseur/modifier-profil");
+  };
+
+  const renderProfileUpdateButton = (
+    label: string,
+    className: string,
+    variant: "default" | "outline" = "default",
+  ) => {
+    const button = (
+      <Button
+        variant={variant === "outline" ? "outline" : "default"}
+        className={className}
+        onClick={openProfileUpdatePage}
+        disabled={Boolean(profileUpdateDisabledReason)}
+      >
+        {label}
+      </Button>
+    );
+
+    if (!profileUpdateDisabledReason) {
+      return button;
+    }
+
+    return (
+      <TooltipProvider delayDuration={150}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className={styles.actionButtonWrap}>{button}</span>
+          </TooltipTrigger>
+          <TooltipContent className={styles.actionTooltip}>
+            {profileUpdateDisabledReason}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
+
   return (
     <InvestorLayout>
       <div className={styles.page}>
@@ -358,16 +509,20 @@ const Profil = () => {
                 <h3 className={styles.sideTitle}>Actions rapides</h3>
               </div>
               <p className={styles.sideNote}>
-                Accedez rapidement a vos parametres ou lancez une demande de mise a jour.
+                Accedez rapidement a vos parametres ou ouvrez le formulaire securise de
+                modification.
               </p>
               <div className={styles.sideActions}>
                 <Button className={styles.primaryButton} onClick={() => navigate("/investisseur/parametres")}>
                   Ouvrir les parametres
                 </Button>
-                <Button variant="outline" className={styles.secondaryButton} onClick={handleEditBlocked}>
-                  Demander une modification
-                </Button>
+                {renderProfileUpdateButton(
+                  "Modifier mes informations",
+                  styles.secondaryButton,
+                  "outline",
+                )}
               </div>
+              <p className={styles.actionHint}>{profileUpdateHint}</p>
             </div>
           </aside>
 
@@ -385,9 +540,11 @@ const Profil = () => {
                 <Button variant="outline" className={styles.secondaryButton} onClick={() => navigate("/investisseur/parametres")}>
                   Parametres
                 </Button>
-                <Button className={styles.primaryButton} onClick={handleEditBlocked}>
-                  Modifier mes informations
-                </Button>
+                {renderProfileUpdateButton(
+                  "Modifier mes informations",
+                  styles.primaryButton,
+                )}
+                <p className={styles.actionHint}>{profileUpdateHint}</p>
               </div>
             </div>
 
@@ -710,9 +867,11 @@ const Profil = () => {
               </p>
 
               <div className={styles.noticeActions}>
-                <Button variant="outline" className={styles.secondaryButton} onClick={handleEditBlocked}>
-                  Demander une mise a jour
-                </Button>
+                {renderProfileUpdateButton(
+                  "Modifier mes informations",
+                  styles.secondaryButton,
+                  "outline",
+                )}
                 <Button className={styles.primaryButton} onClick={() => navigate("/investisseur/parametres")}>
                   Aller aux parametres
                 </Button>

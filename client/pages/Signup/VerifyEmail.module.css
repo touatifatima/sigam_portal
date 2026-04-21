@@ -20,7 +20,7 @@
 .bgImage {
   position: absolute;
   inset: 0;
-  background-image: url('/hero-mining.jpg');
+  background-image: url('../../src/assets/hero-mining.jpg');
   background-size: cover;
   background-position: center;
   opacity: 0.3;

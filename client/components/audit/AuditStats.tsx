@@ -111,19 +111,24 @@ const AuditStats: React.FC = () => {
             <Box sx={{ height: '350px' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie
-                    data={userData}
-                    cx="50%"
-                    cy="50%"
+	                  <Pie
+	                    data={userData}
+	                    cx="50%"
+	                    cy="50%"
                     labelLine={false}
                     outerRadius={100}
                     innerRadius={60}
                     paddingAngle={5}
-                    fill="#8884d8"
-                    dataKey="count"
-                    nameKey="name"
-                    label={({ name, percent }) => `${name}: ${(percent! * 100).toFixed(0)}%`}
-                  >
+	                    fill="#8884d8"
+	                    dataKey="count"
+	                    nameKey="name"
+	                    label={({ name, percent }) => {
+	                      const rawPercent =
+	                        typeof percent === 'number' ? percent : Number(percent ?? 0);
+	                      const normalizedPercent = Number.isFinite(rawPercent) ? rawPercent : 0;
+	                      return `${String(name)}: ${(normalizedPercent * 100).toFixed(0)}%`;
+	                    }}
+	                  >
                     {userData.map((entry: any, index: number) => (
                       <Cell 
                         key={`cell-${index}`} 
