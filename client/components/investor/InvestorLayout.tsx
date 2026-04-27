@@ -3,12 +3,13 @@ import Navbar from "@/pages/navbar/Navbar";
 
 type InvestorLayoutProps = {
   children: React.ReactNode;
+  hideNavbar?: boolean;
 };
 
-export const InvestorLayout = ({ children }: InvestorLayoutProps) => {
+export const InvestorLayout = ({ children, hideNavbar = false }: InvestorLayoutProps) => {
   return (
     <div>
-      <Navbar />
+      {!hideNavbar && <Navbar />}
       {children}
     </div>
   );

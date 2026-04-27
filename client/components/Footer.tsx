@@ -16,14 +16,14 @@ export const Footer = () => {
     ],
     resources: [
       { label: "Guide d'utilisation", href: "/auth/login" },
-      { label: "FAQ", href: "/auth/login" },
-      { label: "Actualites", href: "/auth/login" },
-      { label: "Documentation", href: "/auth/login" },
+      { label: "FAQ", href: "/acceuil/faq" },
+      { label: "Actualites", href: "/acceuil/actualites" },
+      { label: "Documentation", href: "/acceuil/documentation" },
     ],
     legal: [
-      { label: "Conditions d'utilisation", href: "/auth/login" },
-      { label: "Politique de confidentialite", href: "/auth/login" },
-      { label: "Mentions legales", href: "/auth/login" },
+      { label: "Conditions d'utilisation", href: "/acceuil/conditions-utilisation" },
+      { label: "Politique de confidentialite", href: "/acceuil/politique-confidentialite" },
+      { label: "Mentions legales", href: "/acceuil/mentions-legales" },
     ],
   };
 

@@ -11,6 +11,7 @@ import {
   DetenteurMoralePortail,
   EnumTypeFonction,
   Prisma,
+  StatutDetenteur,
 } from '@prisma/client';
 import { NotificationsService } from 'src/notifications/notifications.service';
 
@@ -48,6 +49,11 @@ export class SocieteService {
         'Statut juridique invalide',
         HttpStatus.BAD_REQUEST,
       );
+    }
+
+    const statutDetenteur = this.resolveStatutDetenteur(data.statut_detenteur);
+    if (data.statut_detenteur && !statutDetenteur) {
+      throw new HttpException('statutDetenteur invalide', HttpStatus.BAD_REQUEST);
     }
 
     // Validate pays exists if id_pays is provided
@@ -104,6 +110,9 @@ export class SocieteService {
         site_web: data.site_web ?? '',
         adresse_siege: data.adresse,
         date_constitution: parsedDateConstitution,
+        ...(statutDetenteur && {
+          statutDetenteur,
+        }),
         // Link to StatutJuridique via join table (many-to-many)
         FormeJuridiqueDetenteur: {
           create: {
@@ -697,6 +706,11 @@ export class SocieteService {
       );
     }
 
+    const statutDetenteur = this.resolveStatutDetenteur(data.statut_detenteur);
+    if (data.statut_detenteur && !statutDetenteur) {
+      throw new HttpException('statutDetenteur invalide', HttpStatus.BAD_REQUEST);
+    }
+
 
     // Parse optional date_constitution similarly to registre updates
     const rawDateConst =
@@ -722,6 +736,9 @@ export class SocieteService {
       fax: data.fax,
       site_web: data.site_web,
       adresse_siege: data.adresse,
+      ...(statutDetenteur && {
+        statutDetenteur,
+      }),
       ...(data.id_pays && {
         pays: { connect: { id_pays: parseInt(data.id_pays, 10) } },
       }),
@@ -1296,6 +1313,15 @@ export class SocieteService {
     return statut?.id_statutJuridique ?? null;
   }
 
+  private resolveStatutDetenteur(
+    rawValue?: string | null,
+  ): StatutDetenteur | null {
+    const value = this.normalizeLabel(rawValue);
+    if (!value) return null;
+    const normalized = value.toUpperCase() as StatutDetenteur;
+    return Object.values(StatutDetenteur).includes(normalized) ? normalized : null;
+  }
+
   async saveInvestisseurIdentification(payload: any, userId?: number | null) {
     const data = payload?.identification ?? payload;
     if (!data) {
@@ -1311,6 +1337,11 @@ export class SocieteService {
     const statutId = await this.resolveStatutId(data.statutJuridique);
     if (!statutId) {
       throw new HttpException('statutJuridique not found', HttpStatus.BAD_REQUEST);
+    }
+
+    const statutDetenteur = this.resolveStatutDetenteur(data.statutDetenteur);
+    if (!statutDetenteur) {
+      throw new HttpException('statutDetenteur is invalid', HttpStatus.BAD_REQUEST);
     }
 
     const paysId = await this.resolvePaysId(data.pays);
@@ -1358,6 +1389,7 @@ export class SocieteService {
       nom_fr: nomSocieteFr,
       nom_ar: nomSocieteAr || detenteur?.nom_societeAR || '',
       statut_id: String(statutId),
+      statut_detenteur: statutDetenteur,
       tel: data.telephone ?? '',
       email: data.email ?? '',
       fax: data.numeroFax ?? '',
@@ -1544,6 +1576,7 @@ export class SocieteService {
 
   async listEntrepriseIdentificationRequests(params: {
     status?: string;
+    statutDetenteur?: string;
     search?: string;
     page?: number;
     pageSize?: number;
@@ -1563,10 +1596,28 @@ export class SocieteService {
       normalizedStatus === 'REFUSEE'
         ? (normalizedStatus as IdentificationStatus)
         : 'ALL';
+    const normalizedStatutDetenteur = String(params.statutDetenteur || 'ALL')
+      .trim()
+      .toUpperCase();
+    const statutDetenteurFilter: StatutDetenteur | 'ALL' =
+      Object.values(StatutDetenteur).includes(
+        normalizedStatutDetenteur as StatutDetenteur,
+      )
+        ? (normalizedStatutDetenteur as StatutDetenteur)
+        : 'ALL';
     const search = this.normalizeLabel(params.search);
 
     const where: Prisma.UtilisateurPortailWhereInput = {
       detenteurId: { not: null },
+      ...(statutDetenteurFilter !== 'ALL'
+        ? {
+            detenteur: {
+              is: {
+                statutDetenteur: statutDetenteurFilter,
+              },
+            },
+          }
+        : {}),
     };
 
     if (search) {
@@ -1660,6 +1711,7 @@ export class SocieteService {
           nif: firstRegistre?.nif || null,
           email: user.email || user.detenteur?.email || null,
           telephone: user.detenteur?.telephone || user.telephone || null,
+          statutDetenteur: user.detenteur?.statutDetenteur || null,
           dateDemande,
           statut: status,
           decisionAt,

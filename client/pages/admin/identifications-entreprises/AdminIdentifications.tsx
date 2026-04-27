@@ -35,6 +35,11 @@ import styles from './admin-identifications.module.css';
 
 type IdentificationStatus = 'EN_ATTENTE' | 'CONFIRMEE' | 'REFUSEE';
 type StatusFilter = 'ALL' | IdentificationStatus;
+type DetenteurStatus =
+  | 'PERSONNE_MORALE_ALGERIENNE'
+  | 'PERSONNE_MORALE_ETRANGERE'
+  | 'PERSONNE_PHYSIQUE_ALGERIENNE';
+type DetenteurStatusFilter = 'ALL' | DetenteurStatus;
 
 type IdentificationRow = {
   id: number;
@@ -49,6 +54,7 @@ type IdentificationRow = {
   nif?: string | null;
   email?: string | null;
   telephone?: string | null;
+  statutDetenteur?: DetenteurStatus | null;
   dateDemande?: string | null;
   statut: IdentificationStatus;
   decisionAt?: string | null;
@@ -99,6 +105,16 @@ const STATUS_OPTIONS: Array<{ value: StatusFilter; label: string }> = [
   { value: 'REFUSEE', label: 'Refusees' },
 ];
 
+const DETENTEUR_STATUS_OPTIONS: Array<{
+  value: DetenteurStatusFilter;
+  label: string;
+}> = [
+  { value: 'ALL', label: 'Tous statuts detenteur' },
+  { value: 'PERSONNE_MORALE_ALGERIENNE', label: 'Personne morale algerienne' },
+  { value: 'PERSONNE_MORALE_ETRANGERE', label: 'Personne morale etrangere' },
+  { value: 'PERSONNE_PHYSIQUE_ALGERIENNE', label: 'Personne physique algerienne' },
+];
+
 function safeText(value?: string | null) {
   return String(value || '').trim();
 }
@@ -114,6 +130,13 @@ function formatDate(value?: string | null) {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function detenteurStatusLabel(value?: string | null) {
+  if (value === 'PERSONNE_MORALE_ALGERIENNE') return 'Personne morale algerienne';
+  if (value === 'PERSONNE_MORALE_ETRANGERE') return 'Personne morale etrangere';
+  if (value === 'PERSONNE_PHYSIQUE_ALGERIENNE') return 'Personne physique algerienne';
+  return '--';
 }
 
 function statusMeta(status: IdentificationStatus) {
@@ -144,6 +167,7 @@ export default function AdminIdentifications() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const [status, setStatus] = useState<StatusFilter>('ALL');
+  const [statutDetenteur, setStatutDetenteur] = useState<DetenteurStatusFilter>('ALL');
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -194,6 +218,7 @@ export default function AdminIdentifications() {
         pageSize,
       };
       if (status !== 'ALL') params.status = status;
+      if (statutDetenteur !== 'ALL') params.statutDetenteur = statutDetenteur;
       if (search) params.search = search;
 
       const res = await axios.get<ListResponse>(
@@ -217,7 +242,7 @@ export default function AdminIdentifications() {
     } finally {
       setLoading(false);
     }
-  }, [apiURL, page, pageSize, search, status]);
+  }, [apiURL, page, pageSize, search, status, statutDetenteur]);
 
   const loadStats = useCallback(async () => {
     if (!apiURL) return;
@@ -225,6 +250,7 @@ export default function AdminIdentifications() {
       const baseParams = {
         page: 1,
         pageSize: 1,
+        ...(statutDetenteur !== 'ALL' ? { statutDetenteur } : {}),
         ...(search ? { search } : {}),
       };
 
@@ -256,7 +282,7 @@ export default function AdminIdentifications() {
     } catch (err) {
       console.warn('Stats identifications indisponibles', err);
     }
-  }, [apiURL, search]);
+  }, [apiURL, search, statutDetenteur]);
 
   const openDetail = useCallback(
     async (userId: number) => {
@@ -530,6 +556,22 @@ export default function AdminIdentifications() {
                 </select>
               </label>
               <label className={styles.filterField}>
+                <span>Statut detenteur</span>
+                <select
+                  value={statutDetenteur}
+                  onChange={(e) => {
+                    setStatutDetenteur(e.target.value as DetenteurStatusFilter);
+                    setPage(1);
+                  }}
+                >
+                  {DETENTEUR_STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className={styles.filterField}>
                 <span>Par page</span>
                 <select
                   value={String(pageSize)}
@@ -570,6 +612,7 @@ export default function AdminIdentifications() {
                   setSearchInput('');
                   setSearch('');
                   setStatus('ALL');
+                  setStatutDetenteur('ALL');
                   setPage(1);
                   setPageSize(20);
                 }}
@@ -589,6 +632,11 @@ export default function AdminIdentifications() {
                 {status !== 'ALL' ? (
                   <Badge className={styles.metaBadge}>{statusMeta(status).label}</Badge>
                 ) : null}
+                {statutDetenteur !== 'ALL' ? (
+                  <Badge className={styles.metaBadge}>
+                    {detenteurStatusLabel(statutDetenteur)}
+                  </Badge>
+                ) : null}
               </div>
             </div>
 
@@ -599,6 +647,7 @@ export default function AdminIdentifications() {
                     <TableHead>ID</TableHead>
                     <TableHead>Utilisateur</TableHead>
                     <TableHead>Nom entreprise</TableHead>
+                    <TableHead>Statut detenteur</TableHead>
                     <TableHead>NIF</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Telephone</TableHead>
@@ -610,7 +659,7 @@ export default function AdminIdentifications() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={9} className={styles.centerCell}>
+                      <TableCell colSpan={10} className={styles.centerCell}>
                         Chargement...
                       </TableCell>
                     </TableRow>
@@ -649,6 +698,7 @@ export default function AdminIdentifications() {
                             </div>
                           </TableCell>
                           <TableCell>{safeText(row.nomEntreprise) || '--'}</TableCell>
+                          <TableCell>{detenteurStatusLabel(row.statutDetenteur)}</TableCell>
                           <TableCell>{safeText(row.nif) || '--'}</TableCell>
                           <TableCell>{safeText(row.email) || '--'}</TableCell>
                           <TableCell>{safeText(row.telephone) || '--'}</TableCell>
@@ -670,7 +720,7 @@ export default function AdminIdentifications() {
                     })
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={9} className={styles.centerCell}>
+                      <TableCell colSpan={10} className={styles.centerCell}>
                         Aucune demande trouvee.
                       </TableCell>
                     </TableRow>
@@ -851,6 +901,10 @@ export default function AdminIdentifications() {
                         <p>
                           <strong>Telephone:</strong>{' '}
                           {safeText(detailItem.detenteur?.telephone) || '--'}
+                        </p>
+                        <p>
+                          <strong>Statut detenteur:</strong>{' '}
+                          {detenteurStatusLabel(detailItem.detenteur?.statutDetenteur)}
                         </p>
                       </div>
                     </div>

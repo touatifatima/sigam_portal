@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Calendar, ArrowUpRight } from "lucide-react";
 import styles from "./News.module.css";
@@ -53,11 +54,14 @@ export const News = () => {
               <h2 className={styles.title}>Dernieres nouvelles</h2>
             </div>
             <Button
+              asChild
               variant="outline"
               className={`${styles.viewAll} homePremiumGhostButtonLight homePremiumButtonMd`}
             >
-              Voir toutes les actualites
-              <ArrowRight className="h-4 w-4" />
+              <Link href="/acceuil/actualites">
+                Voir toutes les actualites
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </Button>
           </div>
         </ScrollReveal>

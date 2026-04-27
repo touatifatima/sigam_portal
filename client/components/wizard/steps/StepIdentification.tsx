@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Building2, User, FileText, Users, Plus, X, AlertCircle } from "lucide-react";
 import styles from "./StepIdentification.module.css";
 
@@ -50,11 +51,26 @@ interface StepIdentificationProps {
 
 export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) => {
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
+  const statutDetenteurOptions = [
+    {
+      value: "PERSONNE_MORALE_ALGERIENNE",
+      label: "Personne morale algerienne",
+    },
+    {
+      value: "PERSONNE_MORALE_ETRANGERE",
+      label: "Personne morale etrangere",
+    },
+    {
+      value: "PERSONNE_PHYSIQUE_ALGERIENNE",
+      label: "Personne physique algerienne",
+    },
+  ] as const;
   const [identification, setIdentification] = useState({
     // Informations entreprise
     nomSocieteFr: data?.nomSocieteFr || "",
     nomSocieteAr: data?.nomSocieteAr || "",
     statutJuridique: data?.statutJuridique || "",
+    statutDetenteur: data?.statutDetenteur || "",
     pays: data?.pays || "",
     telephone: data?.telephone || "",
     email: data?.email || "",
@@ -272,6 +288,29 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className={`${styles.inputGroup} ${styles.fullWidth}`}>
+              <Label className={styles.label}>Statut du detenteur *</Label>
+              <RadioGroup
+                value={identification.statutDetenteur || undefined}
+                onValueChange={(value) => handleChange("statutDetenteur", value)}
+                className={styles.radioGroup}
+              >
+                {statutDetenteurOptions.map((option) => {
+                  const optionId = `statutDetenteur-${option.value}`;
+                  return (
+                    <label key={option.value} htmlFor={optionId} className={styles.radioOption}>
+                      <RadioGroupItem
+                        id={optionId}
+                        value={option.value}
+                        className={styles.radioItem}
+                      />
+                      <span className={styles.radioLabel}>{option.label}</span>
+                    </label>
+                  );
+                })}
+              </RadioGroup>
             </div>
 
             <div className={styles.inputGroup}>

@@ -257,6 +257,28 @@ enum NotificationPriority {
   URGENT
 }
 
+model ActualitePortail {
+  id          Int      @id @default(autoincrement())
+  slug        String   @unique @db.VarChar(180)
+  title       String   @db.VarChar(220)
+  excerpt     String   @db.Text
+  content     String   @db.Text
+  category    String   @default("Actualite") @db.VarChar(60)
+  author      String   @default("Equipe POM") @db.VarChar(120)
+  imageUrl    String?  @db.Text
+  isPublished Boolean  @default(false)
+  isFeatured  Boolean  @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isPublished, publishedAt(sort: Desc)], map: "actualites_portail_published_idx")
+  @@index([isFeatured], map: "actualites_portail_featured_idx")
+  @@index([category], map: "actualites_portail_category_idx")
+  @@index([updatedAt(sort: Desc)], map: "actualites_portail_updated_idx")
+  @@map("actualites_portail")
+}
+
 model Antenne {
   id_antenne   Int             @id @default(autoincrement())
   nom          String

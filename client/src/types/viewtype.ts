@@ -20,6 +20,7 @@ export type ViewType =
   | 'manage_demandes'
   | 'manage_notifications'
   | 'manage_identifications'
+  | 'manage_actualites'
   | 'Payments'
   | 'controle_minier'
   | 'Audit_Logs'

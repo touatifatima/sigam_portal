@@ -8,6 +8,7 @@ import heroSlide4Jpg from "@/src/assets/hero-slide-4.jpg";
 import heroSlide5Jpg from "@/src/assets/hero-slide-5.jpg";
 import heroSlide6Jpg from "@/src/assets/hero-slide-6.jpg";
 import heroFinJpg from "@/src/assets/hero-fin.jpg";
+import engineersJpg from "@/src/assets/engineers.jpg";
 import heroSlide1Webp from "@/src/assets/hero-slide-1.webp";
 import heroSlide2Webp from "@/src/assets/hero-slide-2.webp";
 import heroSlide3Webp from "@/src/assets/hero-slide-3.webp";
@@ -85,6 +86,15 @@ const slides: Slide[] = [
       "Suivez les activites sur site, structurez vos demarches administratives et avancez avec une vision claire de vos projets miniers.",
     cta: "Suivre mes demarches",
     ctaLink: "/auth/login",
+  },
+  {
+    image: engineersJpg,
+    title: "Valorisez le savoir-faire de vos",
+    highlight: "equipes techniques minieres",
+    subtitle:
+      "Ingenieurs, geologues et operateurs collaborent pour accelerer l'instruction, reduire les risques et fiabiliser chaque etape de vos projets.",
+    cta: "Structurer mon projet",
+    ctaLink: "/Signup/page",
   },
   {
     image: heroFinJpg,

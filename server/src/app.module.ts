@@ -72,6 +72,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { GisModule } from './gis/gis.module';
 import { Notification } from './notifications/notification.entity';
 import { ChatModule } from './chat/chat.module';
+import { ActualitesModule } from './actualites/actualites.module';
 // import { ProceduretechniqueModule } from './fichetechnique/fichtechnique.module';
 //import { PortailModule } from './portail/portail.module';
 import { ArticleSetsModule } from './article_sets/article-sets.module';
@@ -103,7 +104,7 @@ import { PhasesEtapesConfigModule } from './configurations/phases-etapes/phases-
     InteractionWaliModule,CapacitesModule,SubstancesModule,DocumentsModule,DemandeSummaryControllerModule,SubstancesconfModule,
     StatutsJuridiquesconfconfModule,WilayasconfModule,DairasconfModule,CommunesconfModule,AntennesconfModule,DetenteurMorale_confModule,
     TypePermis_confModule,StatutPermis_confModule,Permis_confModule,Antenne_confModule,DemandesDashboardModule,TransfertModule,GisModule,VerificationGeoModule,
-    NotificationsModule,ArticleSetsModule,InscriptionProvisoireModule,PhasesEtapesConfigModule,ChatModule,FactureModule,CessionModule,ProcedureDeclarationsModule],
+    NotificationsModule,ArticleSetsModule,InscriptionProvisoireModule,PhasesEtapesConfigModule,ChatModule,FactureModule,CessionModule,ProcedureDeclarationsModule,ActualitesModule],
   controllers: [DemandesController],
   providers: [DemandeService,
     //{

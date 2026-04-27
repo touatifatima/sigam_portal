@@ -1,0 +1,190 @@
+.page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(40, 110, 130, 0.12), transparent 34%),
+    radial-gradient(circle at 85% 8%, rgba(139, 58, 98, 0.08), transparent 34%),
+    linear-gradient(180deg, #0f1524 0%, #151d2f 24%, #f5f8fb 24.1%, #f8fafc 100%);
+}
+
+.main {
+  padding-bottom: 3.6rem;
+}
+
+.hero {
+  padding: 4.7rem 0 2.8rem;
+  color: #f4f8fd;
+}
+
+.heroInner {
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+.badge {
+  width: fit-content;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.23);
+  background: rgba(255, 255, 255, 0.08);
+  color: #d6eaf0;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  padding: 0.4rem 0.75rem;
+}
+
+.hero h1 {
+  margin: 1rem 0 0.65rem;
+  color: #ffffff;
+  font-size: clamp(2rem, 4vw, 2.85rem);
+  line-height: 1.14;
+  letter-spacing: -0.02em;
+}
+
+.hero p {
+  margin: 0;
+  max-width: 72ch;
+  color: #d4dfec;
+  line-height: 1.7;
+}
+
+.actions {
+  margin-top: 1.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.primaryCta,
+.secondaryCta {
+  min-height: 42px;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 0.6rem 0.95rem;
+}
+
+.primaryCta {
+  color: #ffffff;
+  border: 1px solid transparent;
+  background: linear-gradient(135deg, #2f7b8d 0%, #3d8f9d 100%);
+  box-shadow: 0 12px 26px rgba(18, 45, 53, 0.32);
+}
+
+.secondaryCta {
+  color: #f5f7fc;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.pillars {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.pillarCard {
+  border: 1px solid #dde5eb;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #fcfdff 100%);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+  padding: 0.95rem;
+}
+
+.pillarCard h2 {
+  margin: 0;
+  color: #1f2e42;
+  font-size: 0.96rem;
+  font-weight: 800;
+}
+
+.pillarCard p {
+  margin: 0.42rem 0 0;
+  color: #56657a;
+  font-size: 0.85rem;
+  line-height: 1.62;
+}
+
+.sections {
+  margin-top: 0.9rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.sectionCard {
+  border: 1px solid #dde5ec;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+}
+
+.sectionHead {
+  padding: 0.95rem 1rem;
+  border-bottom: 1px solid #edf1f6;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  background: linear-gradient(120deg, rgba(47, 123, 141, 0.1), rgba(139, 58, 98, 0.05));
+}
+
+.iconWrap {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 10px;
+  border: 1px solid rgba(47, 123, 141, 0.24);
+  background: linear-gradient(140deg, #e8f4f7 0%, #f2f8fa 100%);
+  color: #2f7b8d;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sectionHead h3 {
+  margin: 0;
+  color: #1f2940;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.sectionBody {
+  padding: 0.95rem 1rem 1rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.sectionBody p {
+  margin: 0;
+  color: #4e5d6f;
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+.sectionList {
+  margin: 0.05rem 0 0;
+  padding-left: 1.15rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.sectionList li {
+  color: #4e5d6f;
+  font-size: 0.87rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 980px) {
+  .pillars {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .hero {
+    padding: 4.15rem 0 2.35rem;
+  }
+}
+

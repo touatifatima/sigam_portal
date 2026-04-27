@@ -370,8 +370,13 @@ export default function Navbar() {
     () => isCadastreRole(normalizedRoles),
     [normalizedRoles],
   );
+  const isRestrictedInvestisseur = isInvestisseur && !auth.isEntrepriseVerified;
 
   const roleQuickLinks = useMemo<NavQuickLink[]>(() => {
+    if (isRestrictedInvestisseur) {
+      return [];
+    }
+
     if (isAdmin) {
       return [
         { href: '/admin_panel/DossierAdminPage', label: 'Dossiers' },
@@ -401,7 +406,7 @@ export default function Navbar() {
     }
 
     return [];
-  }, [isAdmin, isCadastre, isInvestisseur, isOperateur]);
+  }, [isAdmin, isCadastre, isInvestisseur, isOperateur, isRestrictedInvestisseur]);
 
   const dashboardHref = getDefaultDashboardPath(normalizedRoles);
 
@@ -447,16 +452,18 @@ export default function Navbar() {
           </div>
         )}
 
-        <Link
-          href="/carte/carte_public"
-          className={styles['nav-map-link']}
-          title="Ouvrir la carte publique"
-        >
-          <Map size={16} />
-          <span>Carte Publique</span>
-        </Link>
+        {!isRestrictedInvestisseur && (
+          <Link
+            href="/carte/carte_public"
+            className={styles['nav-map-link']}
+            title="Ouvrir la carte publique"
+          >
+            <Map size={16} />
+            <span>Carte Publique</span>
+          </Link>
+        )}
 
-        {(isInvestisseur || isCadastre) && (
+        {!isRestrictedInvestisseur && (isInvestisseur || isCadastre) && (
           <Link
             href={precheckHref}
             className={styles['nav-precheck-cta']}
@@ -466,7 +473,7 @@ export default function Navbar() {
           </Link>
         )}
 
-        {isInvestisseur && (
+        {isInvestisseur && !isRestrictedInvestisseur && (
           <Link
             href="/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis"
             className={`${styles['nav-cta']} ${
@@ -488,71 +495,74 @@ export default function Navbar() {
           </Link>
         )}
 
-        <div className={styles['mobile-nav-wrapper']} ref={compactMenuRef}>
-          <button
-            type="button"
-            className={styles['mobile-nav-trigger']}
-            aria-expanded={isCompactMenuOpen}
-            onClick={() => setIsCompactMenuOpen((prev) => !prev)}
-          >
-            <Menu size={16} />
-            <span>Menu</span>
-          </button>
+        {!isRestrictedInvestisseur && (
+          <div className={styles['mobile-nav-wrapper']} ref={compactMenuRef}>
+            <button
+              type="button"
+              className={styles['mobile-nav-trigger']}
+              aria-expanded={isCompactMenuOpen}
+              onClick={() => setIsCompactMenuOpen((prev) => !prev)}
+            >
+              <Menu size={16} />
+              <span>Menu</span>
+            </button>
 
-          {isCompactMenuOpen && (
-            <div className={styles['mobile-nav-menu']}>
-              {roleQuickLinks.map((link) => (
+            {isCompactMenuOpen && (
+              <div className={styles['mobile-nav-menu']}>
+                {roleQuickLinks.map((link) => (
+                  <Link
+                    key={`mobile-${link.href}`}
+                    href={link.href}
+                    className={styles['mobile-nav-link']}
+                    onClick={() => setIsCompactMenuOpen(false)}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+
                 <Link
-                  key={`mobile-${link.href}`}
-                  href={link.href}
+                  href="/carte/carte_public"
                   className={styles['mobile-nav-link']}
                   onClick={() => setIsCompactMenuOpen(false)}
                 >
-                  {link.label}
+                  Carte Publique
                 </Link>
-              ))}
 
-              <Link
-                href="/carte/carte_public"
-                className={styles['mobile-nav-link']}
-                onClick={() => setIsCompactMenuOpen(false)}
-              >
-                Carte Publique
-              </Link>
+                {(isInvestisseur || isCadastre) && (
+                  <Link
+                    href={precheckHref}
+                    className={styles['mobile-nav-link']}
+                    onClick={() => setIsCompactMenuOpen(false)}
+                  >
+                    Verification prealable
+                  </Link>
+                )}
 
-              {(isInvestisseur || isCadastre) && (
-                <Link
-                  href={precheckHref}
-                  className={styles['mobile-nav-link']}
-                  onClick={() => setIsCompactMenuOpen(false)}
-                >
-                  Verification prealable
-                </Link>
-              )}
-
-              {isInvestisseur && (
-                <Link
-                  href="/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis"
-                  className={`${styles['mobile-nav-link']} ${
-                    canCreateDemande ? '' : styles['mobile-nav-link-disabled']
-                  }`}
-                  onClick={(event) => {
-                    if (!canCreateDemande) {
-                      event.preventDefault();
-                    }
-                    setIsCompactMenuOpen(false);
-                  }}
-                >
-                  Nouvelle Demande
-                </Link>
-              )}
-            </div>
-          )}
-        </div>
+                {isInvestisseur && (
+                  <Link
+                    href="/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis"
+                    className={`${styles['mobile-nav-link']} ${
+                      canCreateDemande ? '' : styles['mobile-nav-link-disabled']
+                    }`}
+                    onClick={(event) => {
+                      if (!canCreateDemande) {
+                        event.preventDefault();
+                      }
+                      setIsCompactMenuOpen(false);
+                    }}
+                  >
+                    Nouvelle Demande
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className={styles['navbar-user']}>
-        <div className={styles['notification-container']} ref={notificationsRef}>
+        {!isRestrictedInvestisseur && (
+          <div className={styles['notification-container']} ref={notificationsRef}>
           <div
             className={styles['notification-icon']}
             onClick={() => {
@@ -646,7 +656,8 @@ export default function Navbar() {
               </div>
             </div>
           )}
-        </div>
+          </div>
+        )}
 
         <div className={styles['profile-dropdown']} ref={dropdownRef}>
           <button
@@ -671,60 +682,72 @@ export default function Navbar() {
 
           {isDropdownOpen && (
             <div className={styles['dropdown-menu']} role="menu">
-              <Link
-                href={dashboardHref}
-                className={styles['dropdown-item']}
-                onClick={() => setIsDropdownOpen(false)}
-              >
-                <LayoutDashboard className={styles['dropdown-icon']} size={18} />
-                <span>Tableau de bord</span>
-              </Link>
-
-              <Link
-                href="/notification"
-                className={styles['dropdown-item']}
-                onClick={() => setIsDropdownOpen(false)}
-              >
-                <span className={styles['dropdown-icon']} aria-hidden="true">N</span>
-                <span>Notifications</span>
-              </Link>
-
-              <Link
-                href="/investisseur/profil"
-                className={styles['dropdown-item']}
-                onClick={() => setIsDropdownOpen(false)}
-              >
-                <User className={styles['dropdown-icon']} size={18} />
-                <span>Mon profil</span>
-              </Link>
-
-              <Link
-                href="/investisseur/parametres"
-                className={styles['dropdown-item']}
-                onClick={() => setIsDropdownOpen(false)}
-              >
-                <Settings className={styles['dropdown-icon']} size={18} />
-                <span>Parametres</span>
-              </Link>
-
-              {(isInvestisseur || isCadastre) && (
+              {isRestrictedInvestisseur ? (
                 <button
-                  type="button"
-                  onClick={() => void handleRestartOnboarding()}
-                  className={styles['dropdown-item']}
+                  onClick={handleLogout}
+                  className={`${styles['dropdown-item']} ${styles['logout']}`}
                 >
-                  <WandSparkles className={styles['dropdown-icon']} size={18} />
-                  <span>Relancer le guide</span>
+                  <LogOut className={styles['dropdown-icon']} size={18} />
+                  <span>Deconnexion</span>
                 </button>
-              )}
+              ) : (
+                <>
+                  <Link
+                    href={dashboardHref}
+                    className={styles['dropdown-item']}
+                    onClick={() => setIsDropdownOpen(false)}
+                  >
+                    <LayoutDashboard className={styles['dropdown-icon']} size={18} />
+                    <span>Tableau de bord</span>
+                  </Link>
 
-              <button
-                onClick={handleLogout}
-                className={`${styles['dropdown-item']} ${styles['logout']}`}
-              >
-                <LogOut className={styles['dropdown-icon']} size={18} />
-                <span>Deconnexion</span>
-              </button>
+                  <Link
+                    href="/notification"
+                    className={styles['dropdown-item']}
+                    onClick={() => setIsDropdownOpen(false)}
+                  >
+                    <span className={styles['dropdown-icon']} aria-hidden="true">N</span>
+                    <span>Notifications</span>
+                  </Link>
+
+                  <Link
+                    href="/investisseur/profil"
+                    className={styles['dropdown-item']}
+                    onClick={() => setIsDropdownOpen(false)}
+                  >
+                    <User className={styles['dropdown-icon']} size={18} />
+                    <span>Mon profil</span>
+                  </Link>
+
+                  <Link
+                    href="/investisseur/parametres"
+                    className={styles['dropdown-item']}
+                    onClick={() => setIsDropdownOpen(false)}
+                  >
+                    <Settings className={styles['dropdown-icon']} size={18} />
+                    <span>Parametres</span>
+                  </Link>
+
+                  {(isInvestisseur || isCadastre) && (
+                    <button
+                      type="button"
+                      onClick={() => void handleRestartOnboarding()}
+                      className={styles['dropdown-item']}
+                    >
+                      <WandSparkles className={styles['dropdown-icon']} size={18} />
+                      <span>Relancer le guide</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={handleLogout}
+                    className={`${styles['dropdown-item']} ${styles['logout']}`}
+                  >
+                    <LogOut className={styles['dropdown-icon']} size={18} />
+                    <span>Deconnexion</span>
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>

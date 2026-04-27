@@ -6,6 +6,7 @@ import { useRouter } from 'next/router';
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
   MessageCircle,
   XCircle,
 } from 'lucide-react';
@@ -287,53 +288,62 @@ export default function NotificationsPage() {
         <div className={styles.filtersCard}>
           <label className={styles.field}>
             <span>Type</span>
-            <select
-              value={typeFilter}
-              onChange={(e) => {
-                setPage(1);
-                setTypeFilter(e.target.value);
-              }}
-            >
-              {TYPE_OPTIONS.map((option) => (
-                <option key={option.value || 'all'} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            <div className={styles.selectShell}>
+              <select
+                value={typeFilter}
+                onChange={(e) => {
+                  setPage(1);
+                  setTypeFilter(e.target.value);
+                }}
+              >
+                {TYPE_OPTIONS.map((option) => (
+                  <option key={option.value || 'all'} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={16} className={styles.selectIcon} />
+            </div>
           </label>
 
           <label className={styles.field}>
             <span>Categorie</span>
-            <select
-              value={categoryFilter}
-              onChange={(e) => {
-                setPage(1);
-                setCategoryFilter(e.target.value);
-              }}
-            >
-              {CATEGORY_OPTIONS.map((option) => (
-                <option key={option.value || 'all'} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            <div className={styles.selectShell}>
+              <select
+                value={categoryFilter}
+                onChange={(e) => {
+                  setPage(1);
+                  setCategoryFilter(e.target.value);
+                }}
+              >
+                {CATEGORY_OPTIONS.map((option) => (
+                  <option key={option.value || 'all'} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={16} className={styles.selectIcon} />
+            </div>
           </label>
 
           <label className={styles.field}>
             <span>Par page</span>
-            <select
-              value={String(pageSize)}
-              onChange={(e) => {
-                setPage(1);
-                setPageSize(Number(e.target.value));
-              }}
-            >
-              {PAGE_SIZE_OPTIONS.map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
+            <div className={styles.selectShell}>
+              <select
+                value={String(pageSize)}
+                onChange={(e) => {
+                  setPage(1);
+                  setPageSize(Number(e.target.value));
+                }}
+              >
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={16} className={styles.selectIcon} />
+            </div>
           </label>
 
           <label className={styles.checkField}>

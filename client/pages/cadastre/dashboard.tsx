@@ -9,7 +9,7 @@ import {
 import { InvestorLayout } from "@/components/investor/InvestorLayout";
 import { OnboardingTour, type OnboardingStep } from "@/components/onboarding/OnboardingTour";
 import { OnboardingWelcomeModal } from "@/components/onboarding/OnboardingWelcomeModal";
-import verificationSectionImage from "@/src/assets/hero-slide-4.jpg";
+import verificationSectionImage from "@/src/assets/engineers.jpg";
 import publicMapSectionImage from "@/src/assets/hero-slide-2.jpg";
 import { useAuthStore } from "@/src/store/useAuthStore";
 import { useAuthReady } from "@/src/hooks/useAuthReady";

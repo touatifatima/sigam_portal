@@ -72,6 +72,7 @@ export class SocieteController {
   async listEntrepriseIdentificationRequests(
     @Req() req: Request,
     @Query('status') status?: string,
+    @Query('statutDetenteur') statutDetenteur?: string,
     @Query('search') search?: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
@@ -79,6 +80,7 @@ export class SocieteController {
     await this.assertAdminAccess(req);
     return this.societeService.listEntrepriseIdentificationRequests({
       status,
+      statutDetenteur,
       search,
       page: page ? Number(page) : undefined,
       pageSize: pageSize ? Number(pageSize) : undefined,

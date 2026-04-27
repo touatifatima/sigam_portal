@@ -1,4 +1,4 @@
-export class CreateDossierDto {
+/*export class CreateDossierDto {
   id_typeProc: number;
   id_typePermis: number;
   nombre_doc: number;
@@ -9,7 +9,7 @@ export class CreateDossierDto {
     format: string;
     taille_doc: string;
   }[];
-}
+}*/
 
 export class UpdateDossierDto {
   id_typeProc?: number;

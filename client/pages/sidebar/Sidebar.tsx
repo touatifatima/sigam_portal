@@ -91,6 +91,7 @@ export default function Sidebar({ currentView, navigateTo }: SidebarProps) {
       subItems: [
         { id: 'manage_demandes', icon: <FiClipboard />, label: 'Gestion Demandes', permission: 'Admin-Panel' },
         { id: 'manage_notifications', icon: <FiBell />, label: 'Gestion Notifications', permission: 'Admin-Panel' },
+        { id: 'manage_actualites', icon: <FiFileText />, label: 'Gestion Actualites', permission: 'Admin-Panel' },
         { id: 'manage_identifications', icon: <FiShield />, label: 'Identifications Entreprises', permission: 'Admin-Panel' },
         { id: 'manage_declarations', icon: <FiFileText />, label: 'Declarations', permission: 'Admin-Panel' },
         { id: 'Configurations', icon: <FiSettings />, label: 'Configurations', permission: 'Admin-Panel' },

@@ -273,6 +273,12 @@ const Profil = () => {
     detenteur?.FormeJuridiqueDetenteur?.[0]?.statutJuridique?.statut_fr ||
     detenteur?.FormeJuridiqueDetenteur?.[0]?.statutJuridique?.code_statut ||
     "Non renseigne";
+  const statutDetenteur =
+    {
+      PERSONNE_MORALE_ALGERIENNE: "Personne morale algerienne",
+      PERSONNE_MORALE_ETRANGERE: "Personne morale etrangere",
+      PERSONNE_PHYSIQUE_ALGERIENNE: "Personne physique algerienne",
+    }[String(detenteur?.statutDetenteur || "")] || "Non renseigne";
 
   const identityLabel = useMemo(() => {
     if (auth.Prenom || auth.nom) {
@@ -609,6 +615,7 @@ const Profil = () => {
                       rtl
                     />
                     <ProfileField label="Statut juridique" value={statutJuridique} icon={<Shield className="w-4 h-4" />} />
+                    <ProfileField label="Statut detenteur" value={statutDetenteur} icon={<Shield className="w-4 h-4" />} />
                     <ProfileField
                       label="Nationalite"
                       value={detenteur?.nationaliteRef?.libelle || "Non renseigne"}

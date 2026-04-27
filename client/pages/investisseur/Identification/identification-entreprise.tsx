@@ -19,6 +19,7 @@ const FIELD_LABELS: Record<string, string> = {
   nomSocieteFr: "Nom societe (FR)",
   nomSocieteAr: "Nom societe (AR)",
   statutJuridique: "Statut juridique",
+  statutDetenteur: "Statut du detenteur",
   pays: "Pays",
   telephone: "Telephone",
   email: "Email",
@@ -80,6 +81,8 @@ const IdentificationEntreprise = () => {
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
   const [goodbyeMessage, setGoodbyeMessage] = useState("");
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const setEntrepriseVerified = useAuthStore((s) => s.setEntrepriseVerified);
   const { auth, isLoaded } = useAuthStore();
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
@@ -208,11 +211,7 @@ const IdentificationEntreprise = () => {
     }
   };
 
-  const handleFinish = async () => {
-    if (isFinishing) return;
-    setIsFinishing(true);
-    setGoodbyeMessage("A bientot sur le Portail ANAM");
-
+  const performLogout = async () => {
     try {
       if (apiURL) {
         await axios.post(`${apiURL}/auth/logout`, {}, { withCredentials: true });
@@ -247,14 +246,40 @@ const IdentificationEntreprise = () => {
       isLoaded: true,
     }));
 
+  };
+
+  const handleFinish = async () => {
+    if (isFinishing) return;
+    setIsFinishing(true);
+    setGoodbyeMessage("A bientot sur le Portail ANAM");
+
+    await performLogout();
+
     window.setTimeout(() => {
       setShowSuccessModal(false);
       navigate("/auth/login");
     }, 1100);
   };
 
+  const handleOpenLogoutModal = () => {
+    setShowLogoutModal(true);
+  };
+
+  const handleCloseLogoutModal = () => {
+    if (isLoggingOut) return;
+    setShowLogoutModal(false);
+  };
+
+  const handleConfirmLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    await performLogout();
+    setShowLogoutModal(false);
+    navigate("/auth/login");
+  };
+
   return (
-    <InvestorLayout>
+    <InvestorLayout hideNavbar>
       <div className={styles.container}>
         <div className={styles.wrapper}>
           {/* Header */}
@@ -307,6 +332,15 @@ const IdentificationEntreprise = () => {
                     </>
                   )}
                 </Button>
+                <Button
+                  onClick={handleOpenLogoutModal}
+                  disabled={isSubmitting || isLoggingOut}
+                  size="lg"
+                  className={styles.logoutMainButton}
+                >
+                  <LogOut className={styles.logoutActionIcon} />
+                  {isLoggingOut ? "Deconnexion..." : "Deconnexion du compte"}
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -356,6 +390,57 @@ const IdentificationEntreprise = () => {
               {goodbyeMessage && (
                 <p className={styles.goodbyeMessage}>{goodbyeMessage}</p>
               )}
+            </div>
+          </div>
+        )}
+
+        {showLogoutModal && (
+          <div
+            className={styles.logoutOverlay}
+            onClick={handleCloseLogoutModal}
+            role="presentation"
+          >
+            <div
+              className={styles.logoutModal}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="logout-modal-title"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className={styles.logoutModalHeader}>
+                <h3 id="logout-modal-title" className={styles.logoutModalTitle}>
+                  Deconnexion du compte
+                </h3>
+              </div>
+
+              <div className={styles.logoutModalBody}>
+                <p className={styles.logoutModalPrimaryText}>
+                  Etes-vous sur(e) de vouloir vous deconnecter ?
+                </p>
+                <p className={styles.logoutModalSecondaryText}>
+                  Vous pourrez vous reconnecter a ce compte ulterieurement pour finaliser
+                  l&apos;identification et la verification de votre entreprise.
+                </p>
+              </div>
+
+              <div className={styles.logoutModalActions}>
+                <button
+                  type="button"
+                  className={styles.logoutModalCancel}
+                  onClick={handleCloseLogoutModal}
+                  disabled={isLoggingOut}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  className={styles.logoutModalConfirm}
+                  onClick={() => void handleConfirmLogout()}
+                  disabled={isLoggingOut}
+                >
+                  {isLoggingOut ? "Deconnexion..." : "Oui, me deconnecter"}
+                </button>
+              </div>
             </div>
           </div>
         )}

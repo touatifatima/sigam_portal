@@ -1,0 +1,177 @@
+.page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 16% 0%, rgba(139, 58, 98, 0.12), transparent 34%),
+    radial-gradient(circle at 86% 8%, rgba(68, 85, 124, 0.11), transparent 34%),
+    linear-gradient(180deg, #111524 0%, #191e30 24%, #f5f7fb 24.1%, #f8f9fd 100%);
+}
+
+.main {
+  padding-bottom: 3.6rem;
+}
+
+.hero {
+  padding: 4.7rem 0 2.8rem;
+  color: #f5f7fc;
+}
+
+.heroInner {
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+.badge {
+  width: fit-content;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f2e5ed;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  padding: 0.4rem 0.75rem;
+}
+
+.hero h1 {
+  margin: 1rem 0 0.65rem;
+  color: #ffffff;
+  font-size: clamp(2rem, 4vw, 2.85rem);
+  line-height: 1.14;
+  letter-spacing: -0.02em;
+}
+
+.hero p {
+  margin: 0;
+  max-width: 72ch;
+  color: #d7ddef;
+  line-height: 1.7;
+}
+
+.actions {
+  margin-top: 1.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.primaryCta,
+.secondaryCta {
+  min-height: 42px;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 0.6rem 0.95rem;
+}
+
+.primaryCta {
+  color: #ffffff;
+  border: 1px solid transparent;
+  background: linear-gradient(135deg, #8b3a62 0%, #9b4c7e 100%);
+  box-shadow: 0 12px 26px rgba(46, 21, 40, 0.32);
+}
+
+.secondaryCta {
+  color: #f5f7fc;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.identityGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.identityCard {
+  border: 1px solid #dde2ec;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #fcfcfe 100%);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+  padding: 0.95rem;
+  display: grid;
+  gap: 0.36rem;
+}
+
+.identityCard span {
+  color: #69758d;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.identityCard strong {
+  color: #212d44;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.sections {
+  margin-top: 0.9rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.sectionCard {
+  border: 1px solid #dee3ee;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+}
+
+.sectionHead {
+  padding: 0.95rem 1rem;
+  border-bottom: 1px solid #eceff6;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  background: linear-gradient(120deg, rgba(139, 58, 98, 0.1), rgba(68, 85, 124, 0.06));
+}
+
+.iconWrap {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 10px;
+  border: 1px solid rgba(139, 58, 98, 0.22);
+  background: linear-gradient(140deg, #f8edf3 0%, #f2f2f9 100%);
+  color: #8b3a62;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sectionHead h2 {
+  margin: 0;
+  color: #1f2940;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.sectionBody {
+  padding: 0.95rem 1rem 1rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.sectionBody p {
+  margin: 0;
+  color: #4f5a70;
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+@media (max-width: 980px) {
+  .identityGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .hero {
+    padding: 4.15rem 0 2.35rem;
+  }
+}
+
