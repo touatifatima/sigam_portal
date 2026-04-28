@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { MapPin, Phone, Mail } from "lucide-react";
 import styles from "./Footer.module.css";
 import { ScrollReveal } from "./ScrollReveal";
@@ -90,7 +91,18 @@ export const Footer = () => {
               <ul className={styles.linksList}>
                 {links.resources.map((link) => (
                   <li key={link.label} className={styles.linkItem}>
-                    <a href={link.href}>{link.label}</a>
+                    {link.href === "/acceuil/actualites" ? (
+                      <Link
+                        href={link.href}
+                        onClick={() => {
+                          window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+                        }}
+                      >
+                        {link.label}
+                      </Link>
+                    ) : (
+                      <a href={link.href}>{link.label}</a>
+                    )}
                   </li>
                 ))}
               </ul>
