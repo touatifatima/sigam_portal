@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -76,6 +76,8 @@ const IdentificationEntreprise = () => {
   const [formData, setFormData] = useState<any>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmittedForReview, setIsSubmittedForReview] = useState(false);
+  const [showSubmitConfirmModal, setShowSubmitConfirmModal] = useState(false);
+  const [showSubmitSuccessFx, setShowSubmitSuccessFx] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [submittedPayload, setSubmittedPayload] = useState<IdentificationPayload | null>(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
@@ -86,6 +88,81 @@ const IdentificationEntreprise = () => {
   const setEntrepriseVerified = useAuthStore((s) => s.setEntrepriseVerified);
   const { auth, isLoaded } = useAuthStore();
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
+
+  const participationState = useMemo(() => {
+    const payload = ((formData?.identification ?? formData) || {}) as Record<string, unknown>;
+
+    const parseRate = (value: unknown): number | null => {
+      const raw = String(value ?? "").trim();
+      if (!raw) return null;
+      const parsed = Number.parseFloat(raw.replace(",", "."));
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    const representantNom = String(payload.representantNomFr ?? "").trim();
+    const representantPrenom = String(payload.representantPrenomFr ?? "").trim();
+    const representantRateRaw = String(payload.representantTauxParticipation ?? "").trim();
+    const representantRateParsed = parseRate(payload.representantTauxParticipation);
+    const representantRate = representantRateParsed ?? 0;
+
+    const actionnairesRaw = Array.isArray(payload.actionnaires)
+      ? (payload.actionnaires as Array<Record<string, unknown>>)
+      : [];
+
+    const actionnaires = actionnairesRaw.filter((actionnaire) => {
+      const nom = String(actionnaire?.nom ?? "").trim();
+      const prenom = String(actionnaire?.prenom ?? "").trim();
+      const numeroIdentite = String(actionnaire?.numeroIdentite ?? "").trim();
+      const nationalite = String(actionnaire?.nationalite ?? "").trim();
+      const pays = String(actionnaire?.pays ?? "").trim();
+      const taux = String(actionnaire?.tauxParticipation ?? "").trim();
+      const qualification = String(actionnaire?.qualification ?? "").trim();
+      const lieuNaissance = String(actionnaire?.lieuNaissance ?? "").trim();
+      return Boolean(
+        nom ||
+          prenom ||
+          numeroIdentite ||
+          nationalite ||
+          pays ||
+          taux ||
+          qualification ||
+          lieuNaissance,
+      );
+    });
+
+    const hasParticipationData =
+      Boolean(representantNom) ||
+      Boolean(representantPrenom) ||
+      Boolean(representantRateRaw) ||
+      actionnaires.length > 0;
+
+    let hasInvalidRate = false;
+    if (representantRateRaw && representantRateParsed === null) {
+      hasInvalidRate = true;
+    }
+    if (representantRate < 0 || representantRate > 100) {
+      hasInvalidRate = true;
+    }
+
+    let total = representantRate;
+    for (const actionnaire of actionnaires) {
+      const parsed = parseRate(actionnaire?.tauxParticipation);
+      if (parsed === null || parsed < 0 || parsed > 100) {
+        hasInvalidRate = true;
+        continue;
+      }
+      total += parsed;
+    }
+
+    const isValid =
+      !hasParticipationData || (!hasInvalidRate && Math.abs(total - 100) <= 0.0001);
+
+    return {
+      hasParticipationData,
+      total,
+      isValid,
+    };
+  }, [formData]);
 
   const handleUpdate = useCallback((data: any) => {
     setFormData(data);
@@ -98,7 +175,7 @@ const IdentificationEntreprise = () => {
     }
   }, [auth.isEntrepriseVerified, auth.role, isLoaded, navigate]);
 
-  const handleConfirm = async () => {
+  const handleConfirmSubmission = async () => {
     setIsSubmitting(true);
 
     try {
@@ -119,7 +196,12 @@ const IdentificationEntreprise = () => {
       setEntrepriseVerified(false);
       setIsSubmittedForReview(true);
       setSubmittedPayload(payload);
-      setShowSuccessModal(true);
+      setShowSubmitConfirmModal(false);
+      setShowSubmitSuccessFx(true);
+      window.setTimeout(() => {
+        setShowSubmitSuccessFx(false);
+        setShowSuccessModal(true);
+      }, 900);
     } catch (error) {
       console.error("Erreur enregistrement entreprise:", error);
       const err = error as any;
@@ -133,6 +215,23 @@ const IdentificationEntreprise = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleOpenSubmitConfirmModal = () => {
+    if (isSubmitting) return;
+    if (!participationState.isValid) {
+      toast({
+        title: "Taux de participation invalide",
+        description: `Le total representant + actionnaires doit etre exactement 100% (actuel: ${participationState.total.toFixed(2)}%).`,
+      });
+      return;
+    }
+    setShowSubmitConfirmModal(true);
+  };
+
+  const handleCloseSubmitConfirmModal = () => {
+    if (isSubmitting) return;
+    setShowSubmitConfirmModal(false);
   };
 
   const downloadIdentificationPdf = async () => {
@@ -315,8 +414,11 @@ const IdentificationEntreprise = () => {
               
               <div className={styles.actions}>
                 <Button
-                  onClick={handleConfirm}
-                  disabled={isSubmitting}
+                  onClick={handleOpenSubmitConfirmModal}
+                  disabled={
+                    isSubmitting ||
+                    (participationState.hasParticipationData && !participationState.isValid)
+                  }
                   size="lg"
                   className={styles.confirmButton}
                 >
@@ -342,9 +444,75 @@ const IdentificationEntreprise = () => {
                   {isLoggingOut ? "Deconnexion..." : "Deconnexion du compte"}
                 </Button>
               </div>
+              {participationState.hasParticipationData && !participationState.isValid ? (
+                <p className={styles.participationBlockNotice}>
+                  Envoi bloque: le total representant + actionnaires doit etre 100% (actuel:{" "}
+                  {participationState.total.toFixed(2)}%).
+                </p>
+              ) : null}
             </CardContent>
           </Card>
         </div>
+
+        {showSubmitConfirmModal && (
+          <div
+            className={styles.submitConfirmOverlay}
+            onClick={handleCloseSubmitConfirmModal}
+            role="presentation"
+          >
+            <div
+              className={styles.submitConfirmModal}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="submit-confirm-title"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className={styles.submitConfirmHeader}>
+                <h3 id="submit-confirm-title" className={styles.submitConfirmTitle}>
+                  Confirmation d&apos;envoi
+                </h3>
+              </div>
+
+              <div className={styles.submitConfirmBody}>
+                <p className={styles.submitConfirmPrimaryText}>
+                  Etes-vous sur de l&apos;envoi de votre dossier et de toutes vos informations ?
+                </p>
+                <p className={styles.submitConfirmSecondaryText}>
+                  Apres validation, votre demande sera transmise a l&apos;administration pour
+                  verification.
+                </p>
+              </div>
+
+              <div className={styles.submitConfirmActions}>
+                <button
+                  type="button"
+                  className={styles.submitConfirmCancel}
+                  onClick={handleCloseSubmitConfirmModal}
+                  disabled={isSubmitting}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  className={styles.submitConfirmOk}
+                  onClick={() => void handleConfirmSubmission()}
+                  disabled={isSubmitting || !participationState.isValid}
+                >
+                  {isSubmitting ? "Envoi en cours..." : "Oui, envoyer"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showSubmitSuccessFx && (
+          <div className={styles.submitSuccessFxOverlay} aria-hidden="true">
+            <div className={styles.submitSuccessFxCard}>
+              <CheckCircle className={styles.submitSuccessFxIcon} />
+              <p>Envoi effectue avec succes</p>
+            </div>
+          </div>
+        )}
 
         {showSuccessModal && (
           <div className={styles.successOverlay}>

@@ -1,13 +1,22 @@
 .page {
   min-height: 100vh;
   background:
-    radial-gradient(circle at 12% 0%, rgba(40, 110, 130, 0.12), transparent 34%),
-    radial-gradient(circle at 85% 8%, rgba(139, 58, 98, 0.08), transparent 34%),
-    linear-gradient(180deg, #0f1524 0%, #151d2f 24%, #f5f8fb 24.1%, #f8fafc 100%);
+    radial-gradient(circle at 14% 0%, rgba(139, 58, 98, 0.11), transparent 34%),
+    radial-gradient(circle at 88% 8%, rgba(168, 73, 104, 0.08), transparent 36%),
+    linear-gradient(180deg, #0f1420 0%, #151a28 24%, #f6f7fb 24.1%, #f8f9fc 100%);
 }
 
 .main {
   padding-bottom: 3.6rem;
+}
+
+.main :global(.container) {
+  width: min(100%, 1280px);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: clamp(0.8rem, 1.5vw, 1.15rem);
+  padding-right: clamp(0.8rem, 1.5vw, 1.15rem);
+  box-sizing: border-box;
 }
 
 .hero {
@@ -25,7 +34,7 @@
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.23);
   background: rgba(255, 255, 255, 0.08);
-  color: #d6eaf0;
+  color: #f2e3eb;
   font-size: 0.74rem;
   font-weight: 800;
   letter-spacing: 0.03em;
@@ -43,7 +52,7 @@
 .hero p {
   margin: 0;
   max-width: 72ch;
-  color: #d4dfec;
+  color: #d5dbea;
   line-height: 1.7;
 }
 
@@ -71,8 +80,8 @@
 .primaryCta {
   color: #ffffff;
   border: 1px solid transparent;
-  background: linear-gradient(135deg, #2f7b8d 0%, #3d8f9d 100%);
-  box-shadow: 0 12px 26px rgba(18, 45, 53, 0.32);
+  background: linear-gradient(135deg, #8b3a62 0%, #a84968 100%);
+  box-shadow: 0 12px 26px rgba(57, 20, 40, 0.3);
 }
 
 .secondaryCta {
@@ -88,23 +97,23 @@
 }
 
 .pillarCard {
-  border: 1px solid #dde5eb;
+  border: 1px solid #dde2ec;
   border-radius: 14px;
-  background: linear-gradient(180deg, #ffffff 0%, #fcfdff 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #fcfcfe 100%);
   box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
   padding: 0.95rem;
 }
 
 .pillarCard h2 {
   margin: 0;
-  color: #1f2e42;
+  color: #202b42;
   font-size: 0.96rem;
   font-weight: 800;
 }
 
 .pillarCard p {
   margin: 0.42rem 0 0;
-  color: #56657a;
+  color: #5a647c;
   font-size: 0.85rem;
   line-height: 1.62;
 }
@@ -116,7 +125,7 @@
 }
 
 .sectionCard {
-  border: 1px solid #dde5ec;
+  border: 1px solid #dee3ee;
   border-radius: 16px;
   background: #ffffff;
   box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
@@ -124,20 +133,20 @@
 
 .sectionHead {
   padding: 0.95rem 1rem;
-  border-bottom: 1px solid #edf1f6;
+  border-bottom: 1px solid #eceff6;
   display: flex;
   align-items: center;
   gap: 0.7rem;
-  background: linear-gradient(120deg, rgba(47, 123, 141, 0.1), rgba(139, 58, 98, 0.05));
+  background: linear-gradient(120deg, rgba(139, 58, 98, 0.1), rgba(168, 73, 104, 0.04));
 }
 
 .iconWrap {
   width: 2rem;
   height: 2rem;
   border-radius: 10px;
-  border: 1px solid rgba(47, 123, 141, 0.24);
-  background: linear-gradient(140deg, #e8f4f7 0%, #f2f8fa 100%);
-  color: #2f7b8d;
+  border: 1px solid rgba(139, 58, 98, 0.22);
+  background: linear-gradient(140deg, #f8edf3 0%, #f7f3f6 100%);
+  color: #8b3a62;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -158,7 +167,7 @@
 
 .sectionBody p {
   margin: 0;
-  color: #4e5d6f;
+  color: #4e586e;
   font-size: 0.9rem;
   line-height: 1.7;
 }
@@ -171,7 +180,7 @@
 }
 
 .sectionList li {
-  color: #4e5d6f;
+  color: #4e586e;
   font-size: 0.87rem;
   line-height: 1.6;
 }
@@ -187,4 +196,3 @@
     padding: 4.15rem 0 2.35rem;
   }
 }
-

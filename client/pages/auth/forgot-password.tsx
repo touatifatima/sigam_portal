@@ -1,8 +1,9 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
+import { executeRecaptcha, preloadRecaptcha } from '../../src/utils/recaptcha';
 import styles from './ForgotPassword.module.css';
 
 const DEFAULT_SUCCESS_MESSAGE =
@@ -15,6 +16,10 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  useEffect(() => {
+    preloadRecaptcha();
+  }, []);
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
@@ -26,9 +31,10 @@ export default function ForgotPasswordPage() {
 
     try {
       setIsSubmitting(true);
+      const recaptchaToken = await executeRecaptcha('forgot_password');
       const response = await axios.post(
         `${apiURL}/auth/forgot-password`,
-        { email },
+        { email, recaptchaToken },
         {
           withCredentials: true,
           headers: {
@@ -49,6 +55,7 @@ export default function ForgotPasswordPage() {
       setError(
         err?.response?.data?.message ||
           err?.response?.data?.error ||
+          err?.message ||
           'Impossible de traiter la demande pour le moment.',
       );
     } finally {

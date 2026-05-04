@@ -103,14 +103,22 @@ export default function CartePublicPage() {
             </a>
           )}
 
-          <a
-            href={EXPERIENCE_BUILDER_URL}
-            target="_blank"
-            rel="noreferrer"
-            className={styles.openBtn}
-          >
-            Ouvrir en direct
-          </a>
+          {!isConnected && (
+            <Link href="/" className={styles.linkBtnSecondary}>
+              Retour a l'accueil
+            </Link>
+          )}
+
+          {isAdmin && (
+            <a
+              href={EXPERIENCE_BUILDER_URL}
+              target="_blank"
+              rel="noreferrer"
+              className={styles.openBtn}
+            >
+              Ouvrir en direct
+            </a>
+          )}
         </div>
       </header>
 

@@ -5,6 +5,7 @@ import { useRouter } from 'next/router';
 import axios from 'axios';
 import Image from 'next/image';
 import Link from 'next/link';
+import { executeRecaptcha, preloadRecaptcha } from '../../src/utils/recaptcha';
 const logo = '/anamlogo.png';
 import styles from './register.module.css';
 
@@ -14,6 +15,55 @@ const getPasswordChecks = (password: string) => ({
   hasNumber: /\d/.test(password),
   hasSymbol: /[^A-Za-z0-9]/.test(password),
 });
+
+const extractRegistrationErrorMessage = (error: any) => {
+  const responseData = error?.response?.data;
+  const responseMessage = Array.isArray(responseData?.message)
+    ? responseData.message.join(' ')
+    : responseData?.message;
+  const rawMessage =
+    responseData?.detail ||
+    responseMessage ||
+    responseData?.error ||
+    error?.message ||
+    '';
+  const message = String(rawMessage).trim();
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes('score recaptcha insuffisant')) {
+    return 'Verification anti-bot echouee (score faible). Merci de reessayer.';
+  }
+  if (normalized.includes('action recaptcha invalide')) {
+    return 'Verification anti-bot invalide (action non reconnue). Rechargez la page et reessayez.';
+  }
+  if (
+    normalized.includes('echec de verification recaptcha') ||
+    normalized.includes('invalid-input-secret') ||
+    normalized.includes('invalid-input-response') ||
+    normalized.includes('missing-input-secret') ||
+    normalized.includes('missing-input-response')
+  ) {
+    return `${message} Verifiez la configuration des cles et des domaines reCAPTCHA.`;
+  }
+  if (normalized.includes('recaptcha')) {
+    return message || 'Verification anti-bot echouee. Merci de reessayer.';
+  }
+  if (normalized.includes('email') && normalized.includes('deja')) {
+    return 'Cette adresse email est deja utilisee ou deja verifiee.';
+  }
+  if (normalized.includes('telephone') && normalized.includes('deja')) {
+    return 'Ce numero de telephone est deja utilise.';
+  }
+  if (normalized.includes('role')) {
+    return 'Le type de compte selectionne est invalide.';
+  }
+
+  if (message) {
+    return message;
+  }
+
+  return 'Inscription impossible pour le moment. Merci de verifier les informations puis de reessayer.';
+};
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -31,6 +81,8 @@ export default function Register() {
   const [isLoading, setIsLoading] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [confirmPasswordError, setConfirmPasswordError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [showOtpSentModal, setShowOtpSentModal] = useState(false);
   const [otpTargetEmail, setOtpTargetEmail] = useState('');
   const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -87,13 +139,19 @@ export default function Register() {
     };
   }, []);
 
+  useEffect(() => {
+    preloadRecaptcha();
+  }, []);
+
   const handleChange = (field: string, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
+    setFormError(null);
     if (field === 'telephone') {
       setPhoneError(null);
     }
     if (field === 'password' || field === 'confirmPassword') {
       setPasswordError(null);
+      setConfirmPasswordError(null);
     }
   };
 
@@ -110,6 +168,15 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+    setPhoneError(null);
+    setPasswordError(null);
+    setConfirmPasswordError(null);
+
+    if (!apiURL) {
+      setFormError('Configuration API manquante (NEXT_PUBLIC_API_URL).');
+      return;
+    }
 
     if (!isPasswordStrong) {
       setPasswordError(
@@ -119,7 +186,7 @@ export default function Register() {
     }
     
     if (form.password !== form.confirmPassword) {
-      alert('Les mots de passe ne correspondent pas.');
+      setConfirmPasswordError('La confirmation du mot de passe ne correspond pas.');
       return;
     }
 
@@ -130,6 +197,7 @@ export default function Register() {
 
     try {
       setIsLoading(true);
+      const recaptchaToken = await executeRecaptcha('register');
       await axios.post(`${apiURL}/auth/register`, {
         email: form.email,
         password: form.password,
@@ -138,6 +206,7 @@ export default function Register() {
         prenom: form.prenom,
         username: form.username,
         telephone: normalizePhone(form.telephone),
+        recaptchaToken,
       });
       setOtpTargetEmail(form.email);
       setShowOtpSentModal(true);
@@ -160,7 +229,7 @@ export default function Register() {
         role: roles.length > 0 ? roles[0].name : '',
       });
     } catch (error: any) {
-      alert(error?.response?.data?.detail || 'une Erreur lors de l\'inscription');
+      setFormError(extractRegistrationErrorMessage(error));
     } finally {
       setIsLoading(false);
     }
@@ -203,6 +272,15 @@ export default function Register() {
             <h2>Créer un compte</h2>
             <p>Remplissez le formulaire pour vous inscrire</p>
           </div>
+
+          {formError && (
+            <div className={styles.errorBanner} role="alert" aria-live="polite">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 9v4m0 4h.01M10.29 3.86l-8.18 14A2 2 0 003.82 21h16.36a2 2 0 001.71-3.14l-8.18-14a2 2 0 00-3.42 0z" />
+              </svg>
+              <span>{formError}</span>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className={styles.form}>
             <div className={styles.grid2}>
@@ -337,8 +415,10 @@ export default function Register() {
                 onChange={e => handleChange('confirmPassword', e.target.value)}
                 placeholder="Retapez votre mot de passe"
                 disabled={isLoading}
+                className={confirmPasswordError ? styles.inputError : ''}
                 required
               />
+              {confirmPasswordError && <span className={styles.errorText}>{confirmPasswordError}</span>}
             </div>
 
             <button type="submit" className={styles.submitBtn} disabled={isLoading}>

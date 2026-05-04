@@ -1,9 +1,10 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { executeRecaptcha, preloadRecaptcha } from '../../src/utils/recaptcha';
 import styles from './ForgotPassword.module.css';
 
 function getPasswordChecks(password: string) {
@@ -29,6 +30,10 @@ export default function ResetPasswordPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    preloadRecaptcha();
+  }, []);
 
   const checks = getPasswordChecks(password);
   const isPasswordStrong =
@@ -59,12 +64,14 @@ export default function ResetPasswordPage() {
 
     try {
       setIsSubmitting(true);
+      const recaptchaToken = await executeRecaptcha('reset_password');
       await axios.post(
         `${apiURL}/auth/reset-password`,
         {
           token,
           password,
           confirmPassword,
+          recaptchaToken,
         },
         {
           withCredentials: true,
@@ -78,6 +85,7 @@ export default function ResetPasswordPage() {
       setError(
         err?.response?.data?.message ||
           err?.response?.data?.error ||
+          err?.message ||
           'Le lien est invalide ou a expire.',
       );
     } finally {

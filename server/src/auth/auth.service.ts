@@ -11,6 +11,8 @@ import { SessionService } from '../session/session.service';
 import * as nodemailer from 'nodemailer';
 import { isIP } from 'net';
 import { createHash, randomBytes } from 'crypto';
+import { existsSync, readFileSync } from 'fs';
+import * as https from 'https';
 
 const IDENTIFICATION_EVENT_TYPES = [
   'entreprise_identification_request',
@@ -22,6 +24,14 @@ const IDENTIFICATION_EVENT_TYPES = [
 type IdentificationAccessState = 'ALLOW' | 'PENDING' | 'REJECTED';
 type ForgotPasswordLimitEntry = { count: number; windowStart: number };
 type ProfileUpdateAttemptEntry = { count: number; blockedUntil?: number };
+type RecaptchaVerifyResponse = {
+  success: boolean;
+  score?: number;
+  action?: string;
+  challenge_ts?: string;
+  hostname?: string;
+  'error-codes'?: string[];
+};
 
 type PendingProfileUpdateData = {
   Prenom: string;
@@ -60,6 +70,8 @@ export class AuthService {
   >();
   private profileUpdateAttemptLimits = new Map<string, ProfileUpdateAttemptEntry>();
   private mailer?: nodemailer.Transporter;
+  private recaptchaCaBundlePem?: string;
+  private recaptchaCaBundlePathLoaded?: string;
 
   private getMailer() {
     if (this.mailer) return this.mailer;
@@ -191,6 +203,216 @@ export class AuthService {
       /[A-Z]/.test(password) &&
       /\d/.test(password) &&
       /[^A-Za-z0-9]/.test(password)
+    );
+  }
+
+  private getRecaptchaMinScore() {
+    const value = Number(process.env.RECAPTCHA_MIN_SCORE || 0.5);
+    if (!Number.isFinite(value)) {
+      return 0.5;
+    }
+
+    return Math.min(Math.max(value, 0), 1);
+  }
+
+  private getRecaptchaVerifyUrls() {
+    const configured = String(process.env.RECAPTCHA_VERIFY_URLS || '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    if (configured.length > 0) {
+      return configured;
+    }
+
+    return [
+      'https://www.google.com/recaptcha/api/siteverify',
+      'https://www.recaptcha.net/recaptcha/api/siteverify',
+    ];
+  }
+
+  private getRecaptchaTimeoutMs() {
+    const value = Number(process.env.RECAPTCHA_VERIFY_TIMEOUT_MS || 8000);
+    if (!Number.isFinite(value) || value <= 0) {
+      return 8000;
+    }
+
+    return value;
+  }
+
+  private getRecaptchaCaBundlePath() {
+    const explicitPath = String(process.env.RECAPTCHA_CA_BUNDLE_PATH || '').trim();
+    if (explicitPath) {
+      return explicitPath;
+    }
+
+    return String(process.env.NODE_EXTRA_CA_CERTS || '').trim();
+  }
+
+  private getRecaptchaCaBundlePem() {
+    const caPath = this.getRecaptchaCaBundlePath();
+    if (!caPath || !existsSync(caPath)) {
+      return undefined;
+    }
+
+    if (this.recaptchaCaBundlePem && this.recaptchaCaBundlePathLoaded === caPath) {
+      return this.recaptchaCaBundlePem;
+    }
+
+    try {
+      this.recaptchaCaBundlePem = readFileSync(caPath, 'utf8');
+      this.recaptchaCaBundlePathLoaded = caPath;
+      return this.recaptchaCaBundlePem;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private postRecaptchaForm(
+    verifyUrl: string,
+    body: string,
+    timeoutMs: number,
+    caPem?: string,
+  ) {
+    return new Promise<{ statusCode: number; bodyText: string }>(
+      (resolve, reject) => {
+        const parsedUrl = new URL(verifyUrl);
+        const request = https.request(
+          {
+            protocol: parsedUrl.protocol,
+            hostname: parsedUrl.hostname,
+            port: parsedUrl.port ? Number(parsedUrl.port) : 443,
+            path: `${parsedUrl.pathname}${parsedUrl.search}`,
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Content-Length': Buffer.byteLength(body),
+            },
+            timeout: timeoutMs,
+            ...(caPem ? { ca: caPem } : {}),
+          },
+          (response) => {
+            let data = '';
+            response.setEncoding('utf8');
+            response.on('data', (chunk) => {
+              data += chunk;
+            });
+            response.on('end', () => {
+              resolve({
+                statusCode: response.statusCode || 0,
+                bodyText: data,
+              });
+            });
+          },
+        );
+
+        request.on('timeout', () => {
+          request.destroy(new Error('request timeout'));
+        });
+        request.on('error', (error) => {
+          reject(error);
+        });
+        request.write(body);
+        request.end();
+      },
+    );
+  }
+
+  async verifyRecaptchaToken(
+    recaptchaToken: string | undefined,
+    expectedAction: string,
+    ipAddress?: string,
+  ) {
+    const token = String(recaptchaToken || '').trim();
+    if (!token) {
+      throw new BadRequestException('Verification anti-bot manquante.');
+    }
+
+    const secretKey = String(process.env.RECAPTCHA_SECRET_KEY || '').trim();
+    if (!secretKey) {
+      throw new HttpException(
+        'Configuration reCAPTCHA manquante sur le serveur.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    const payload = new URLSearchParams();
+    payload.append('secret', secretKey);
+    payload.append('response', token);
+    if (ipAddress && ipAddress !== 'unknown') {
+      payload.append('remoteip', ipAddress);
+    }
+
+    const verifyUrls = this.getRecaptchaVerifyUrls();
+    const timeoutMs = this.getRecaptchaTimeoutMs();
+    const networkErrors: string[] = [];
+    const caPem = this.getRecaptchaCaBundlePem();
+    const requestBody = payload.toString();
+
+    for (const verifyUrl of verifyUrls) {
+      try {
+        const verifyResponse = await this.postRecaptchaForm(
+          verifyUrl,
+          requestBody,
+          timeoutMs,
+          caPem,
+        );
+
+        if (verifyResponse.statusCode < 200 || verifyResponse.statusCode >= 300) {
+          networkErrors.push(`${verifyUrl} -> HTTP ${verifyResponse.statusCode}`);
+          continue;
+        }
+
+        const verifyBody = JSON.parse(
+          verifyResponse.bodyText,
+        ) as RecaptchaVerifyResponse;
+        if (!verifyBody.success) {
+          const errorCodes = Array.isArray(verifyBody['error-codes'])
+            ? verifyBody['error-codes'].filter(Boolean)
+            : [];
+          const errorSuffix =
+            errorCodes.length > 0 ? ` (${errorCodes.join(', ')})` : '';
+          throw new BadRequestException(
+            `Echec de verification reCAPTCHA${errorSuffix}.`,
+          );
+        }
+
+        if (verifyBody.action && verifyBody.action !== expectedAction) {
+          throw new BadRequestException('Action reCAPTCHA invalide.');
+        }
+
+        const minScore = this.getRecaptchaMinScore();
+        if (typeof verifyBody.score !== 'number' || verifyBody.score < minScore) {
+          const currentScore =
+            typeof verifyBody.score === 'number'
+              ? verifyBody.score.toFixed(2)
+              : 'inconnu';
+          throw new BadRequestException(
+            `Score reCAPTCHA insuffisant (${currentScore} < ${minScore}).`,
+          );
+        }
+
+        return verifyBody;
+      } catch (error: any) {
+        if (
+          error instanceof BadRequestException ||
+          error instanceof HttpException
+        ) {
+          throw error;
+        }
+
+        const errorMessage = String(error?.message || error || 'unknown error');
+        const causeMessage = error?.cause?.message
+          ? `; cause: ${String(error.cause.message)}`
+          : '';
+        networkErrors.push(`${verifyUrl} -> ${errorMessage}${causeMessage}`);
+      }
+    }
+
+    const details = networkErrors.length > 0 ? ` (${networkErrors.join(' | ')})` : '';
+    throw new HttpException(
+      `Impossible de verifier reCAPTCHA pour le moment.${details}`,
+      HttpStatus.SERVICE_UNAVAILABLE,
     );
   }
 

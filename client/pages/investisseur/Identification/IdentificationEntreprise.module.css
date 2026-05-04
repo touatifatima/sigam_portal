@@ -100,6 +100,14 @@
   flex-wrap: wrap;
 }
 
+.participationBlockNotice {
+  margin: 0.85rem 0 0;
+  text-align: center;
+  color: #8a4b06;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
 .confirmButton {
   display: inline-flex;
   align-items: center;
@@ -304,6 +312,145 @@
   color: #8b3a62;
 }
 
+.submitConfirmOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1230;
+  background: rgba(16, 10, 14, 0.58);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: fadeInOverlay 0.2s ease-out;
+}
+
+.submitConfirmModal {
+  width: min(540px, 96vw);
+  background: #ffffff;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid #eadbe3;
+  box-shadow: 0 24px 60px rgba(30, 20, 27, 0.35);
+  animation: scaleInModal 0.2s ease-out;
+}
+
+.submitConfirmHeader {
+  padding: 1.1rem 1.35rem 0.95rem;
+  border-bottom: 1px solid #f0e4ea;
+}
+
+.submitConfirmTitle {
+  margin: 0;
+  color: #2f1f29;
+  font-size: 1.12rem;
+  font-weight: 700;
+}
+
+.submitConfirmBody {
+  padding: 1.28rem 1.35rem;
+}
+
+.submitConfirmPrimaryText {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.56;
+  color: #3f3040;
+  font-weight: 600;
+}
+
+.submitConfirmSecondaryText {
+  margin: 0.72rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: #6a5564;
+}
+
+.submitConfirmActions {
+  display: flex;
+  gap: 0.72rem;
+  padding: 0.95rem 1.35rem 1.08rem;
+  border-top: 1px solid #f0e4ea;
+  background: #faf8fa;
+}
+
+.submitConfirmCancel,
+.submitConfirmOk {
+  flex: 1;
+  min-height: 44px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+}
+
+.submitConfirmCancel {
+  border: 1px solid #d7ccd2;
+  background: #ffffff;
+  color: #5d4e57;
+}
+
+.submitConfirmCancel:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(74, 49, 63, 0.12);
+}
+
+.submitConfirmOk {
+  border: 1px solid #0f7e63;
+  color: #ffffff;
+  background: linear-gradient(135deg, #0b7a62 0%, #129875 100%);
+  box-shadow: 0 10px 22px rgba(18, 152, 117, 0.32);
+}
+
+.submitConfirmOk:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(18, 152, 117, 0.38);
+}
+
+.submitConfirmCancel:disabled,
+.submitConfirmOk:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.submitSuccessFxOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1240;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.submitSuccessFxCard {
+  min-width: min(420px, 94vw);
+  border-radius: 16px;
+  border: 1px solid rgba(15, 126, 99, 0.35);
+  background: linear-gradient(135deg, #f2fff9 0%, #eafcf5 100%);
+  color: #1f5f4c;
+  box-shadow: 0 20px 48px rgba(15, 126, 99, 0.22);
+  padding: 1rem 1.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.58rem;
+  animation: submitSuccessPop 0.9s ease-out forwards;
+}
+
+.submitSuccessFxCard p {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+}
+
+.submitSuccessFxIcon {
+  width: 1.2rem;
+  height: 1.2rem;
+  color: #178671;
+}
+
 .logoutOverlay {
   position: fixed;
   inset: 0;
@@ -418,6 +565,25 @@
   }
 }
 
+@keyframes submitSuccessPop {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  85% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+}
+
 @media (max-width: 768px) {
   .container {
     padding: 1rem;
@@ -467,6 +633,10 @@
   }
 
   .logoutModalActions {
+    flex-direction: column;
+  }
+
+  .submitConfirmActions {
     flex-direction: column;
   }
 }

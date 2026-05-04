@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { getPostLoginPath } from '../../src/utils/roleNavigation';
+import { executeRecaptcha, preloadRecaptcha } from '../../src/utils/recaptcha';
 import styles from '../login.module.css';
 
 const logo = '/anamlogo.png';
@@ -31,6 +32,8 @@ export default function LoginPage() {
       setEmail(savedEmail);
       setRememberMe(true);
     }
+
+    preloadRecaptcha();
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -39,9 +42,16 @@ export default function LoginPage() {
     setError(null);
     
     try {
+      if (!apiURL) {
+        setError('Configuration API manquante (NEXT_PUBLIC_API_URL).');
+        return;
+      }
+
+      const recaptchaToken = await executeRecaptcha('login');
+
       const response = await axios.post(
         `${apiURL}/auth/login`, 
-        { email, password },
+        { email, password, recaptchaToken },
         { 
           withCredentials: true,
           headers: {

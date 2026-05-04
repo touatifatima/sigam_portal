@@ -545,13 +545,15 @@
 }
 
 .main-content {
-  width: min(1760px, 100%);
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   padding: 1.35rem 1.7rem 2.3rem;
   background: transparent;
 }
 
 .admin-container {
+  width: 100%;
   max-width: none;
   border-radius: 20px;
   border-color: #e8d9e6;

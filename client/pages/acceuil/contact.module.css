@@ -1,0 +1,225 @@
+.page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 14% 0%, rgba(139, 58, 98, 0.11), transparent 34%),
+    radial-gradient(circle at 88% 8%, rgba(168, 73, 104, 0.08), transparent 36%),
+    linear-gradient(180deg, #0f1420 0%, #151a28 24%, #f6f7fb 24.1%, #f8f9fc 100%);
+}
+
+.main {
+  padding-bottom: 3.6rem;
+}
+
+.main :global(.container) {
+  width: min(100%, 1280px);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: clamp(0.8rem, 1.5vw, 1.15rem);
+  padding-right: clamp(0.8rem, 1.5vw, 1.15rem);
+  box-sizing: border-box;
+}
+
+.hero {
+  padding: 4.7rem 0 2.6rem;
+  color: #f5f7fc;
+}
+
+.heroInner {
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+.heroBadge {
+  width: fit-content;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.07);
+  color: #f2e3eb;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  padding: 0.4rem 0.75rem;
+}
+
+.hero h1 {
+  margin: 1rem 0 0.65rem;
+  color: #ffffff;
+  font-size: clamp(2rem, 4vw, 2.85rem);
+  line-height: 1.14;
+  letter-spacing: -0.02em;
+}
+
+.hero p {
+  margin: 0;
+  max-width: 72ch;
+  color: #d5dbea;
+  line-height: 1.7;
+}
+
+.actions {
+  margin-top: 1.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.primaryCta,
+.secondaryCta {
+  min-height: 42px;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 0.6rem 0.95rem;
+}
+
+.primaryCta {
+  color: #ffffff;
+  border: 1px solid transparent;
+  background: linear-gradient(135deg, #8b3a62 0%, #a84968 100%);
+  box-shadow: 0 12px 26px rgba(57, 20, 40, 0.3);
+}
+
+.secondaryCta {
+  color: #f5f7fc;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.statsBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 0.2rem;
+}
+
+.statPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 999px;
+  border: 1px solid #e5d8e2;
+  background: #ffffff;
+  color: #3a2a36;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.cardsSection {
+  margin-top: 1rem;
+}
+
+.cardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 0.9rem;
+}
+
+.contactCard {
+  border: 1px solid #dee3ee;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+  padding: 1rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.contactCard h2 {
+  margin: 0;
+  color: #1f2940;
+  font-size: 0.98rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.lineItem {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  color: #4e586e;
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.lineItem svg {
+  margin-top: 2px;
+  color: #8b3a62;
+  flex-shrink: 0;
+}
+
+.lineItem a {
+  color: #7a365f;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.mapLink {
+  margin-top: 0.35rem;
+  display: inline-flex;
+  width: fit-content;
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #7a365f;
+  border: 1px solid #d8c7d3;
+  border-radius: 9px;
+  padding: 0.42rem 0.65rem;
+  background: #faf5f8;
+}
+
+.mapSection {
+  margin-top: 1rem;
+}
+
+.mapHeader {
+  margin-bottom: 0.65rem;
+}
+
+.mapHeader h3 {
+  margin: 0;
+  color: #1f2940;
+  font-size: 1.04rem;
+  font-weight: 800;
+}
+
+.mapHeader p {
+  margin: 0.28rem 0 0;
+  color: #5a647c;
+  font-size: 0.9rem;
+}
+
+.map {
+  height: 500px;
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid #dee3ee;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.1);
+  overflow: hidden;
+}
+
+.map :global(.leaflet-control-attribution) {
+  display: none !important;
+}
+
+@media (max-width: 900px) {
+  .map {
+    height: 420px;
+  }
+}
+
+@media (max-width: 700px) {
+  .hero {
+    padding: 4.15rem 0 2.2rem;
+  }
+
+  .map {
+    height: 360px;
+  }
+}

@@ -1280,9 +1280,25 @@ export class SocieteService {
     return (value ?? '').toString().trim();
   }
 
+  private parseParticipationRate(value: unknown): number | null {
+    const raw = this.normalizeLabel(value?.toString?.() ?? String(value ?? ''));
+    if (!raw) return null;
+    const normalized = raw.replace(',', '.');
+    const parsed = Number.parseFloat(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
   private async resolvePaysId(label?: string | null): Promise<number | null> {
     const value = this.normalizeLabel(label);
     if (!value) return null;
+    const numericId = Number(value);
+    if (Number.isInteger(numericId) && numericId > 0) {
+      const paysById = await this.prisma.pays.findUnique({
+        where: { id_pays: numericId },
+        select: { id_pays: true },
+      });
+      if (paysById) return paysById.id_pays;
+    }
     const pays = await this.prisma.pays.findFirst({
       where: { nom_pays: { equals: value, mode: 'insensitive' } },
     });
@@ -1292,6 +1308,14 @@ export class SocieteService {
   private async resolveNationaliteId(label?: string | null): Promise<number | null> {
     const value = this.normalizeLabel(label);
     if (!value) return null;
+    const numericId = Number(value);
+    if (Number.isInteger(numericId) && numericId > 0) {
+      const nationaliteById = await this.prisma.nationalite.findUnique({
+        where: { id_nationalite: numericId },
+        select: { id_nationalite: true },
+      });
+      if (nationaliteById) return nationaliteById.id_nationalite;
+    }
     const nat = await this.prisma.nationalite.findFirst({
       where: { libelle: { equals: value, mode: 'insensitive' } },
     });
@@ -1326,6 +1350,80 @@ export class SocieteService {
     const data = payload?.identification ?? payload;
     if (!data) {
       throw new HttpException('Missing identification payload', HttpStatus.BAD_REQUEST);
+    }
+
+    const actionnairesInput = Array.isArray(data.actionnaires) ? data.actionnaires : [];
+    const representantNom = this.normalizeLabel(data.representantNomFr);
+    const representantPrenom = this.normalizeLabel(data.representantPrenomFr);
+    const representantTauxInput = this.normalizeLabel(
+      data.representantTauxParticipation?.toString() ?? '',
+    );
+    const representantTauxParsed = this.parseParticipationRate(data.representantTauxParticipation);
+    const representantTaux = representantTauxParsed ?? 0;
+
+    if (representantTauxInput && representantTauxParsed === null) {
+      throw new HttpException(
+        'Taux de participation du representant invalide.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (representantTaux < 0 || representantTaux > 100) {
+      throw new HttpException(
+        'Le taux de participation du representant doit etre entre 0 et 100.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    let totalParticipation = representantTaux;
+    let hasParticipationData =
+      Boolean(representantNom) ||
+      Boolean(representantPrenom) ||
+      Boolean(representantTauxInput);
+
+    for (const [index, actionnaire] of actionnairesInput.entries()) {
+      const nom = this.normalizeLabel(actionnaire?.nom);
+      const prenom = this.normalizeLabel(actionnaire?.prenom);
+      const numeroIdentite = this.normalizeLabel(actionnaire?.numeroIdentite);
+      const nationalite = this.normalizeLabel(actionnaire?.nationalite);
+      const pays = this.normalizeLabel(actionnaire?.pays);
+      const tauxInput = this.normalizeLabel(actionnaire?.tauxParticipation?.toString() ?? '');
+      const qualification = this.normalizeLabel(actionnaire?.qualification);
+      const lieuNaissance = this.normalizeLabel(actionnaire?.lieuNaissance);
+
+      const isEmptyRow =
+        !nom &&
+        !prenom &&
+        !numeroIdentite &&
+        !nationalite &&
+        !pays &&
+        !tauxInput &&
+        !qualification &&
+        !lieuNaissance;
+
+      if (isEmptyRow) continue;
+      hasParticipationData = true;
+
+      const tauxParsed = this.parseParticipationRate(actionnaire?.tauxParticipation);
+      if (!tauxInput || tauxParsed === null) {
+        throw new HttpException(
+          `Actionnaire ${index + 1}: taux de participation invalide.`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if (tauxParsed < 0 || tauxParsed > 100) {
+        throw new HttpException(
+          `Actionnaire ${index + 1}: le taux de participation doit etre entre 0 et 100.`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      totalParticipation += tauxParsed;
+    }
+
+    if (hasParticipationData && Math.abs(totalParticipation - 100) > 0.0001) {
+      throw new HttpException(
+        `Le total des taux de participation doit etre exactement 100% (actuel: ${totalParticipation.toFixed(2)}%).`,
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const nomSocieteFr = this.normalizeLabel(data.nomSocieteFr);
@@ -1448,7 +1546,6 @@ export class SocieteService {
     if (data.representantNomFr || data.representantPrenomFr) {
       const repPaysId = await this.resolvePaysId(data.representantPays);
       const repNationaliteId = await this.resolveNationaliteId(data.representantNationalite);
-      const repTaux = parseFloat(data.representantTauxParticipation || '0') || 0;
 
       representant = await this.createPersonne({
         nom: data.representantNomFr ?? '',
@@ -1462,7 +1559,7 @@ export class SocieteService {
         nin: data.representantNIN ?? undefined,
         id_pays: repPaysId ? String(repPaysId) : undefined,
         id_nationalite: repNationaliteId ? String(repNationaliteId) : undefined,
-        taux_participation: data.representantTauxParticipation ?? '0',
+        taux_participation: String(representantTaux),
       });
 
       await this.linkFonction(
@@ -1470,7 +1567,7 @@ export class SocieteService {
         detenteur.id_detenteur,
         EnumTypeFonction.Representant,
         'Actif',
-        repTaux,
+        representantTaux,
       );
     }
 
@@ -1501,20 +1598,64 @@ export class SocieteService {
       }
     }
 
-    const actionnairesInput = Array.isArray(data.actionnaires) ? data.actionnaires : [];
     const mappedActionnaires: CreateActionnaireDto[] = [];
+    const invalidActionnaires: string[] = [];
 
-    for (const actionnaire of actionnairesInput) {
+    for (const [index, actionnaire] of actionnairesInput.entries()) {
       const nom = this.normalizeLabel(actionnaire?.nom);
       const prenom = this.normalizeLabel(actionnaire?.prenom);
       const numeroIdentite = this.normalizeLabel(actionnaire?.numeroIdentite);
-      if (!nom || !prenom || !numeroIdentite) {
+
+      const nationalite = this.normalizeLabel(actionnaire?.nationalite);
+      const pays = this.normalizeLabel(actionnaire?.pays);
+      const tauxParticipation = this.normalizeLabel(
+        actionnaire?.tauxParticipation?.toString() ?? '',
+      );
+      const qualification = this.normalizeLabel(actionnaire?.qualification);
+      const lieuNaissance = this.normalizeLabel(actionnaire?.lieuNaissance);
+
+      const isEmptyRow =
+        !nom &&
+        !prenom &&
+        !numeroIdentite &&
+        !nationalite &&
+        !pays &&
+        !tauxParticipation &&
+        !qualification &&
+        !lieuNaissance;
+
+      if (isEmptyRow) {
         continue;
       }
 
-      const actionPaysId = await this.resolvePaysId(actionnaire?.pays);
-      const actionNatId = await this.resolveNationaliteId(actionnaire?.nationalite);
+      if (!nom || !prenom || !numeroIdentite) {
+        invalidActionnaires.push(
+          `Actionnaire ${index + 1}: nom, prenom et numero d'identite sont obligatoires.`,
+        );
+        continue;
+      }
+
+      if (!nationalite || !pays) {
+        invalidActionnaires.push(
+          `Actionnaire ${index + 1}: nationalite et pays sont obligatoires.`,
+        );
+        continue;
+      }
+
+      const actionPaysId = await this.resolvePaysId(pays);
+      const actionNatId = await this.resolveNationaliteId(nationalite);
       if (!actionPaysId || !actionNatId) {
+        invalidActionnaires.push(
+          `Actionnaire ${index + 1}: nationalite/pays introuvable(s).`,
+        );
+        continue;
+      }
+
+      const tauxParticipationParsed = this.parseParticipationRate(tauxParticipation);
+      if (tauxParticipationParsed === null) {
+        invalidActionnaires.push(
+          `Actionnaire ${index + 1}: taux de participation invalide.`,
+        );
         continue;
       }
 
@@ -1525,9 +1666,13 @@ export class SocieteService {
         id_nationalite: actionNatId,
         qualification: actionnaire?.qualification ?? '',
         numero_carte: numeroIdentite,
-        taux_participation: String(actionnaire?.tauxParticipation ?? ''),
+        taux_participation: String(tauxParticipationParsed),
         lieu_naissance: actionnaire?.lieuNaissance ?? '',
       });
+    }
+
+    if (invalidActionnaires.length > 0) {
+      throw new HttpException(invalidActionnaires.join(' | '), HttpStatus.BAD_REQUEST);
     }
 
     let actionnaires: ActionnaireResult[] = [];

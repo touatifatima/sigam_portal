@@ -1,36 +1,45 @@
-﻿.page {
+.page {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f8f6f9;
+  background:
+    radial-gradient(1200px 400px at 8% -10%, rgba(137, 63, 114, 0.08), transparent 68%),
+    radial-gradient(900px 420px at 92% -14%, rgba(191, 165, 184, 0.2), transparent 70%),
+    #f5f3f6;
 }
 
 .topBar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
   display: flex;
   flex-wrap: wrap;
-  gap: 14px;
+  gap: 16px;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 18px;
-  border-bottom: 1px solid #e5d6e1;
-  background: linear-gradient(180deg, #ffffff 0%, #fbf8fb 100%);
+  padding: 14px 22px;
+  border-bottom: 1px solid #ddd2db;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 24px rgba(57, 42, 56, 0.08);
 }
 
 .titleBlock {
-  min-width: 240px;
+  min-width: 250px;
 }
 
 .title {
   margin: 0;
-  font-size: 16px;
-  line-height: 1.2;
-  color: #5f2f52;
+  font-size: clamp(1rem, 0.83rem + 0.45vw, 1.32rem);
+  letter-spacing: 0.01em;
+  font-weight: 800;
+  color: #3f2a38;
 }
 
 .subtitle {
   margin: 4px 0 0;
-  font-size: 13px;
-  color: #7f6478;
+  font-size: 0.83rem;
+  color: #7f6b78;
 }
 
 .actions {
@@ -43,19 +52,20 @@
 
 .connectedBadge,
 .publicBadge {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 0.74rem;
+  font-weight: 700;
   border-radius: 999px;
-  padding: 7px 10px;
-  border: 1px solid #e1c7d7;
-  color: #6b3d5f;
-  background: #fff7fc;
+  padding: 7px 12px;
+  border: 1px solid #d8c7d3;
+  color: #5f3953;
+  background: linear-gradient(180deg, #fffefe 0%, #f7f1f5 100%);
+  box-shadow: 0 2px 10px rgba(79, 49, 69, 0.09);
 }
 
 .publicBadge {
-  border-color: #d2e4ff;
-  color: #2c4e7b;
-  background: #f3f8ff;
+  border-color: #d8d6dc;
+  color: #4e4a52;
+  background: linear-gradient(180deg, #ffffff 0%, #f5f5f7 100%);
 }
 
 .linkBtn,
@@ -63,72 +73,88 @@
 .editBtn,
 .openBtn {
   text-decoration: none;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 10px 14px;
   border: 1px solid transparent;
-  transition: 0.2s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+  box-shadow: 0 2px 8px rgba(32, 25, 33, 0.08);
 }
 
 .linkBtn {
   color: #fff;
-  background: #8b3f72;
+  background: linear-gradient(180deg, #8c456f 0%, #7a365f 100%);
 }
 
 .linkBtn:hover {
-  background: #7a355f;
+  background: linear-gradient(180deg, #7f3d65 0%, #6c2f53 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(107, 47, 83, 0.3);
 }
 
 .linkBtnSecondary {
-  color: #6f3f5f;
-  background: #fff;
-  border-color: #d8bdd0;
+  color: #5f3953;
+  background: #ffffff;
+  border-color: #d7c6d2;
 }
 
 .linkBtnSecondary:hover {
-  background: #f8eff6;
+  background: #f7f2f6;
+  border-color: #cdb8c6;
+  transform: translateY(-1px);
 }
 
 .editBtn {
-  color: #fff;
-  background: #2d5ea8;
+  color: #4a4750;
+  background: #f3f1f5;
+  border-color: #d8d4db;
 }
 
 .editBtn:hover {
-  background: #244f8d;
+  background: #ebe7ee;
+  border-color: #cbc3cf;
+  transform: translateY(-1px);
 }
 
 .openBtn {
-  color: #3f2d3a;
-  background: #f3edf2;
-  border-color: #d9c2d0;
+  color: #2f2b31;
+  background: #ece8ee;
+  border-color: #d1cad5;
 }
 
 .openBtn:hover {
-  background: #e8dbe3;
+  background: #e2dce6;
+  border-color: #c5bbc9;
+  transform: translateY(-1px);
 }
 
 .main {
   flex: 1;
-  padding: 8px;
+  padding: 12px;
 }
 
 .iframe {
   width: 100%;
-  height: calc(100vh - 108px);
+  height: calc(100vh - 116px);
   border: none;
-  border-radius: 12px;
-  background: #fff;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow:
+    0 18px 36px rgba(45, 35, 44, 0.12),
+    0 2px 10px rgba(45, 35, 44, 0.06);
 }
 
 @media (max-width: 900px) {
   .topBar {
     padding: 12px;
-  }
-
-  .title {
-    font-size: 18px;
+    gap: 12px;
   }
 
   .actions {
@@ -137,7 +163,7 @@
   }
 
   .iframe {
-    height: calc(100vh - 172px);
-    border-radius: 10px;
+    height: calc(100vh - 190px);
+    border-radius: 12px;
   }
 }

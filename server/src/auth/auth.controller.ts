@@ -44,10 +44,16 @@ export class AuthController {
 
   @Post('login')
   async login(
-    @Body() body: { email: string; password: string },
+    @Body() body: { email: string; password: string; recaptchaToken: string },
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
+    await this.authService.verifyRecaptchaToken(
+      body.recaptchaToken,
+      'login',
+      this.extractClientIp(req),
+    );
+
     const result = await this.authService.validateUser(body.email, body.password);
     if (!result.user) {
       if (result.error === 'EMAIL_NOT_VERIFIED') {
@@ -97,7 +103,13 @@ export class AuthController {
   }
 
   @Post('register')
-  async register(@Body() body: any) {
+  async register(@Body() body: any, @Req() req: Request) {
+    await this.authService.verifyRecaptchaToken(
+      body?.recaptchaToken,
+      'register',
+      this.extractClientIp(req),
+    );
+
     return this.authService.register(body);
   }
 
@@ -118,14 +130,36 @@ export class AuthController {
   }
 
   @Post('forgot-password')
-  async forgotPassword(@Body() body: { email: string }, @Req() req: Request) {
+  async forgotPassword(
+    @Body() body: { email: string; recaptchaToken: string },
+    @Req() req: Request,
+  ) {
+    await this.authService.verifyRecaptchaToken(
+      body.recaptchaToken,
+      'forgot_password',
+      this.extractClientIp(req),
+    );
+
     return this.authService.forgotPassword(body.email, this.extractClientIp(req));
   }
 
   @Post('reset-password')
   async resetPassword(
-    @Body() body: { token: string; password: string; confirmPassword: string },
+    @Body()
+    body: {
+      token: string;
+      password: string;
+      confirmPassword: string;
+      recaptchaToken: string;
+    },
+    @Req() req: Request,
   ) {
+    await this.authService.verifyRecaptchaToken(
+      body.recaptchaToken,
+      'reset_password',
+      this.extractClientIp(req),
+    );
+
     return this.authService.resetPassword(
       body.token,
       body.password,

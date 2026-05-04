@@ -2,11 +2,15 @@ import styles from "./Partners.module.css";
 import { ScrollReveal } from "./ScrollReveal";
 
 const partners = [
-  { name: "Ministere de l'Energie et des Mines", short: "Mdl" },
-  { name: "ANAM", short: "A" },
-  { name: "ORGM", short: "O" },
-  { name: "ENOF", short: "E" },
-  { name: "Sonatrach", short: "S" },
+  {
+    name: "Ministere de l'Energie et des Mines",
+    short: "Mdl",
+    href: "https://oilmines.gov.dz",
+  },
+  { name: "ANAM", short: "A", href: "https://anam.gov.dz" },
+  { name: "ORGM", short: "O", href: "https://orgm.dz" },
+  { name: "ENOF", short: "E", href: "https://enof.dz" },
+  { name: "Sonatrach", short: "S", href: "https://sonatrach.com" },
 ];
 
 export const Partners = () => {
@@ -25,14 +29,20 @@ export const Partners = () => {
         <div className={styles.grid}>
           {partners.map((partner, i) => (
             <ScrollReveal key={partner.name} delay={i * 100}>
-              <div className={styles.partnerItem}>
+              <a
+                href={partner.href}
+                target="_blank"
+                rel="noreferrer"
+                className={styles.partnerItem}
+                aria-label={`Ouvrir le site officiel de ${partner.name}`}
+              >
                 <div className={styles.partnerContent}>
                   <div className={styles.partnerLogo}>
                     <span className={styles.partnerInitials}>{partner.short}</span>
                   </div>
                   <span className={styles.partnerName}>{partner.name}</span>
                 </div>
-              </div>
+              </a>
             </ScrollReveal>
           ))}
         </div>

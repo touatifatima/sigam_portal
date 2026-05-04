@@ -1,0 +1,54 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@10.9.3
+2 info using node@v22.18.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\ANAM1503\Desktop\sigam_vite\.npmrc
+5 silly config load:file:C:\Users\ANAM1503\.npmrc
+6 silly config load:file:C:\Users\ANAM1503\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm uninstall caniuse-lite baseline-browser-mapping
+8 verbose argv "uninstall" "caniuse-lite" "baseline-browser-mapping"
+9 verbose logfile logs-max:10 dir:C:\Users\ANAM1503\Desktop\sigam_vite\UsersANAM1503AppDataLocalnpm-cache\_logs\2026-05-03T08_41_21_424Z-
+10 verbose logfile C:\Users\ANAM1503\Desktop\sigam_vite\UsersANAM1503AppDataLocalnpm-cache\_logs\2026-05-03T08_41_21_424Z-debug-0.log
+11 silly logfile start cleaning logs, removing 1 files
+12 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+13 silly logfile done cleaning log files
+14 silly idealTree buildDeps
+15 silly reify mark retired [
+15 silly reify   'C:\\Users\\ANAM1503\\Desktop\\sigam_vite\\node_modules\\baseline-browser-mapping',
+15 silly reify   'C:\\Users\\ANAM1503\\Desktop\\sigam_vite\\node_modules\\.bin\\baseline-browser-mapping',
+15 silly reify   'C:\\Users\\ANAM1503\\Desktop\\sigam_vite\\node_modules\\.bin\\baseline-browser-mapping.cmd',
+15 silly reify   'C:\\Users\\ANAM1503\\Desktop\\sigam_vite\\node_modules\\.bin\\baseline-browser-mapping.ps1'
+15 silly reify ]
+16 silly reify mark retired [
+16 silly reify   'C:\\Users\\ANAM1503\\Desktop\\sigam_vite\\node_modules\\caniuse-lite'
+16 silly reify ]
+17 silly reify moves {
+17 silly reify   'C:\\Users\\ANAM1503\\Desktop\\sigam_vite\\node_modules\\baseline-browser-mapping': 'C:\\Users\\ANAM1503\\Desktop\\sigam_vite\\node_modules\\.baseline-browser-mapping-srrJfnwp',
+17 silly reify   'C:\\Users\\ANAM1503\\Desktop\\sigam_vite\\node_modules\\.bin\\baseline-browser-mapping': 'C:\\Users\\ANAM1503\\Desktop\\sigam_vite\\node_modules\\.bin\\.baseline-browser-mapping-F7SLfasF',
+17 silly reify   'C:\\Users\\ANAM1503\\Desktop\\sigam_vite\\node_modules\\.bin\\baseline-browser-mapping.cmd': 'C:\\Users\\ANAM1503\\Desktop\\sigam_vite\\node_modules\\.bin\\.baseline-browser-mapping.cmd-CSa0Q5uM',
+17 silly reify   'C:\\Users\\ANAM1503\\Desktop\\sigam_vite\\node_modules\\.bin\\baseline-browser-mapping.ps1': 'C:\\Users\\ANAM1503\\Desktop\\sigam_vite\\node_modules\\.bin\\.baseline-browser-mapping.ps1-EJPcO2OD',
+17 silly reify   'C:\\Users\\ANAM1503\\Desktop\\sigam_vite\\node_modules\\caniuse-lite': 'C:\\Users\\ANAM1503\\Desktop\\sigam_vite\\node_modules\\.caniuse-lite-XW9m1bsk'
+17 silly reify }
+18 silly audit bulk request {
+18 silly audit   '@types/react': [ '19.2.7' ],
+18 silly audit   '@types/react-helmet': [ '6.1.11' ],
+18 silly audit   '@types/react-helmet-async': [ '1.0.1' ],
+18 silly audit   csstype: [ '3.2.3' ],
+18 silly audit   invariant: [ '2.2.4' ],
+18 silly audit   'js-tokens': [ '4.0.0' ],
+18 silly audit   'loose-envify': [ '1.4.0' ],
+18 silly audit   react: [ '18.3.1' ],
+18 silly audit   'react-fast-compare': [ '3.2.2' ],
+18 silly audit   'react-helmet-async': [ '2.0.5' ],
+18 silly audit   shallowequal: [ '1.1.0' ]
+18 silly audit }
+19 http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 400ms
+20 silly audit report {}
+21 silly REMOVE node_modules/caniuse-lite
+22 silly REMOVE node_modules/baseline-browser-mapping
+23 verbose cwd C:\Users\ANAM1503\Desktop\sigam_vite
+24 verbose os Windows_NT 10.0.20348
+25 verbose node v22.18.0
+26 verbose npm  v10.9.3
+27 verbose exit 0
+28 info ok

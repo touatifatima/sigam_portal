@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import {
   ArrowUpRight,
   CalendarDays,
@@ -7,6 +6,7 @@ import {
   Newspaper,
   Search,
   Sparkles,
+  X,
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -49,6 +49,7 @@ export default function ActualitesPage() {
     "Toutes",
   );
   const [selectedId, setSelectedId] = useState<string>("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,20 +104,48 @@ export default function ActualitesPage() {
     return ["Toutes", ...unique] as Array<"Toutes" | ActualiteCategory>;
   }, [publishedItems]);
 
-  const feedItems = useMemo(() => {
-    const withoutFeatured = publishedItems.filter((item) => item.id !== featured?.id);
-    return withoutFeatured.filter(
+  const visibleItems = useMemo(
+    () =>
+      publishedItems.filter(
       (item) =>
         (activeCategory === "Toutes" || item.category === activeCategory) &&
         matchesSearch(item, query),
-    );
-  }, [activeCategory, featured?.id, publishedItems, query]);
+      ),
+    [activeCategory, publishedItems, query],
+  );
 
   const selectedArticle = useMemo(() => {
-    const allVisible = [featured, ...feedItems].filter(Boolean) as ActualiteItem[];
-    if (!allVisible.length) return null;
-    return allVisible.find((item) => item.id === selectedId) || allVisible[0];
-  }, [featured, feedItems, selectedId]);
+    const pool = visibleItems.length ? visibleItems : publishedItems;
+    if (!pool.length) return null;
+    return pool.find((item) => item.id === selectedId) || pool[0];
+  }, [visibleItems, publishedItems, selectedId]);
+
+  useEffect(() => {
+    const pool = visibleItems.length ? visibleItems : publishedItems;
+    if (!pool.length) return;
+    if (!pool.some((item) => item.id === selectedId)) {
+      setSelectedId(pool[0].id);
+    }
+  }, [visibleItems, publishedItems, selectedId]);
+
+  useEffect(() => {
+    if (!isModalOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsModalOpen(false);
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isModalOpen]);
 
   return (
     <div className={styles.page}>
@@ -148,7 +177,14 @@ export default function ActualitesPage() {
             </p>
 
             {featured ? (
-              <div className={styles.heroHighlight}>
+              <button
+                type="button"
+                className={styles.heroHighlight}
+                onClick={() => {
+                  setSelectedId(featured.id);
+                  setIsModalOpen(true);
+                }}
+              >
                 <span className={styles.heroHighlightTag}>
                   <Sparkles size={14} />
                   A la une
@@ -165,7 +201,11 @@ export default function ActualitesPage() {
                     {featured.readTimeMinutes} min
                   </span>
                 </div>
-              </div>
+                <span className={styles.heroHighlightCta}>
+                  Consulter cette publication
+                  <ArrowUpRight size={14} />
+                </span>
+              </button>
             ) : null}
           </div>
         </section>
@@ -198,8 +238,7 @@ export default function ActualitesPage() {
           </div>
         </section>
 
-        <section className={`container ${styles.layout}`}>
-          <div className={styles.feed}>
+        <section className={`container ${styles.cardsSection}`}>
             {loadError ? (
               <div className={styles.emptyState}>
                 <h3>Connexion backend indisponible</h3>
@@ -214,93 +253,102 @@ export default function ActualitesPage() {
               </div>
             ) : null}
 
-            {featured && activeCategory === "Toutes" && !query.trim() ? (
-              <button
-                type="button"
-                className={`${styles.feedCard} ${styles.feedCardFeatured}`}
-                onClick={() => setSelectedId(featured.id)}
-              >
-                <div className={styles.feedCardText}>
-                  <span className={styles.feedTag}>A la une</span>
-                  <h3>{featured.title}</h3>
-                  <p>{featured.excerpt}</p>
-                  <div className={styles.feedMeta}>
-                    <span>{formatDate(featured.publishedAt || featured.createdAt)}</span>
-                    <span>{featured.category}</span>
-                  </div>
-                </div>
-                <ArrowUpRight size={16} />
-              </button>
-            ) : null}
-
-            {!isLoading && feedItems.length === 0 ? (
+            {!isLoading && visibleItems.length === 0 ? (
               <div className={styles.emptyState}>
                 <h3>Aucune actualite trouvee</h3>
                 <p>Essayez de modifier le filtre ou votre recherche.</p>
               </div>
             ) : (
-              feedItems.map((item) => (
+              <div className={styles.cardsGrid}>
+              {visibleItems.map((item, index) => (
                 <button
                   key={item.id}
                   type="button"
-                  className={`${styles.feedCard} ${
-                    selectedArticle?.id === item.id ? styles.feedCardActive : ""
+                  className={`${styles.newsCard} ${
+                    selectedArticle?.id === item.id ? styles.newsCardActive : ""
                   }`}
-                  onClick={() => setSelectedId(item.id)}
+                  style={{ animationDelay: `${Math.min(index, 12) * 70}ms` }}
+                  onClick={() => {
+                    setSelectedId(item.id);
+                    setIsModalOpen(true);
+                  }}
                 >
-                  <div className={styles.feedCardText}>
-                    <span className={styles.feedTag}>{item.category}</span>
+                  <div
+                    className={styles.newsImage}
+                    style={{
+                      backgroundImage: item.imageUrl
+                        ? `url(${item.imageUrl})`
+                        : "linear-gradient(135deg, #2f1b26, #251927)",
+                    }}
+                  />
+                  <div className={styles.newsDate}>
+                    <CalendarDays size={14} />
+                    <span>{formatDate(item.publishedAt || item.createdAt)}</span>
+                  </div>
+                  <div className={styles.newsBody}>
+                    <span className={styles.newsCategory}>{item.category}</span>
                     <h3>{item.title}</h3>
                     <p>{item.excerpt}</p>
-                    <div className={styles.feedMeta}>
-                      <span>{formatDate(item.publishedAt || item.createdAt)}</span>
+                    <div className={styles.newsMeta}>
+                      <span>{item.author}</span>
                       <span>{item.readTimeMinutes} min</span>
                     </div>
+                    <div className={styles.newsAction}>
+                      <span>Consulter plus de details</span>
+                      <ArrowUpRight size={15} />
+                    </div>
                   </div>
-                  <ArrowUpRight size={16} />
                 </button>
-              ))
-            )}
-          </div>
-
-          <aside className={styles.articlePanel}>
-            {selectedArticle ? (
-              <article className={styles.articleCard}>
-                <div
-                  className={styles.articleCover}
-                  style={{
-                    backgroundImage: selectedArticle.imageUrl
-                      ? `url(${selectedArticle.imageUrl})`
-                      : "linear-gradient(135deg, #2f1b26, #251927)",
-                  }}
-                />
-                <div className={styles.articleBody}>
-                  <div className={styles.articleTopMeta}>
-                    <span>{selectedArticle.category}</span>
-                    <span>{formatDate(selectedArticle.publishedAt || selectedArticle.createdAt)}</span>
-                  </div>
-                  <h2>{selectedArticle.title}</h2>
-                  <p className={styles.articleExcerpt}>{selectedArticle.excerpt}</p>
-                  <p className={styles.articleContent}>{selectedArticle.content}</p>
-                  <div className={styles.articleFooter}>
-                    <span>Par {selectedArticle.author}</span>
-                    <span>{selectedArticle.readTimeMinutes} min de lecture</span>
-                  </div>
-                </div>
-              </article>
-            ) : (
-              <div className={styles.emptyArticle}>
-                <h3>Aucune publication disponible</h3>
-                <p>
-                  Les actualites publiees depuis l'administration apparaitront ici.
-                </p>
-                <Link href="/admin_panel/gestion_actualites" className={styles.adminLink}>
-                  Ouvrir la gestion des actualites
-                </Link>
+              ))}
               </div>
             )}
-          </aside>
         </section>
+
+        {isModalOpen && selectedArticle ? (
+          <div className={styles.modalOverlay} onClick={() => setIsModalOpen(false)}>
+            <article className={styles.modalCard} onClick={(event) => event.stopPropagation()}>
+              <button
+                type="button"
+                className={styles.modalClose}
+                onClick={() => setIsModalOpen(false)}
+                aria-label="Fermer le detail"
+              >
+                <X size={18} />
+              </button>
+
+              <div
+                className={styles.modalCover}
+                style={{
+                  backgroundImage: selectedArticle.imageUrl
+                    ? `url(${selectedArticle.imageUrl})`
+                    : "linear-gradient(135deg, #2f1b26, #251927)",
+                }}
+              >
+                <div className={styles.modalCoverOverlay} />
+                <div className={styles.modalCoverContent}>
+                  <span className={styles.modalCategory}>{selectedArticle.category}</span>
+                  <h2>{selectedArticle.title}</h2>
+                  <div className={styles.modalMeta}>
+                    <span>
+                      <CalendarDays size={14} />
+                      {formatDate(selectedArticle.publishedAt || selectedArticle.createdAt)}
+                    </span>
+                    <span>
+                      <Clock3 size={14} />
+                      {selectedArticle.readTimeMinutes} min
+                    </span>
+                    <span>Par {selectedArticle.author}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.modalBody}>
+                <p className={styles.modalExcerpt}>{selectedArticle.excerpt}</p>
+                <p className={styles.modalContent}>{selectedArticle.content}</p>
+              </div>
+            </article>
+          </div>
+        ) : null}
       </main>
 
       <Footer />

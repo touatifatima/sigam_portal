@@ -39,6 +39,12 @@
   text-decoration: none;
 }
 
+.flagBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
 .logoLink:hover .logoImage {
   transform: scale(1.05);
 }
@@ -47,6 +53,31 @@
   height: 3rem;
   width: auto;
   transition: transform 0.3s ease;
+}
+
+.algerianFlag {
+  width: 2.7rem;
+  height: 1.8rem;
+  border-radius: 0.12rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 4px 9px rgba(0, 0, 0, 0.24);
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.flagDivider {
+  width: 1px;
+  height: 1.95rem;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.68) 40%,
+    rgba(255, 255, 255, 0.12) 100%
+  );
+}
+
+.logoLink:hover .algerianFlag {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 7px 14px rgba(0, 0, 0, 0.3);
 }
 
 .logoText {

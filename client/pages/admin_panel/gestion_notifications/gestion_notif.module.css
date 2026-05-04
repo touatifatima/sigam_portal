@@ -1118,8 +1118,9 @@
 }
 
 .mainContent {
-  width: min(1760px, 100%);
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   padding: 1.35rem 1.7rem 2.3rem;
 }
 

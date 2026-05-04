@@ -119,6 +119,18 @@ function safeText(value?: string | null) {
   return String(value || '').trim();
 }
 
+function personField(person: any, keys: string[]): string {
+  for (const key of keys) {
+    const value = safeText(person?.[key]);
+    if (value) return value;
+  }
+  return '';
+}
+
+function renderValue(value?: string | null) {
+  return safeText(value) || '--';
+}
+
 function formatDate(value?: string | null) {
   if (!value) return '--';
   const d = new Date(value);
@@ -442,6 +454,40 @@ export default function AdminIdentifications() {
     result.push(pages);
     return result;
   }, [page, pages]);
+
+  const representantPersonne = useMemo(() => {
+    const direct = detailItem?.representant?.personne ?? detailItem?.representant ?? null;
+    if (direct) return direct;
+
+    const fonctions = Array.isArray(detailItem?.detenteur?.fonctions)
+      ? detailItem.detenteur.fonctions
+      : [];
+    const representantFonction = fonctions.find((fonction: any) =>
+      safeText(fonction?.type_fonction).toLowerCase().includes('represent'),
+    );
+
+    return representantFonction?.personne ?? representantFonction ?? null;
+  }, [detailItem?.detenteur?.fonctions, detailItem?.representant]);
+
+  const detenteurStatutsJuridiques = useMemo(() => {
+    const rows = Array.isArray(detailItem?.detenteur?.FormeJuridiqueDetenteur)
+      ? detailItem.detenteur.FormeJuridiqueDetenteur
+      : [];
+    const labels = rows
+      .map((row: any) =>
+        safeText(row?.statutJuridique?.code_statut) ||
+        safeText(row?.statutJuridique?.statut_fr) ||
+        safeText(row?.statutJuridique?.statut_ar),
+      )
+      .filter(Boolean);
+    return labels.join(', ');
+  }, [detailItem?.detenteur?.FormeJuridiqueDetenteur]);
+
+  const representantTaux = useMemo(() => {
+    const raw = detailItem?.representant?.taux_participation;
+    if (raw === null || raw === undefined || raw === '') return '';
+    return `${raw}%`;
+  }, [detailItem?.representant?.taux_participation]);
 
   if (!isLoaded) {
     return <div className={styles.loadingScreen}>Chargement...</div>;
@@ -884,23 +930,47 @@ export default function AdminIdentifications() {
                         <h4>Entreprise</h4>
                         <p>
                           <strong>Nom societe (FR):</strong>{' '}
-                          {safeText(detailItem.detenteur?.nom_societeFR) || '--'}
+                          {renderValue(detailItem.detenteur?.nom_societeFR)}
                         </p>
                         <p>
                           <strong>Nom societe (AR):</strong>{' '}
-                          {safeText(detailItem.detenteur?.nom_societeAR) || '--'}
+                          {renderValue(detailItem.detenteur?.nom_societeAR)}
                         </p>
                         <p>
                           <strong>Adresse:</strong>{' '}
-                          {safeText(detailItem.detenteur?.adresse_siege) || '--'}
+                          {renderValue(detailItem.detenteur?.adresse_siege)}
                         </p>
                         <p>
                           <strong>Email:</strong>{' '}
-                          {safeText(detailItem.detenteur?.email) || '--'}
+                          {renderValue(detailItem.detenteur?.email)}
                         </p>
                         <p>
                           <strong>Telephone:</strong>{' '}
-                          {safeText(detailItem.detenteur?.telephone) || '--'}
+                          {renderValue(detailItem.detenteur?.telephone)}
+                        </p>
+                        <p>
+                          <strong>Fax:</strong> {renderValue(detailItem.detenteur?.fax)}
+                        </p>
+                        <p>
+                          <strong>Site web:</strong> {renderValue(detailItem.detenteur?.site_web)}
+                        </p>
+                        <p>
+                          <strong>Pays:</strong>{' '}
+                          {renderValue(detailItem.detenteur?.pays?.nom_pays)}
+                        </p>
+                        <p>
+                          <strong>Nationalite:</strong>{' '}
+                          {renderValue(detailItem.detenteur?.nationaliteRef?.libelle)}
+                        </p>
+                        <p>
+                          <strong>Date constitution:</strong>{' '}
+                          {detailItem.detenteur?.date_constitution
+                            ? formatDate(detailItem.detenteur.date_constitution)
+                            : '--'}
+                        </p>
+                        <p>
+                          <strong>Statut juridique:</strong>{' '}
+                          {detenteurStatutsJuridiques || '--'}
                         </p>
                         <p>
                           <strong>Statut detenteur:</strong>{' '}
@@ -924,6 +994,17 @@ export default function AdminIdentifications() {
                               <strong>NIS:</strong> {safeText(registre?.nis) || '--'}
                             </p>
                             <p>
+                              <strong>Capital social:</strong>{' '}
+                              {registre?.capital_social !== null &&
+                              registre?.capital_social !== undefined
+                                ? `${registre.capital_social}`
+                                : '--'}
+                            </p>
+                            <p>
+                              <strong>Adresse legale:</strong>{' '}
+                              {renderValue(registre?.adresse_legale)}
+                            </p>
+                            <p>
                               <strong>Date enregistrement:</strong>{' '}
                               {formatDate(registre?.date_enregistrement)}
                             </p>
@@ -940,23 +1021,63 @@ export default function AdminIdentifications() {
                         <p>
                           <strong>Nom complet:</strong>{' '}
                           {[
-                            safeText(detailItem.representant?.nomFR),
-                            safeText(detailItem.representant?.prenomFR),
+                            personField(representantPersonne, ['nomFR', 'nom', 'nom_fr']),
+                            personField(representantPersonne, ['prenomFR', 'prenom', 'prenom_fr']),
+                          ]
+                            .filter(Boolean)
+                            .join(' ') || '--'}
+                        </p>
+                        <p>
+                          <strong>Nom complet (AR):</strong>{' '}
+                          {[
+                            personField(representantPersonne, ['nomAR', 'nom_ar']),
+                            personField(representantPersonne, ['prenomAR', 'prenom_ar']),
                           ]
                             .filter(Boolean)
                             .join(' ') || '--'}
                         </p>
                         <p>
                           <strong>Email:</strong>{' '}
-                          {safeText(detailItem.representant?.email) || '--'}
+                          {personField(representantPersonne, ['email']) || '--'}
                         </p>
                         <p>
                           <strong>Telephone:</strong>{' '}
-                          {safeText(detailItem.representant?.telephone) || '--'}
+                          {personField(representantPersonne, ['telephone', 'tel']) || '--'}
                         </p>
                         <p>
                           <strong>NIN:</strong>{' '}
-                          {safeText(detailItem.representant?.num_carte_identite) || '--'}
+                          {personField(representantPersonne, [
+                            'num_carte_identite',
+                            'nin',
+                            'numeroIdentite',
+                          ]) || '--'}
+                        </p>
+                        <p>
+                          <strong>Fax:</strong>{' '}
+                          {personField(representantPersonne, ['fax']) || '--'}
+                        </p>
+                        <p>
+                          <strong>Qualite:</strong>{' '}
+                          {personField(representantPersonne, ['qualification', 'qualite']) || '--'}
+                        </p>
+                        <p>
+                          <strong>Nationalite:</strong>{' '}
+                          {personField(representantPersonne?.nationaliteRef, ['libelle']) || '--'}
+                        </p>
+                        <p>
+                          <strong>Pays:</strong>{' '}
+                          {personField(representantPersonne?.pays, ['nom_pays']) || '--'}
+                        </p>
+                        <p>
+                          <strong>Lieu naissance:</strong>{' '}
+                          {personField(representantPersonne, ['lieu_naissance']) || '--'}
+                        </p>
+                        <p>
+                          <strong>Pouvoirs:</strong>{' '}
+                          {personField(representantPersonne, ['pouvoirs']) || '--'}
+                        </p>
+                        <p>
+                          <strong>Taux participation:</strong> {representantTaux || '--'}
                         </p>
                       </div>
 
@@ -964,14 +1085,54 @@ export default function AdminIdentifications() {
                         <h4>Actionnaires ({(detailItem.actionnaires || []).length})</h4>
                         {(detailItem.actionnaires || []).length ? (
                           <ul className={styles.actionnaireList}>
-                            {(detailItem.actionnaires || []).map((item: any) => (
-                              <li key={`act-${item?.id_actionnaire || item?.id_fonctionDetent}`}>
-                                <span>
-                                  {safeText(item?.nomFR)} {safeText(item?.prenomFR)}
-                                </span>
-                                <span>{safeText(item?.num_carte_identite) || '--'}</span>
-                              </li>
-                            ))}
+                            {(detailItem.actionnaires || []).map((item: any) => {
+                              const actionnairePersonne = item?.personne ?? item;
+                              const actionnaireNom =
+                                [
+                                  personField(actionnairePersonne, ['nomFR', 'nom', 'nom_fr']),
+                                  personField(actionnairePersonne, [
+                                    'prenomFR',
+                                    'prenom',
+                                    'prenom_fr',
+                                  ]),
+                                ]
+                                  .filter(Boolean)
+                                  .join(' ') || '--';
+                              const actionnaireNin =
+                                personField(actionnairePersonne, [
+                                  'num_carte_identite',
+                                  'nin',
+                                  'numeroIdentite',
+                                ]) || '--';
+                              const actionnaireNationalite =
+                                personField(actionnairePersonne?.nationaliteRef, ['libelle']) ||
+                                '--';
+                              const actionnairePays =
+                                personField(actionnairePersonne?.pays, ['nom_pays']) || '--';
+                              const actionnaireQualification =
+                                personField(actionnairePersonne, ['qualification']) || '--';
+                              const actionnaireLieuNaissance =
+                                personField(actionnairePersonne, ['lieu_naissance']) || '--';
+                              const actionnaireTaux =
+                                item?.taux_participation !== null &&
+                                item?.taux_participation !== undefined &&
+                                item?.taux_participation !== ''
+                                  ? `${item.taux_participation}%`
+                                  : '--';
+                              return (
+                                <li key={`act-${item?.id_actionnaire || item?.id_fonctionDetent}`}>
+                                  <span>
+                                    <strong>{actionnaireNom}</strong>
+                                  </span>
+                                  <span>NIN: {actionnaireNin}</span>
+                                  <span>Nationalite: {actionnaireNationalite}</span>
+                                  <span>Pays: {actionnairePays}</span>
+                                  <span>Qualification: {actionnaireQualification}</span>
+                                  <span>Lieu naissance: {actionnaireLieuNaissance}</span>
+                                  <span>Taux participation: {actionnaireTaux}</span>
+                                </li>
+                              );
+                            })}
                           </ul>
                         ) : (
                           <p>--</p>

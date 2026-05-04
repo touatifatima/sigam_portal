@@ -2636,12 +2636,17 @@ display: flex;
 }
 
 .main-content {
+  width: 100%;
+  max-width: none;
+  margin: 0;
   background: transparent;
   padding: 1.6rem;
 }
 
 .container {
-  max-width: 1480px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
 }
 
 .contentWrapper {
@@ -3042,4 +3047,18 @@ display: flex;
     margin-left: 0;
     justify-content: flex-start;
   }
+}
+
+/* Darker text for dashboard stat cards */
+.cardRow .cardContent h4 {
+  color: #06090f !important;
+}
+
+.cardRow .cardContent p {
+  color: #000000 !important;
+}
+
+.cardRow .cardPercentage,
+.cardRow .cardWarning {
+  color: #000000 !important;
 }

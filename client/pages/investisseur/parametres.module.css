@@ -1,20 +1,20 @@
 .page {
-  --green-950: #06382d;
-  --green-900: #085041;
-  --green-800: #0c6754;
-  --green-700: #13806a;
+  --green-950: #4b1d33;
+  --green-900: #6f2c4c;
+  --green-800: #8a3b61;
+  --green-700: #b14680;
   --ink-950: #1f2a37;
   --ink-800: #48586b;
   --ink-700: #5e7084;
   --ink-600: #7b8b9e;
-  --line: rgba(8, 80, 65, 0.12);
-  --line-strong: rgba(8, 80, 65, 0.2);
+  --line: rgba(111, 44, 76, 0.12);
+  --line-strong: rgba(111, 44, 76, 0.2);
   --card-shadow: 0 22px 46px rgba(26, 37, 48, 0.08);
   min-height: calc(100vh - 64px);
   padding: 2rem 1.35rem 3rem;
   background:
-    radial-gradient(circle at top left, rgba(19, 128, 106, 0.1), transparent 30%),
-    radial-gradient(circle at top right, rgba(8, 80, 65, 0.1), transparent 28%),
+    radial-gradient(circle at top left, rgba(177, 70, 128, 0.1), transparent 30%),
+    radial-gradient(circle at top right, rgba(111, 44, 76, 0.1), transparent 28%),
     linear-gradient(180deg, #f0f4f8 0%, #f4f7fb 46%, #f8fbfd 100%);
 }
 
@@ -24,17 +24,17 @@
 
 .page[data-theme="dark"] {
   color-scheme: dark;
-  --ink-950: #edf7f4;
-  --ink-800: #c8d8d3;
-  --ink-700: #acc0ba;
-  --ink-600: #8fa7a0;
-  --line: rgba(146, 191, 180, 0.16);
-  --line-strong: rgba(146, 191, 180, 0.28);
+  --ink-950: #f7f4f7;
+  --ink-800: #ddd3dc;
+  --ink-700: #c3b5c2;
+  --ink-600: #aa99ab;
+  --line: rgba(199, 156, 186, 0.16);
+  --line-strong: rgba(199, 156, 186, 0.28);
   --card-shadow: 0 26px 52px rgba(3, 11, 10, 0.24);
   background:
-    radial-gradient(circle at top left, rgba(19, 128, 106, 0.16), transparent 30%),
-    radial-gradient(circle at top right, rgba(8, 80, 65, 0.18), transparent 28%),
-    linear-gradient(180deg, #071310 0%, #0b1815 46%, #10211d 100%);
+    radial-gradient(circle at top left, rgba(177, 70, 128, 0.16), transparent 30%),
+    radial-gradient(circle at top right, rgba(111, 44, 76, 0.18), transparent 28%),
+    linear-gradient(180deg, #130d15 0%, #1b121d 46%, #241722 100%);
 }
 
 .shell {
@@ -58,7 +58,7 @@
 .hero,
 .panel {
   border-radius: 28px;
-  border: 1px solid rgba(8, 80, 65, 0.1);
+  border: 1px solid rgba(111, 44, 76, 0.1);
   background: #ffffff;
   box-shadow: var(--card-shadow);
 }
@@ -66,10 +66,10 @@
 .page[data-theme="dark"] .sidebarCard,
 .page[data-theme="dark"] .hero,
 .page[data-theme="dark"] .panel {
-  border-color: rgba(146, 191, 180, 0.14);
+  border-color: rgba(199, 156, 186, 0.14);
   background:
-    linear-gradient(180deg, rgba(11, 28, 24, 0.96), rgba(10, 23, 20, 0.94)),
-    linear-gradient(135deg, rgba(19, 128, 106, 0.06), rgba(8, 80, 65, 0.08));
+    linear-gradient(180deg, rgba(31, 17, 29, 0.96), rgba(28, 16, 27, 0.94)),
+    linear-gradient(135deg, rgba(177, 70, 128, 0.06), rgba(111, 44, 76, 0.08));
 }
 
 .sidebarCard {
@@ -93,7 +93,7 @@
   font-size: 1.8rem;
   font-weight: 800;
   letter-spacing: -0.04em;
-  box-shadow: 0 16px 30px rgba(8, 80, 65, 0.18);
+  box-shadow: 0 16px 30px rgba(111, 44, 76, 0.18);
 }
 
 .identityName {
@@ -134,9 +134,9 @@
 }
 
 .badgeSuccess {
-  border: 1px solid rgba(19, 128, 106, 0.18);
-  background: rgba(224, 248, 243, 0.92);
-  color: var(--green-900);
+  border: 1px solid rgba(22, 163, 74, 0.22);
+  background: rgba(236, 253, 245, 0.96);
+  color: #166534;
 }
 
 .badgeWarning {
@@ -146,9 +146,9 @@
 }
 
 .page[data-theme="dark"] .badgeSuccess {
-  border-color: rgba(19, 128, 106, 0.24);
-  background: rgba(11, 62, 51, 0.9);
-  color: #8be0c6;
+  border-color: rgba(34, 197, 94, 0.26);
+  background: rgba(20, 83, 45, 0.86);
+  color: #bbf7d0;
 }
 
 .page[data-theme="dark"] .badgeWarning {
@@ -210,8 +210,8 @@
 
 .sidebarNavButtonActive {
   background: rgba(235, 247, 245, 0.92);
-  border-color: rgba(8, 80, 65, 0.18);
-  box-shadow: 0 16px 28px rgba(8, 80, 65, 0.08);
+  border-color: rgba(111, 44, 76, 0.18);
+  box-shadow: 0 16px 28px rgba(111, 44, 76, 0.08);
 }
 
 .page[data-theme="dark"] .sidebarNavButton,
@@ -221,13 +221,13 @@
 .page[data-theme="dark"] .footerMetaItem,
 .page[data-theme="dark"] .inlineNote,
 .page[data-theme="dark"] .selectControl {
-  border-color: rgba(146, 191, 180, 0.14);
-  background: rgba(16, 39, 34, 0.88);
+  border-color: rgba(199, 156, 186, 0.14);
+  background: rgba(38, 20, 30, 0.88);
 }
 
 .page[data-theme="dark"] .sidebarNavButtonActive {
-  background: rgba(11, 62, 51, 0.92);
-  border-color: rgba(31, 150, 126, 0.32);
+  background: rgba(58, 22, 39, 0.92);
+  border-color: rgba(177, 70, 128, 0.32);
   box-shadow: 0 16px 28px rgba(2, 8, 8, 0.24);
 }
 
@@ -245,7 +245,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(8, 80, 65, 0.08);
+  background: rgba(111, 44, 76, 0.08);
   color: var(--green-900);
   flex-shrink: 0;
 }
@@ -253,8 +253,8 @@
 .page[data-theme="dark"] .sidebarNavIcon,
 .page[data-theme="dark"] .accountIcon,
 .page[data-theme="dark"] .panelIcon {
-  background: rgba(19, 128, 106, 0.16);
-  color: #8de4c9;
+  background: rgba(177, 70, 128, 0.16);
+  color: #f2cfe1;
 }
 
 .sidebarNavArrow {
@@ -286,7 +286,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(8, 80, 65, 0.08);
+  background: rgba(111, 44, 76, 0.08);
   color: var(--green-900);
   flex-shrink: 0;
 }
@@ -335,7 +335,7 @@
   width: 16rem;
   height: 16rem;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(19, 128, 106, 0.12) 0%, rgba(19, 128, 106, 0) 72%);
+  background: radial-gradient(circle, rgba(177, 70, 128, 0.12) 0%, rgba(177, 70, 128, 0) 72%);
 }
 
 .heroCopy,
@@ -353,8 +353,8 @@
   align-items: center;
   padding: 0.48rem 0.84rem;
   border-radius: 999px;
-  border: 1px solid rgba(8, 80, 65, 0.12);
-  background: rgba(240, 248, 246, 0.9);
+  border: 1px solid rgba(111, 44, 76, 0.12);
+  background: rgba(250, 241, 246, 0.9);
   color: var(--green-900);
   font-size: 0.74rem;
   font-weight: 800;
@@ -363,9 +363,9 @@
 }
 
 .page[data-theme="dark"] .eyebrow {
-  border-color: rgba(19, 128, 106, 0.2);
-  background: rgba(11, 62, 51, 0.4);
-  color: #9ce8d0;
+  border-color: rgba(177, 70, 128, 0.2);
+  background: rgba(58, 22, 39, 0.4);
+  color: #f1cade;
 }
 
 .title {
@@ -426,7 +426,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(8, 80, 65, 0.08);
+  background: rgba(111, 44, 76, 0.08);
   color: var(--green-900);
   flex-shrink: 0;
 }
@@ -495,7 +495,7 @@
   width: 58px;
   height: 32px;
   padding: 0;
-  border: 1px solid rgba(8, 80, 65, 0.16);
+  border: 1px solid rgba(111, 44, 76, 0.16);
   border-radius: 999px;
   background: #f7fbfd;
   flex-shrink: 0;
@@ -503,13 +503,13 @@
 }
 
 .page[data-theme="dark"] .toggleButton {
-  border-color: rgba(146, 191, 180, 0.18);
-  background: rgba(7, 19, 16, 0.96);
+  border-color: rgba(199, 156, 186, 0.18);
+  background: rgba(22, 14, 20, 0.96);
 }
 
 .toggleButtonActive {
   background: linear-gradient(135deg, var(--green-900), var(--green-700));
-  border-color: rgba(8, 80, 65, 0.28);
+  border-color: rgba(111, 44, 76, 0.28);
 }
 
 .toggleThumb {
@@ -545,8 +545,8 @@
 
 .selectControl:focus {
   outline: none;
-  border-color: rgba(8, 80, 65, 0.34);
-  box-shadow: 0 0 0 4px rgba(8, 80, 65, 0.08);
+  border-color: rgba(111, 44, 76, 0.34);
+  box-shadow: 0 0 0 4px rgba(111, 44, 76, 0.08);
 }
 
 .page[data-theme="dark"] .selectControl {
@@ -554,8 +554,8 @@
 }
 
 .page[data-theme="dark"] .selectControl:focus {
-  border-color: rgba(43, 178, 149, 0.42);
-  box-shadow: 0 0 0 4px rgba(19, 128, 106, 0.12);
+  border-color: rgba(199, 95, 146, 0.42);
+  box-shadow: 0 0 0 4px rgba(177, 70, 128, 0.12);
 }
 
 .inlineNote {
@@ -565,8 +565,8 @@
   margin-top: 1rem;
   padding: 0.8rem 0.95rem;
   border-radius: 16px;
-  border: 1px solid rgba(8, 80, 65, 0.1);
-  background: rgba(240, 248, 246, 0.72);
+  border: 1px solid rgba(111, 44, 76, 0.1);
+  background: rgba(250, 241, 246, 0.78);
   color: var(--green-900);
   font-size: 0.9rem;
   font-weight: 600;
@@ -605,7 +605,7 @@
   border: none;
   background: linear-gradient(135deg, var(--green-900), var(--green-700));
   color: #ffffff;
-  box-shadow: 0 16px 28px rgba(8, 80, 65, 0.18);
+  box-shadow: 0 16px 28px rgba(111, 44, 76, 0.18);
 }
 
 .primaryButton:hover {
@@ -613,32 +613,32 @@
 }
 
 .secondaryButton {
-  border-color: rgba(8, 80, 65, 0.16);
+  border-color: #d0d5dd;
   background: #ffffff;
-  color: var(--green-900);
+  color: #475467;
 }
 
 .page[data-theme="dark"] .secondaryButton {
-  border-color: rgba(146, 191, 180, 0.18);
-  background: rgba(16, 39, 34, 0.9);
-  color: #dff6ef;
+  border-color: rgba(148, 163, 184, 0.3);
+  background: rgba(38, 20, 30, 0.9);
+  color: #e2e8f0;
 }
 
 .secondaryButton:hover {
-  background: #f9fcfb;
-  border-color: rgba(8, 80, 65, 0.26);
-  color: var(--green-900);
+  background: #f9fafb;
+  border-color: #bfc6d2;
+  color: #344054;
 }
 
 .page[data-theme="dark"] .secondaryButton:hover {
-  background: rgba(20, 46, 40, 0.96);
-  border-color: rgba(146, 191, 180, 0.26);
-  color: #eefaf6;
+  background: rgba(51, 31, 43, 0.96);
+  border-color: rgba(148, 163, 184, 0.38);
+  color: #f1f5f9;
 }
 
 .dangerButton {
   border: none;
-  background: linear-gradient(135deg, #a03a4c, #c45959);
+  background: linear-gradient(135deg, #b4233a, #e14d5a);
   color: #ffffff;
   display: inline-flex;
   align-items: center;

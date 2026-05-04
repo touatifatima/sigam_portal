@@ -1,0 +1,106 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@10.9.3
+2 info using node@v22.18.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\ANAM1503\Desktop\sigam_vite\.npmrc
+5 silly config load:file:C:\Users\ANAM1503\.npmrc
+6 silly config load:file:C:\Users\ANAM1503\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm exec update-browserslist-db@latest
+8 verbose argv "exec" "--" "update-browserslist-db@latest"
+9 verbose logfile logs-max:10 dir:C:\Users\ANAM1503\Desktop\sigam_vite\UsersANAM1503AppDataLocalnpm-cache\_logs\2026-05-03T08_41_00_816Z-
+10 verbose logfile C:\Users\ANAM1503\Desktop\sigam_vite\UsersANAM1503AppDataLocalnpm-cache\_logs\2026-05-03T08_41_00_816Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+13 http fetch GET 200 https://registry.npmjs.org/update-browserslist-db 114ms (cache miss)
+14 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+15 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+16 http fetch GET 200 https://registry.npmjs.org/npm 382ms
+17 silly idealTree buildDeps
+18 silly fetch manifest update-browserslist-db@1.2.3
+19 silly packumentCache full:https://registry.npmjs.org/update-browserslist-db cache-miss
+20 http fetch GET 200 https://registry.npmjs.org/update-browserslist-db 374ms (cache miss)
+21 silly packumentCache full:https://registry.npmjs.org/update-browserslist-db set size:undefined disposed:false
+22 silly fetch manifest browserslist@>= 4.21.0
+23 silly packumentCache full:https://registry.npmjs.org/browserslist cache-miss
+24 http fetch GET 200 https://registry.npmjs.org/browserslist 621ms (cache miss)
+25 silly packumentCache full:https://registry.npmjs.org/browserslist set size:undefined disposed:false
+26 silly placeDep ROOT update-browserslist-db@1.2.3 OK for:  want: 1.2.3
+27 silly placeDep ROOT browserslist@4.28.2 OK for: update-browserslist-db@1.2.3 want: >= 4.21.0
+28 silly fetch manifest escalade@^3.2.0
+29 silly packumentCache full:https://registry.npmjs.org/escalade cache-miss
+30 silly fetch manifest picocolors@^1.1.1
+31 silly packumentCache full:https://registry.npmjs.org/picocolors cache-miss
+32 silly fetch manifest baseline-browser-mapping@^2.10.12
+33 silly packumentCache full:https://registry.npmjs.org/baseline-browser-mapping cache-miss
+34 silly fetch manifest caniuse-lite@^1.0.30001782
+35 silly packumentCache full:https://registry.npmjs.org/caniuse-lite cache-miss
+36 silly fetch manifest electron-to-chromium@^1.5.328
+37 silly packumentCache full:https://registry.npmjs.org/electron-to-chromium cache-miss
+38 silly fetch manifest node-releases@^2.0.36
+39 silly packumentCache full:https://registry.npmjs.org/node-releases cache-miss
+40 http fetch GET 200 https://registry.npmjs.org/escalade 604ms (cache miss)
+41 silly packumentCache full:https://registry.npmjs.org/escalade set size:undefined disposed:false
+42 http fetch GET 200 https://registry.npmjs.org/picocolors 607ms (cache miss)
+43 silly packumentCache full:https://registry.npmjs.org/picocolors set size:undefined disposed:false
+44 http fetch GET 200 https://registry.npmjs.org/node-releases 1315ms (cache miss)
+45 silly packumentCache full:https://registry.npmjs.org/node-releases set size:undefined disposed:false
+46 http fetch GET 200 https://registry.npmjs.org/baseline-browser-mapping 2151ms (cache miss)
+47 silly packumentCache full:https://registry.npmjs.org/baseline-browser-mapping set size:undefined disposed:false
+48 http fetch GET 200 https://registry.npmjs.org/caniuse-lite 2253ms (cache miss)
+49 silly packumentCache full:https://registry.npmjs.org/caniuse-lite set size:undefined disposed:false
+50 http fetch GET 200 https://registry.npmjs.org/electron-to-chromium 2285ms (cache miss)
+51 silly packumentCache full:https://registry.npmjs.org/electron-to-chromium set size:undefined disposed:false
+52 silly placeDep ROOT baseline-browser-mapping@2.10.25 OK for: browserslist@4.28.2 want: ^2.10.12
+53 silly placeDep ROOT caniuse-lite@1.0.30001791 OK for: browserslist@4.28.2 want: ^1.0.30001782
+54 silly placeDep ROOT electron-to-chromium@1.5.349 OK for: browserslist@4.28.2 want: ^1.5.328
+55 silly placeDep ROOT node-releases@2.0.38 OK for: browserslist@4.28.2 want: ^2.0.36
+56 silly placeDep ROOT escalade@3.2.0 OK for: update-browserslist-db@1.2.3 want: ^3.2.0
+57 silly placeDep ROOT picocolors@1.1.1 OK for: update-browserslist-db@1.2.3 want: ^1.1.1
+58 silly reify moves {}
+59 silly audit bulk request {
+59 silly audit   'update-browserslist-db': [ '1.2.3' ],
+59 silly audit   browserslist: [ '4.28.2' ],
+59 silly audit   'baseline-browser-mapping': [ '2.10.25' ],
+59 silly audit   'caniuse-lite': [ '1.0.30001791' ],
+59 silly audit   'electron-to-chromium': [ '1.5.349' ],
+59 silly audit   'node-releases': [ '2.0.38' ],
+59 silly audit   escalade: [ '3.2.0' ],
+59 silly audit   picocolors: [ '1.1.1' ]
+59 silly audit }
+60 http cache picocolors@https://registry.npmjs.org/picocolors/-/picocolors-1.1.1.tgz 0ms (cache hit)
+61 http cache escalade@https://registry.npmjs.org/escalade/-/escalade-3.2.0.tgz 0ms (cache hit)
+62 http cache node-releases@https://registry.npmjs.org/node-releases/-/node-releases-2.0.38.tgz 0ms (cache hit)
+63 http cache electron-to-chromium@https://registry.npmjs.org/electron-to-chromium/-/electron-to-chromium-1.5.349.tgz 0ms (cache hit)
+64 http cache caniuse-lite@https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001791.tgz 0ms (cache hit)
+65 silly tarball no local data for picocolors@https://registry.npmjs.org/picocolors/-/picocolors-1.1.1.tgz. Extracting by manifest.
+66 silly tarball no local data for escalade@https://registry.npmjs.org/escalade/-/escalade-3.2.0.tgz. Extracting by manifest.
+67 silly tarball no local data for node-releases@https://registry.npmjs.org/node-releases/-/node-releases-2.0.38.tgz. Extracting by manifest.
+68 silly tarball no local data for electron-to-chromium@https://registry.npmjs.org/electron-to-chromium/-/electron-to-chromium-1.5.349.tgz. Extracting by manifest.
+69 silly tarball no local data for caniuse-lite@https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001791.tgz. Extracting by manifest.
+70 http cache baseline-browser-mapping@https://registry.npmjs.org/baseline-browser-mapping/-/baseline-browser-mapping-2.10.25.tgz 0ms (cache hit)
+71 http cache browserslist@https://registry.npmjs.org/browserslist/-/browserslist-4.28.2.tgz 0ms (cache hit)
+72 http cache update-browserslist-db@https://registry.npmjs.org/update-browserslist-db/-/update-browserslist-db-1.2.3.tgz 0ms (cache hit)
+73 silly tarball no local data for baseline-browser-mapping@https://registry.npmjs.org/baseline-browser-mapping/-/baseline-browser-mapping-2.10.25.tgz. Extracting by manifest.
+74 silly tarball no local data for browserslist@https://registry.npmjs.org/browserslist/-/browserslist-4.28.2.tgz. Extracting by manifest.
+75 silly tarball no local data for update-browserslist-db@https://registry.npmjs.org/update-browserslist-db/-/update-browserslist-db-1.2.3.tgz. Extracting by manifest.
+76 http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 612ms
+77 silly audit report {}
+78 http fetch GET 200 https://registry.npmjs.org/node-releases/-/node-releases-2.0.38.tgz 652ms (cache miss)
+79 http fetch GET 200 https://registry.npmjs.org/escalade/-/escalade-3.2.0.tgz 685ms (cache miss)
+80 http fetch GET 200 https://registry.npmjs.org/picocolors/-/picocolors-1.1.1.tgz 686ms (cache miss)
+81 http fetch GET 200 https://registry.npmjs.org/electron-to-chromium/-/electron-to-chromium-1.5.349.tgz 703ms (cache miss)
+82 http fetch GET 200 https://registry.npmjs.org/update-browserslist-db/-/update-browserslist-db-1.2.3.tgz 1185ms (cache miss)
+83 http fetch GET 200 https://registry.npmjs.org/browserslist/-/browserslist-4.28.2.tgz 1216ms (cache miss)
+84 http fetch GET 200 https://registry.npmjs.org/baseline-browser-mapping/-/baseline-browser-mapping-2.10.25.tgz 1234ms (cache miss)
+85 http fetch GET 200 https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001791.tgz 3527ms (cache miss)
+86 verbose cwd C:\Users\ANAM1503\Desktop\sigam_vite
+87 verbose os Windows_NT 10.0.20348
+88 verbose node v22.18.0
+89 verbose npm  v10.9.3
+90 notice
+90 notice New [31mmajor[39m version of npm available! [31m10.9.3[39m -> [34m11.13.0[39m
+90 notice Changelog: [34mhttps://github.com/npm/cli/releases/tag/v11.13.0[39m
+90 notice To update run: [4mnpm install -g npm@11.13.0[24m
+90 notice  { force: true, [Symbol(proc-log.meta)]: true }
+91 verbose exit 0
+92 info ok

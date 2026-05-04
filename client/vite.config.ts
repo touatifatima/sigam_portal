@@ -6,6 +6,8 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const nextPublicApiUrl = env.NEXT_PUBLIC_API_URL || env.VITE_API_URL || "";
   const nextPublicApiBase = env.NEXT_PUBLIC_API_BASE || env.VITE_API_BASE || "";
+  const nextPublicRecaptchaSiteKey =
+    env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || env.VITE_RECAPTCHA_SITE_KEY || "";
 
   return {
     plugins: [
@@ -30,6 +32,9 @@ export default defineConfig(({ mode }) => {
       "process.env": {},
       "process.env.NEXT_PUBLIC_API_URL": JSON.stringify(nextPublicApiUrl),
       "process.env.NEXT_PUBLIC_API_BASE": JSON.stringify(nextPublicApiBase),
+      "process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY": JSON.stringify(
+        nextPublicRecaptchaSiteKey,
+      ),
     },
     server: {
       watch: {
