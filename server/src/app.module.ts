@@ -79,6 +79,7 @@ import { ArticleSetsModule } from './article_sets/article-sets.module';
 import { InscriptionProvisoireModule } from './demandes/inscription_provisoire/inscription-provisoire.module';
 import { Expert } from './notifications/expertminier';
 import { PhasesEtapesConfigModule } from './configurations/phases-etapes/phases-etapes.module';
+import { StaticPagesModule } from './static-pages/static-pages.module';
 
 
 
@@ -104,7 +105,7 @@ import { PhasesEtapesConfigModule } from './configurations/phases-etapes/phases-
     InteractionWaliModule,CapacitesModule,SubstancesModule,DocumentsModule,DemandeSummaryControllerModule,SubstancesconfModule,
     StatutsJuridiquesconfconfModule,WilayasconfModule,DairasconfModule,CommunesconfModule,AntennesconfModule,DetenteurMorale_confModule,
     TypePermis_confModule,StatutPermis_confModule,Permis_confModule,Antenne_confModule,DemandesDashboardModule,TransfertModule,GisModule,VerificationGeoModule,
-    NotificationsModule,ArticleSetsModule,InscriptionProvisoireModule,PhasesEtapesConfigModule,ChatModule,FactureModule,CessionModule,ProcedureDeclarationsModule,ActualitesModule],
+    NotificationsModule,ArticleSetsModule,InscriptionProvisoireModule,PhasesEtapesConfigModule,ChatModule,FactureModule,CessionModule,ProcedureDeclarationsModule,ActualitesModule,StaticPagesModule],
   controllers: [DemandesController],
   providers: [DemandeService,
     //{

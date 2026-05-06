@@ -279,6 +279,18 @@ model ActualitePortail {
   @@map("actualites_portail")
 }
 
+model StaticPage {
+  id        String   @id @default(cuid())
+  slug      String
+  title     String
+  content   String   @db.Text()
+  locale    String   @default("fr")
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@unique([slug, locale])
+}
+
 model Antenne {
   id_antenne   Int             @id @default(autoincrement())
   nom          String

@@ -371,6 +371,13 @@ export default function Navbar() {
     [normalizedRoles],
   );
   const isRestrictedInvestisseur = isInvestisseur && !auth.isEntrepriseVerified;
+  const canAccessOperatorScanQr = useMemo(
+    () =>
+      isOperateur &&
+      Array.isArray(auth?.permissions) &&
+      auth.permissions.includes('scan-qr'),
+    [auth?.permissions, isOperateur],
+  );
 
   const roleQuickLinks = useMemo<NavQuickLink[]>(() => {
     if (isRestrictedInvestisseur) {
@@ -387,6 +394,9 @@ export default function Navbar() {
 
     if (isOperateur) {
       return [
+        ...(canAccessOperatorScanQr
+          ? [{ href: '/operateur/scan-qr', label: 'Scan QR' }]
+          : []),
         { href: '/operateur/permisdashboard/mes-permis', label: 'Mes permis' },
         { href: '/investisseur/demandes', label: 'Mes demandes' },
       ];
@@ -406,7 +416,7 @@ export default function Navbar() {
     }
 
     return [];
-  }, [isAdmin, isCadastre, isInvestisseur, isOperateur, isRestrictedInvestisseur]);
+  }, [canAccessOperatorScanQr, isAdmin, isCadastre, isInvestisseur, isOperateur, isRestrictedInvestisseur]);
 
   const dashboardHref = getDefaultDashboardPath(normalizedRoles);
 

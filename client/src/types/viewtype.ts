@@ -21,6 +21,7 @@ export type ViewType =
   | 'manage_notifications'
   | 'manage_identifications'
   | 'manage_actualites'
+  | 'manage_static_pages'
   | 'Payments'
   | 'controle_minier'
   | 'Audit_Logs'
@@ -34,5 +35,6 @@ export type ViewType =
   | 'operateur_mes_demandes'
   | 'operateur_mes_procedures'
   | 'operateur_nvl_demande'
+  | 'operateur_scan_qr'
   | 'outils';
 

@@ -26,6 +26,7 @@ const permissionMap: Record<ViewType, string> = {
   'manage_notifications': 'Admin-Panel',
   'manage_identifications': 'Admin-Panel',
   'manage_actualites': 'Admin-Panel',
+  'manage_static_pages': 'Admin-Panel',
   'Audit_Logs': 'Audit_Logs',
   'gestion_experts': 'manage_documents',
   'Gestion_seances': 'view_dashboard',
@@ -37,6 +38,7 @@ const permissionMap: Record<ViewType, string> = {
   'operateur_mes_demandes': 'operateur',
   'operateur_mes_procedures': 'operateur',
   'operateur_nvl_demande': 'operateur',
+  'operateur_scan_qr': 'scan-qr',
    'outils': 'dashboard',
 };
 
@@ -62,6 +64,7 @@ const routeMap: Record<ViewType, string> = {
   'manage_notifications': '/admin_panel/gestion_notifications',
   'manage_identifications': '/admin/identifications-entreprises',
   'manage_actualites': '/admin_panel/gestion_actualites',
+  'manage_static_pages': '/admin/pages-statiques',
   'Audit_Logs': '/audit-logs/page',
   'gestion_experts': '/gestion_experts/page',
   'Gestion_seances': '/seances/Dashboard_seances',
@@ -73,6 +76,7 @@ const routeMap: Record<ViewType, string> = {
   'operateur_mes_demandes': '/operateur/demand_dashboard/mine',
   'operateur_mes_procedures': '/operateur/dashboard/mes_procedures',
   'operateur_nvl_demande': '/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis',
+  'operateur_scan_qr': '/operateur/scan-qr',
   'outils': '/tools/convertisseur',
 };
 
@@ -98,5 +102,6 @@ export const useViewNavigator = (initialView: ViewType = 'dashboard') => {
     navigateTo
   };
 };
+
 
 

@@ -20,6 +20,7 @@ import {
   FiChevronDown,
   FiBell,
   FiTool,
+  FiCamera,
 } from 'react-icons/fi';
 import styles from './sidebar.module.css';
 import type { ViewType } from '../../src/types/viewtype';
@@ -92,6 +93,7 @@ export default function Sidebar({ currentView, navigateTo }: SidebarProps) {
         { id: 'manage_demandes', icon: <FiClipboard />, label: 'Gestion Demandes', permission: 'Admin-Panel' },
         { id: 'manage_notifications', icon: <FiBell />, label: 'Gestion Notifications', permission: 'Admin-Panel' },
         { id: 'manage_actualites', icon: <FiFileText />, label: 'Gestion Actualites', permission: 'Admin-Panel' },
+        { id: 'manage_static_pages', icon: <FiFileText />, label: 'Pages Statiques', permission: 'Admin-Panel' },
         { id: 'manage_identifications', icon: <FiShield />, label: 'Identifications Entreprises', permission: 'Admin-Panel' },
         { id: 'manage_declarations', icon: <FiFileText />, label: 'Declarations', permission: 'Admin-Panel' },
         { id: 'Configurations', icon: <FiSettings />, label: 'Configurations', permission: 'Admin-Panel' },
@@ -107,6 +109,7 @@ export default function Sidebar({ currentView, navigateTo }: SidebarProps) {
       permission: 'dashboard',
       subItems: [
         { id: 'convertisseur', icon: <FiMap />, label: 'Convertisseur', permission: 'dashboard' },
+        { id: 'operateur_scan_qr', icon: <FiCamera />, label: 'Acces QR Operateur', permission: 'scan-qr' },
         { id: 'procedures', icon: <FiClipboard />, label: 'Procedures', permission: 'view_procedures' },
         { id: 'Permis', icon: <FiFileText />, label: 'Permis lists', permission: 'dashboard' },
       ],
@@ -251,3 +254,4 @@ export default function Sidebar({ currentView, navigateTo }: SidebarProps) {
     </>
   );
 }
+

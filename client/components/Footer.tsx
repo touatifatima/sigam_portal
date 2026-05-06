@@ -22,9 +22,9 @@ export const Footer = () => {
       { label: "Documentation", href: "/acceuil/documentation" },
     ],
     legal: [
-      { label: "Conditions d'utilisation", href: "/acceuil/conditions-utilisation" },
-      { label: "Politique de confidentialite", href: "/acceuil/politique-confidentialite" },
-      { label: "Mentions legales", href: "/acceuil/mentions-legales" },
+      { label: "Conditions d'utilisation", href: "/conditions-utilisation" },
+      { label: "Politique de confidentialite", href: "/politique-confidentialite" },
+      { label: "Mentions legales", href: "/mentions-legales" },
     ],
   };
 
@@ -52,7 +52,8 @@ export const Footer = () => {
                 </div>
               </a>
               <p className={styles.brandDescription}>
-                Plateforme nationale de gestion des activites minieres. Simplifiez vos demarches et investissez dans le secteur minier algerien.
+                Plateforme nationale de gestion des activites minieres. Simplifiez vos
+                demarches et investissez dans le secteur minier algerien.
               </p>
 
               <div className={styles.contactInfo}>
@@ -60,13 +61,13 @@ export const Footer = () => {
                   <MapPin className={styles.contactIcon} />
                   <span>Alger, Algerie</span>
                 </div>
-                <a href="tel:+213123456789" className={styles.contactLine}>
+                <a href="tel:+21323488125" className={styles.contactLine}>
                   <Phone className={styles.contactIcon} />
-                  <span>+213 123 456 789</span>
+                  <span>+213 (0)23 48 81 25</span>
                 </a>
-                <a href="mailto:contact@pom.dz" className={styles.contactLine}>
+                <a href="mailto:anam@anam.gov.dz" className={styles.contactLine}>
                   <Mail className={styles.contactIcon} />
-                  <span>contact@pom.dz</span>
+                  <span>anam@anam.gov.dz</span>
                 </a>
               </div>
             </div>
@@ -111,7 +112,7 @@ export const Footer = () => {
 
           <ScrollReveal delay={300}>
             <div className={styles.linksSection}>
-              <h4 className={styles.linksSectionTitle}>Legal</h4>
+              <h4 className={styles.linksSectionTitle}>Juridique</h4>
               <ul className={styles.linksList}>
                 {links.legal.map((link) => (
                   <li key={link.label} className={styles.linkItem}>
@@ -128,7 +129,8 @@ export const Footer = () => {
         <div className={`container ${styles.bottomContent}`}>
           <ScrollReveal delay={250}>
             <p className={styles.copyright}>
-              ï¿½ {currentYear} ANAM - Agence Nationale des Activites Minieres. Tous droits reserves.
+              (c) {currentYear} ANAM - Agence Nationale des Activites Minieres. Tous droits
+              reserves.
             </p>
           </ScrollReveal>
           <ScrollReveal delay={300}>
@@ -146,4 +148,3 @@ export const Footer = () => {
     </footer>
   );
 };
-

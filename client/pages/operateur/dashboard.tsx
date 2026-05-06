@@ -124,6 +124,11 @@ export default function OperatorDashboardPage() {
     return typeof router.query.codeqr === 'string' ? router.query.codeqr.trim() : '';
   }, [router.isReady, router.query.codeqr]);
 
+  const openTarget = useMemo(() => {
+    if (!router.isReady) return '';
+    return typeof router.query.open === 'string' ? router.query.open.trim() : '';
+  }, [router.isReady, router.query.open]);
+
   useEffect(() => {
     if (!router.isReady || !apiURL) return;
 
@@ -169,6 +174,13 @@ export default function OperatorDashboardPage() {
   const detailedPermisRoute = context
     ? `/operateur/permisdashboard/${context.permit.short_code || context.permit.id}`
     : '/operateur/permisdashboard/mes-permis';
+
+  useEffect(() => {
+    if (!router.isReady || !context) return;
+    if (openTarget !== 'permit') return;
+
+    void router.replace(detailedPermisRoute);
+  }, [context, detailedPermisRoute, openTarget, router]);
 
   if (loading) {
     return (
@@ -300,6 +312,12 @@ export default function OperatorDashboardPage() {
           <Link href={detailedPermisRoute} className={styles.primaryBtn}>
             Ouvrir le dashboard permis complet
             <ArrowRight size={16} />
+          </Link>
+          <Link
+            href={`/operateur/scan-qr${codeqr ? `?codeqr=${encodeURIComponent(codeqr)}` : ''}`}
+            className={styles.secondaryBtn}
+          >
+            Entrer ou scanner un QR
           </Link>
           <Link href="/operateur/permisdashboard/mes-permis" className={styles.secondaryBtn}>
             Voir tous mes permis
