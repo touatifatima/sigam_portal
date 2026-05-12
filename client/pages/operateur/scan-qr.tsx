@@ -8,6 +8,7 @@ import Navbar from '../navbar/Navbar';
 import Sidebar from '../sidebar/Sidebar';
 import {
   AlertTriangle,
+  ArrowLeft,
   ArrowRight,
   Camera,
   Loader2,
@@ -16,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useViewNavigator } from '@/src/hooks/useViewNavigator';
 import { useAuthStore } from '@/src/store/useAuthStore';
-import { isAdminRole } from '@/src/utils/roleNavigation';
+import { getDefaultDashboardPath, isAdminRole } from '@/src/utils/roleNavigation';
 import styles from './OperatorQrAccess.module.css';
 
 type AccessContext = {
@@ -90,6 +91,7 @@ export default function OperatorQrScanPage() {
   const { auth } = useAuthStore();
   const { currentView, navigateTo } = useViewNavigator('operateur_scan_qr');
   const showSidebar = useMemo(() => isAdminRole(auth?.role), [auth?.role]);
+  const dashboardPath = useMemo(() => getDefaultDashboardPath(auth?.role), [auth?.role]);
 
   const [inputValue, setInputValue] = useState('');
   const [autoOpen, setAutoOpen] = useState(true);
@@ -319,6 +321,13 @@ export default function OperatorQrScanPage() {
         <main className={styles.mainContent}>
           <div className={styles.page}>
             <div className={styles.wrap}>
+              <div className={styles.topActions}>
+                <Link href={dashboardPath} className={styles.topBackBtn}>
+                  <ArrowLeft size={16} />
+                  Retour au dashboard
+                </Link>
+              </div>
+
               <p className={styles.lead}>
                 Saisissez le code QR ou scannez-le pour afficher les informations associees et
                 ouvrir directement la page concernee.

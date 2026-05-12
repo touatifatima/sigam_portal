@@ -291,6 +291,28 @@ model StaticPage {
   @@unique([slug, locale])
 }
 
+model NavbarQuickLink {
+  id                  Int      @id @default(autoincrement())
+  key                 String   @unique @db.VarChar(120)
+  label               String   @db.VarChar(150)
+  href                String   @db.VarChar(255)
+  description         String?  @db.VarChar(255)
+  icon                String?  @db.VarChar(80)
+  section             String   @default("main") @db.VarChar(60)
+  sortOrder           Int      @default(0)
+  isActive            Boolean  @default(true)
+  showForAdmin        Boolean  @default(true)
+  showForOperateur    Boolean  @default(true)
+  showForInvestisseur Boolean  @default(true)
+  requiredPermission  String?  @db.VarChar(120)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([isActive, sortOrder], map: "navbar_quick_links_active_order_idx")
+  @@index([section, sortOrder], map: "navbar_quick_links_section_order_idx")
+  @@map("navbar_quick_links")
+}
+
 model Antenne {
   id_antenne   Int             @id @default(autoincrement())
   nom          String

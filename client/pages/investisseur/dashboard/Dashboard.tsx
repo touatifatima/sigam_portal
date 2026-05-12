@@ -12,6 +12,7 @@ import {
   Clock,
   ShieldCheck,
   ArrowRight,
+  QrCode,
 } from "lucide-react";
 import axios from "axios";
 import styles from "./Dashboard.module.css";
@@ -336,18 +337,27 @@ export default function Dashboard() {
               <span>{displayRoles}</span>
             </div>
           </div>
-          <button
-            className={styles.primaryAction}
-            data-onboarding-id="dashboard-new-request"
-            onClick={() =>
-              navigate(
-                "/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis"
-              )
-            }
-          >
-            <Plus size={18} />
-            Nouvelle Demande
-          </button>
+          <div className={styles.heroActions}>
+            <button
+              className={styles.primaryAction}
+              data-onboarding-id="dashboard-new-request"
+              onClick={() =>
+                navigate(
+                  "/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis"
+                )
+              }
+            >
+              <Plus size={18} />
+              Nouvelle Demande
+            </button>
+            <button
+              className={styles.primaryAction}
+              onClick={() => navigate("/operateur/scan-qr")}
+            >
+              <QrCode size={18} />
+              Scan QR
+            </button>
+          </div>
         </section>
 
         <section className={styles.statusRow} data-onboarding-id="dashboard-status">

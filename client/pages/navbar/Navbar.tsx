@@ -1,7 +1,15 @@
 // components/Navbar.tsx
 'use client';
 import { FiChevronDown } from 'react-icons/fi';
-import { User, Settings, LogOut, LayoutDashboard, Map, WandSparkles, Menu } from 'lucide-react';
+import {
+  User,
+  Settings,
+  LogOut,
+  LayoutDashboard,
+  Map as MapIcon,
+  WandSparkles,
+  Menu,
+} from 'lucide-react';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
@@ -23,6 +31,7 @@ import {
   isOperateurRole,
   normalizeRoles,
 } from '@/src/utils/roleNavigation';
+import { fetchVisibleNavbarLinks } from '@/src/utils/navbarLinksApi';
 
 interface NotificationItem {
   id: number;
@@ -59,7 +68,7 @@ const NOTIFICATIONS_ENABLED =
 
 export default function Navbar() {
   const router = useRouter();
-  const { auth, logout } = useAuthStore();
+  const { auth, logout, isLoaded } = useAuthStore();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -67,6 +76,7 @@ export default function Navbar() {
   const [isNotificationsLoading, setIsNotificationsLoading] = useState(false);
   const [navigatingNotificationId, setNavigatingNotificationId] = useState<number | null>(null);
   const [isCompactMenuOpen, setIsCompactMenuOpen] = useState(false);
+  const [dynamicRoleQuickLinks, setDynamicRoleQuickLinks] = useState<NavQuickLink[] | null>(null);
   const [notificationsSuppressed, setNotificationsSuppressed] = useState(
     !NOTIFICATIONS_ENABLED,
   );
@@ -371,6 +381,10 @@ export default function Navbar() {
     [normalizedRoles],
   );
   const isRestrictedInvestisseur = isInvestisseur && !auth.isEntrepriseVerified;
+  const permissionSignature = useMemo(() => {
+    if (!Array.isArray(auth?.permissions)) return '';
+    return [...auth.permissions].sort().join('|');
+  }, [auth?.permissions]);
   const canAccessOperatorScanQr = useMemo(
     () =>
       isOperateur &&
@@ -379,7 +393,57 @@ export default function Navbar() {
     [auth?.permissions, isOperateur],
   );
 
-  const roleQuickLinks = useMemo<NavQuickLink[]>(() => {
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (isRestrictedInvestisseur || !auth?.id) {
+      setDynamicRoleQuickLinks(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadLinks = async () => {
+      try {
+        const payload = await fetchVisibleNavbarLinks();
+        if (cancelled) return;
+
+        if (!payload.configured) {
+          setDynamicRoleQuickLinks(null);
+          return;
+        }
+
+        const mapped = payload.items
+          .map((item) => ({
+            href: String(item?.href || '').trim(),
+            label: String(item?.label || '').trim(),
+          }))
+          .filter((item) => Boolean(item.href) && Boolean(item.label));
+
+        const unique = Array.from(
+          new Map(mapped.map((item) => [`${item.href}::${item.label}`, item])).values(),
+        );
+        setDynamicRoleQuickLinks(unique);
+      } catch {
+        if (!cancelled) {
+          setDynamicRoleQuickLinks(null);
+        }
+      }
+    };
+
+    void loadLinks();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    auth?.id,
+    auth?.role,
+    isLoaded,
+    isRestrictedInvestisseur,
+    permissionSignature,
+  ]);
+
+  const fallbackRoleQuickLinks = useMemo<NavQuickLink[]>(() => {
     if (isRestrictedInvestisseur) {
       return [];
     }
@@ -417,6 +481,26 @@ export default function Navbar() {
 
     return [];
   }, [canAccessOperatorScanQr, isAdmin, isCadastre, isInvestisseur, isOperateur, isRestrictedInvestisseur]);
+
+  const roleQuickLinks = useMemo<NavQuickLink[]>(() => {
+    if (isRestrictedInvestisseur) {
+      return [];
+    }
+
+    if (dynamicRoleQuickLinks !== null) {
+      if (dynamicRoleQuickLinks.length === 0 && isCadastre) {
+        return fallbackRoleQuickLinks;
+      }
+      return dynamicRoleQuickLinks;
+    }
+
+    return fallbackRoleQuickLinks;
+  }, [
+    dynamicRoleQuickLinks,
+    fallbackRoleQuickLinks,
+    isCadastre,
+    isRestrictedInvestisseur,
+  ]);
 
   const dashboardHref = getDefaultDashboardPath(normalizedRoles);
 
@@ -468,7 +552,7 @@ export default function Navbar() {
             className={styles['nav-map-link']}
             title="Ouvrir la carte publique"
           >
-            <Map size={16} />
+            <MapIcon size={16} />
             <span>Carte Publique</span>
           </Link>
         )}

@@ -22,6 +22,7 @@ export type ViewType =
   | 'manage_identifications'
   | 'manage_actualites'
   | 'manage_static_pages'
+  | 'manage_navbar'
   | 'Payments'
   | 'controle_minier'
   | 'Audit_Logs'
