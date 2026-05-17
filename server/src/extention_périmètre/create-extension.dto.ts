@@ -1,4 +1,4 @@
-import { IsInt, IsISO8601 } from 'class-validator';
+import { IsInt, IsISO8601, IsOptional } from 'class-validator';
 
 export class CreateExtensionDto {
   @IsInt()
@@ -6,5 +6,8 @@ export class CreateExtensionDto {
 
   @IsISO8601()
   date_demande: string;
-}
 
+  @IsOptional()
+  @IsInt()
+  utilisateurId?: number;
+}

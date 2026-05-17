@@ -17,6 +17,7 @@ import {
   CheckCircle2, 
   XCircle, 
   Filter,
+  ArrowLeft,
   ArrowRight,
   LayoutGrid,
   List,
@@ -1324,6 +1325,17 @@ const DemandesList = () => {
     <InvestorLayout>
       <div className={styles.container}>
         <div className={styles.heroHeader}>
+          <div className={styles.heroTopRow}>
+            <Button
+              type="button"
+              variant="outline"
+              className={styles.backDashboardButton}
+              onClick={() => navigate("/investisseur/InvestorDashboard")}
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Retour au dashboard
+            </Button>
+          </div>
           <div className={styles.heroContent}>
             <div className={styles.heroText}>
               <span className={styles.heroEyebrow}>Portefeuille minier</span>

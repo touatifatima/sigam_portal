@@ -13,6 +13,10 @@ export class StartTransfertDto {
   permisId!: number;
 
   @IsOptional()
+  @IsNumber()
+  utilisateurId?: number;
+
+  @IsOptional()
   @IsString()
   date_demande?: string;
 

@@ -380,7 +380,7 @@ export default function Navbar() {
     () => isCadastreRole(normalizedRoles),
     [normalizedRoles],
   );
-  const isRestrictedInvestisseur = isInvestisseur && !auth.isEntrepriseVerified;
+  const isRestrictedInvestisseur = false;
   const permissionSignature = useMemo(() => {
     if (!Array.isArray(auth?.permissions)) return '';
     return [...auth.permissions].sort().join('|');
@@ -507,7 +507,7 @@ export default function Navbar() {
   const initials = auth.role ? getInitials(auth.role) : '';
   const displayUsername = auth.username ?? auth.email ?? '';
   const displayEmail = auth.email ?? '';
-  const canCreateDemande = isInvestisseur && auth.isEntrepriseVerified;
+  const canCreateDemande = isInvestisseur;
   const precheckHref = '/investisseur/interactive';
 
   const handleLogout = async () => {

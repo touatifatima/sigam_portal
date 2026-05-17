@@ -480,16 +480,30 @@ export default function Step5_Documents() {
   const etapeIdForThisPage = useMemo(() => {
     if (etapeIdForRoute) return etapeIdForRoute;
     if (!procedureData) return null;
-    const pathname = 'investisseur/nouvelle_demande/step1/page1'; // doc page
-    const normalize = (value: string) => value.replace(/^\/+/, '').toLowerCase();
+    const pathname = 'investisseur/nouvelle_demande/step1/page1';
+    const normalize = (value?: string | null) =>
+      (value ?? '')
+        .replace(/^\/+/, '')
+        .replace(/\.(tsx|ts|jsx|js|html)$/i, '')
+        .trim()
+        .toLowerCase();
     const target = normalize(pathname);
     const phasesList = (procedureData.ProcedurePhase || []) as ProcedurePhase[];
-    for (const pp of phasesList) {
-      const etapes = pp.phase?.etapes || [];
-      const match = etapes.find((e: any) => normalize(e.page_route || '') === target);
-      if (match) return match.id_etape;
-    }
-    return null;
+    const phaseEtapes = phasesList.flatMap((pp) => pp.phase?.etapes || []);
+    const byRoute = phaseEtapes.find((e: any) => {
+      const route = normalize(e.page_route);
+      return route === target || route.endsWith(target) || route.includes('step1/page1');
+    });
+    if (byRoute) return byRoute.id_etape;
+
+    const allEtapes = [
+      ...phaseEtapes,
+      ...((procedureData.ProcedureEtape || []).map((pe: any) => pe.etape).filter(Boolean) as any[]),
+    ];
+    const byLabel = allEtapes.find((e: any) =>
+      String(e?.lib_etape ?? '').toLowerCase().includes('document'),
+    );
+    return byLabel?.id_etape ?? null;
   }, [procedureData, etapeIdForRoute]);
   const resolvedEtapeId = etapeIdForThisPage ?? currentEtape?.id_etape ?? null;
 
@@ -627,7 +641,7 @@ export default function Step5_Documents() {
       const etapeId = resolvedEtapeId ?? currentStep;
       await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`);
       setShowDeclarationModal(false);
-      await router.push(`/investisseur/nouvelle_demande/step11/page11?id=${idProc}`);
+      await router.push(`/investisseur/nouvelle_demande/step3/page3?id=${idProc}`);
     } catch (err) {
       console.error("Erreur lors de la navigation vers l'etape suivante", err);
       setEtapeMessage("Erreur lors de l'enregistrement de l'etape.");
@@ -1002,7 +1016,7 @@ export default function Step5_Documents() {
   );
 
   const handleBack = async () => {
-    router.push(`/investisseur/nouvelle_demande/step3/page3?id=${idProc}`);
+    router.push(`/investisseur/nouvelle_demande/step5/page5?id=${idProc}`);
   };
 
 

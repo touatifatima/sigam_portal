@@ -6,8 +6,10 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { DemandeService } from 'src/demandes/demande/demande.service';
 import { PaymentService } from 'src/demandes/paiement/payment.service';
 import { ProcedureEtapeService } from '../procedure_etape/procedure-etape.service';
+import { SessionModule } from 'src/session/session.module';
 
 @Module({
+  imports: [SessionModule],
   controllers: [ProcedureRenouvellementController],
   providers: [
     ProcedureRenouvellementService,

@@ -300,6 +300,12 @@ export class CessionService {
       );
     }
 
+    const requestedUserId = Number(dto.utilisateurId);
+    const explicitRequesterUserId =
+      Number.isFinite(requestedUserId) && requestedUserId > 0
+        ? requestedUserId
+        : null;
+
     const result = await this.prisma.$transaction(async (tx) => {
       const permis = await tx.permisPortail.findUnique({
         where: { id: permisId },
@@ -438,9 +444,15 @@ export class CessionService {
         },
       });
 
-      if (!latestDemande?.utilisateurId) {
+      const requesterUserId =
+        explicitRequesterUserId ??
+        (Number.isFinite(Number(latestDemande?.utilisateurId)) &&
+        Number(latestDemande?.utilisateurId) > 0
+          ? Number(latestDemande?.utilisateurId)
+          : null);
+      if (!requesterUserId) {
         throw new BadRequestException(
-          'Impossible de déterminer l’utilisateur source pour la cession.',
+          "Impossible de determiner l'utilisateur de la demande de cession.",
         );
       }
 
@@ -467,14 +479,14 @@ export class CessionService {
           : null;
       const createdDemande = await tx.demandePortail.create({
         data: {
-          utilisateurId: latestDemande.utilisateurId,
+          utilisateurId: requesterUserId,
           id_proc: newProcedure.id_proc,
-          id_sourceProc: latestDemande.id_proc ?? undefined,
+          id_sourceProc: latestDemande?.id_proc ?? undefined,
           id_typeProc: typeProc.id,
           id_typePermis: permis.id_typePermis,
-          id_wilaya: latestDemande.id_wilaya ?? undefined,
-          id_daira: latestDemande.id_daira ?? undefined,
-          id_commune: latestDemande.id_commune ?? undefined,
+          id_wilaya: latestDemande?.id_wilaya ?? undefined,
+          id_daira: latestDemande?.id_daira ?? undefined,
+          id_commune: latestDemande?.id_commune ?? undefined,
           code_demande: null,
           statut_demande: StatutProcedure.EN_COURS,
           date_demande: parsedDate,
@@ -545,7 +557,7 @@ export class CessionService {
         new_demande_id: createdDemande.id_demande,
         id_cession: cession.id_cession,
         demande_code: generatedCode,
-        requester_user_id: latestDemande.utilisateurId,
+        requester_user_id: requesterUserId,
       };
     });
 

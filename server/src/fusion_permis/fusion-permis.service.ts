@@ -422,6 +422,7 @@ export class FusionPermisService {
     id_principal: number,
     id_secondaire: number,
     motif_fusion: string,
+    utilisateurId?: number,
   ) {
     if (id_principal === id_secondaire) {
       throw new BadRequestException(
@@ -596,23 +597,26 @@ export class FusionPermisService {
         "Le permis principal n'a pas de detenteur associe.",
       );
     }
-
-    const utilisateurId = this.resolveUtilisateurId(
+    const requestedUserId = Number(utilisateurId);
+    const resolvedFromHistory = this.resolveUtilisateurId(
       permisPrincipal,
       permisSecondaire,
       initialDemandeA,
       initialDemandeB,
     );
+    const requesterUserId =
+      Number.isFinite(requestedUserId) && requestedUserId > 0
+        ? requestedUserId
+        : resolvedFromHistory;
 
-    if (!utilisateurId) {
+    if (!requesterUserId) {
       throw new BadRequestException(
-        'utilisateurId introuvable pour créer la demande de fusion.',
+        'utilisateurId introuvable pour creer la demande de fusion.',
       );
     }
-
     const newDemande = await this.prisma.demandePortail.create({
       data: {
-        utilisateurId,
+        utilisateurId: requesterUserId,
         id_proc: procedure.id_proc,
         id_typeProc: typeProcedure.id,
         id_typePermis: permisPrincipal.id_typePermis,
@@ -647,7 +651,7 @@ export class FusionPermisService {
       await this.notificationsService.createAdminNewDemandeNotification({
         demandeId: newDemande.id_demande,
         demandeCode: generatedCode,
-        requesterUserId: utilisateurId,
+        requesterUserId,
       });
     } catch (error) {
       console.warn(
@@ -1108,3 +1112,4 @@ export class FusionPermisService {
     };
   }
 }
+

@@ -19,6 +19,7 @@ import {
   getDefaultDashboardPath,
   isCadastreAllowedPath,
   isCadastreRole,
+  isInvestisseurRole,
 } from '@/src/utils/roleNavigation'
 
 function PendingIdentificationGuard() {
@@ -33,6 +34,14 @@ function PendingIdentificationGuard() {
     const onPendingPage = location.pathname === '/auth/account-pending'
     const authPages = ['/', '/Signup/page', '/Signup/verify_email', '/forgot-password']
     const onAuthPage = authPages.includes(location.pathname)
+    const isSelfServiceUser = isInvestisseurRole(auth?.role)
+
+    if (isSelfServiceUser) {
+      if (onPendingPage && auth?.id) {
+        navigate(getDefaultDashboardPath(auth?.role), { replace: true })
+      }
+      return
+    }
 
     if (isPending && !onPendingPage) {
       navigate('/auth/account-pending', { replace: true })
@@ -51,6 +60,7 @@ function PendingIdentificationGuard() {
     auth?.id,
     auth?.identificationStatus,
     auth?.isEntrepriseVerified,
+    auth?.role,
     isLoaded,
     location.pathname,
     navigate,

@@ -1,4 +1,4 @@
-import { IsDateString, IsInt, IsISO8601 } from 'class-validator';
+import { IsInt, IsISO8601, IsOptional } from 'class-validator';
 
 export class CreateRenewalDto {
   @IsInt()
@@ -6,4 +6,8 @@ export class CreateRenewalDto {
 
   @IsISO8601()
   date_demande: string;
+
+  @IsOptional()
+  @IsInt()
+  utilisateurId?: number;
 }

@@ -26,12 +26,11 @@ const Bienvenue = () => {
     if (!isLoaded) return;
     if (!auth?.id) return;
 
-    if (isCadastreRole(auth.role) || !auth.isEntrepriseVerified) {
+    if (isCadastreRole(auth.role)) {
       navigate(getDefaultDashboardPath(auth.role), { replace: true });
     }
   }, [
     auth?.id,
-    auth?.isEntrepriseVerified,
     auth?.role,
     isLoaded,
     navigate,
@@ -91,9 +90,11 @@ const Bienvenue = () => {
           <div className={styles.welcomeContent}>
             <h1 className={styles.title}>Bienvenue, {displayName} !</h1>
             <p className={styles.subtitle}>
-              Votre compte entreprise a ete verifie avec succes.
+              {auth.isEntrepriseVerified
+                ? "Votre compte entreprise a ete verifie avec succes."
+                : "Votre compte est actif. Vous pouvez demarrer vos demandes."}
               <br />
-              Vous pouvez maintenant demarrer vos investissements et demandes.
+              Vous pouvez acceder directement a votre tableau de bord.
             </p>
           </div>
 

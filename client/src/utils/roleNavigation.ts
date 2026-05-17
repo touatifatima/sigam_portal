@@ -25,7 +25,10 @@ export const isOperateurRole = (value: RoleValue): boolean =>
   hasRole(value, ["operateur", "operator"]);
 
 export const isInvestisseurRole = (value: RoleValue): boolean =>
-  hasRole(value, ["investisseur", "investor"]);
+  hasRole(value, ["investisseur", "investor", "user", "utilisateur"]);
+
+export const isUserRole = (value: RoleValue): boolean =>
+  hasRole(value, ["user", "utilisateur"]);
 
 export const isCadastreRole = (value: RoleValue): boolean =>
   hasRole(value, ["cadastre"]);
@@ -52,13 +55,11 @@ export const getPostLoginPath = ({
     return getDefaultDashboardPath(role);
   }
 
-  if (isEntrepriseVerified) {
-    return shouldShowWelcome
-      ? "/investisseur/Identification/bienvenue"
-      : "/investisseur/InvestorDashboard";
+  if (isEntrepriseVerified && shouldShowWelcome) {
+    return "/investisseur/Identification/bienvenue";
   }
 
-  return "/investisseur/Identification/identification-entreprise";
+  return "/investisseur/InvestorDashboard";
 };
 
 const CADASTRE_ALLOWED_PREFIXES = [

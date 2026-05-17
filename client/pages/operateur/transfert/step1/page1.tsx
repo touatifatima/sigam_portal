@@ -3,6 +3,7 @@ import axios from "axios";
 import router from "next/router";
 import { useSearchParams } from "@/src/hooks/useSearchParams";
 import { useViewNavigator } from "@/src/hooks/useViewNavigator";
+import { useAuthStore } from "@/src/store/useAuthStore";
 import Navbar from "../../../navbar/Navbar";
 import Sidebar from "../../../sidebar/Sidebar";
 import ProgressStepper from "../../../../components/ProgressStepper";
@@ -105,6 +106,7 @@ const getSocieteLabel = (value?: {
 export default function TransfertStep1Page() {
   const searchParams = useSearchParams();
   const { currentView, navigateTo } = useViewNavigator("nouvelle-demande");
+  const { auth } = useAuthStore();
 
   const permisId = Number(searchParams?.get("permisId") ?? Number.NaN);
   const existingProcId = Number(searchParams?.get("id") ?? Number.NaN);
@@ -299,6 +301,7 @@ export default function TransfertStep1Page() {
           permisId,
           existingDetenteurId: selectedPreview.id_detenteur,
           date_demande: new Date().toISOString(),
+          utilisateurId: auth?.id,
         },
         { withCredentials: true },
       );
@@ -329,6 +332,7 @@ export default function TransfertStep1Page() {
       const payload = {
         permisId,
         date_demande: new Date().toISOString(),
+        utilisateurId: auth?.id,
         newDetenteur: {
           nom_societeFR: newCompany.nom_societeFR || undefined,
           nom_societeAR: newCompany.nom_societeAR || undefined,

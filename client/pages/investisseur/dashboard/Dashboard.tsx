@@ -1,18 +1,16 @@
-import { JSX, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
-  Building2,
   FileText,
-  Gem,
-  BarChart3,
   Map,
   Bell,
   Plus,
   CheckCircle2,
-  Clock,
+  AlertCircle,
+  Clock3,
   ShieldCheck,
+  TrendingUp,
   ArrowRight,
-  QrCode,
 } from "lucide-react";
 import axios from "axios";
 import styles from "./Dashboard.module.css";
@@ -37,59 +35,6 @@ type StatState = {
   demandesEnCours: number;
   permisActifs: number;
 };
-
-type CardConfig = {
-  title: string;
-  description: string;
-  route: string;
-  tone: "rose" | "blue" | "green" | "amber" | "violet" | "mint";
-  icon: JSX.Element;
-};
-
-const cards: CardConfig[] = [
-  {
-    title: "Mes Entreprises",
-    description: "Gerer vos entreprises, actionnaires et informations legales",
-    route: "/investisseur/profil",
-    tone: "rose",
-    icon: <Building2 size={26} />,
-  },
-  {
-    title: "Mes Demandes",
-    description: "Soumettre et suivre vos demandes de permis miniers",
-    route: "/investisseur/demandes",
-    tone: "blue",
-    icon: <FileText size={26} />,
-  },
-  {
-    title: "Mes Permis",
-    description: "Consulter vos permis delivres et leur validite",
-    route: "/operateur/permisdashboard/mes-permis",
-    tone: "green",
-    icon: <Gem size={26} />,
-  },
-  {
-    title: "Statistiques",
-    description: "Consulter les statistiques de vos activites",
-    route: "/investisseur/statistiques",
-    tone: "amber",
-    icon: <BarChart3 size={26} />,
-  },
-  {
-    title: "Carte Miniere",
-    description: "Explorer les zones minières et opportunités d'investissement",
-    route: "/carte/carte_public",
-    tone: "mint",
-    icon: <Map size={26} />,
-  },
-  {
-    title: "Notifications",
-    description: "Consulter vos notifications et messages importants",
-    route: "/notification",
-    tone: "violet",
-    icon: <Bell size={26} />,
-  },
-];
 
 const DASHBOARD_ONBOARDING_STEPS: OnboardingStep[] = [
   {
@@ -122,14 +67,6 @@ const DASHBOARD_ONBOARDING_STEPS: OnboardingStep[] = [
     title: "Suivi des demandes",
     description:
       "Accedez rapidement a vos demandes pour voir les statuts, actions attendues et historique.",
-    placement: "right",
-  },
-  {
-    id: "dashboard-permis",
-    target: '[data-onboarding-id="dashboard-card-permis"]',
-    title: "Permis actifs",
-    description:
-      "Consultez vos permis valides, leur avancement et les details utiles en un clic.",
     placement: "right",
   },
   {
@@ -274,32 +211,12 @@ export default function Dashboard() {
     return auth?.username || auth?.email || "Utilisateur";
   }, [auth?.email, auth?.username]);
 
-  const displayRoles = useMemo(() => {
-    const roleMap: Record<string, string> = {
-      investor: "Investisseur",
-      investisseur: "Investisseur",
-      admin: "Administrateur",
-      operateur: "Operateur",
-      operator: "Operateur",
-      cadastre: "Cadastre",
-    };
-    const rawRoles = Array.isArray(auth?.role)
-      ? auth?.role
-      : auth?.role
-      ? String(auth?.role).split(",")
-      : [];
-    const labels = rawRoles
-      .map((role) => roleMap[role.trim().toLowerCase()] || role.trim())
-      .filter(Boolean);
-    return labels.length ? labels.join(" / ") : "Investisseur";
-  }, [auth?.role]);
-
-  const getCardOnboardingId = (title: string): string | undefined => {
-    if (title === "Mes Demandes") return "dashboard-card-demandes";
-    if (title === "Mes Permis") return "dashboard-card-permis";
-    if (title === "Notifications") return "dashboard-card-notifications";
-    return undefined;
-  };
+  const activityRate = useMemo(() => {
+    const baseScore = auth.isEntrepriseVerified ? 74 : 56;
+    const demandesScore = Math.min(stats.demandesEnCours * 4, 16);
+    const permisScore = Math.min(stats.permisActifs * 6, 20);
+    return Math.max(35, Math.min(98, baseScore + demandesScore + permisScore));
+  }, [auth.isEntrepriseVerified, stats.demandesEnCours, stats.permisActifs]);
 
   const handleCloseOnboarding = () => {
     setShowOnboarding(false);
@@ -326,111 +243,200 @@ export default function Dashboard() {
 
       <main className={styles.main}>
         <section className={styles.hero} data-onboarding-id="dashboard-hero">
-          <div className={styles.heroContent}>
-            <h1 className={styles.heroTitle}>Bienvenue, {displayName}</h1>
-            <p className={styles.heroSubtitle}>
-              Gerez vos activites minieres depuis votre espace personnel de
-              Guichet Unique Minier.
-            </p>
-            <div className={styles.roleBadge}>
-              <ShieldCheck size={16} />
-              <span>{displayRoles}</span>
+          <div className={styles.heroOverlay} />
+          <div className={styles.heroTop}>
+            <div className={styles.heroContent}>
+              <h1 className={styles.heroTitle}>Mon Espace Investisseur</h1>
+              <p className={styles.heroSubtitle}>Bienvenue, {displayName}</p>
+              <div className={styles.roleBadge}>
+                <CheckCircle2 size={16} />
+                <span>
+                  {auth.isEntrepriseVerified
+                    ? "Entreprise confirmee"
+                    : "Entreprise non confirmee"}
+                </span>
+              </div>
             </div>
-          </div>
-          <div className={styles.heroActions}>
-            <button
-              className={styles.primaryAction}
-              data-onboarding-id="dashboard-new-request"
-              onClick={() =>
-                navigate(
-                  "/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis"
-                )
-              }
-            >
-              <Plus size={18} />
-              Nouvelle Demande
-            </button>
-            <button
-              className={styles.primaryAction}
-              onClick={() => navigate("/operateur/scan-qr")}
-            >
-              <QrCode size={18} />
-              Scan QR
-            </button>
-          </div>
-        </section>
 
-        <section className={styles.statusRow} data-onboarding-id="dashboard-status">
-          <div className={styles.statusCard}>
-            <div className={`${styles.statusIcon} ${styles.statusSuccess}`}>
-              <CheckCircle2 size={18} />
-            </div>
-            <div>
-              <div className={styles.statusLabel}>Profil entreprise</div>
-              <div className={styles.statusValue}>
-                {auth.isEntrepriseVerified ? "Confirmé" : "Non confirmé"}
-              </div>
-            </div>
-          </div>
-          <div className={styles.statusCard}>
-            <div className={`${styles.statusIcon} ${styles.statusInfo}`}>
-              <Clock size={18} />
-            </div>
-            <div>
-              <div className={styles.statusLabel}>Demandes en cours</div>
-              <div className={styles.statusValue}>
-                {stats.demandesEnCours} demande(s)
-              </div>
-            </div>
-          </div>
-          <div className={styles.statusCard}>
-            <div className={`${styles.statusIcon} ${styles.statusSuccess}`}>
-              <Gem size={18} />
-            </div>
-            <div>
-              <div className={styles.statusLabel}>Permis actifs</div>
-              <div className={styles.statusValue}>
-                {stats.permisActifs} permis
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className={styles.quickAccess} data-onboarding-id="dashboard-quick-access">
-          <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>Acces rapide</h2>
-            <p className={styles.sectionSubtitle}>
-              Outils operationnels pour piloter vos demandes, permis et documents.
-            </p>
-          </div>
-          <div className={styles.cardsGrid} data-onboarding-id="dashboard-cards">
-            {cards.map((card, index) => {
-              const tourId = getCardOnboardingId(card.title);
-              return (
-              <div
-                key={card.title}
-                className={styles.quickCard}
-                data-tone={card.tone}
-                data-onboarding-id={tourId}
-                style={{ animationDelay: `${0.08 * index}s` }}
+            <div className={styles.heroActions}>
+              <button
+                className={styles.primaryAction}
+                data-onboarding-id="dashboard-new-request"
+                onClick={() =>
+                  navigate(
+                    "/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis"
+                  )
+                }
               >
-                <div className={styles.cardIcon}>{card.icon}</div>
-                <div className={styles.cardContent}>
-                  <h3>{card.title}</h3>
-                  <p>{card.description}</p>
+                <Plus size={18} />
+                Nouvelle demande
+              </button>
+              <button
+                className={styles.ghostAction}
+                onClick={() => navigate("/investisseur/demandes")}
+              >
+                <FileText size={17} />
+                Mes Demandes
+              </button>
+              <button
+                className={styles.ghostAction}
+                onClick={() => navigate("/notification")}
+              >
+                <Bell size={17} />
+                Notifications
+              </button>
+              <button
+                className={styles.ghostAction}
+                onClick={() => navigate("/carte/carte_public")}
+              >
+                <Map size={17} />
+                Carte SIG
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className={styles.kpiStrip} data-onboarding-id="dashboard-status">
+          <article className={`${styles.kpiCard} ${styles.kpiWarn}`}>
+            <span className={`${styles.kpiIcon} ${styles.kpiIconWarn}`}>
+              <AlertCircle size={18} />
+            </span>
+            <div className={styles.kpiText}>
+              <p>Profil entreprise</p>
+              <h3>{auth.isEntrepriseVerified ? "Confirme" : "A verifier"}</h3>
+              <small>
+                {auth.isEntrepriseVerified
+                  ? "Dossier valide et actif"
+                  : "Completer le dossier"}
+              </small>
+            </div>
+          </article>
+
+          <article className={`${styles.kpiCard} ${styles.kpiBlue}`}>
+            <span className={`${styles.kpiIcon} ${styles.kpiIconBlue}`}>
+              <Clock3 size={18} />
+            </span>
+            <div className={styles.kpiText}>
+              <p>Demandes en cours</p>
+              <h3>{String(stats.demandesEnCours).padStart(2, "0")}</h3>
+              <small>demande(s) en traitement</small>
+            </div>
+            <span className={styles.kpiTrend}>+18%</span>
+          </article>
+
+          <article className={`${styles.kpiCard} ${styles.kpiGold}`}>
+            <span className={`${styles.kpiIcon} ${styles.kpiIconGold}`}>
+              <ShieldCheck size={18} />
+            </span>
+            <div className={styles.kpiText}>
+              <p>Permis actifs</p>
+              <h3>{String(stats.permisActifs).padStart(2, "0")}</h3>
+              <small>permis en exploitation</small>
+            </div>
+            <span className={styles.kpiTrend}>+{stats.permisActifs > 0 ? "1" : "0"}</span>
+          </article>
+
+          <article className={`${styles.kpiCard} ${styles.kpiViolet}`}>
+            <span className={`${styles.kpiIcon} ${styles.kpiIconViolet}`}>
+              <TrendingUp size={18} />
+            </span>
+            <div className={styles.kpiText}>
+              <p>Activite globale</p>
+              <h3>{activityRate}%</h3>
+              <small>taux de conformite</small>
+            </div>
+            <span className={styles.kpiTrend}>stable</span>
+          </article>
+        </section>
+
+        <section
+          className={styles.quickAccessSection}
+          data-onboarding-id="dashboard-quick-access"
+        >
+          <div className={styles.quickAccessHeader}>
+            <div className={styles.quickAccessHeaderText}>
+              <h2 className={styles.quickAccessTitle}>Acces rapide</h2>
+              <p className={styles.quickAccessSubtitle}>
+                Outils operationnels pour piloter vos demandes, permis et
+                documents.
+              </p>
+            </div>
+            <button
+              className={styles.overviewButton}
+              onClick={() => navigate("/investisseur/demandes")}
+            >
+              Tableau de bord complet
+              <ArrowRight size={14} />
+            </button>
+          </div>
+
+          <div className={styles.quickCardsGrid}>
+            <button
+              type="button"
+              className={`${styles.quickAccessCard} ${styles.quickCardDemandes}`}
+              data-onboarding-id="dashboard-card-demandes"
+              onClick={() => navigate("/investisseur/demandes")}
+            >
+              <div className={styles.quickCardTop}>
+                <div className={`${styles.quickIcon} ${styles.quickIconDemandes}`}>
+                  <FileText size={18} />
                 </div>
-                <button
-                  className={styles.cardButton}
-                  onClick={() => navigate(card.route)}
-                >
-                  {card.title === "Statistiques"
-                    ? "Acceder"
-                    : "Acceder"}
+                <span className={styles.quickCardArrow} aria-hidden="true">
                   <ArrowRight size={16} />
-                </button>
+                </span>
               </div>
-              );
-            })}
+              <h3 className={styles.quickCardTitle}>
+                Mes Demandes
+                <span className={styles.quickBadge}>
+                  {stats.demandesEnCours > 0 ? "Actif" : "Pret"}
+                </span>
+              </h3>
+              <p className={styles.quickCardDescription}>
+                Soumettre, suivre et gerer vos demandes de permis miniers en
+                temps reel.
+              </p>
+            </button>
+
+            <button
+              type="button"
+              className={`${styles.quickAccessCard} ${styles.quickCardMap}`}
+              onClick={() => navigate("/carte/carte_public")}
+            >
+              <div className={styles.quickCardTop}>
+                <div className={`${styles.quickIcon} ${styles.quickIconMap}`}>
+                  <Map size={18} />
+                </div>
+                <span className={styles.quickCardArrow} aria-hidden="true">
+                  <ArrowRight size={16} />
+                </span>
+              </div>
+              <h3 className={styles.quickCardTitle}>Carte Miniere</h3>
+              <p className={styles.quickCardDescription}>
+                Explorer les zones minieres, gisements et opportunites SIG du
+                territoire.
+              </p>
+            </button>
+
+            <button
+              type="button"
+              className={`${styles.quickAccessCard} ${styles.quickCardNotif}`}
+              data-onboarding-id="dashboard-card-notifications"
+              onClick={() => navigate("/notification")}
+            >
+              <div className={styles.quickCardTop}>
+                <div className={`${styles.quickIcon} ${styles.quickIconNotif}`}>
+                  <Bell size={18} />
+                </div>
+                <span className={styles.quickCardArrow} aria-hidden="true">
+                  <ArrowRight size={16} />
+                </span>
+              </div>
+              <h3 className={styles.quickCardTitle}>Notifications</h3>
+              <p className={styles.quickCardDescription}>
+                Consulter vos alertes, messages officiels et mises a jour
+                recentes.
+              </p>
+            </button>
           </div>
         </section>
       </main>

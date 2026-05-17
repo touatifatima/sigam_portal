@@ -21,6 +21,10 @@ export class StartCessionDto {
   @IsNumber()
   permisId!: number;
 
+  @IsOptional()
+  @IsNumber()
+  utilisateurId?: number;
+
   @IsNumber()
   cedantActionnaireId!: number;
 
@@ -41,4 +45,3 @@ export class StartCessionDto {
   @IsString()
   motif_cession?: string;
 }
-

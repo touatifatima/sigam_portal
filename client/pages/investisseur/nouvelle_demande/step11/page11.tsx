@@ -770,9 +770,9 @@ const Facture = () => {
 
   const handleBack = () => {
     if (idProc) {
-      router.push(`/investisseur/nouvelle_demande/step1/page1?id=${idProc}`);
+      router.push(`/investisseur/nouvelle_demande/step3/page3?id=${idProc}`);
     } else {
-      router.push(`/investisseur/nouvelle_demande/step1/page1`);
+      router.push(`/investisseur/nouvelle_demande/step3/page3`);
     }
   };
 

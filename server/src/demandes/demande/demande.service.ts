@@ -171,7 +171,9 @@ export class DemandeService {
     code_demande?: string;
     id_detenteur?: number;
     nom_responsable?: string | null;
-      utilisateurId: number;//
+    utilisateurId: number;
+    id_typeproc?: number;
+    id_permis?: number;
   }) {
     // Get type permis details
     const typePermis = await this.prisma.typePermis.findUnique({
@@ -182,18 +184,57 @@ export class DemandeService {
       throw new NotFoundException('Type de permis introuvable');
     }
 
-    // Get the "demande" type procedure, auto-create it if missing
-    let typeProcedure = await this.prisma.typeProcedure.findFirst({
-      where: { libelle: { equals: 'demande', mode: 'insensitive' } },
-    });
+    let permitDetenteurId: number | undefined;
+    if (data.id_permis != null) {
+      const permitId = Number(data.id_permis);
+      if (!Number.isFinite(permitId) || permitId <= 0) {
+        throw new BadRequestException('id_permis invalide');
+      }
+
+      const permis = await this.prisma.permisPortail.findUnique({
+        where: { id: permitId },
+        select: { id: true, id_typePermis: true, id_detenteur: true },
+      });
+      if (!permis) {
+        throw new NotFoundException('Permis introuvable');
+      }
+      if (Number.isFinite(Number(permis.id_detenteur)) && Number(permis.id_detenteur) > 0) {
+        permitDetenteurId = Number(permis.id_detenteur);
+      }
+      if (Number(permis.id_typePermis) !== Number(data.id_typepermis)) {
+        throw new BadRequestException(
+          'Le type de permis de la demande ne correspond pas au permis scanne.',
+        );
+      }
+    }
+
+    // Resolve selected procedure type (posterieure) or default initial procedure type.
+    let typeProcedure: { id: number; libelle: string | null; description: string | null } | null;
+    if (Number.isFinite(Number(data.id_typeproc)) && Number(data.id_typeproc) > 0) {
+      typeProcedure = await this.prisma.typeProcedure.findUnique({
+        where: { id: Number(data.id_typeproc) },
+      });
+
+      if (!typeProcedure) {
+        throw new NotFoundException('Type de procédure introuvable');
+      }
+    } else {
+      typeProcedure = await this.prisma.typeProcedure.findFirst({
+        where: { libelle: { equals: 'demande', mode: 'insensitive' } },
+      });
+
+      if (!typeProcedure) {
+        typeProcedure = await this.prisma.typeProcedure.create({
+          data: {
+            libelle: 'demande',
+            description: 'Procedure par defaut pour la creation des demandes',
+          },
+        });
+      }
+    }
 
     if (!typeProcedure) {
-      typeProcedure = await this.prisma.typeProcedure.create({
-        data: {
-          libelle: 'demande',
-          description: 'Procédure par défaut pour la création des demandes',
-        },
-      });
+      throw new NotFoundException('Type de procédure introuvable');
     }
 
     // Generate procedure and demande codes based on typePermis.code_type
@@ -211,9 +252,8 @@ export class DemandeService {
       },
     });
     const baseNumProc = `PROC-${codeType}-${procCount + 1}`;
-    const generatedNumProc = baseNumProc;
 
-    // Create procedure (⚠️ no more id_typeproc here)
+    // Create procedure entry (no more id_typeproc on procedure itself)
     // Create procedure with manual id to avoid sequence desync collisions
     const maxId = await this.prisma.procedurePortail.aggregate({
       _max: { id_proc: true },
@@ -252,15 +292,17 @@ export class DemandeService {
         }
       }
     }
-// avant de créer la demande
-if (!data.utilisateurId) {
-  throw new BadRequestException('utilisateurId est requis');
-}
-if (!createdProc?.id_proc) {
-  throw new Error('La procédure n’a pas été créée (id_proc manquant)');
-}
-    const resolvedDetenteurId =
-      await this.resolveDetenteurIdForDemandeCreate(data);
+    // before creating demande
+    if (!data.utilisateurId) {
+      throw new BadRequestException('utilisateurId est requis');
+    }
+    if (!createdProc?.id_proc) {
+      throw new Error('La procedure na pas ete creee (id_proc manquant)');
+    }
+    const resolvedDetenteurId = await this.resolveDetenteurIdForDemandeCreate({
+      ...data,
+      id_detenteur: data.id_detenteur ?? permitDetenteurId,
+    });
     const isInitialDemande =
       (typeProcedure?.libelle || '').toLowerCase() === 'demande';
 
@@ -296,6 +338,14 @@ if (!createdProc?.id_proc) {
     });
 
     const primaryDetenteur = demande.detenteurdemande?.[0]?.detenteur ?? null;
+    if (data.id_permis != null) {
+      await this.prisma.permisProcedure.create({
+        data: {
+          id_permis: Number(data.id_permis),
+          id_proc: createdProc.id_proc,
+        },
+      });
+    }
     try {
       await this.notificationsService.createAdminNewDemandeNotification({
         demandeId: demande.id_demande,

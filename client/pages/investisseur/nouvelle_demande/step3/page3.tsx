@@ -211,23 +211,6 @@ export default function Capacites() {
     fetchDemandeFromProc();
   }, [idProc, procedureData, apiURL]);
 
-  useActivateEtape({
-    idProc,
-    etapeNum: 3,
-    shouldActivate: currentStep === 3 && !activatedSteps.has(3) && isPageReady,
-    onActivationSuccess: (stepStatus: string) => {
-      if (stepStatus === 'TERMINEE') {
-        setActivatedSteps(prev => new Set(prev).add(3));
-        setHasActivatedStep3(true);
-        return;
-      }
-
-      setActivatedSteps(prev => new Set(prev).add(3));
-      setHasActivatedStep3(true);
-      setTimeout(() => setRefetchTrigger(prev => prev + 1), 500);
-    }
-  });
-
   const phases: Phase[] = procedureData?.ProcedurePhase 
     ? procedureData.ProcedurePhase
         .slice()
@@ -264,6 +247,32 @@ export default function Capacites() {
     );
     return byLabel?.id_etape ?? 3;
   }, [procedureData]);
+
+  useEffect(() => {
+    if (etapeIdForThisPage && currentStep !== etapeIdForThisPage) {
+      setCurrentStep(etapeIdForThisPage);
+    }
+  }, [etapeIdForThisPage, currentStep]);
+
+  useActivateEtape({
+    idProc,
+    etapeNum: etapeIdForThisPage ?? 0,
+    shouldActivate:
+      isPageReady &&
+      !!etapeIdForThisPage &&
+      !activatedSteps.has(etapeIdForThisPage ?? -1),
+    onActivationSuccess: (stepStatus: string) => {
+      if (!etapeIdForThisPage) return;
+      setActivatedSteps(prev => new Set(prev).add(etapeIdForThisPage));
+      if (stepStatus === 'TERMINEE') {
+        setHasActivatedStep3(true);
+        return;
+      }
+
+      setHasActivatedStep3(true);
+      setTimeout(() => setRefetchTrigger(prev => prev + 1), 500);
+    }
+  });
 
   const isStepSaved = useMemo(() => {
     if (!procedureData || !etapeIdForThisPage) return false;
@@ -369,7 +378,7 @@ export default function Capacites() {
       await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`);
       setRefetchTrigger((prev) => prev + 1);
       toast.success("Capacit?s enregistr?es avec succ?s");
-      router.push(`/investisseur/nouvelle_demande/step1/page1?id=${idProc}`);
+      router.push(`/investisseur/nouvelle_demande/step11/page11?id=${idProc}`);
     } catch (err) {
       console.error(err);
       toast.error("Erreur lors de l'enregistrement");
@@ -384,7 +393,7 @@ export default function Capacites() {
       setError("ID procédure manquant");
       return;
     }
-    router.push(`/investisseur/nouvelle_demande/step4/page4?id=${idProc}`);
+    router.push(`/investisseur/nouvelle_demande/step1/page1?id=${idProc}`);
   };
 
   if (!isReady) {
@@ -431,7 +440,7 @@ export default function Capacites() {
                 <ProgressStepper
                    phases={phases}
                    currentProcedureId={idProc}
-                   currentEtapeId={currentStep}
+                   currentEtapeId={etapeIdForThisPage ?? currentEtape?.id_etape ?? currentStep}
                    procedurePhases={procedureData.ProcedurePhase || []}
                    procedureTypeId={procedureTypeId}
                    procedureEtapes={procedureData.ProcedureEtape || []}

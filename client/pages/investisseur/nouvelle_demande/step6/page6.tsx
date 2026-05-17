@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import axios from "axios";
 import { FiSend, FiClock, FiCheck, FiX, FiChevronLeft, FiChevronRight, FiDownload, FiFileText, FiCalendar, FiEdit, FiRefreshCw } from "react-icons/fi";
 import { jsPDF } from "jspdf";
@@ -94,7 +94,6 @@ export default function AvisWaliStep() {
   const { currentView, navigateTo } = useViewNavigator("nouvelle-demande");
   const [statutProc, setStatutProc] = useState<string | undefined>(undefined);
   const [id_wilaya, setid_wilaya] = useState<number | null>(null);
-  const currentStep = 6;
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
   const [procedureData, setProcedureData] = useState<Procedure | null>(null);
   const [currentEtape, setCurrentEtape] = useState<{ id_etape: number } | null>(null);
@@ -138,27 +137,68 @@ export default function AvisWaliStep() {
     }
   }, [idProc, procedureData, idDemande]);
 
+  const phases: Phase[] = procedureData?.ProcedurePhase 
+    ? procedureData.ProcedurePhase
+        .map((pp: ProcedurePhase) => pp.phase)
+        .sort((a: Phase, b: Phase) => a.ordre - b.ordre)
+    : [];
+
+  const etapeIdForThisPage = useMemo(() => {
+    if (!procedureData) return null;
+    const pathname = 'investisseur/nouvelle_demande/step6/page6';
+    const normalize = (value?: string | null) =>
+      (value ?? '')
+        .replace(/^\/+/, '')
+        .replace(/\.(tsx|ts|jsx|js|html)$/i, '')
+        .trim()
+        .toLowerCase();
+    const target = normalize(pathname);
+    const phasesList = (procedureData.ProcedurePhase || []) as ProcedurePhase[];
+    const phaseEtapes = phasesList.flatMap((pp) => pp.phase?.etapes || []);
+    const byRoute = phaseEtapes.find((e: any) => {
+      const route = normalize(e.page_route);
+      return route === target || route.endsWith(target) || route.includes('step6/page6');
+    });
+    if (byRoute) return byRoute.id_etape;
+
+    const allEtapes = [
+      ...phaseEtapes,
+      ...((procedureData.ProcedureEtape || []).map((pe: any) => pe.etape).filter(Boolean) as any[]),
+    ];
+    const byLabel = allEtapes.find((e: any) =>
+      String(e?.lib_etape ?? '').toLowerCase().includes('wali'),
+    );
+    return byLabel?.id_etape ?? null;
+  }, [procedureData]);
+
+  useEffect(() => {
+    if (etapeIdForThisPage && currentEtape?.id_etape !== etapeIdForThisPage) {
+      setCurrentEtape({ id_etape: etapeIdForThisPage });
+    }
+  }, [etapeIdForThisPage, currentEtape?.id_etape]);
+
   useActivateEtape({
     idProc,
-    etapeNum: 6,
-    shouldActivate: currentStep === 6 && !activatedSteps.has(6) && isPageReady,
+    etapeNum: etapeIdForThisPage ?? 0,
+    shouldActivate: isPageReady && !!etapeIdForThisPage && !activatedSteps.has(etapeIdForThisPage ?? -1),
     onActivationSuccess: () => {
-      setActivatedSteps((prev) => new Set(prev).add(6));
+      if (!etapeIdForThisPage) return;
+      setActivatedSteps((prev) => new Set(prev).add(etapeIdForThisPage));
       if (procedureData) {
         const updatedData = { ...procedureData };
         if (updatedData.ProcedureEtape) {
-          const stepToUpdate = updatedData.ProcedureEtape.find((pe) => pe.id_etape === 6);
+          const stepToUpdate = updatedData.ProcedureEtape.find((pe) => pe.id_etape === etapeIdForThisPage);
           if (stepToUpdate) {
             stepToUpdate.statut = 'EN_COURS' as StatutProcedure;
           }
-          setCurrentEtape({ id_etape: 6 });
+          setCurrentEtape({ id_etape: etapeIdForThisPage });
         }
         if (updatedData.ProcedurePhase) {
-          const phaseContainingStep6 = updatedData.ProcedurePhase.find((pp) =>
-            pp.phase?.etapes?.some((etape) => etape.id_etape === 6)
+          const phaseContainingStep = updatedData.ProcedurePhase.find((pp) =>
+            pp.phase?.etapes?.some((etape) => etape.id_etape === etapeIdForThisPage)
           );
-          if (phaseContainingStep6) {
-            phaseContainingStep6.statut = 'EN_COURS' as StatutProcedure;
+          if (phaseContainingStep) {
+            phaseContainingStep.statut = 'EN_COURS' as StatutProcedure;
           }
         }
         setProcedureData(updatedData);
@@ -166,13 +206,6 @@ export default function AvisWaliStep() {
       }
     },
   });
-
-
-  const phases: Phase[] = procedureData?.ProcedurePhase 
-    ? procedureData.ProcedurePhase
-        .map((pp: ProcedurePhase) => pp.phase)
-        .sort((a: Phase, b: Phase) => a.ordre - b.ordre)
-    : [];
 
   const generateWaliLetter = async (preview = false) => {
   setIsGeneratingPdf(true);
@@ -452,9 +485,15 @@ projectFields.forEach(({ label, value }) => {
     setEtapeMessage(null);
 
     try {
-      await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/6`);
+      const etapeId = etapeIdForThisPage ?? currentEtape?.id_etape ?? null;
+      if (!etapeId) {
+        setEtapeMessage("Etape introuvable. Verifiez le page_route en base (step6/page6).");
+        return;
+      }
+
+      await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`);
       setEtapeMessage("?tape 6 enregistr?e avec succ?s !");
-      router.push(`/demande/step7/page7?id=${idProc}`);
+      router.push(`/investisseur/nouvelle_demande/step7/page7?id=${idProc}`);
     } catch (err) {
       console.error(err);
       setEtapeMessage("Erreur lors de l'enregistrement de l'?tape.");

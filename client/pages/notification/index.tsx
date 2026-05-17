@@ -268,7 +268,10 @@ export default function NotificationsPage() {
     <InvestorLayout>
       <div className={styles.pageWrap}>
         <div className={styles.headerCard}>
-          <div>
+          <div className={styles.headerMain}>
+            <Link href={dashboardHref} className={`${styles.linkBtn} ${styles.backLink}`}>
+              Retour tableau de bord
+            </Link>
             <h1 className={styles.title}>Mes notifications</h1>
             <p className={styles.subtitle}>
               Historique complet des notifications importantes de votre compte.
@@ -279,9 +282,6 @@ export default function NotificationsPage() {
             <button className={styles.secondaryBtn} onClick={markAllAsRead}>
               Tout marquer comme lu
             </button>
-            <Link href={dashboardHref} className={styles.linkBtn}>
-              Retour tableau de bord
-            </Link>
           </div>
         </div>
 

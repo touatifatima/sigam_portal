@@ -10,6 +10,7 @@ import { PermissionsGuard } from './permissions.guard';
 import { Reflector } from '@nestjs/core';
 import { SessionModule } from '../session/session.module'; // Add this import
 import { AuditLogModule } from '../audit-log/audit-log.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { AuditLogModule } from '../audit-log/audit-log.module';
       inject: [ConfigService],
     }),
     AuditLogModule,
+    NotificationsModule,
   ],
   providers: [
     AuthService,

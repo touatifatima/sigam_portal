@@ -17,6 +17,8 @@
 .progressContainer {
   width: 100%;
   max-width: 100%;
+  box-sizing: border-box;
+  margin-inline: auto;
   margin-bottom: 1rem;
   background: var(--card);
   border-radius: var(--radius-lg);
@@ -31,6 +33,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 18px;
+  width: 100%;
+  box-sizing: border-box;
   padding: 0;
   background: transparent;
   border-radius: 0;

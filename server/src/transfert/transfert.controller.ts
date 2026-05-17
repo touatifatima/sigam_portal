@@ -3,18 +3,49 @@ import {
   Body,
   Controller,
   Get,
+  HttpException,
+  HttpStatus,
   Param,
   ParseIntPipe,
   Post,
   Query,
+  Req,
 } from '@nestjs/common';
 import { CreateDetenteurDto } from './create-detenteur.dto';
 import { StartTransfertDto } from './start-transfert.dto';
 import { TransfertService } from './transfert.service';
+import { SessionService } from 'src/session/session.service';
 
 @Controller('api/procedures/transfert')
 export class TransfertController {
-  constructor(private readonly service: TransfertService) {}
+  constructor(
+    private readonly service: TransfertService,
+    private readonly sessionService: SessionService,
+  ) {}
+
+  private extractAuthToken(req: any): string | null {
+    const cookieToken = req?.cookies?.auth_token;
+    if (cookieToken) return cookieToken;
+
+    const authHeader = req?.headers?.authorization;
+    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      return authHeader.slice('Bearer '.length).trim();
+    }
+    return null;
+  }
+
+  private async resolveAuthenticatedUserId(req: any): Promise<number> {
+    const token = this.extractAuthToken(req);
+    if (!token) {
+      throw new HttpException('Non authentifie', HttpStatus.UNAUTHORIZED);
+    }
+    const session = await this.sessionService.validateSession(token);
+    const userId = session?.user?.id ?? session?.userId;
+    if (!userId) {
+      throw new HttpException('Session invalide', HttpStatus.UNAUTHORIZED);
+    }
+    return Number(userId);
+  }
 
   @Get('detenteurs/search')
   async searchDetenteurs(
@@ -39,8 +70,12 @@ export class TransfertController {
   }
 
   @Post('start')
-  async startTransfert(@Body() payload: StartTransfertDto) {
-    return this.service.startTransfert(payload);
+  async startTransfert(@Req() req: any, @Body() payload: StartTransfertDto) {
+    const userId = await this.resolveAuthenticatedUserId(req);
+    return this.service.startTransfert({
+      ...payload,
+      utilisateurId: userId,
+    });
   }
 
   @Get(':id/receiver')

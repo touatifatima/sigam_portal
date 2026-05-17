@@ -4314,9 +4314,10 @@ const getActionButtonClass = (variant: ActionVariant) => {
       const res = await axios.post(
         `${apiURL}/api/procedures/renouvellement/start`,
         {
-        permisId: pendingPermisId,
-        date_demande: selectedDate.toISOString().split('T')[0],
-      },
+          permisId: pendingPermisId,
+          date_demande: selectedDate.toISOString().split('T')[0],
+          utilisateurId: auth?.id,
+        },
         { withCredentials: true }
       );
 

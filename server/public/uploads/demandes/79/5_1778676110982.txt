@@ -1,0 +1,34 @@
+┌─────────────────────────────────────────────────────────────┐
+│                     INVESTISSEUR                             │
+│                         │                                    │
+│          Création compte + vérification OTP                  │
+│                         ↓                                    │
+│         ┌─────────────────────────────┐                     │
+│         │     COMPTE PERSONNEL         │                     │
+│         │  email, nom, OTP vérifié     │                     │
+│         └─────────────────────────────┘                     │
+│                         │                                    │
+│         Fait une demande initiale ou postérieure             │
+│                         ↓                                    │
+│         ┌─────────────────────────────┐                     │
+│         │         DEMANDE              │                     │
+│         │  zone, type, date            │                     │
+│         └─────────────────────────────┘                     │
+│                         ↓                                    │
+│         Validation par l’opérateur (acceptée)                │
+│                         ↓                                    │
+│         ┌─────────────────────────────┐                     │
+│         │    PERMIS AVEC QR UNIQUE     │                     │
+│         │  QR_code, zone, validité     │                     │
+│         └─────────────────────────────┘                     │
+│                         ↓                                    │
+│         Investisseur scanne le QR (borne/guichet)            │
+│                         ↓                                    │
+│         ┌─────────────────────────────┐                     │
+│         │ PERMIS ATTACHÉ AU COMPTE     │                     │
+│         │ L’investisseur voit son permis│                    │
+│         └─────────────────────────────┘                     │
+│                         ↓                                    │
+│         Peut faire de nouvelles demandes postérieures        │
+│         (qui généreront d’autres QR pour d’autres permis)    │
+└─────────────────────────────────────────────────────────────┘

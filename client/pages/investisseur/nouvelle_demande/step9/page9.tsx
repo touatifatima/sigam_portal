@@ -1,6 +1,6 @@
 ﻿// UserObligationsPage.tsx - Updated
 'use client';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import styles from './UserObligations9.module.css';
 import { useSearchParams } from '@/src/hooks/useSearchParams';
@@ -10,6 +10,8 @@ import Navbar from '../../../navbar/Navbar';
 import { useViewNavigator } from '../../../../src/hooks/useViewNavigator';
 import { STEP_LABELS } from '../../../../src/constants/steps';
 import { useRouter } from 'next/router';
+import { useActivateEtape } from '@/src/hooks/useActivateEtape';
+import { Procedure, ProcedureEtape, ProcedurePhase } from '@/src/types/procedure';
 
 interface Obligation {
   id: number;
@@ -65,6 +67,77 @@ const UserObligationsPage = () => {
   const [permisDetails, setPermisDetails] = useState<any>(null);
   const [dateAttribution, setDateAttribution] = useState<Date>(new Date());
   const initInProgress = useRef(false);
+  const [procedureData, setProcedureData] = useState<Procedure | null>(null);
+  const [currentEtape, setCurrentEtape] = useState<{ id_etape: number } | null>(null);
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
+  const [activatedSteps, setActivatedSteps] = useState<Set<number>>(new Set());
+  const [isPageReady, setIsPageReady] = useState(false);
+
+  const fetchProcedureData = useCallback(async () => {
+    if (!idProc) return;
+
+    try {
+      const response = await axios.get<Procedure>(`${apiURL}/api/procedure-etape/procedure/${idProc}`);
+      setProcedureData(response.data);
+
+      const activeEtape = response.data.ProcedureEtape.find((pe: ProcedureEtape) => pe.statut === 'EN_COURS');
+      if (activeEtape) {
+        setCurrentEtape({ id_etape: activeEtape.id_etape });
+      }
+    } catch (fetchError) {
+      console.error('Error fetching procedure data:', fetchError);
+    }
+  }, [idProc, apiURL]);
+
+  useEffect(() => {
+    fetchProcedureData();
+  }, [fetchProcedureData, refetchTrigger]);
+
+  useEffect(() => {
+    if (idProc && procedureData) {
+      setIsPageReady(true);
+    }
+  }, [idProc, procedureData]);
+
+  const etapeIdForThisPage = useMemo(() => {
+    if (!procedureData) return null;
+    const pathname = 'investisseur/nouvelle_demande/step9/page9';
+    const normalize = (value?: string | null) =>
+      (value ?? '')
+        .replace(/^\/+/, '')
+        .replace(/\.(tsx|ts|jsx|js|html)$/i, '')
+        .trim()
+        .toLowerCase();
+    const target = normalize(pathname);
+    const phasesList = (procedureData.ProcedurePhase || []) as ProcedurePhase[];
+    const phaseEtapes = phasesList.flatMap((pp) => pp.phase?.etapes || []);
+    const byRoute = phaseEtapes.find((e: any) => {
+      const route = normalize(e.page_route);
+      return route === target || route.endsWith(target) || route.includes('step9/page9');
+    });
+    if (byRoute) return byRoute.id_etape;
+
+    const allEtapes = [
+      ...phaseEtapes,
+      ...((procedureData.ProcedureEtape || []).map((pe: any) => pe.etape).filter(Boolean) as any[]),
+    ];
+    const byLabel = allEtapes.find((e: any) => {
+      const label = String(e?.lib_etape ?? '').toLowerCase();
+      return label.includes('génération') || label.includes('generation') || label.includes('permis');
+    });
+    return byLabel?.id_etape ?? null;
+  }, [procedureData]);
+
+  useActivateEtape({
+    idProc,
+    etapeNum: etapeIdForThisPage ?? 0,
+    shouldActivate: isPageReady && !!etapeIdForThisPage && !activatedSteps.has(etapeIdForThisPage ?? -1),
+    onActivationSuccess: () => {
+      if (!etapeIdForThisPage) return;
+      setActivatedSteps((prev) => new Set(prev).add(etapeIdForThisPage));
+      setRefetchTrigger((prev) => prev + 1);
+    },
+  });
 
   const paymentTypes = useMemo(() => {
     const uniques = new Map<number, string>();
@@ -236,8 +309,14 @@ useEffect(() => {
     if (!idProc) return;
     
     try {
+      const etapeId = etapeIdForThisPage ?? currentEtape?.id_etape ?? null;
+      if (!etapeId) {
+        alert("Etape introuvable. Verifiez le page_route en base (step9/page9).");
+        return;
+      }
+
       const res = await axios.put(`${apiURL}/api/procedures/terminer/${idProc}`);
-      await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/9`);
+      await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`);
       alert('Procédure terminée avec succés');
       router.push(`/demande/Timeline/Timeline?id=${idProc}`)
        
@@ -252,7 +331,7 @@ useEffect(() => {
       setError("ID procédure manquant");
       return;
     }
-    router.push(`/demande/step8/page8?id=${idProc}`)
+    router.push(`/investisseur/nouvelle_demande/step8/Step8?id=${idProc}`)
   };
 
   useEffect(() => {

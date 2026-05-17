@@ -633,6 +633,17 @@ export interface ArcGISMapRef {
     (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SIGAM_ARCGIS_BASE) ||
     (typeof process !== 'undefined' && (process as any).env?.NEXT_PUBLIC_SIGAM_ARCGIS_BASE) ||
     "https://sig.anam.dz/server/rest/services/POM_Public/FeatureServer";
+  const FORCE_ARCGIS_AUTO_LOGIN =
+    ((typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_ARCGIS_AUTO_LOGIN) ||
+      (typeof process !== 'undefined' && (process as any).env?.NEXT_PUBLIC_ARCGIS_AUTO_LOGIN) ||
+      '')
+      .toString()
+      .trim()
+      .toLowerCase() === 'true';
+  const IS_PUBLIC_SERVICE = /\/pom_public\/featureserver\/?$/i.test(
+    String(SIGAM_SERVICE_BASE || ''),
+  );
+  const SHOULD_ATTEMPT_ARCGIS_AUTO_LOGIN = FORCE_ARCGIS_AUTO_LOGIN || !IS_PUBLIC_SERVICE;
 
   // Individual layer URLs for sigam_final (all couches)
   const SIGAM_LAYERS = {
@@ -1968,7 +1979,7 @@ export interface ArcGISMapRef {
           titresLayer.labelingInfo = [
             {
               labelExpressionInfo: { expression: titreLabelExpression },
-              labelPlacement: "center-center",
+              labelPlacement: "always-horizontal",
               minScale: 0,
               maxScale: 5000000,
               symbol: {
@@ -1976,12 +1987,12 @@ export interface ArcGISMapRef {
                 color: [0, 0, 0, 0.95],
                 haloColor: [255, 255, 255, 0.9],
                 haloSize: 1,
-                font: { size: 9, family: "Avenir Next", weight: "bold" },
+                font: { size: 9, family: "Arial", weight: "bold" },
               },
             },
             {
               labelExpressionInfo: { expression: titreLabelExpression },
-              labelPlacement: "center-center",
+              labelPlacement: "always-horizontal",
               minScale: 5000000,
               maxScale: 1000000,
               symbol: {
@@ -1989,12 +2000,12 @@ export interface ArcGISMapRef {
                 color: [0, 0, 0, 0.95],
                 haloColor: [255, 255, 255, 0.9],
                 haloSize: 1.25,
-                font: { size: 12, family: "Avenir Next", weight: "bold" },
+                font: { size: 12, family: "Arial", weight: "bold" },
               },
             },
             {
               labelExpressionInfo: { expression: titreLabelExpression },
-              labelPlacement: "center-center",
+              labelPlacement: "always-horizontal",
               minScale: 1000000,
               maxScale: 0,
               symbol: {
@@ -2002,7 +2013,7 @@ export interface ArcGISMapRef {
                 color: [0, 0, 0, 0.95],
                 haloColor: [255, 255, 255, 0.95],
                 haloSize: 1.5,
-                font: { size: 15, family: "Avenir Next", weight: "bold" },
+                font: { size: 15, family: "Arial", weight: "bold" },
               },
             },
           ] as any;
@@ -2175,7 +2186,7 @@ export interface ArcGISMapRef {
                 color: [0, 0, 0, 0.95],
                 haloColor: [255, 255, 255, 0.95],
                 haloSize: 1.5,
-                font: { size: 12, family: "Avenir Next", weight: "bold" },
+                font: { size: 12, family: "Arial", weight: "bold" },
               },
             },
           ] as any;
@@ -2222,7 +2233,7 @@ export interface ArcGISMapRef {
                 color: [0, 0, 0, 0.9],
                 haloColor: [255, 255, 255, 0.95],
                 haloSize: 1,
-                font: { size: 10, family: "Avenir Next", weight: "bold" },
+                font: { size: 10, family: "Arial", weight: "bold" },
               },
             },
           ] as any;
@@ -2287,7 +2298,7 @@ export interface ArcGISMapRef {
 
       enterpriseLayersRef.current = layers;
       setEnterpriseLayers(layers);
-      console.log(`ANAM Enterprise layers loaded: ${layers.length}/8`);
+      console.log(`ANAM Enterprise layers loaded: ${layers.length}/${Object.keys(SIGAM_LAYERS).length}`);
 
     } catch (error) {
       console.error("Error loading ANAM enterprise layers:", error);
@@ -2311,19 +2322,20 @@ export interface ArcGISMapRef {
           map = new Map({ basemap: osmBasemap });
         } else {
           try {
-            const esriVectorBasemap = Basemap.fromId('topo-vector');
-            await esriVectorBasemap!.load();
-            map = new Map({ basemap: esriVectorBasemap });
-          } catch (eVec) {
-            console.warn('ArcGIS vector basemap unavailable; trying Esri raster tiles.', eVec);
+            // Prefer raster topo to avoid vector-glyph network noise in restricted networks.
+            const esriRasterTiles = new WebTileLayer({
+              urlTemplate: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'
+            });
+            const esriRasterBasemap = new Basemap({ baseLayers: [esriRasterTiles], title: 'Esri World Topo Map' });
+            map = new Map({ basemap: esriRasterBasemap });
+          } catch (eRas) {
+            console.warn('Esri raster tiles unavailable; trying ArcGIS vector basemap.', eRas);
             try {
-              const esriRasterTiles = new WebTileLayer({
-                urlTemplate: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'
-              });
-              const esriRasterBasemap = new Basemap({ baseLayers: [esriRasterTiles], title: 'Esri World Topo Map' });
-              map = new Map({ basemap: esriRasterBasemap });
-            } catch (eRas) {
-              console.warn('Esri raster tiles unavailable; falling back to OpenStreetMap.', eRas);
+              const esriVectorBasemap = Basemap.fromId('topo-vector');
+              await esriVectorBasemap!.load();
+              map = new Map({ basemap: esriVectorBasemap });
+            } catch (eVec) {
+              console.warn('ArcGIS vector basemap unavailable; falling back to OpenStreetMap.', eVec);
               const osmLayer = new WebTileLayer({ urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png' });
               const osmBasemap = new Basemap({ baseLayers: [osmLayer], title: 'OpenStreetMap' });
               map = new Map({ basemap: osmBasemap });
@@ -2350,7 +2362,9 @@ export interface ArcGISMapRef {
         // Add ANAM Enterprise layers (non-blocking; skipped if unreachable)
         const enterpriseLayersDisabled = DISABLE_ENTERPRISE_LAYERS || disableEnterpriseLayers;
         if (!enterpriseLayersDisabled) {
-          try { await ensureArcgisCredential(API_BASE); } catch {}
+          if (SHOULD_ATTEMPT_ARCGIS_AUTO_LOGIN) {
+            try { await ensureArcgisCredential(API_BASE); } catch {}
+          }
           await addEnterpriseLayers(map);
         } else if (DISABLE_ENTERPRISE_LAYERS) {
           console.warn('Enterprise layers are disabled by VITE_ARCGIS_DISABLE_ENTERPRISE=true');

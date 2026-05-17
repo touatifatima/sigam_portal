@@ -84,17 +84,30 @@ export class DemandesController {
 
   @Post()
   async createDemande(
+    @Req() req: any,
     @Body()
     body: {
-      id: number;
+      id?: number;
       id_typepermis: number;
       objet_demande: string;
       code_demande?: string;
       id_detenteur?: number;
       nom_responsable?: string;
+      id_typeproc?: number;
+      id_permis?: number;
     },
   ) {
-    const userId = body.id;
+    const token = this.extractAuthToken(req);
+    if (!token) {
+      throw new HttpException('Non authentifie', HttpStatus.UNAUTHORIZED);
+    }
+
+    const session = await this.sessionService.validateSession(token);
+    const userId = session?.user?.id ?? session?.userId;
+    if (!userId) {
+      throw new HttpException('Session invalide', HttpStatus.UNAUTHORIZED);
+    }
+
     const demande = await this.demandeService.createDemande({
       id_typepermis: body.id_typepermis,
       objet_demande: body.objet_demande,
@@ -102,6 +115,8 @@ export class DemandesController {
       id_detenteur: body.id_detenteur,
       nom_responsable: body.nom_responsable,
       utilisateurId: userId,
+      id_typeproc: body.id_typeproc,
+      id_permis: body.id_permis,
     });
 
     return demande;

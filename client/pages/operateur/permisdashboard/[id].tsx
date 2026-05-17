@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState, type ElementType } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ElementType } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -18,7 +18,7 @@ import {
   Search,
   MapPin,
   FileText,
-  Map,
+  Map as MapIcon,
   Gem,
   Clock,
   CheckCircle2,
@@ -111,6 +111,13 @@ interface FusionCandidate {
   titulaire: string;
 }
 
+interface TypeProcedureSummary {
+  id: number;
+  libelle: string;
+  code?: string | null;
+  description?: string | null;
+}
+
 type PermisTabKey =
   | "general"
   | "substances"
@@ -163,6 +170,36 @@ const deriveStatut = (permis: any) => {
   if (lib.includes("suspend")) return "SUSPENDU";
   if (hasRenouvellementProcedure(permis)) return "EN_RENOUVELLEMENT";
   return "ACTIF";
+};
+
+const normalizeSearchValue = (value: string) =>
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+const resolveActionIdFromTypeProcedure = (
+  libelle?: string | null,
+  code?: string | null,
+): string | null => {
+  const lower = `${normalizeSearchValue(libelle || "")} ${normalizeSearchValue(code || "")}`;
+  if (!lower) return null;
+  if (lower.includes("option")) return "option";
+  if (lower.includes("renouv")) return "renouvellement";
+  if (lower.includes("extension") || lower.includes("modif")) return "extension";
+  if (lower.includes("fusion")) return "fusion";
+  if (lower.includes("division")) return "division";
+  if (lower.includes("transfert") || lower.includes("transfer") || lower.includes("transf")) {
+    return "transfert";
+  }
+  if (lower.includes("cession") || lower.includes("ces")) return "cession";
+  if (lower.includes("renonc")) return "renonciation";
+  if (lower.includes("retrait") || lower.includes("annulation") || lower.includes("annul")) {
+    return "retrait";
+  }
+  if (lower.includes("regular")) return "regularisation";
+  return null;
 };
 
 const formatDate = (value?: string | Date | null) => {
@@ -647,7 +684,7 @@ const actionsRapides: ActionRapide[] = [
   {
     id: "extension",
     label: "Extension",
-    icon: Map,
+    icon: MapIcon,
     description: "Demander une extension du permis",
     available: true,
   },
@@ -731,6 +768,10 @@ const PermisDetailsOperateur = () => {
   const [error, setError] = useState<string | null>(null);
   const [extensionModalOpen, setExtensionModalOpen] = useState(false);
   const [fusionModalOpen, setFusionModalOpen] = useState(false);
+  const [typeProceduresForPermit, setTypeProceduresForPermit] = useState<TypeProcedureSummary[]>(
+    [],
+  );
+  const [isLoadingTypeProcedures, setIsLoadingTypeProcedures] = useState(false);
   const [fusionLoadingCandidates, setFusionLoadingCandidates] = useState(false);
   const [fusionCandidates, setFusionCandidates] = useState<FusionCandidate[]>([]);
   const [fusionSearch, setFusionSearch] = useState("");
@@ -1021,6 +1062,67 @@ const PermisDetailsOperateur = () => {
     await startProcedureFlow("renouvellement");
   };
 
+  const fetchTypeProceduresForPermit = useCallback(
+    async (typePermisId: number) => {
+      if (!apiURL || !Number.isFinite(typePermisId)) {
+        setTypeProceduresForPermit([]);
+        return;
+      }
+
+      setIsLoadingTypeProcedures(true);
+      try {
+        const res = await fetch(`${apiURL}/phases-etapes/combinaisons`, {
+          credentials: "include",
+        });
+        if (!res.ok) {
+          throw new Error("Failed to load type procedures");
+        }
+        const data = await res.json();
+        const combos = Array.isArray(data) ? data : data?.data ?? [];
+        const matched = combos.filter(
+          (combo: any) => Number(combo?.id_typePermis) === typePermisId,
+        );
+
+        const uniqueMap = new Map<number, TypeProcedureSummary>();
+        matched.forEach((combo: any) => {
+          const tp = combo?.typeProc || combo?.typeProcedure;
+          const tpId = Number(tp?.id);
+          if (!Number.isFinite(tpId) || uniqueMap.has(tpId)) return;
+          uniqueMap.set(tpId, {
+            id: tpId,
+            libelle: String(tp?.libelle || tp?.code || "Type de procedure"),
+            code: tp?.code ?? null,
+            description: tp?.description ?? null,
+          });
+        });
+
+        setTypeProceduresForPermit(Array.from(uniqueMap.values()));
+      } catch (error) {
+        console.error("Erreur chargement actions dynamiques", error);
+        setTypeProceduresForPermit([]);
+      } finally {
+        setIsLoadingTypeProcedures(false);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const typePermisId = Number(
+      permis?.typePermis?.id ?? permis?.id_typePermis ?? permis?.type_permis?.id ?? NaN,
+    );
+    if (!Number.isFinite(typePermisId)) {
+      setTypeProceduresForPermit([]);
+      return;
+    }
+    void fetchTypeProceduresForPermit(typePermisId);
+  }, [
+    fetchTypeProceduresForPermit,
+    permis?.typePermis?.id,
+    permis?.id_typePermis,
+    permis?.type_permis?.id,
+  ]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const search = new URLSearchParams(window.location.search);
@@ -1173,6 +1275,25 @@ const PermisDetailsOperateur = () => {
     !rawStatut.includes("revoq") &&
     !rawStatut.includes("retir");
   const fusionEligible = extensionEligible;
+
+  const baseActionItems = useMemo(() => {
+    if (typeProceduresForPermit.length === 0) return actionsRapides;
+
+    const mappedById = new Map<string, ActionRapide>();
+    typeProceduresForPermit.forEach((tp) => {
+      const actionId = resolveActionIdFromTypeProcedure(tp.libelle, tp.code);
+      if (!actionId || mappedById.has(actionId)) return;
+      const template = actionsRapides.find((action) => action.id === actionId);
+      if (!template) return;
+      mappedById.set(actionId, {
+        ...template,
+        description: tp.description || template.description,
+      });
+    });
+
+    const mapped = Array.from(mappedById.values());
+    return mapped.length > 0 ? mapped : actionsRapides;
+  }, [typeProceduresForPermit]);
 
   const typeLabel = permis ? normalizeTypeLabel(permis) : "--";
   const titulaireLabel =
@@ -1418,7 +1539,7 @@ const PermisDetailsOperateur = () => {
                 <div className={`${styles.infoCard} ${styles.sectionFull}`}>
                   <div className={styles.cardHeader}>
                     <div className={styles.cardIcon}>
-                      <Map className="w-5 h-5" />
+                      <MapIcon className="w-5 h-5" />
                     </div>
                     <h2 className={styles.cardTitle}>Superficie & Périmètre</h2>
                   </div>
@@ -1750,8 +1871,11 @@ const PermisDetailsOperateur = () => {
                     <h2 className={styles.cardTitle}>Actions rapides</h2>
                   </div>
                   <div className={styles.cardContent}>
+                    {isLoadingTypeProcedures && (
+                      <p className={styles.emptyText}>Chargement des actions dynamiques...</p>
+                    )}
                     <div className={styles.actionsGrid}>
-                      {actionsRapides.map((action) => {
+                      {baseActionItems.map((action) => {
                         const ActionIcon = action.icon;
                         const isExtensionAction = action.id === "extension";
                         const isFusionAction = action.id === "fusion";
@@ -1833,7 +1957,7 @@ const PermisDetailsOperateur = () => {
                 }}
               >
                 <div className={styles.extensionOptionIcon}>
-                  <Map className="w-5 h-5" />
+                  <MapIcon className="w-5 h-5" />
                 </div>
                 <div className={styles.extensionOptionBody}>
                   <h4>Extension du périmètre</h4>

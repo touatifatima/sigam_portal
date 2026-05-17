@@ -48,6 +48,32 @@
   color: #6b4d5e;
 }
 
+.requiredMissingHint {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.requiredMissingBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.62rem;
+  border-radius: 999px;
+  border: 1px solid rgba(176, 88, 30, 0.35);
+  background: rgba(245, 158, 11, 0.14);
+  color: #9a5a17;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.requiredMissingText {
+  font-size: 0.82rem;
+  color: #7a4b5f;
+}
+
 .cardContent {
   padding: 1.5rem;
 }

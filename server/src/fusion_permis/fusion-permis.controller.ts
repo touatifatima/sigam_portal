@@ -5,32 +5,68 @@ import {
   Get,
   Query,
   BadRequestException,
+  HttpException,
+  HttpStatus,
+  Req,
 } from '@nestjs/common';
 import { FusionPermisService } from './fusion-permis.service';
+import { SessionService } from 'src/session/session.service';
 
 @Controller('api/fusion-permis')
 export class FusionPermisController {
-  constructor(private readonly fusionPermisService: FusionPermisService) {}
+  constructor(
+    private readonly fusionPermisService: FusionPermisService,
+    private readonly sessionService: SessionService,
+  ) {}
+
+  private extractAuthToken(req: any): string | null {
+    const cookieToken = req?.cookies?.auth_token;
+    if (cookieToken) return cookieToken;
+
+    const authHeader = req?.headers?.authorization;
+    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      return authHeader.slice('Bearer '.length).trim();
+    }
+    return null;
+  }
+
+  private async resolveAuthenticatedUserId(req: any): Promise<number> {
+    const token = this.extractAuthToken(req);
+    if (!token) {
+      throw new HttpException('Non authentifie', HttpStatus.UNAUTHORIZED);
+    }
+    const session = await this.sessionService.validateSession(token);
+    const userId = session?.user?.id ?? session?.userId;
+    if (!userId) {
+      throw new HttpException('Session invalide', HttpStatus.UNAUTHORIZED);
+    }
+    return Number(userId);
+  }
 
   @Post('fusionner')
   async fusionner(
+    @Req() req: any,
     @Body()
     body: {
       id_principal: number;
       id_secondaire: number;
       motif_fusion: string;
+      utilisateurId?: number;
     },
   ) {
+    const userId = await this.resolveAuthenticatedUserId(req);
     return this.fusionPermisService.fusionner(
       body.id_principal,
       body.id_secondaire,
       body.motif_fusion,
+      userId,
     );
   }
 
   // Compatibilité avec les anciens écrans qui appellent fusionner en GET
   @Get('fusionner')
   async fusionnerGet(
+    @Req() req: any,
     @Query('id_principal') idPrincipal: string,
     @Query('id_secondaire') idSecondaire: string,
     @Query('motif_fusion') motifFusion?: string,
@@ -42,27 +78,33 @@ export class FusionPermisController {
         'id_principal et id_secondaire sont obligatoires',
       );
     }
+    const userId = await this.resolveAuthenticatedUserId(req);
     return this.fusionPermisService.fusionner(
       principal,
       secondaire,
       motifFusion || '',
+      userId,
     );
   }
 
   // Alias pour compatibilité avec l'ancien appel frontend "fusionnerContinuer"
   @Post('fusionnerContinuer')
   async fusionnerContinuer(
+    @Req() req: any,
     @Body()
     body: {
       id_principal: number;
       id_secondaire: number;
       motif_fusion?: string;
+      utilisateurId?: number;
     },
   ) {
+    const userId = await this.resolveAuthenticatedUserId(req);
     return this.fusionPermisService.fusionner(
       body.id_principal,
       body.id_secondaire,
       body.motif_fusion || '',
+      userId,
     );
   }
 

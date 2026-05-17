@@ -322,12 +322,12 @@ const ProgressStepper: React.FC<Props> = ({
 
       try {
         if (getEtapeStatus(etape) === 'EN_ATTENTE') {
-          await axios.post(`${apiURL}/api/procedure-etape/start`, {
-            id_proc: currentProcedureId,
-            phaseOrdre: phase.ordre,
-            etapeOrdre: etape.ordre_etape,
+          await axios.post(
+            `${apiURL}/api/procedure-etape/start/${currentProcedureId}/${etape.id_etape}`,
+            {
             link: etape.page_route,
-          });
+            },
+          );
         }
 
         // Use stable page route if provided by backend, fallback to legacy pattern

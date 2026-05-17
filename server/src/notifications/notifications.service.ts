@@ -874,6 +874,66 @@ export class NotificationsService {
     );
   }
 
+  async createAdminNewAccountNotification(input: {
+    createdUserId: number;
+    email?: string | null;
+    username?: string | null;
+    roleName?: string | null;
+    fullName?: string | null;
+  }) {
+    const createdUserId = Number(input.createdUserId);
+    if (!Number.isFinite(createdUserId) || createdUserId <= 0) {
+      return { created: 0 };
+    }
+
+    const adminIds = await this.getAdminRecipientIds();
+    if (!adminIds.length) return { created: 0 };
+
+    const displayName =
+      this.truncate(input.fullName || '', 90) ||
+      this.truncate(input.username || '', 60) ||
+      this.truncate(input.email || '', 70) ||
+      `Utilisateur #${createdUserId}`;
+    const rolePart = this.truncate(input.roleName || '', 40);
+    const roleSuffix = rolePart ? ` (role: ${rolePart})` : '';
+
+    const title = 'Nouveau compte cree';
+    const message = `Un nouveau compte a ete cree: ${displayName}${roleSuffix}.`;
+
+    const existingNotifications = await this.prisma.notificationPortail.findMany({
+      where: {
+        userId: { in: adminIds },
+        relatedEntityType: 'user_account_created',
+        relatedEntityId: createdUserId,
+        title,
+      },
+      select: { userId: true },
+    });
+    const existingAdminSet = new Set(
+      existingNotifications
+        .map((item) => Number(item.userId))
+        .filter((id) => Number.isFinite(id) && id > 0),
+    );
+
+    const payload = adminIds
+      .filter((adminId) => !existingAdminSet.has(adminId))
+      .map((adminId) => ({
+        userId: adminId,
+        type: TypeNotification.INFO as TypeNotification,
+        category: NotificationCategory.SYSTEM as NotificationCategory,
+        priority: NotificationPriority.MEDIUM as NotificationPriority,
+        title,
+        message,
+        relatedEntityId: createdUserId,
+        relatedEntityType: 'user_account_created',
+      }));
+
+    if (!payload.length) return { created: 0 };
+
+    await this.prisma.notificationPortail.createMany({ data: payload });
+    return { created: payload.length };
+  }
+
   async createAdminNewDemandeNotification(input: {
     demandeId: number;
     demandeCode?: string | null;

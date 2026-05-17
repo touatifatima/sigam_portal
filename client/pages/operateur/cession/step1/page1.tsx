@@ -3,6 +3,7 @@ import axios from "axios";
 import router from "next/router";
 import { useSearchParams } from "@/src/hooks/useSearchParams";
 import { useViewNavigator } from "@/src/hooks/useViewNavigator";
+import { useAuthStore } from "@/src/store/useAuthStore";
 import Navbar from "../../../navbar/Navbar";
 import Sidebar from "../../../sidebar/Sidebar";
 import ProgressStepper from "../../../../components/ProgressStepper";
@@ -56,6 +57,7 @@ const apiURL = process.env.NEXT_PUBLIC_API_URL;
 export default function CessionStep1Page() {
   const searchParams = useSearchParams();
   const { currentView, navigateTo } = useViewNavigator("nouvelle-demande");
+  const { auth } = useAuthStore();
 
   const permisId = Number(searchParams?.get("permisId") ?? Number.NaN);
   const existingProcId = Number(searchParams?.get("id") ?? Number.NaN);
@@ -339,6 +341,7 @@ export default function CessionStep1Page() {
         `${apiURL}/api/procedures/cession/start`,
         {
           permisId,
+          utilisateurId: auth?.id,
           cedantActionnaireId: cedant.id_actionnaire,
           tauxCede,
           beneficiaries,

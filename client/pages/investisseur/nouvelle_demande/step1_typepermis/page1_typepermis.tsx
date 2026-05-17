@@ -49,7 +49,15 @@ interface TypePermis {
 }
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL ?? '';
-const SIMPLE_STEPS = ['Type & Cadastre', 'Localisation', 'Capacités',  'Documents', 'Facture', 'Paiement'];
+const SIMPLE_STEPS = [
+  'Type de permis',
+  "Identification ",
+  'Cadastre',
+  'Documents',
+  'Capacités',
+  'Facture',
+  'Paiement',
+];
 
 const START_ONBOARDING_STEPS: OnboardingStep[] = [
   {
@@ -81,7 +89,7 @@ const START_ONBOARDING_STEPS: OnboardingStep[] = [
     target: '[data-onboarding-id="start-next"]',
     title: 'Passer a l etape suivante',
     description:
-      'Cliquez sur Suivant pour creer la procedure et ouvrir directement la page Cadastre.',
+      "Cliquez sur Suivant pour creer la procedure et ouvrir l'etape Identification d'entreprise.",
     placement: 'top',
   },
 ];
@@ -137,13 +145,14 @@ export default function DemandeStart() {
   const isAuthReady = useAuthReady();
   const { currentView, navigateTo } = useViewNavigator('nouvelle-demande');
   const { resetLoading } = useLoading();
-    const { auth, isLoaded } = useAuthStore();
+  const { auth, isLoaded } = useAuthStore();
   
   const [permisOptions, setPermisOptions] = useState<TypePermis[]>([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [entryChoiceModalOpen, setEntryChoiceModalOpen] = useState(false);
 
   const [selectedPermisId, setSelectedPermisId] = useState<number | ''>('');
   const [selectedPermis, setSelectedPermis] = useState<TypePermis | null>(null);
@@ -154,6 +163,24 @@ export default function DemandeStart() {
   useEffect(() => {
     try { resetLoading(); } catch {}
   }, [resetLoading]);
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    const hasExistingProcedure = Boolean(router.query.id);
+    setEntryChoiceModalOpen(!hasExistingProcedure);
+  }, [router.isReady, router.query.id]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (!entryChoiceModalOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [entryChoiceModalOpen]);
 
   useEffect(() => {
     if (!isAuthReady) {
@@ -200,6 +227,7 @@ export default function DemandeStart() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (entryChoiceModalOpen) return;
     if (getHasSeenOnboarding()) return;
 
     const active = getOnboardingActive();
@@ -208,7 +236,7 @@ export default function DemandeStart() {
     if (active && !alreadySeen) {
       setShowOnboarding(true);
     }
-  }, []);
+  }, [entryChoiceModalOpen]);
 
   const effectivePermis = useMemo(() => {
     if (selectedPermis) {
@@ -282,11 +310,9 @@ export default function DemandeStart() {
 
     try {
       cleanLocalStorageForNewDemande();
-console.log('auth in start procedure', auth);
       const response = await axios.post(
         `${apiBase}/demandes`,
         {
-          id: auth?.id,
           id_typepermis: permis.id,
           objet_demande: 'Instruction initialisee',
           // Let backend set authoritative timestamps
@@ -311,9 +337,9 @@ console.log('auth in start procedure', auth);
         superficie_max: permis.superficie_max ?? null,
         duree_renouv: permis.duree_renouv,
       });
-// Navigate to step 1 page document
+      // Start the request workflow from Identification (step 2)
       if (idProc) {
-        await router.push(`/investisseur/nouvelle_demande/step5/page5?id=${idProc}`);
+        await router.push(`/investisseur/nouvelle_demande/step2/page2?id=${idProc}`);
       } else {
         toast.info('Demande creee, mais identifiant de procedure indisponible.');
       }
@@ -341,15 +367,64 @@ console.log('auth in start procedure', auth);
       <div className={styles.appContent}>
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles.mainContent}>
-          <div className={styles.headerRow}>
-            <h1 className={styles.pageTitle}>Choisissez votre type de permis</h1>
+          {entryChoiceModalOpen && (
+            <div className={styles.entryModalOverlay}>
+              <div className={styles.entryModalCard} role="dialog" aria-modal="true" aria-labelledby="entry-choice-title">
+                <div className={styles.entryModalHeader}>
+                  <span className={styles.entryModalBadge}>Nouvelle demande</span>
+                </div>
+                <h2 id="entry-choice-title" className={styles.entryModalTitle}>
+                  Que souhaitez-vous faire ?
+                </h2>
+                <p className={styles.entryModalText}>
+                  Choisissez le parcours le plus adapte a votre besoin. Vous pouvez revenir a tout moment.
+                </p>
+
+                <div className={styles.entryModalActions}>
+                  <button
+                    type="button"
+                    className={`${styles.entryActionButton} ${styles.entryActionPrimary}`}
+                    onClick={() => router.push('/investisseur/nouvelle-demande-posterieure')}
+                  >
+                    <span className={styles.entryActionLabel}>Faire une demande pour un permis existant</span>
+                    <span className={styles.entryActionHint}>Renouvellement, Cession, Transfert, etc.</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`${styles.entryActionButton} ${styles.entryActionSecondary}`}
+                    onClick={() => setEntryChoiceModalOpen(false)}
+                  >
+                    <span className={styles.entryActionLabel}>Faire une nouvelle demande initiale</span>
+                    <span className={styles.entryActionHint}>Continuer le parcours normal de création.</span>
+                  </button>
+                </div>
+
+                <div className={styles.entryModalFooter}>
+                  <button
+                    type="button"
+                    className={styles.entryDashboardButton}
+                    onClick={() => router.push('/investisseur/InvestorDashboard')}
+                  >
+                    Annuler et retour au Dashboard
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className={styles.topActions}>
             <button
               type="button"
-              className={styles.cancelLink}
+              className={styles.backDashboardButton}
               onClick={() => router.push('/investisseur/InvestorDashboard')}
             >
-              Annuler
+              Annuler et retour
             </button>
+          </div>
+
+          <div className={styles.headerRow}>
+            <h1 className={styles.pageTitle}>Choisissez votre type de permis</h1>
           </div>
 
           <div data-onboarding-id="start-progress">

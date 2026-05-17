@@ -7,6 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Mail, ArrowLeft, CheckCircle2, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
 import { getPostLoginPath } from '@/src/utils/roleNavigation';
+import { useAuthStore } from '@/src/store/useAuthStore';
 import styles from './VerifyEmail.module.css';
 
 const logo = '/anamlogo.png';
@@ -14,6 +15,7 @@ const logo = '/anamlogo.png';
 export default function VerifyEmailPage() {
   const router = useRouter();
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
+  const login = useAuthStore((s) => s.login);
 
   const emailQuery = typeof router.query.email === 'string' ? router.query.email : '';
   const [email, setEmail] = useState(emailQuery);
@@ -110,10 +112,28 @@ export default function VerifyEmailPage() {
         { email, code },
         { withCredentials: true },
       );
+      if (res.data?.token && res.data?.user) {
+        login(res.data);
+      }
       setIsSuccess(true);
       setInfo('Email vérifié avec succès.');
       setTimeout(() => {
         const user = res.data?.user;
+        const rawRoles = Array.isArray(user?.role)
+          ? user.role
+          : typeof user?.role === 'string'
+            ? user.role.split(',')
+            : Array.isArray(user?.roles)
+              ? user.roles
+              : typeof user?.roles === 'string'
+                ? user.roles.split(',')
+                : [];
+        const normalizedRoles = rawRoles.map((role: unknown) =>
+          String(role || '').trim().toLowerCase(),
+        );
+        const isSelfServiceUser = normalizedRoles.some((role: string) =>
+          ['investisseur', 'investor', 'user', 'utilisateur'].includes(role),
+        );
         const verified = Boolean(
           user?.isEntrepriseVerified ??
             user?.entrepriseVerified ??
@@ -123,13 +143,14 @@ export default function VerifyEmailPage() {
           user?.firstLoginAfterConfirmation ??
             user?.first_login_after_confirmation,
         );
-        router.push(
-          getPostLoginPath({
-            role: user?.role ?? user?.roles,
-            isEntrepriseVerified: verified,
-            shouldShowWelcome,
-          }),
-        );
+        const nextPath = isSelfServiceUser
+          ? '/investisseur/Identification/bienvenue'
+          : getPostLoginPath({
+              role: user?.role ?? user?.roles,
+              isEntrepriseVerified: verified,
+              shouldShowWelcome,
+            });
+        router.push(nextPath);
       }, 1500);
     } catch (err: any) {
       const message =

@@ -1,0 +1,94 @@
+<svg width="1200" height="780" viewBox="0 0 1200 780" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="108" y1="46" x2="1089" y2="726" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3A1A2E"/>
+      <stop offset="0.55" stop-color="#222538"/>
+      <stop offset="1" stop-color="#133842"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="154" y1="196" x2="986" y2="196" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D57BA8" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#58CEC0" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="mountain" x1="289" y1="361" x2="892" y2="666" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A24B74"/>
+      <stop offset="1" stop-color="#1B6D6B"/>
+    </linearGradient>
+    <radialGradient id="glowA" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(248 192) rotate(42.8) scale(276 204)">
+      <stop stop-color="#D881AF" stop-opacity="0.56"/>
+      <stop offset="1" stop-color="#D881AF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowB" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(955 576) rotate(-136.8) scale(244 188)">
+      <stop stop-color="#72E4D2" stop-opacity="0.48"/>
+      <stop offset="1" stop-color="#72E4D2" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur" x="0" y="0" width="1200" height="780" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="28"/>
+    </filter>
+  </defs>
+
+  <rect x="6" y="6" width="1188" height="768" rx="42" fill="url(#bg)"/>
+  <rect x="6" y="6" width="1188" height="768" rx="42" stroke="rgba(255,255,255,0.18)"/>
+
+  <g filter="url(#blur)">
+    <ellipse cx="268" cy="206" rx="240" ry="148" fill="url(#glowA)"/>
+    <ellipse cx="945" cy="575" rx="208" ry="136" fill="url(#glowB)"/>
+  </g>
+
+  <g opacity="0.26">
+    <path d="M90 126H1110" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M90 174H1110" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M90 222H1110" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M90 270H1110" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M90 318H1110" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M90 366H1110" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M90 414H1110" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M90 462H1110" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M90 510H1110" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M90 558H1110" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M90 606H1110" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M90 654H1110" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M124 92V688" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M204 92V688" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M284 92V688" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M364 92V688" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M444 92V688" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M524 92V688" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M604 92V688" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M684 92V688" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M764 92V688" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M844 92V688" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M924 92V688" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M1004 92V688" stroke="#FFFFFF" stroke-width="1"/>
+    <path d="M1084 92V688" stroke="#FFFFFF" stroke-width="1"/>
+  </g>
+
+  <rect x="154" y="146" width="834" height="8" rx="4" fill="url(#accent)"/>
+
+  <path d="M194 634L354 376L458 546L586 314L748 626L886 446L1012 634H194Z" fill="url(#mountain)" fill-opacity="0.9"/>
+  <path d="M194 634L354 376L458 546L586 314L748 626L886 446L1012 634" stroke="rgba(255,255,255,0.66)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <g opacity="0.94">
+    <circle cx="354" cy="376" r="10" fill="#F6EDF3"/>
+    <circle cx="586" cy="314" r="10" fill="#F6EDF3"/>
+    <circle cx="886" cy="446" r="10" fill="#C6FBF5"/>
+    <circle cx="748" cy="626" r="10" fill="#C6FBF5"/>
+  </g>
+
+  <g>
+    <rect x="220" y="206" width="236" height="144" rx="18" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.28)"/>
+    <text x="246" y="246" fill="#FAEFF5" font-size="24" font-family="Segoe UI, Arial" font-weight="700">ANAM</text>
+    <text x="246" y="278" fill="rgba(250,239,245,0.86)" font-size="16" font-family="Segoe UI, Arial">Investisseur Mines</text>
+    <text x="246" y="304" fill="rgba(250,239,245,0.72)" font-size="14" font-family="Segoe UI, Arial">Guichet Numerique</text>
+    <circle cx="418" cy="234" r="14" fill="#6CE2D0"/>
+    <circle cx="418" cy="234" r="6" fill="#1F6D66"/>
+  </g>
+
+  <g>
+    <rect x="758" y="188" width="242" height="160" rx="18" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.28)"/>
+    <path d="M806 290L846 252L886 274L934 228L960 250" stroke="#76E8D5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="846" cy="252" r="6" fill="#F3D3E4"/>
+    <circle cx="934" cy="228" r="6" fill="#F3D3E4"/>
+    <text x="804" y="230" fill="#F8EEF4" font-size="16" font-family="Segoe UI, Arial" font-weight="700">Suivi national</text>
+    <text x="804" y="255" fill="rgba(248,238,244,0.76)" font-size="13" font-family="Segoe UI, Arial">Demandes et permis</text>
+  </g>
+</svg>

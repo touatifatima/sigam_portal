@@ -845,24 +845,6 @@ useEffect(() => {
     });
   }, [zoneSelections, loadDairasForWilaya, loadCommunesForDaira]);
 
-// Activate Step 4 if needed
-  useActivateEtape({
-    idProc,
-    etapeNum: 4,
-    shouldActivate: currentStep === 4 && !activatedSteps.has(4) && isPageReady,
-    onActivationSuccess: (stepStatus: string) => {
-      if (stepStatus === 'TERMINEE') {
-        setActivatedSteps(prev => new Set(prev).add(4));
-        setHasActivatedStep4(true);
-        return;
-      }
-
-      setActivatedSteps(prev => new Set(prev).add(4));
-      setHasActivatedStep4(true);
-      setTimeout(() => setRefetchTrigger(prev => prev + 1), 500);
-    },
-  });
-
   // Fetch substances when famille or idDemande changes
   useEffect(() => {
     if (!idDemande) return;
@@ -914,6 +896,26 @@ useEffect(() => {
     );
     return byLabel?.id_etape ?? 4;
   }, [etapeIdForRoute, procedureData]);
+
+  useActivateEtape({
+    idProc,
+    etapeNum: etapeIdForThisPage ?? 0,
+    shouldActivate:
+      isPageReady &&
+      !!etapeIdForThisPage &&
+      !activatedSteps.has(etapeIdForThisPage ?? -1),
+    onActivationSuccess: (stepStatus: string) => {
+      if (!etapeIdForThisPage) return;
+      setActivatedSteps(prev => new Set(prev).add(etapeIdForThisPage));
+      if (stepStatus === 'TERMINEE') {
+        setHasActivatedStep4(true);
+        return;
+      }
+
+      setHasActivatedStep4(true);
+      setTimeout(() => setRefetchTrigger(prev => prev + 1), 500);
+    },
+  });
 
   const isStepSaved = useMemo(() => {
     if (!procedureData || !etapeIdForThisPage) return false;
@@ -1884,7 +1886,7 @@ const checkButtonConditions = () => {
       setRefetchTrigger((prev) => prev + 1);
       setSuccess('Donn?es enregistr?es avec succ?s !');
       setTimeout(() => setSuccess(null), 3000);
-      router.push(`/investisseur/nouvelle_demande/step3/page3?id=${idProc}`);
+      router.push(`/investisseur/nouvelle_demande/step5/page5?id=${idProc}`);
     } catch (err) {
       toast.error("Erreur lors de la sauvegarde de l'?tape");
       setEtapeMessage("Erreur lors de l'enregistrement de l'?tape.");
@@ -1899,7 +1901,7 @@ const checkButtonConditions = () => {
       toast.error('ID de procédure introuvable');
       return;
     }
-    router.push(`/investisseur/nouvelle_demande/step5/page5?id=${idProc}`)
+    router.push(`/investisseur/nouvelle_demande/step2/page2?id=${idProc}`)
   };
 
   const applyUtmToAllPoints = useCallback(() => {
@@ -2122,7 +2124,7 @@ const checkButtonConditions = () => {
               <ProgressStepper
                  phases={phases}
                  currentProcedureId={idProc}
-                 currentEtapeId={etapeIdForRoute ?? currentStep}
+                 currentEtapeId={etapeIdForThisPage ?? currentEtape?.id_etape ?? currentStep}
                  procedurePhases={procedureData.ProcedurePhase || []}
                  procedureTypeId={procedureTypeId}
                  procedureEtapes={procedureData.ProcedureEtape || []}

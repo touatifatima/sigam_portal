@@ -8,6 +8,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { SessionService } from '../session/session.service';
+import { NotificationsService } from 'src/notifications/notifications.service';
 import * as nodemailer from 'nodemailer';
 import { isIP } from 'net';
 import { createHash, randomBytes } from 'crypto';
@@ -52,6 +53,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private sessionService: SessionService,
+    private notificationsService: NotificationsService,
   ) {}
 
   private sessionLocks = new Map<string, Promise<any>>();
@@ -852,17 +854,6 @@ export class AuthService {
     if (!user.emailVerified) {
       return { user: null, error: 'EMAIL_NOT_VERIFIED' };
     }
-    const identificationState = await this.resolveIdentificationAccessState(
-      user.id,
-      Boolean(user.entreprise_verified),
-      user.detenteurId,
-    );
-    if (identificationState === 'REJECTED') {
-      return { user: null, error: 'IDENTIFICATION_REJECTED' };
-    }
-    if (identificationState === 'PENDING') {
-      return { user: null, error: 'IDENTIFICATION_PENDING' };
-    }
     return { user };
   }
 
@@ -1476,6 +1467,22 @@ export class AuthService {
         });
 
     await this.sendOtpEmail(normalizedEmail, body.Prenom, otpCode);
+
+    try {
+      const fullName = [String(body.nom || '').trim(), String(body.Prenom || '').trim()]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+      await this.notificationsService.createAdminNewAccountNotification({
+        createdUserId: Number(user.id),
+        email: normalizedEmail,
+        username: user.username,
+        roleName: existingRole.name,
+        fullName: fullName || null,
+      });
+    } catch (error) {
+      console.warn('Failed to create admin notification for account creation', error);
+    }
 
     return { message: 'Code envoyé', userId: user.id };
   }

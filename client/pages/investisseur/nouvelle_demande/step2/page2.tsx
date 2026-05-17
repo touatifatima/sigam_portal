@@ -34,6 +34,11 @@ type Nationalite = {
   libelle: string;
 };
 
+type StatutDetenteurValue =
+  | 'PERSONNE_MORALE_ALGERIENNE'
+  | 'PERSONNE_MORALE_ETRANGERE'
+  | 'PERSONNE_PHYSIQUE_ALGERIENNE';
+
 type Actionnaire = {
   id?: number;
   nom: string;
@@ -51,6 +56,7 @@ type SocieteData = {
     nom_fr: string;
     nom_ar: string;
     statut_id: number;
+    statut_detenteur: StatutDetenteurValue | '';
     tel: string;
     email: string;
     fax: string;
@@ -91,6 +97,7 @@ const initialData: SocieteData = {
     nom_fr: '',
     nom_ar: '',
     statut_id: 0,
+    statut_detenteur: '',
     tel: '',
     email: '',
     fax: '',
@@ -131,6 +138,24 @@ const qualitesRepresentant = [
   'Directeur Général',
   'Président Directeur Général',
   'Directeur',
+];
+
+const statutDetenteurOptions: Array<{
+  value: StatutDetenteurValue;
+  label: string;
+}> = [
+  {
+    value: 'PERSONNE_MORALE_ALGERIENNE',
+    label: 'Personne morale algerienne',
+  },
+  {
+    value: 'PERSONNE_MORALE_ETRANGERE',
+    label: 'Personne morale etrangere',
+  },
+  {
+    value: 'PERSONNE_PHYSIQUE_ALGERIENNE',
+    label: 'Personne physique algerienne',
+  },
 ];
 
 export default function Step2() {
@@ -247,6 +272,8 @@ export default function Step2() {
               nom_fr: demande.detenteur.nom_societeFR || '',
               nom_ar: demande.detenteur.nom_societeAR || '',
               statut_id: demande.detenteur.id_statutJuridique || 0,
+              statut_detenteur:
+                (demande.detenteur.statutDetenteur as StatutDetenteurValue | undefined) || '',
               tel: demande.detenteur.telephone || '',
               email: demande.detenteur.email || '',
               fax: demande.detenteur.fax || '',
@@ -353,18 +380,6 @@ export default function Step2() {
     }
   }, [checkRequiredData]);
 
-  useActivateEtape({
-    idProc,
-    etapeNum: 2,
-    shouldActivate: currentStep === 2 && !activatedSteps.has(2) && isPageReady,
-    onActivationSuccess: (stepStatus: string) => {
-      setActivatedSteps(prev => new Set(prev).add(2));
-      if (stepStatus !== 'TERMINEE') {
-        setTimeout(() => setRefetchTrigger(prev => prev + 1), 500);
-      }
-    },
-  });
-
   const phases: Phase[] = useMemo(() => {
     if (!procedureData?.ProcedurePhase) return [];
     return procedureData.ProcedurePhase
@@ -375,6 +390,55 @@ export default function Step2() {
         ordre: pp.ordre,
       }));
   }, [procedureData]);
+
+  const etapeIdForThisPage = useMemo(() => {
+    if (!procedureData) return null;
+    const pathname = 'investisseur/nouvelle_demande/step2/page2';
+    const normalize = (value?: string | null) =>
+      (value ?? '')
+        .replace(/^\/+/, '')
+        .replace(/\.(tsx|ts|jsx|js|html)$/i, '')
+        .trim()
+        .toLowerCase();
+    const target = normalize(pathname);
+    const phasesList = (procedureData.ProcedurePhase || []) as ProcedurePhase[];
+    const phaseEtapes = phasesList.flatMap((pp) => pp.phase?.etapes || []);
+    const byRoute = phaseEtapes.find((e: any) => {
+      const route = normalize(e.page_route);
+      return route === target || route.endsWith(target) || route.includes('step2/page2');
+    });
+    if (byRoute) return byRoute.id_etape;
+    const allEtapes = [
+      ...phaseEtapes,
+      ...((procedureData.ProcedureEtape || []).map((pe: any) => pe.etape).filter(Boolean) as any[]),
+    ];
+    const byLabel = allEtapes.find((e: any) =>
+      String(e?.lib_etape ?? '').toLowerCase().includes('identification'),
+    );
+    return byLabel?.id_etape ?? 2;
+  }, [procedureData]);
+
+  useEffect(() => {
+    if (etapeIdForThisPage && currentStep !== etapeIdForThisPage) {
+      setCurrentStep(etapeIdForThisPage);
+    }
+  }, [etapeIdForThisPage, currentStep]);
+
+  useActivateEtape({
+    idProc,
+    etapeNum: etapeIdForThisPage ?? 0,
+    shouldActivate:
+      isPageReady &&
+      !!etapeIdForThisPage &&
+      !activatedSteps.has(etapeIdForThisPage ?? -1),
+    onActivationSuccess: (stepStatus: string) => {
+      if (!etapeIdForThisPage) return;
+      setActivatedSteps(prev => new Set(prev).add(etapeIdForThisPage));
+      if (stepStatus !== 'TERMINEE') {
+        setTimeout(() => setRefetchTrigger(prev => prev + 1), 500);
+      }
+    },
+  });
 
   const totalParticipation = useMemo(() => {
     const representantTaux = parseFloat(formData.repLegal.taux_participation) || 0;
@@ -404,6 +468,7 @@ export default function Step2() {
     const infosValid =
       formData.infos.nom_fr.trim() !== '' &&
       formData.infos.statut_id > 0 &&
+      String(formData.infos.statut_detenteur || '').trim() !== '' &&
       !!formData.infos.id_pays &&
       formData.infos.tel.trim() !== '' &&
       formData.infos.email.trim() !== '' &&
@@ -431,8 +496,23 @@ export default function Step2() {
     return infosValid && repValid && rcValid && areActionnairesValid && isParticipationValid;
   }, [formData, areActionnairesValid, isParticipationValid]);
 
+  const entrepriseMissingRequiredFields = useMemo(() => {
+    const missing: string[] = [];
+
+    if (!formData.infos.nom_fr.trim()) missing.push('Nom societe (FR)');
+    if (!(formData.infos.statut_id > 0)) missing.push('Statut juridique');
+    if (!String(formData.infos.statut_detenteur || '').trim()) missing.push('Statut du detenteur');
+    if (!formData.infos.id_pays) missing.push('Pays');
+    if (!formData.infos.tel.trim()) missing.push('Telephone');
+    if (!formData.infos.email.trim()) missing.push('Email');
+    if (!formData.infos.id_nationalite) missing.push('Nationalite');
+    if (!formData.infos.adresse.trim()) missing.push('Adresse complete');
+
+    return missing;
+  }, [formData.infos]);
+
   const handlePrevious = () => {
-    router.push(`/investisseur/nouvelle_demande/step1/page1?id=${idProc}`);
+    router.push(`/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis?id=${idProc}`);
   };
 
   const handleNext = useCallback(async () => {
@@ -447,6 +527,10 @@ export default function Step2() {
       toast.error('ID proc?dure manquant.');
       return;
     }
+    if (!etapeIdForThisPage) {
+      toast.error("Etape introuvable. Verifiez le page_route en base (step2/page2).");
+      return;
+    }
 
     setIsSubmitting(true);
     setSavingEtape(true);
@@ -455,9 +539,9 @@ export default function Step2() {
 
     try {
       await saveIdentification();
-      await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/2`);
+      await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeIdForThisPage}`);
       setRefetchTrigger(prev => prev + 1);
-      await router.push(`/investisseur/nouvelle_demande/step3/page3?id=${idProc}`);
+      await router.push(`/investisseur/nouvelle_demande/step4/page4?id=${idProc}`);
     } catch (err) {
       console.error(err);
       setEtapeMessage("Erreur lors de l'enregistrement de l'?tape.");
@@ -473,6 +557,7 @@ export default function Step2() {
     savingEtape,
     isFormValid,
     idProc,
+    etapeIdForThisPage,
     saveIdentification,
     apiURL,
   ]);
@@ -658,7 +743,7 @@ export default function Step2() {
               <ProgressStepper
                 phases={phases}
                 currentProcedureId={idProc}
-                currentEtapeId={currentStep}
+                currentEtapeId={etapeIdForThisPage ?? currentStep}
                 procedurePhases={procedureData.ProcedurePhase || []}
                 procedureTypeId={procedureTypeId}
                 procedureEtapes={procedureData.ProcedureEtape || []}
@@ -700,6 +785,18 @@ export default function Step2() {
                     Informations sur l'Entreprise
                   </div>
                   <p className={styles.cardDescription}>Renseignements généraux de la société</p>
+                  {entrepriseMissingRequiredFields.length > 0 && (
+                    <div className={styles.requiredMissingHint}>
+                      <span className={styles.requiredMissingBadge}>
+                        {entrepriseMissingRequiredFields.length} champ
+                        {entrepriseMissingRequiredFields.length > 1 ? 's' : ''} requis manquant
+                        {entrepriseMissingRequiredFields.length > 1 ? 's' : ''}
+                      </span>
+                      <span className={styles.requiredMissingText}>
+                        {entrepriseMissingRequiredFields.join(' | ')}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className={styles.cardContent}>
                   <div className={styles.formGrid}>
@@ -772,6 +869,31 @@ export default function Step2() {
                         {statutsJuridiques.map(statut => (
                           <option key={statut.id_statutJuridique} value={statut.id_statutJuridique}>
                             {statut.code_statut} - {statut.statut_fr}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className={styles.inputGroup}>
+                      <label className={styles.label}>Statut du detenteur *</label>
+                      <select
+                        className={styles.select}
+                        value={formData.infos.statut_detenteur}
+                        onChange={(e) =>
+                          setFormData(prev => ({
+                            ...prev,
+                            infos: {
+                              ...prev.infos,
+                              statut_detenteur: e.target.value as StatutDetenteurValue | '',
+                            },
+                          }))
+                        }
+                        disabled={isLocked}
+                      >
+                        <option value="">SÃ©lectionner</option>
+                        {statutDetenteurOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
                           </option>
                         ))}
                       </select>
@@ -1509,7 +1631,13 @@ export default function Step2() {
               <button
                 className={layoutStyles.btnNext}
                 onClick={handleNext}
-                disabled={isSubmitting || isNavigating || savingEtape || isLocked || !isFormValid}
+                disabled={
+                  isSubmitting ||
+                  isNavigating ||
+                  savingEtape ||
+                  isLocked ||
+                  !isFormValid
+                }
               >
                 Suivante <FiChevronRight className={layoutStyles.btnIcon} />
               </button>

@@ -1,5 +1,5 @@
 // src/pages/Demande/Step8/Page8.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import styles from './cd7.module.css';
 import { useSearchParams } from '@/src/hooks/useSearchParams';
@@ -89,7 +89,6 @@ const [currentEtape, setCurrentEtape] = useState<{ id_etape: number } | null>(nu
 const [procedureTypeId, setProcedureTypeId] = useState<number | undefined>();
 const [refetchTrigger, setRefetchTrigger] = useState(0);
 const [hasActivatedStep7, setHasActivatedStep7] = useState(false); // Add flag for step 2
-  const [currentStep] = useState(7);
   const [activatedSteps, setActivatedSteps] = useState<Set<number>>(new Set());
     const [isPageReady, setIsPageReady] = useState(false);
       const [isLoading, setIsLoading] = useState(true);
@@ -138,54 +137,87 @@ useEffect(() => {
   fetchProcedureData();
 }, [idProc, refetchTrigger]);
 
-  useActivateEtape({
-    idProc,
-    etapeNum: 7,
-    shouldActivate: currentStep === 7 && !activatedSteps.has(7) && isPageReady,
-    onActivationSuccess: (stepStatus: string) => {
-      if (stepStatus === 'TERMINEE') {
-        setActivatedSteps(prev => new Set(prev).add(7));
-        setHasActivatedStep7(true);
-        return;
-      }
-
-      setActivatedSteps(prev => new Set(prev).add(7));
-      if (procedureData) {
-        const updatedData = { ...procedureData };
-        
-        if (updatedData.ProcedureEtape) {
-          const stepToUpdate = updatedData.ProcedureEtape.find(pe => pe.id_etape === 7);
-          if (stepToUpdate && stepStatus === 'EN_ATTENTE') {
-            stepToUpdate.statut = 'EN_COURS' as StatutProcedure;
-          }
-          setCurrentEtape({ id_etape: 7 });
-        }
-        
-        if (updatedData.ProcedurePhase) {
-          const phaseContainingStep7 = updatedData.ProcedurePhase.find(pp => 
-            pp.phase?.etapes?.some(etape => etape.id_etape === 7)
-          );
-          if (phaseContainingStep7 && stepStatus === 'EN_ATTENTE') {
-            phaseContainingStep7.statut = 'EN_COURS' as StatutProcedure;
-          }
-        }
-        
-        setProcedureData(updatedData);
-        setHasActivatedStep7(true);
-      }
-      
-      setTimeout(() => setRefetchTrigger(prev => prev + 1), 1000);
-    }
-  });
-
-
 const phases: Phase[] = procedureData?.ProcedurePhase 
   ? procedureData.ProcedurePhase
       .map((pp: ProcedurePhase) => pp.phase)
       .sort((a: Phase, b: Phase) => a.ordre - b.ordre)
   : [];
-  
-  // useActivateEtape({ idProc, etapeNum: 7, statutProc });
+
+  const etapeIdForThisPage = useMemo(() => {
+    if (!procedureData) return null;
+    const pathname = 'investisseur/nouvelle_demande/step7/page7';
+    const normalize = (value?: string | null) =>
+      (value ?? '')
+        .replace(/^\/+/, '')
+        .replace(/\.(tsx|ts|jsx|js|html)$/i, '')
+        .trim()
+        .toLowerCase();
+    const target = normalize(pathname);
+    const phasesList = (procedureData.ProcedurePhase || []) as ProcedurePhase[];
+    const phaseEtapes = phasesList.flatMap((pp) => pp.phase?.etapes || []);
+    const byRoute = phaseEtapes.find((e: any) => {
+      const route = normalize(e.page_route);
+      return route === target || route.endsWith(target) || route.includes('step7/page7');
+    });
+    if (byRoute) return byRoute.id_etape;
+
+    const allEtapes = [
+      ...phaseEtapes,
+      ...((procedureData.ProcedureEtape || []).map((pe: any) => pe.etape).filter(Boolean) as any[]),
+    ];
+    const byLabel = allEtapes.find((e: any) => {
+      const label = String(e?.lib_etape ?? '').toLowerCase();
+      return label.includes('comité') || label.includes('comite') || label.includes('direction');
+    });
+    return byLabel?.id_etape ?? null;
+  }, [procedureData]);
+
+  useEffect(() => {
+    if (etapeIdForThisPage && currentEtape?.id_etape !== etapeIdForThisPage) {
+      setCurrentEtape({ id_etape: etapeIdForThisPage });
+    }
+  }, [etapeIdForThisPage, currentEtape?.id_etape]);
+
+  useActivateEtape({
+    idProc,
+    etapeNum: etapeIdForThisPage ?? 0,
+    shouldActivate: isPageReady && !!etapeIdForThisPage && !activatedSteps.has(etapeIdForThisPage ?? -1),
+    onActivationSuccess: (stepStatus: string) => {
+      if (!etapeIdForThisPage) return;
+
+      setActivatedSteps(prev => new Set(prev).add(etapeIdForThisPage));
+      if (stepStatus === 'TERMINEE') {
+        setHasActivatedStep7(true);
+        return;
+      }
+
+      if (procedureData) {
+        const updatedData = { ...procedureData };
+
+        if (updatedData.ProcedureEtape) {
+          const stepToUpdate = updatedData.ProcedureEtape.find(pe => pe.id_etape === etapeIdForThisPage);
+          if (stepToUpdate && stepStatus === 'EN_ATTENTE') {
+            stepToUpdate.statut = 'EN_COURS' as StatutProcedure;
+          }
+          setCurrentEtape({ id_etape: etapeIdForThisPage });
+        }
+
+        if (updatedData.ProcedurePhase) {
+          const phaseContainingStep = updatedData.ProcedurePhase.find(pp =>
+            pp.phase?.etapes?.some(etape => etape.id_etape === etapeIdForThisPage)
+          );
+          if (phaseContainingStep && stepStatus === 'EN_ATTENTE') {
+            phaseContainingStep.statut = 'EN_COURS' as StatutProcedure;
+          }
+        }
+
+        setProcedureData(updatedData);
+        setHasActivatedStep7(true);
+      }
+
+      setTimeout(() => setRefetchTrigger(prev => prev + 1), 1000);
+    }
+  });
   const getDataUrlFromImage = async (src: string): Promise<string> => {
   const response = await fetch(src);
   const blob = await response.blob();
@@ -383,9 +415,15 @@ console.log('Procedure fetched:', detenteur?.data);
     setEtapeMessage(null);
 
     try {
-      await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/7`);
+      const etapeId = etapeIdForThisPage ?? currentEtape?.id_etape ?? null;
+      if (!etapeId) {
+        setEtapeMessage("Etape introuvable. Verifiez le page_route en base (step7/page7).");
+        return;
+      }
+
+      await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`);
       setEtapeMessage("?tape 7 enregistr?e avec succ?s !");
-      router.push(`/investisseur/nouvelle_demande/step8/page8?id=${idProc}`);
+      router.push(`/investisseur/nouvelle_demande/step8/Step8?id=${idProc}`);
     } catch (err) {
       console.error(err);
       setEtapeMessage("Erreur lors de l'enregistrement de l'?tape.");

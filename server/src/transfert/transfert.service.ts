@@ -353,6 +353,12 @@ export class TransfertService {
       throw new BadRequestException('permisId invalide.');
     }
 
+    const requestedUserId = Number(dto.utilisateurId);
+    const explicitRequesterUserId =
+      Number.isFinite(requestedUserId) && requestedUserId > 0
+        ? requestedUserId
+        : null;
+
     const result = await this.prisma.$transaction(async (tx) => {
       const permis = await tx.permisPortail.findUnique({
         where: { id: permisId },
@@ -430,9 +436,15 @@ export class TransfertService {
           id_commune: true,
         },
       });
-      if (!latestDemande?.utilisateurId) {
+      const requesterUserId =
+        explicitRequesterUserId ??
+        (Number.isFinite(Number(latestDemande?.utilisateurId)) &&
+        Number(latestDemande?.utilisateurId) > 0
+          ? Number(latestDemande?.utilisateurId)
+          : null);
+      if (!requesterUserId) {
         throw new BadRequestException(
-          'Impossible de déterminer l’utilisateur de la demande source.',
+          "Impossible de determiner l'utilisateur de la demande de transfert.",
         );
       }
 
@@ -453,14 +465,14 @@ export class TransfertService {
       const parsedDate = this.parseDate(dto.date_demande) ?? new Date();
       const createdDemande = await tx.demandePortail.create({
         data: {
-          utilisateurId: latestDemande.utilisateurId,
+          utilisateurId: requesterUserId,
           id_proc: newProcedure.id_proc,
-          id_sourceProc: latestDemande.id_proc ?? undefined,
+          id_sourceProc: latestDemande?.id_proc ?? undefined,
           id_typeProc: typeProc.id,
           id_typePermis: permis.id_typePermis,
-          id_wilaya: latestDemande.id_wilaya ?? undefined,
-          id_daira: latestDemande.id_daira ?? undefined,
-          id_commune: latestDemande.id_commune ?? undefined,
+          id_wilaya: latestDemande?.id_wilaya ?? undefined,
+          id_daira: latestDemande?.id_daira ?? undefined,
+          id_commune: latestDemande?.id_commune ?? undefined,
           code_demande: null,
           statut_demande: StatutProcedure.EN_COURS,
           date_demande: parsedDate,
@@ -535,7 +547,7 @@ export class TransfertService {
         id_transfert: demTransfert.id_transfert,
         id_permis: permisId,
         demande_code: generatedCode,
-        requester_user_id: latestDemande.utilisateurId,
+        requester_user_id: requesterUserId,
         existing: false,
       };
     });

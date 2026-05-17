@@ -27,6 +27,7 @@ export class ProcedureRenouvellementService {
     permisId: number,
     date_demande: string,
     statut: StatutProcedure,
+    utilisateurId?: number,
   ) {
     const now = new Date();
 
@@ -146,8 +147,13 @@ export class ProcedureRenouvellementService {
 
     const parsedDate = new Date(date_demande);
 
-    if (!initialDemande?.utilisateurId) {
-      throw new BadRequestException('utilisateurId introuvable pour la demande initiale.');
+    const requestedUserId = Number(utilisateurId);
+    const requesterUserId =
+      Number.isFinite(requestedUserId) && requestedUserId > 0
+        ? requestedUserId
+        : Number(initialDemande?.utilisateurId);
+    if (!Number.isFinite(requesterUserId) || requesterUserId <= 0) {
+      throw new BadRequestException('utilisateurId introuvable pour la demande de renouvellement.');
     }
     const detenteurId = Number(permis.id_detenteur);
     const resolvedDetenteurId =
@@ -155,7 +161,7 @@ export class ProcedureRenouvellementService {
 
     const newDemande = await this.prisma.demandePortail.create({
       data: {
-        utilisateurId: initialDemande.utilisateurId,
+        utilisateurId: requesterUserId,
         id_proc: newProcedure.id_proc,
         id_typePermis: permis.id_typePermis,
         id_typeProc: typeProc.id,
@@ -196,7 +202,7 @@ export class ProcedureRenouvellementService {
       await this.notificationsService.createAdminNewDemandeNotification({
         demandeId: newDemande.id_demande,
         demandeCode: generatedCode,
-        requesterUserId: initialDemande.utilisateurId,
+        requesterUserId,
       });
     } catch (error) {
       console.warn(

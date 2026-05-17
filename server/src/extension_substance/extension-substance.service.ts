@@ -133,7 +133,7 @@ export class ExtensionSubstanceService {
     return [];
   }
 
-  async start(permisId: number, date_demande?: string) {
+  async start(permisId: number, date_demande?: string, utilisateurId?: number) {
     if (!Number.isFinite(permisId)) {
       throw new BadRequestException('permisId invalide');
     }
@@ -187,9 +187,14 @@ export class ExtensionSubstanceService {
           return db - da;
         })[0] ?? null;
 
-    if (!latestDemande?.utilisateurId) {
+    const requestedUserId = Number(utilisateurId);
+    const requesterUserId =
+      Number.isFinite(requestedUserId) && requestedUserId > 0
+        ? requestedUserId
+        : Number(latestDemande?.utilisateurId);
+    if (!Number.isFinite(requesterUserId) || requesterUserId <= 0) {
       throw new BadRequestException(
-        'utilisateurId introuvable sur la demande liée au permis.',
+        'utilisateurId introuvable pour la demande d extension substances.',
       );
     }
 
@@ -215,13 +220,13 @@ export class ExtensionSubstanceService {
 
     const newDemande = await this.prisma.demandePortail.create({
       data: {
-        utilisateurId: latestDemande.utilisateurId,
+        utilisateurId: requesterUserId,
         id_proc: newProcedure.id_proc,
         id_typePermis: permis.id_typePermis,
         id_typeProc: typeProc.id,
-        id_wilaya: latestDemande.id_wilaya ?? undefined,
-        id_daira: latestDemande.id_daira ?? undefined,
-        id_commune: latestDemande.id_commune ?? undefined,
+        id_wilaya: latestDemande?.id_wilaya ?? undefined,
+        id_daira: latestDemande?.id_daira ?? undefined,
+        id_commune: latestDemande?.id_commune ?? undefined,
         code_demande: null,
         statut_demande: 'EN_COURS',
         date_demande: parsedDate,
@@ -273,7 +278,7 @@ export class ExtensionSubstanceService {
       await this.notificationsService.createAdminNewDemandeNotification({
         demandeId: newDemande.id_demande,
         demandeCode: generatedCode,
-        requesterUserId: latestDemande.utilisateurId,
+        requesterUserId,
       });
     } catch (error) {
       console.warn(
@@ -461,3 +466,4 @@ export class ExtensionSubstanceService {
     return this.getSubstancesForStep1(procId);
   }
 }
+

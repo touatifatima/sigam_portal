@@ -874,25 +874,6 @@ export default function CadastrePage() {
   }, [coordSource, provisionalPoints, validatedPoints]);
 
   
-
-
-  useActivateEtape({
-    idProc,
-    etapeNum: 5,
-    shouldActivate: currentStep === 5 && !activatedSteps.has(5),
-    onActivationSuccess: (stepStatus: string) => {
-      if (stepStatus === 'TERMINEE') {
-        setActivatedSteps(prev => new Set(prev).add(5));
-        setHasActivatedStep5(true);
-        return;
-      }
-
-      setActivatedSteps(prev => new Set(prev).add(5));
-      setHasActivatedStep5(true);
-      setTimeout(() => setRefetchTrigger(prev => prev + 1), 500);
-    }
-  });
-
   const { phases: stepperPhases, etapeIdForRoute } = useStepperPhases(procedureData, apiURL, 'investisseur/nouvelle_demande/step5/page5');
   const fallbackPhases: Phase[] = procedureData?.ProcedurePhase
     ? procedureData.ProcedurePhase.slice().sort((a: ProcedurePhase, b: ProcedurePhase) => a.ordre - b.ordre).map((pp: ProcedurePhase) => ({ ...pp.phase, ordre: pp.ordre }))
@@ -926,6 +907,25 @@ export default function CadastrePage() {
     );
     return byLabel?.id_etape ?? 5;
   }, [etapeIdForRoute, procedureData]);
+
+  useActivateEtape({
+    idProc,
+    etapeNum: etapeIdForThisPage ?? 0,
+    shouldActivate:
+      !!etapeIdForThisPage &&
+      !activatedSteps.has(etapeIdForThisPage ?? -1),
+    onActivationSuccess: (stepStatus: string) => {
+      if (!etapeIdForThisPage) return;
+      setActivatedSteps(prev => new Set(prev).add(etapeIdForThisPage));
+      if (stepStatus === 'TERMINEE') {
+        setHasActivatedStep5(true);
+        return;
+      }
+
+      setHasActivatedStep5(true);
+      setTimeout(() => setRefetchTrigger(prev => prev + 1), 500);
+    }
+  });
 
   const isStepSaved = useMemo(() => {
     if (!procedureData || !etapeIdForThisPage) return false;
@@ -1393,7 +1393,7 @@ export default function CadastrePage() {
       setRefetchTrigger((prev) => prev + 1);
       setSuccess('Étape 5 enregistrée avec succès !');
       setTimeout(() => setSuccess(null), 3000);
-      router.push(`/investisseur/nouvelle_demande/step4/page4?id=${idProc}`);
+      router.push(`/investisseur/nouvelle_demande/step1/page1?id=${idProc}`);
     } catch (err) {
       console.error('Erreur étape', err);
       setError("Erreur lors de l'enregistrement de l'étape");
@@ -1409,7 +1409,7 @@ export default function CadastrePage() {
       setTimeout(() => setError(null), 4000);
       return;
     }
-    router.push(`/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis?id=${idProc}`);
+    router.push(`/investisseur/nouvelle_demande/step4/page4?id=${idProc}`);
   };
 
   const exportData = () => {
@@ -1716,7 +1716,7 @@ const handleMapClick = useCallback((x: number, y: number) => {
                 <ProgressStepper
                   phases={phases}
                   currentProcedureId={idProc}
-                  currentEtapeId={etapeIdForRoute ?? currentEtape?.id_etape ?? currentStep}
+                  currentEtapeId={etapeIdForThisPage ?? currentEtape?.id_etape ?? currentStep}
                   procedurePhases={procedureData.ProcedurePhase || []}
                   procedureTypeId={procedureTypeId}
                   procedureEtapes={procedureData.ProcedureEtape || []}
@@ -2010,7 +2010,7 @@ const handleMapClick = useCallback((x: number, y: number) => {
               <ProgressStepper
                  phases={phases}
                  currentProcedureId={idProc}
-                 currentEtapeId={etapeIdForRoute ?? currentEtape?.id_etape ?? currentStep}
+                 currentEtapeId={etapeIdForThisPage ?? currentEtape?.id_etape ?? currentStep}
                  procedurePhases={procedureData.ProcedurePhase || []}
                  procedureTypeId={procedureTypeId}
                  procedureEtapes={procedureData.ProcedureEtape || []}

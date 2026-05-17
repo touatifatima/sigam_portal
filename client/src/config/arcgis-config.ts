@@ -18,6 +18,32 @@ try {
     .forEach(h => { if (!cors.includes(h)) cors.push(h); });
 } catch {}
 
+// Filter noisy SDK warnings that don't impact runtime behavior in our app.
+// Keep real errors visible.
+try {
+  const logCfg = (esriConfig as any).log;
+  if (logCfg && !logCfg.__sigamFiltered) {
+    logCfg.interceptors = logCfg.interceptors || [];
+    logCfg.interceptors.push((_level: string, module: string, ...args: unknown[]) => {
+      const msg = [module, ...args]
+        .map((part) => {
+          if (typeof part === 'string') return part;
+          if (part && typeof part === 'object' && 'message' in (part as Record<string, unknown>)) {
+            return String((part as Record<string, unknown>).message);
+          }
+          return '';
+        })
+        .join(' ')
+        .toLowerCase();
+
+      if (msg.includes('references big-integer field')) return true;
+      if (msg.includes('font avenir-next-bold is not available on the web')) return true;
+      return false;
+    });
+    logCfg.__sigamFiltered = true;
+  }
+} catch {}
+
 // Fallback to CDN assets if local assets are missing
 // Optionally, you can set a fixed locale to reduce t9n lookups like `*_en.json`.
 // esriConfig.locale = 'en';

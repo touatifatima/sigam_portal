@@ -17,9 +17,18 @@ export const useActivateEtape = ({
 }: UseActivateEtapeOptions) => {
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
   const hasActivated = useRef(false);
+  const lastActivationKey = useRef<string>('');
 
   useEffect(() => {
-    if (!shouldActivate || !idProc || hasActivated.current) return;
+    const key = `${idProc ?? 'none'}:${etapeNum}`;
+    if (lastActivationKey.current !== key) {
+      hasActivated.current = false;
+      lastActivationKey.current = key;
+    }
+  }, [idProc, etapeNum]);
+
+  useEffect(() => {
+    if (!shouldActivate || !idProc || !etapeNum || etapeNum <= 0 || hasActivated.current) return;
 
     console.log(`Attempting to activate step ${etapeNum} in procedure ${idProc}`);
 

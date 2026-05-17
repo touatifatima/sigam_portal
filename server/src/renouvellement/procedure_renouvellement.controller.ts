@@ -3,10 +3,13 @@
   Body,
   Controller,
   Get,
+  HttpException,
+  HttpStatus,
   NotFoundException,
   Param,
   Post,
   Query,
+  Req,
   ValidationPipe,
 } from '@nestjs/common';
 import { ProcedureRenouvellementService } from './procedure_renouvellemnt.service';
@@ -14,6 +17,7 @@ import { CreateRenewalDto } from './create-renouvellement.dto';
 import { PaymentService } from 'src/demandes/paiement/payment.service';
 import { StatutProcedure } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { SessionService } from 'src/session/session.service';
 
 @Controller('api/procedures')
 export class ProcedureRenouvellementController {
@@ -21,7 +25,32 @@ export class ProcedureRenouvellementController {
     private readonly proceduresService: ProcedureRenouvellementService,
     private readonly paymentService: PaymentService,
     private readonly prisma: PrismaService,
+    private readonly sessionService: SessionService,
   ) {}
+
+  private extractAuthToken(req: any): string | null {
+    const cookieToken = req?.cookies?.auth_token;
+    if (cookieToken) return cookieToken;
+
+    const authHeader = req?.headers?.authorization;
+    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      return authHeader.slice('Bearer '.length).trim();
+    }
+    return null;
+  }
+
+  private async resolveAuthenticatedUserId(req: any): Promise<number> {
+    const token = this.extractAuthToken(req);
+    if (!token) {
+      throw new HttpException('Non authentifie', HttpStatus.UNAUTHORIZED);
+    }
+    const session = await this.sessionService.validateSession(token);
+    const userId = session?.user?.id ?? session?.userId;
+    if (!userId) {
+      throw new HttpException('Session invalide', HttpStatus.UNAUTHORIZED);
+    }
+    return Number(userId);
+  }
 
   @Get(':id/renouvellement')
   async getRenewalData(@Param('id') id: string) {
@@ -87,11 +116,13 @@ export class ProcedureRenouvellementController {
   }
 
   @Post('renouvellement/start')
-  async startRenewal(@Body() dto: CreateRenewalDto) {
+  async startRenewal(@Req() req: any, @Body() dto: CreateRenewalDto) {
+    const userId = await this.resolveAuthenticatedUserId(req);
     return this.proceduresService.startRenewalWithOriginalData(
       dto.permisId,
       dto.date_demande,
       StatutProcedure.EN_COURS,
+      userId,
     );
   }
 
@@ -164,5 +195,3 @@ export class ProcedureRenouvellementController {
     return this.proceduresService.getPermisForProcedure(+id);
   }
 }
-
-

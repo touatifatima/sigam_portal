@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useSearchParams } from '@/src/hooks/useSearchParams';
 import axios from 'axios';
 import dynamic from 'next/dynamic';
@@ -40,7 +40,6 @@ const Step10GeneratePermis = () => {
   const [codeDemande, setCodeDemande] = useState<string | null>(null);
   const [statutProc, setStatutProc] = useState<string | undefined>(undefined);
   const { currentView, navigateTo } = useViewNavigator("nouvelle-demande");
-  const currentStep = 8;
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [savingEtape, setSavingEtape] = useState(false);
@@ -91,24 +90,6 @@ useEffect(() => {
   fetchProcedureData();
 }, [idProc, refetchTrigger]);
 
-
-  useActivateEtape({
-    idProc,
-    etapeNum: 8,
-    shouldActivate: currentStep === 8 && !activatedSteps.has(8) && isPageReady,
-    onActivationSuccess: (stepStatus: string) => {
-      if (stepStatus === 'TERMINEE') {
-        setActivatedSteps(prev => new Set(prev).add(8));
-        setHasActivatedStep8(true);
-        return;
-      }
-
-      setActivatedSteps(prev => new Set(prev).add(8));
-      setHasActivatedStep8(true);
-      setTimeout(() => setRefetchTrigger(prev => prev + 1), 500);
-    }
-  });
-
 const phases: Phase[] = procedureData?.ProcedurePhase 
   ? procedureData.ProcedurePhase
       .slice()
@@ -118,6 +99,59 @@ const phases: Phase[] = procedureData?.ProcedurePhase
         ordre: pp.ordre,
       }))
   : [];
+
+  const etapeIdForThisPage = useMemo(() => {
+    if (!procedureData) return null;
+    const pathname = 'investisseur/nouvelle_demande/step8/Step8';
+    const normalize = (value?: string | null) =>
+      (value ?? '')
+        .replace(/^\/+/, '')
+        .replace(/\.(tsx|ts|jsx|js|html)$/i, '')
+        .trim()
+        .toLowerCase();
+    const target = normalize(pathname);
+    const phasesList = (procedureData.ProcedurePhase || []) as ProcedurePhase[];
+    const phaseEtapes = phasesList.flatMap((pp) => pp.phase?.etapes || []);
+    const byRoute = phaseEtapes.find((e: any) => {
+      const route = normalize(e.page_route);
+      return route === target || route.endsWith(target) || route.includes('step8/step8');
+    });
+    if (byRoute) return byRoute.id_etape;
+
+    const allEtapes = [
+      ...phaseEtapes,
+      ...((procedureData.ProcedureEtape || []).map((pe: any) => pe.etape).filter(Boolean) as any[]),
+    ];
+    const byLabel = allEtapes.find((e: any) => {
+      const label = String(e?.lib_etape ?? '').toLowerCase();
+      return label.includes('génération') || label.includes('generation') || label.includes('permis');
+    });
+    return byLabel?.id_etape ?? null;
+  }, [procedureData]);
+
+  useEffect(() => {
+    if (etapeIdForThisPage && currentEtape?.id_etape !== etapeIdForThisPage) {
+      setCurrentEtape({ id_etape: etapeIdForThisPage });
+    }
+  }, [etapeIdForThisPage, currentEtape?.id_etape]);
+
+  useActivateEtape({
+    idProc,
+    etapeNum: etapeIdForThisPage ?? 0,
+    shouldActivate: isPageReady && !!etapeIdForThisPage && !activatedSteps.has(etapeIdForThisPage ?? -1),
+    onActivationSuccess: (stepStatus: string) => {
+      if (!etapeIdForThisPage) return;
+
+      setActivatedSteps(prev => new Set(prev).add(etapeIdForThisPage));
+      if (stepStatus === 'TERMINEE') {
+        setHasActivatedStep8(true);
+        return;
+      }
+
+      setHasActivatedStep8(true);
+      setTimeout(() => setRefetchTrigger(prev => prev + 1), 500);
+    }
+  });
 
 
 
@@ -186,20 +220,10 @@ const phases: Phase[] = procedureData?.ProcedurePhase
     setEtapeMessage(null);
 
     try {
-      let etapeId = 8;
-
-      try {
-        if (procedureData?.ProcedurePhase) {
-          const pathname = window.location.pathname.replace(/^\/+/, '');
-          const phasesList = (procedureData.ProcedurePhase || []) as ProcedurePhase[];
-          const allEtapes = phasesList.flatMap(pp => pp.phase?.etapes ?? []);
-          const match = allEtapes.find((e: any) => e.page_route === pathname);
-          if (match?.id_etape != null) {
-            etapeId = match.id_etape;
-          }
-        }
-      } catch {
-        // fallback to default etapeId
+      const etapeId = etapeIdForThisPage ?? currentEtape?.id_etape ?? null;
+      if (!etapeId) {
+        setEtapeMessage("Etape introuvable. Verifiez le page_route en base (step8/Step8).");
+        return;
       }
 
       await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`);
