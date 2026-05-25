@@ -733,9 +733,9 @@ const DemandeDetails = () => {
       const bodyWidth = pageWidth - marginX * 2;
       let currentY = 40;
 
-      doc.setFillColor(125, 38, 74);
+      doc.setFillColor(30, 41, 59);
       doc.rect(0, 0, pageWidth, 32, "F");
-      doc.setFillColor(42, 157, 143);
+      doc.setFillColor(22, 101, 52);
       doc.rect(0, 32, pageWidth, 2, "F");
 
       if (logoDataUrl) {
@@ -765,11 +765,13 @@ const DemandeDetails = () => {
           doc.addPage();
           currentY = 18;
         }
-        doc.setFillColor(234, 247, 245);
+        doc.setFillColor(241, 245, 249);
         doc.roundedRect(marginX, currentY - 4, bodyWidth, 8, 2, 2, "F");
-        doc.setTextColor(93, 31, 58);
+        doc.setFillColor(22, 101, 52);
+        doc.roundedRect(marginX, currentY - 4, 2.4, 8, 1, 1, "F");
+        doc.setTextColor(15, 23, 42);
         doc.setFontSize(11);
-        doc.text(title, marginX + 2, currentY + 1);
+        doc.text(title, marginX + 5, currentY + 1);
         currentY += 8;
       };
 
@@ -781,16 +783,21 @@ const DemandeDetails = () => {
           body,
           theme: "grid",
           headStyles: {
-            fillColor: [42, 157, 143],
+            fillColor: [30, 41, 59],
             textColor: [255, 255, 255],
             fontSize: 9,
+            lineColor: [203, 213, 225],
+            lineWidth: 0.2,
           },
           styles: {
             fontSize: 8.5,
             cellPadding: 2.2,
-            textColor: [39, 39, 42],
+            textColor: [30, 41, 59],
+            lineColor: [226, 232, 240],
+            lineWidth: 0.2,
           },
-          alternateRowStyles: { fillColor: [248, 251, 250] },
+          bodyStyles: { fillColor: [255, 255, 255] },
+          alternateRowStyles: { fillColor: [248, 250, 252] },
         });
         currentY = ((doc as any).lastAutoTable?.finalY || currentY) + 6;
       };

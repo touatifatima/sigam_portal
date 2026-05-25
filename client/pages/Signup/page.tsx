@@ -262,7 +262,7 @@ export default function Register() {
           AGENCE NATIONALE DES <br />
           ACTIVITEES MINIAIRES
         </h1>
-        <p className={styles.subtitle}>Rejoignez la plateforme POM</p>
+        <p className={styles.subtitle}>Rejoignez la plateforme GUAM</p>
       </div>
 
       {/* SECTION DROITE */}

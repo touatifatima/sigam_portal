@@ -246,7 +246,7 @@ export default function Dashboard() {
           <div className={styles.heroOverlay} />
           <div className={styles.heroTop}>
             <div className={styles.heroContent}>
-              <h1 className={styles.heroTitle}>Mon Espace Investisseur</h1>
+              <h1 className={styles.heroTitle}> Guichet Unique Minier</h1>
               <p className={styles.heroSubtitle}>Bienvenue, {displayName}</p>
               <div className={styles.roleBadge}>
                 <CheckCircle2 size={16} />
@@ -285,13 +285,7 @@ export default function Dashboard() {
                 <Bell size={17} />
                 Notifications
               </button>
-              <button
-                className={styles.ghostAction}
-                onClick={() => navigate("/carte/carte_public")}
-              >
-                <Map size={17} />
-                Carte SIG
-              </button>
+              
             </div>
           </div>
         </section>

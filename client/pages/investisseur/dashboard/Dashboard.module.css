@@ -45,32 +45,35 @@
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.34);
   box-shadow: 0 28px 56px rgba(46, 17, 42, 0.28);
-  background: linear-gradient(132deg, #652d4f 0%, #4e2540 44%, #341c2f 100%);
+  background: #2c1726;
   min-height: 238px;
 }
 
 .hero::before {
   content: "";
   position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(140% 160% at 8% 6%, rgba(240, 137, 94, 0.26), transparent 52%),
-    radial-gradient(96% 130% at 92% 8%, rgba(134, 58, 102, 0.34), transparent 56%),
-    linear-gradient(95deg, rgba(16, 10, 22, 0.56) 4%, rgba(42, 19, 35, 0.38) 44%, rgba(24, 10, 24, 0.54) 100%);
+  inset: -12px;
+  background: url("../../../src/assets/hero-slide-2.jpg") center / cover no-repeat;
+  filter: blur(3px) saturate(1.08);
+  transform: scale(1.02);
+  z-index: 0;
 }
 
 .heroOverlay {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(90% 120% at 20% 80%, rgba(23, 191, 142, 0.15), transparent 64%),
-    linear-gradient(120deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0));
+    linear-gradient(96deg, rgba(18, 16, 25, 0.8) 0%, rgba(42, 22, 35, 0.52) 48%, rgba(32, 19, 27, 0.28) 100%),
+    radial-gradient(120% 150% at 8% 8%, rgba(240, 137, 94, 0.2), transparent 54%),
+    radial-gradient(90% 120% at 20% 80%, rgba(23, 191, 142, 0.14), transparent 64%),
+    linear-gradient(180deg, rgba(15, 16, 25, 0.1), rgba(15, 16, 25, 0.42));
   pointer-events: none;
+  z-index: 1;
 }
 
 .heroTop {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   min-height: 198px;
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(510px, 1fr);

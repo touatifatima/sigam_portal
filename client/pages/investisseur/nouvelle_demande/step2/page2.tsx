@@ -733,7 +733,7 @@ export default function Step2() {
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={layoutStyles.mainContent}>
           <div className={layoutStyles.breadcrumb}>
-            <span>POM</span>
+            <span>GUAM</span>
             <FiChevronRight className={layoutStyles.breadcrumbArrow} />
             <span>Identification</span>
           </div>

@@ -531,7 +531,7 @@ export default function Navbar() {
     >
       <div className={styles['navbar-header']}>
         <div className={styles['app-logo']}>
-          <span>POM</span>
+          <span>GUAM</span>
         </div>
       </div>
 
@@ -544,49 +544,6 @@ export default function Navbar() {
               </Link>
             ))}
           </div>
-        )}
-
-        {!isRestrictedInvestisseur && (
-          <Link
-            href="/carte/carte_public"
-            className={styles['nav-map-link']}
-            title="Ouvrir la carte publique"
-          >
-            <MapIcon size={16} />
-            <span>Carte Publique</span>
-          </Link>
-        )}
-
-        {!isRestrictedInvestisseur && (isInvestisseur || isCadastre) && (
-          <Link
-            href={precheckHref}
-            className={styles['nav-precheck-cta']}
-            title="Verification prealable"
-          >
-            Verification prealable
-          </Link>
-        )}
-
-        {isInvestisseur && !isRestrictedInvestisseur && (
-          <Link
-            href="/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis"
-            className={`${styles['nav-cta']} ${
-              canCreateDemande ? '' : styles['nav-cta-disabled']
-            }`}
-            onClick={(event) => {
-              if (!canCreateDemande) {
-                event.preventDefault();
-              }
-            }}
-            aria-disabled={!canCreateDemande}
-            title={
-              canCreateDemande
-                ? 'Nouvelle demande'
-                : "Completez l'identification pour continuer"
-            }
-          >
-            Nouvelle Demande
-          </Link>
         )}
 
         {!isRestrictedInvestisseur && (
