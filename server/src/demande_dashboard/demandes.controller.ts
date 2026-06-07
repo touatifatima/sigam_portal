@@ -1,4 +1,14 @@
-import { Controller, Get, Header, NotFoundException, Param, Query, Res } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  Header,
+  NotFoundException,
+  Param,
+  ParseIntPipe,
+  Query,
+  Res,
+} from '@nestjs/common';
 import { DemandesService } from './demandes.service';
 import { Response } from 'express';
 
@@ -113,5 +123,10 @@ export class DemandesController {
       throw new NotFoundException('Demande introuvable');
     }
     return this.service.getDemandeById(resolvedId);
+  }
+
+  @Delete(':id')
+  async remove(@Param('id', ParseIntPipe) id: number) {
+    return this.service.deleteDemandeAndRelatedData(id);
   }
 }

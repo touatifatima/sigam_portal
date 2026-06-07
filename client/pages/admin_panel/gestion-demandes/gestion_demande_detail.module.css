@@ -367,6 +367,27 @@
   font-weight: 700;
 }
 
+.docStatusSuccess {
+  background: #ecfdf3;
+  color: #137a43;
+  border: 1px solid #b9e4c7;
+  font-weight: 700;
+}
+
+.docStatusWarning {
+  background: #fff7e8;
+  color: #b46b00;
+  border: 1px solid #f2d49b;
+  font-weight: 700;
+}
+
+.docStatusDanger {
+  background: #fff1f2;
+  color: #b42318;
+  border: 1px solid #f0c5c8;
+  font-weight: 700;
+}
+
 .paymentList {
   display: grid;
   gap: 0.4rem;
@@ -475,6 +496,668 @@
   .docRow {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+.complementLoading,
+.complementError {
+  border-radius: 10px;
+  padding: 0.55rem 0.65rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.complementLoading {
+  background: #f6f0fb;
+  border: 1px solid #e4d6f0;
+  color: #664877;
+}
+
+.complementError {
+  background: #fff2f2;
+  border: 1px solid #f2c5c9;
+  color: #b33f4d;
+}
+
+.complementDocsPanel {
+  max-height: 44vh;
+  overflow: auto;
+  border: 1px solid #ecdceb;
+  border-radius: 12px;
+  background: #fcfbfd;
+  padding: 0.55rem;
+  display: grid;
+  gap: 0.55rem;
+  margin-bottom: 0.7rem;
+}
+
+.complementDocRow {
+  border: 1px solid #e7d9e5;
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.58rem 0.62rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.complementDocHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.complementDocHead p {
+  margin: 0;
+  color: #3c2c42;
+  font-weight: 800;
+  font-size: 0.86rem;
+}
+
+.complementDocHead small {
+  display: block;
+  margin-top: 0.15rem;
+  color: #7a6880;
+  font-size: 0.75rem;
+}
+
+.docHint {
+  color: #8b3a62 !important;
+  font-weight: 700;
+}
+
+.complementDecisionGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.complementDecisionGroup label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  color: #4d3b54;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.complementProblemsPanel {
+  border: 1px solid #ecdfe8;
+  border-radius: 10px;
+  background: #fefcff;
+  padding: 0.52rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.complementProblemGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 0.5rem;
+}
+
+.complementProblemGrid label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: #513f57;
+}
+
+.complementProblemsPanel textarea {
+  min-height: 74px;
+}
+
+.complementMetaGrid {
+  margin: 0 0 0.65rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.complementField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.24rem;
+}
+
+.complementField span {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #6f5b75;
+}
+
+.complementField input,
+.complementField textarea {
+  border: 1px solid #d8c4d6;
+  border-radius: 9px;
+  background: #fff;
+  color: #3f2d44;
+  font: inherit;
+  font-size: 0.84rem;
+  padding: 0.52rem 0.58rem;
+}
+
+.complementFieldFull {
+  grid-column: 1 / -1;
+}
+
+.complementSection {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.complementStateBanner {
+  border-radius: 15px;
+  border: 1px solid #eadce8;
+  padding: 0.85rem 0.95rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.complementStatePending {
+  background: linear-gradient(180deg, #fff9ef 0%, #fffdf8 100%);
+  border-color: #f3ddab;
+}
+
+.complementStateSuccess {
+  background: linear-gradient(180deg, #effaf3 0%, #fbfffd 100%);
+  border-color: #c8ead3;
+}
+
+.complementStateHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.complementStateHeader h4 {
+  margin: 0;
+  color: #3f2d43;
+  font-size: 0.98rem;
+  font-weight: 800;
+}
+
+.complementStateBanner p {
+  margin: 0;
+  color: #5d5567;
+  line-height: 1.55;
+}
+
+.complementSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.complementSummaryCard {
+  border: 1px solid #eadce8;
+  border-radius: 13px;
+  padding: 0.75rem 0.82rem;
+  background: linear-gradient(180deg, #fff 0%, #fcf8fc 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.complementSummaryCard span {
+  color: #7d6984;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.complementSummaryCard strong {
+  color: #35283a;
+  font-size: 0.92rem;
+}
+
+.complementActionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.complementBatchPanel {
+  border: 1px solid #d8e7dc;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at top right, rgba(34, 197, 94, 0.12), transparent 32%),
+    linear-gradient(180deg, #f7fff9 0%, #ffffff 100%);
+  padding: 0.9rem 0.95rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.complementBatchHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.complementBatchHeader h4 {
+  margin: 0 0 0.18rem;
+  color: #234335;
+  font-size: 0.97rem;
+  font-weight: 800;
+}
+
+.complementBatchHeader p {
+  margin: 0;
+  color: #5d6e64;
+  font-size: 0.85rem;
+}
+
+.complementBatchNote {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.complementBatchNote span {
+  color: #456051;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.complementBatchNote textarea {
+  border: 1px solid #cde0d2;
+  border-radius: 12px;
+  background: #fff;
+  padding: 0.7rem 0.8rem;
+  font: inherit;
+  color: #304338;
+  resize: vertical;
+}
+
+.complementBatchNote textarea:focus {
+  outline: none;
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.16);
+}
+
+.complementBatchActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.complementValidateBtn {
+  background: linear-gradient(135deg, #22c55e 0%, #15803d 100%) !important;
+  color: #fff !important;
+  border: 1px solid #166534 !important;
+  box-shadow: 0 12px 22px rgba(21, 128, 61, 0.18) !important;
+}
+
+.complementValidateBtn:hover:not(:disabled) {
+  filter: brightness(1.04);
+}
+
+.complementBatchMuted {
+  margin: 0;
+  color: #617266;
+  font-size: 0.84rem;
+}
+
+.complementNoticeBlock {
+  border: 1px solid #dbe7f4;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f4f8ff 0%, #fbfdff 100%);
+  padding: 0.8rem 0.9rem;
+}
+
+.complementNoticeBlock h4 {
+  margin: 0 0 0.3rem;
+  color: #153f76;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.complementNoticeBlock p {
+  margin: 0;
+  color: #41556f;
+  line-height: 1.6;
+}
+
+.complementSubsection {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.complementDocList {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.complementDocItem {
+  border: 1px solid #eadce8;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fff 0%, #fdfafe 100%);
+  padding: 0.88rem 0.95rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.complementDocItemSuccess {
+  border-color: #cde9d6;
+  background:
+    radial-gradient(circle at top right, rgba(34, 197, 94, 0.14), transparent 34%),
+    linear-gradient(180deg, #ffffff 0%, #f7fff9 100%);
+  box-shadow: 0 10px 24px rgba(20, 83, 45, 0.08);
+}
+
+.complementDocItemResponded {
+  border-color: #d7e6dc;
+  background:
+    radial-gradient(circle at top right, rgba(74, 222, 128, 0.11), transparent 35%),
+    linear-gradient(180deg, #ffffff 0%, #fbfffc 100%);
+}
+
+.complementDocItemWarning {
+  border-color: #f2d9a6;
+  background:
+    radial-gradient(circle at top right, rgba(250, 204, 21, 0.12), transparent 35%),
+    linear-gradient(180deg, #ffffff 0%, #fffdf7 100%);
+}
+
+.complementDocItemDanger {
+  border-color: #f0c8cd;
+  background:
+    radial-gradient(circle at top right, rgba(248, 113, 113, 0.12), transparent 35%),
+    linear-gradient(180deg, #ffffff 0%, #fff9fa 100%);
+}
+
+.complementDocItemHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.85rem;
+}
+
+.complementDocHeading {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.complementItemCheckbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid #d7e5db;
+  border-radius: 999px;
+  background: #f8fff9;
+  padding: 0.3rem 0.55rem;
+  color: #2f5641;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.complementItemCheckbox input {
+  accent-color: #16a34a;
+}
+
+.complementDocItemHead h4 {
+  margin: 0;
+  color: #3d2c42;
+  font-size: 0.96rem;
+  font-weight: 800;
+}
+
+.complementDocItemHead small {
+  color: #7d7184;
+  font-size: 0.75rem;
+}
+
+.complementDocBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: flex-end;
+}
+
+.complementDocItemBody {
+  display: grid;
+  gap: 0.34rem;
+}
+
+.complementDocItemBody p {
+  margin: 0;
+  color: #4e4356;
+  line-height: 1.55;
+  font-size: 0.86rem;
+}
+
+.complementDocItemBody span {
+  color: #6e5b76;
+  font-weight: 700;
+}
+
+.complementDocItemActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding-top: 0.15rem;
+  border-top: 1px solid #f0e4ec;
+}
+
+.complementDocFileState {
+  color: #6e6378;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.tableSection {
+  border: 1px solid #eadce8;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(56, 18, 45, 0.07);
+  overflow: hidden;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  max-height: calc(100vh - 260px);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 58, 98, 0.42) rgba(139, 58, 98, 0.08);
+}
+
+.tableWrap::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+
+.tableWrap::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(139, 58, 98, 0.42);
+}
+
+.tableWrap::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(139, 58, 98, 0.08);
+}
+
+.table {
+  width: 100%;
+  min-width: 1180px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: linear-gradient(180deg, #faf1f8 0%, #f8edf5 100%);
+  color: #5e4862;
+  font-size: 0.77rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  text-align: left;
+  padding: 0.65rem 0.6rem;
+  border-bottom: 1px solid #eadce8;
+  white-space: nowrap;
+}
+
+.table tbody td {
+  padding: 0.7rem 0.6rem;
+  border-bottom: 1px solid #f3e7f1;
+  color: #39263f;
+  vertical-align: top;
+}
+
+.dataRow {
+  animation: fadein 0.22s ease;
+}
+
+.dataRow:hover {
+  background: #fdf8ff;
+  box-shadow: inset 0 0 0 9999px rgba(139, 58, 98, 0.03);
+}
+
+.complementTableRowSelected {
+  background: #f7fff9;
+}
+
+.checkboxCol {
+  width: 145px;
+}
+
+.complementTableDocCell {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.complementTableDocTitle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+}
+
+.complementTableDocIndex {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid #dcc9e0;
+  background: #f4f0f6;
+  color: #6b5670;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.complementTableDocTitle h4 {
+  margin: 0;
+  color: #3d2c42;
+  font-size: 0.96rem;
+  font-weight: 800;
+}
+
+.complementTableDocTitle small {
+  color: #7d7184;
+  font-size: 0.75rem;
+}
+
+.complementTableDocBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.complementTableDetails {
+  display: grid;
+  gap: 0.22rem;
+}
+
+.complementTableDetails p {
+  margin: 0;
+  color: #4e4356;
+  line-height: 1.42;
+  font-size: 0.84rem;
+}
+
+.complementTableDetails span {
+  color: #6e5b76;
+  font-weight: 700;
+}
+
+.complementTableCheckCell {
+  min-width: 160px;
+}
+
+.complementSystemCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid #d7e5db;
+  border-radius: 999px;
+  background: #f8fff9;
+  padding: 0.3rem 0.55rem;
+  color: #2f5641;
+  font-size: 0.76rem;
+  font-weight: 800;
+  margin-bottom: 0.4rem;
+}
+
+.complementSystemCheck input {
+  accent-color: #16a34a;
+}
+
+.complementTableActions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.complementTableActionBtn {
+  min-height: 34px !important;
+  border-radius: 10px !important;
+  font-weight: 700 !important;
+  gap: 0.35rem;
+  padding: 0 0.75rem !important;
+}
+
+.complementTableActionBtn svg {
+  font-size: 0.85rem;
+}
+
+@media (max-width: 840px) {
+  .complementMetaGrid,
+  .complementProblemGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .complementSummaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .complementBatchHeader,
+  .complementBatchActions,
+  .complementDocItemHead,
+  .complementDocItemActions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .complementDocHeading {
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .table {
+    min-width: 980px;
   }
 }
 
@@ -671,4 +1354,139 @@
   .heroActions button {
     min-height: 36px;
   }
+}
+
+.modalCard .complementProblemsPanel textarea {
+  min-height: 74px;
+}
+
+.modalCard .complementField textarea {
+  min-height: 74px;
+}
+
+/* Popup polish */
+.modalOverlay {
+  backdrop-filter: blur(4px) saturate(120%);
+  background:
+    radial-gradient(circle at 20% 0%, rgba(139, 58, 98, 0.22) 0%, rgba(139, 58, 98, 0) 52%),
+    rgba(21, 9, 18, 0.58);
+}
+
+.modalCard {
+  position: relative;
+  border-radius: 18px;
+  border: 1px solid #e9d3e2;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #fff8fc 100%);
+  box-shadow:
+    0 26px 56px rgba(35, 14, 30, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.modalCard::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 5px;
+  border-radius: 18px 18px 0 0;
+  background: linear-gradient(90deg, #8b3a62 0%, #0f766e 100%);
+}
+
+.modalCard h3 {
+  margin-top: 0.15rem;
+  font-size: 1.07rem;
+  color: #432848;
+  letter-spacing: 0.01em;
+}
+
+.modalCard p {
+  color: #6a5771;
+  font-size: 0.86rem;
+}
+
+.modalCard textarea {
+  border-color: #dec8d8;
+  background: #fff;
+  border-radius: 11px;
+}
+
+.modalCard textarea:focus {
+  outline: none;
+  border-color: #8b3a62;
+  box-shadow: 0 0 0 3px rgba(139, 58, 98, 0.14);
+}
+
+.complementDocsPanel {
+  border-color: #e6d5e3;
+  background: linear-gradient(180deg, #fff 0%, #fdf8fc 100%);
+}
+
+.complementDocRow {
+  border-left: 4px solid #c27aa0;
+  box-shadow: 0 6px 14px rgba(61, 24, 46, 0.06);
+}
+
+.complementDocHead p {
+  color: #4a2f4f;
+}
+
+.complementDecisionGroup label {
+  border: 1px solid #e6d3e0;
+  border-radius: 999px;
+  padding: 0.28rem 0.58rem;
+  background: #fdf7fb;
+}
+
+.complementDecisionGroup input,
+.complementProblemGrid input {
+  accent-color: #8b3a62;
+}
+
+.complementProblemGrid label {
+  border: 1px dashed #e4d0dd;
+  border-radius: 9px;
+  padding: 0.28rem 0.44rem;
+  background: #fff;
+}
+
+.modalActions {
+  gap: 0.62rem;
+}
+
+.modalCancelBtn,
+.modalConfirmBtn {
+  min-height: 40px !important;
+  border-radius: 11px !important;
+  font-weight: 800 !important;
+  border: 1px solid transparent !important;
+  transition: transform 0.16s ease, filter 0.16s ease, box-shadow 0.18s ease !important;
+}
+
+.modalCancelBtn {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  color: #fff !important;
+  border-color: #b91c1c !important;
+  box-shadow: 0 12px 22px rgba(178, 34, 52, 0.28) !important;
+}
+
+.modalConfirmBtn {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+  color: #fff !important;
+  border-color: #15803d !important;
+  box-shadow: 0 12px 22px rgba(22, 163, 74, 0.3) !important;
+}
+
+.modalCancelBtn:hover:not(:disabled),
+.modalConfirmBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+
+.modalCancelBtn:disabled,
+.modalConfirmBtn:disabled {
+  opacity: 0.66 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
 }

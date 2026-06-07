@@ -732,7 +732,7 @@ export class NotificationsService {
       priority = NotificationPriority.HIGH;
     } else if (input.statut === 'EN_COMPLEMENT') {
       title = 'Pieces complementaires demandees';
-      message = `Pieces complementaires demandees pour votre demande n° ${code}.`;
+      message = `Pieces complementaires demandees pour votre demande n° ${code}. Fiche PDF disponible.`;
       notifType = TypeNotification.ALERTE;
       priority = NotificationPriority.HIGH;
     }
@@ -746,10 +746,58 @@ export class NotificationsService {
         title,
         message,
         relatedEntityId: input.demandeId,
-        relatedEntityType: 'demande',
+        relatedEntityType:
+          input.statut === 'EN_COMPLEMENT'
+            ? 'demande_complement'
+            : 'demande',
         demandeId: input.demandeId,
       },
     });
+  }
+
+  async createAdminComplementSubmittedNotification(input: {
+    demandeId: number;
+    demandeCode?: string | null;
+    typePermisLabel?: string | null;
+    demandeurUserId?: number | null;
+  }) {
+    const demandeId = Number(input.demandeId);
+    if (!Number.isFinite(demandeId) || demandeId <= 0) {
+      return { created: 0 };
+    }
+
+    const adminIds = await this.getAdminRecipientIds();
+    const safeDemandeurId = Number(input.demandeurUserId);
+    const recipients = adminIds.filter(
+      (id) => !(Number.isFinite(safeDemandeurId) && safeDemandeurId > 0 && id === safeDemandeurId),
+    );
+    if (!recipients.length) {
+      return { created: 0 };
+    }
+
+    const code =
+      this.truncate(input.demandeCode || `DEM-${demandeId}`, 60) ||
+      `DEM-${demandeId}`;
+    const typePermis = this.truncate(input.typePermisLabel || '', 60);
+
+    const payload = recipients.map((adminUserId) => ({
+      userId: adminUserId,
+      type: TypeNotification.ALERTE,
+      category: NotificationCategory.DEMANDE,
+      priority: NotificationPriority.HIGH,
+      title: 'Complement soumis par le demandeur',
+      message: typePermis
+        ? `La demande n° ${code} (${typePermis}) a ete completee par le demandeur et doit etre reverifiee.`
+        : `La demande n° ${code} a ete completee par le demandeur et doit etre reverifiee.`,
+      relatedEntityId: demandeId,
+      relatedEntityType: 'demande_complement_submitted',
+      demandeId,
+    }));
+
+    const created = await this.prisma.notificationPortail.createMany({
+      data: payload,
+    });
+    return { created: created.count };
   }
 
   async createAdminMessageNotification(input: {

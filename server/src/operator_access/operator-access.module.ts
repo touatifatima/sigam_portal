@@ -9,5 +9,6 @@ import { OperatorAccessService } from './operator-access.service';
   imports: [PrismaModule, SessionModule, AuthModule],
   controllers: [OperatorAccessController],
   providers: [OperatorAccessService],
+  exports: [OperatorAccessService],
 })
 export class OperatorAccessModule {}

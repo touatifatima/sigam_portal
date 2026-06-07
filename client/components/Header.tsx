@@ -63,8 +63,8 @@ export const Header = () => {
             fetchPriority="high"
           />
           <div className={styles.logoText}>
-            <span className={styles.logoTitle}>POM</span>
-            <span className={styles.logoSubtitle}>Portail Minier</span>
+            <span className={styles.logoTitle}>GUNAM</span>
+            <span className={styles.logoSubtitle}>Guichet Unique des Mines</span>
           </div>
         </a>
 

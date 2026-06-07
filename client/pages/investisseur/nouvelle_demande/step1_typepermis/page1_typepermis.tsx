@@ -32,6 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { getDefaultDashboardPath } from '@/src/utils/roleNavigation';
 
 import 'react-datepicker/dist/react-datepicker.css';
 import { useAuthStore } from '@/src/store/useAuthStore';
@@ -146,6 +147,7 @@ export default function DemandeStart() {
   const { currentView, navigateTo } = useViewNavigator('nouvelle-demande');
   const { resetLoading } = useLoading();
   const { auth, isLoaded } = useAuthStore();
+  const dashboardPath = getDefaultDashboardPath(auth?.role);
   
   const [permisOptions, setPermisOptions] = useState<TypePermis[]>([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
@@ -404,7 +406,7 @@ export default function DemandeStart() {
                   <button
                     type="button"
                     className={styles.entryDashboardButton}
-                    onClick={() => router.push('/investisseur/InvestorDashboard')}
+                    onClick={() => router.push(dashboardPath)}
                   >
                     Annuler et retour au Dashboard
                   </button>
@@ -417,7 +419,7 @@ export default function DemandeStart() {
             <button
               type="button"
               className={styles.backDashboardButton}
-              onClick={() => router.push('/investisseur/InvestorDashboard')}
+              onClick={() => router.push(dashboardPath)}
             >
               Annuler et retour
             </button>

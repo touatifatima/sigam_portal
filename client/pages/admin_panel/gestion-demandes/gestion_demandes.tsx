@@ -15,6 +15,7 @@ import {
   FiFilter,
   FiRefreshCcw,
   FiSearch,
+  FiTrash2,
   FiTrendingUp,
   FiX,
 } from 'react-icons/fi';
@@ -136,6 +137,66 @@ type DetailsResponse = DemandeItem & {
   } | null;
 };
 
+type MissingSummaryEntry = {
+  id_doc: number;
+  nom_doc: string;
+};
+
+type ProcedureDocumentsResponse = {
+  documents?: Array<{
+    id_doc: number;
+    nom_doc?: string | null;
+    statut?: string | null;
+    status?: string | null;
+    file_url?: string | null;
+    is_required?: boolean;
+    reject_message?: string | null;
+  }>;
+  missingSummary?: {
+    requiredMissing?: MissingSummaryEntry[];
+    blocking?: MissingSummaryEntry[];
+    blockingNext?: MissingSummaryEntry[];
+    warnings?: MissingSummaryEntry[];
+  };
+};
+
+type DocProblemCode =
+  | 'expire'
+  | 'date_invalide'
+  | 'illisible'
+  | 'non_signe'
+  | 'incoherent'
+  | 'autre';
+
+type ComplementDocDecision = 'conforme' | 'manquant' | 'probleme';
+
+type ComplementDocForm = {
+  id_doc: number;
+  nom_doc: string;
+  statutActuel: string;
+  isRequired: boolean;
+  rejectMessage?: string | null;
+  file_url?: string | null;
+  decision: ComplementDocDecision;
+  problems: DocProblemCode[];
+  comment: string;
+};
+
+type ComplementDetailsPayload = {
+  delaiJours: number | null;
+  effetAbsence: string | null;
+  modeNotification: string | null;
+  adminMessage: string | null;
+  documents: Array<{
+    id_doc: number;
+    nom_doc: string;
+    decision: ComplementDocDecision;
+    problems: DocProblemCode[];
+    comment: string | null;
+    statutActuel: string;
+  }>;
+};
+
 type FilterState = {
   search: string;
   statut: string;
@@ -179,6 +240,20 @@ function formatDate(value?: string | null) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '--';
   return date.toLocaleDateString('fr-FR');
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return '--';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '--';
+  return date.toLocaleString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
 }
 
 function formatMoney(value?: number | null) {
@@ -310,6 +385,10 @@ function getLastActionLabel(item: DemandeItem) {
   return '--';
 }
 
+function sanitizePdfText(value?: string | null) {
+  return String(value ?? '--').replace(/[\u00A0\u202F]/g, ' ');
+}
+
 function buildHistory(item?: DetailsResponse | null) {
   if (!item) return [];
   const rows: Array<{ label: string; value: string }> = [];
@@ -333,6 +412,84 @@ const SORTABLE_HEADERS: Array<{ key: SortState['key']; label: string }> = [
   { key: 'montant', label: 'Montant' },
   { key: 'last_action', label: 'Derniere action' },
 ];
+
+const DEFAULT_COMPLEMENT_DELAY_DAYS = '15';
+const DEFAULT_COMPLEMENT_ABSENCE_EFFECT =
+  "Le dossier peut etre rejete ou classe selon la reglementation en vigueur.";
+const DEFAULT_COMPLEMENT_NOTIFICATION_MODE = 'Plateforme + courrier electronique';
+
+const DOC_PROBLEM_LABELS: Record<DocProblemCode, string> = {
+  expire: 'Document expire',
+  date_invalide: 'Date invalide',
+  illisible: 'Document illisible',
+  non_signe: 'Document non signe',
+  incoherent: 'Information incoherente',
+  autre: 'Autre probleme',
+};
+
+const DOC_PROBLEM_CODES: DocProblemCode[] = [
+  'expire',
+  'date_invalide',
+  'illisible',
+  'non_signe',
+  'incoherent',
+  'autre',
+];
+
+function normalizeDocStatusValue(value?: string | null) {
+  const raw = String(value ?? '').trim().toLowerCase();
+  if (raw === 'present' || raw === 'valide' || raw === 'conforme') return 'present';
+  if (raw === 'manquant' || raw === 'missing') return 'manquant';
+  if (raw === 'attente' || raw === 'pending' || raw === 'en_attente') return 'attente';
+  return raw || 'attente';
+}
+
+function formatDocStatusLabel(value?: string | null) {
+  const status = normalizeDocStatusValue(value);
+  if (status === 'present') return 'Present';
+  if (status === 'manquant') return 'Manquant';
+  if (status === 'attente') return 'En attente';
+  return value || '--';
+}
+
+function mapComplementDocsFromProcedurePayload(
+  payload?: ProcedureDocumentsResponse | null,
+): ComplementDocForm[] {
+  const missingRequiredIds = new Set(
+    (payload?.missingSummary?.requiredMissing ?? []).map((entry) => Number(entry.id_doc)),
+  );
+  const docs = payload?.documents ?? [];
+  return docs.map((doc) => {
+    const idDoc = Number(doc.id_doc);
+    const rawStatus = normalizeDocStatusValue(doc.statut ?? doc.status);
+    const isMissing = missingRequiredIds.has(idDoc) || rawStatus === 'manquant';
+    return {
+      id_doc: idDoc,
+      nom_doc: String(doc.nom_doc || `Document #${idDoc}`),
+      statutActuel: rawStatus,
+      isRequired: Boolean(doc.is_required),
+      rejectMessage: doc.reject_message ?? null,
+      file_url: doc.file_url ?? null,
+      decision: isMissing ? 'manquant' : 'conforme',
+      problems: [],
+      comment: '',
+    };
+  });
+}
+
+function buildDocIssueSentence(doc: ComplementDocForm) {
+  if (doc.decision === 'conforme') return '';
+  if (doc.decision === 'manquant') {
+    return `${doc.nom_doc}: manquant`;
+  }
+  const issues = doc.problems.length
+    ? doc.problems.map((code) => DOC_PROBLEM_LABELS[code]).join(', ')
+    : 'probleme signale';
+  const comment = doc.comment.trim();
+  return comment
+    ? `${doc.nom_doc}: ${issues}. Detail: ${comment}`
+    : `${doc.nom_doc}: ${issues}`;
+}
 
 export default function GestionDemandesAdminPage() {
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
@@ -371,6 +528,18 @@ export default function GestionDemandesAdminPage() {
   const [motifAction, setMotifAction] = useState<StatusAction>('REJETEE');
   const [motifTargetIds, setMotifTargetIds] = useState<number[]>([]);
   const [motifText, setMotifText] = useState<string>('');
+  const [complementDocsLoading, setComplementDocsLoading] = useState<boolean>(false);
+  const [complementDocsError, setComplementDocsError] = useState<string | null>(null);
+  const [complementDocs, setComplementDocs] = useState<ComplementDocForm[]>([]);
+  const [complementDelayDays, setComplementDelayDays] = useState<string>(
+    DEFAULT_COMPLEMENT_DELAY_DAYS,
+  );
+  const [complementAbsenceEffect, setComplementAbsenceEffect] = useState<string>(
+    DEFAULT_COMPLEMENT_ABSENCE_EFFECT,
+  );
+  const [complementNotificationMode, setComplementNotificationMode] = useState<string>(
+    DEFAULT_COMPLEMENT_NOTIFICATION_MODE,
+  );
 
   const [detailModalOpen, setDetailModalOpen] = useState<boolean>(false);
   const [detailLoading, setDetailLoading] = useState<boolean>(false);
@@ -654,32 +823,164 @@ export default function GestionDemandesAdminPage() {
     setFiltersRunNonce((prev) => prev + 1);
   };
 
-  const openMotifModal = (action: StatusAction, ids: number[]) => {
+  const resetComplementForm = () => {
+    setComplementDocsLoading(false);
+    setComplementDocsError(null);
+    setComplementDocs([]);
+    setComplementDelayDays(DEFAULT_COMPLEMENT_DELAY_DAYS);
+    setComplementAbsenceEffect(DEFAULT_COMPLEMENT_ABSENCE_EFFECT);
+    setComplementNotificationMode(DEFAULT_COMPLEMENT_NOTIFICATION_MODE);
+  };
+
+  const loadComplementDocuments = async (idDemande: number) => {
+    if (!apiURL) return;
+    setComplementDocsLoading(true);
+    setComplementDocsError(null);
+    try {
+      const response = await axios.get<ProcedureDocumentsResponse>(
+        `${apiURL}/api/procedure/${idDemande}/documents`,
+        { withCredentials: true },
+      );
+      const docs = mapComplementDocsFromProcedurePayload(response.data);
+      setComplementDocs(docs);
+    } catch (err) {
+      console.error('Erreur chargement docs complement', err);
+      setComplementDocs([]);
+      setComplementDocsError(
+        "Impossible de precharger les documents. Vous pouvez saisir un motif manuel.",
+      );
+    } finally {
+      setComplementDocsLoading(false);
+    }
+  };
+
+  const openMotifModal = async (action: StatusAction, ids: number[]) => {
+    setError(null);
     setMotifAction(action);
     setMotifTargetIds(ids);
     setMotifText('');
+    resetComplementForm();
     setMotifModalOpen(true);
+
+    if (action !== 'EN_COMPLEMENT') return;
+    if (ids.length !== 1) {
+      setComplementDocsError(
+        'Selection multiple: la fiche detaillee des documents est disponible en traitement unitaire.',
+      );
+      return;
+    }
+    await loadComplementDocuments(ids[0]);
   };
 
-  const updateStatus = async (id: number, action: StatusAction, motif?: string) => {
+  const updateComplementDocDecision = (
+    idDoc: number,
+    decision: ComplementDocDecision,
+  ) => {
+    setComplementDocs((prev) =>
+      prev.map((entry) => {
+        if (entry.id_doc !== idDoc) return entry;
+        if (decision === 'conforme') {
+          return {
+            ...entry,
+            decision,
+            problems: [],
+            comment: '',
+          };
+        }
+        if (decision === 'manquant') {
+          return {
+            ...entry,
+            decision,
+            problems: [],
+          };
+        }
+        return {
+          ...entry,
+          decision,
+        };
+      }),
+    );
+  };
+
+  const toggleComplementProblem = (idDoc: number, code: DocProblemCode) => {
+    setComplementDocs((prev) =>
+      prev.map((entry) => {
+        if (entry.id_doc !== idDoc) return entry;
+        const exists = entry.problems.includes(code);
+        return {
+          ...entry,
+          problems: exists
+            ? entry.problems.filter((problem) => problem !== code)
+            : [...entry.problems, code],
+        };
+      }),
+    );
+  };
+
+  const updateComplementComment = (idDoc: number, comment: string) => {
+    setComplementDocs((prev) =>
+      prev.map((entry) =>
+        entry.id_doc === idDoc
+          ? {
+              ...entry,
+              comment,
+            }
+          : entry,
+      ),
+    );
+  };
+
+  const updateStatus = async (
+    id: number,
+    action: StatusAction,
+    motif?: string,
+    complementDetails?: ComplementDetailsPayload,
+  ) => {
     if (!apiURL) return;
     await axios.put(
       `${apiURL}/api/demande/${id}/status`,
       {
         statut_demande: action,
         rejectionReason: motif,
+        complementDetails,
       },
       { withCredentials: true },
     );
   };
 
-  const executeStatusAction = async (action: StatusAction, ids: number[], motif?: string) => {
-    if (ids.length === 0) return;
+  const executeStatusAction = async (
+    action: StatusAction,
+    ids: number[],
+    motif?: string,
+    complementDetails?: ComplementDetailsPayload,
+  ) => {
+    if (ids.length === 0) return false;
     try {
       setSubmitting(true);
       setError(null);
       setSuccess(null);
-      await Promise.all(ids.map((id) => updateStatus(id, action, motif)));
+      await Promise.all(
+        ids.map((id) => updateStatus(id, action, motif, complementDetails)),
+      );
+
+      if (action === 'EN_COMPLEMENT') {
+        const motifValue = (motif ?? '').trim();
+        ids.forEach((id) => {
+          const target = items.find((item) => item.id_demande === id);
+          if (!target) return;
+          const code = sanitizePdfText(
+            target.code_demande || target.short_code || `DEM-${target.id_demande}`,
+          );
+          const safeCode = code.replace(/[^a-zA-Z0-9-_]/g, '_');
+          buildDemandeComplementPdf(
+            target,
+            motifValue,
+            `demande_complement_${safeCode}.pdf`,
+            complementDetails,
+          );
+        });
+      }
+
       setSuccess(
         action === 'ACCEPTEE'
           ? 'Demande(s) validee(s) avec succes.'
@@ -689,21 +990,130 @@ export default function GestionDemandesAdminPage() {
       );
       setSelectedIds(new Set());
       await fetchData();
+      return true;
     } catch (err) {
       console.error('Erreur action statut', err);
       setError("Echec de l'operation de changement de statut.");
+      return false;
     } finally {
       setSubmitting(false);
     }
   };
 
   const confirmMotifAction = async () => {
-    if ((motifAction === 'REJETEE' || motifAction === 'EN_COMPLEMENT') && !motifText.trim()) {
+    const trimmedMotif = motifText.trim();
+    if (motifAction === 'REJETEE' && !trimmedMotif) {
       setError('Le motif est obligatoire pour cette action.');
       return;
     }
-    await executeStatusAction(motifAction, motifTargetIds, motifText.trim());
-    setMotifModalOpen(false);
+
+    let finalMotif = trimmedMotif;
+    let complementDetails: ComplementDetailsPayload | undefined = undefined;
+
+    if (motifAction === 'EN_COMPLEMENT') {
+      const flaggedDocs = complementDocs.filter((entry) => entry.decision !== 'conforme');
+      const invalidProblemDoc = flaggedDocs.find(
+        (entry) =>
+          entry.decision === 'probleme' &&
+          entry.problems.length === 0 &&
+          !entry.comment.trim(),
+      );
+
+      if (invalidProblemDoc) {
+        setError(
+          `Precisez le probleme pour "${invalidProblemDoc.nom_doc}" (case a cocher ou commentaire).`,
+        );
+        return;
+      }
+
+      if (flaggedDocs.length === 0 && !trimmedMotif) {
+        setError('Selectionnez au moins un document a completer ou saisissez un motif.');
+        return;
+      }
+
+      const parsedDelay = Number.parseInt(complementDelayDays, 10);
+      const safeDelay =
+        Number.isFinite(parsedDelay) && parsedDelay > 0 ? parsedDelay : null;
+      const documentLines = flaggedDocs
+        .map((entry) => buildDocIssueSentence(entry))
+        .filter((line) => line.length > 0);
+
+      const motifFromDocs =
+        documentLines.length > 0
+          ? `Documents a completer: ${documentLines.join(' | ')}`
+          : '';
+      finalMotif = [motifFromDocs, trimmedMotif].filter(Boolean).join(' ; ');
+
+      complementDetails = {
+        delaiJours: safeDelay,
+        effetAbsence: complementAbsenceEffect.trim() || null,
+        modeNotification: complementNotificationMode.trim() || null,
+        adminMessage: trimmedMotif || null,
+        documents: flaggedDocs.map((entry) => ({
+          id_doc: entry.id_doc,
+          nom_doc: entry.nom_doc,
+          decision: entry.decision,
+          problems: entry.problems,
+          comment: entry.comment.trim() || null,
+          statutActuel: entry.statutActuel,
+        })),
+      };
+    }
+
+    const success = await executeStatusAction(
+      motifAction,
+      motifTargetIds,
+      finalMotif,
+      complementDetails,
+    );
+    if (success) {
+      setMotifModalOpen(false);
+      resetComplementForm();
+    }
+  };
+
+  const handleDeleteDemande = async (id: number) => {
+    if (!apiURL) return;
+
+    const confirmed = window.confirm(
+      `Confirmer la suppression definitive de la demande #${id} ? Cette action est irreversible.`,
+    );
+    if (!confirmed) return;
+
+    try {
+      setSubmitting(true);
+      setError(null);
+      setSuccess(null);
+      setOpenActionMenu(null);
+
+      await axios.delete(`${apiURL}/demandes_dashboard/${id}`, {
+        withCredentials: true,
+      });
+
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      setSuccess(`Demande #${id} supprimee avec succes.`);
+
+      const isLastRowOnPage = sortedItems.length === 1;
+      if (isLastRowOnPage && page > 1) {
+        setPage((prev) => prev - 1);
+      } else {
+        await fetchData();
+      }
+    } catch (err) {
+      console.error('Erreur suppression demande', err);
+      const serverMessage =
+        axios.isAxiosError(err) &&
+        typeof (err.response?.data as { message?: unknown } | undefined)?.message === 'string'
+          ? ((err.response?.data as { message: string }).message ?? null)
+          : null;
+      setError(serverMessage || "Echec de la suppression de la demande.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleViewDetails = async (idOrCode: string) => {
@@ -826,6 +1236,241 @@ export default function GestionDemandesAdminPage() {
     doc.save(fileName);
   };
 
+  const buildFicheRegistrePdf = (item: DemandeItem, fileName: string) => {
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const marginX = 14;
+    const contentWidth = pageWidth - marginX * 2;
+    const fieldsX = marginX + 8;
+    const fieldsWidth = contentWidth - 16;
+    let y = 10;
+
+    const codeDemande = sanitizePdfText(item.code_demande || item.short_code || `DEM-${item.id_demande}`);
+    const referenceFiche = `FRD-${new Date().getFullYear()}-${String(item.id_demande ?? '0').padStart(6, '0')}`;
+    const numeroChronologique = String(item.id_demande ?? '--');
+    const dateOpposable = formatDateTime(item.date_demande);
+    const categorieDroit = sanitizePdfText(
+      item.typeProcedure?.libelle || item.typePermis?.lib_type || item.typePermis?.code_type || '--',
+    );
+    const identiteDemandeur = sanitizePdfText(getTitulaire(item));
+    const perimetreSubstance = sanitizePdfText(item.typePermis?.lib_type || item.typePermis?.code_type || '--');
+    const statutInitial = sanitizePdfText(item.statut_demande || '--');
+    const refDossierNumerique = codeDemande;
+    const responsable = sanitizePdfText(getResponsable(item));
+    const generationTs = formatDateTime(new Date().toISOString());
+    const drawLabelValue = (label: string, value: string) => {
+      const cleanValue = sanitizePdfText(value || '--');
+      const labelWidth = 59;
+      const valueWidth = fieldsWidth - labelWidth - 2;
+      const valueLines = doc.splitTextToSize(cleanValue, valueWidth);
+      const blockHeight = Math.max(6.8, valueLines.length * 4 + 1.8);
+
+      doc.setTextColor(44, 57, 70);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.4);
+      doc.text(`${label} :`, fieldsX, y + 4.8);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.4);
+      doc.text(valueLines, fieldsX + labelWidth, y + 4.8);
+
+      y += blockHeight + 3.5;
+    };
+
+    doc.setDrawColor(25, 71, 106);
+    doc.setLineWidth(0.6);
+    doc.rect(marginX, y, contentWidth, pageHeight - 20, 'S');
+
+    doc.setTextColor(30, 53, 73);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.7);
+    doc.text('REPUBLIQUE ALGERIENNE DEMOCRATIQUE ET POPULAIRE', pageWidth / 2, y + 6, {
+      align: 'center',
+    });
+    doc.setFontSize(8.4);
+    doc.text('MINISTERE DE L\'ENERGIE ET DES MINES', pageWidth / 2, y + 10.6, {
+      align: 'center',
+    });
+    doc.setFontSize(8.1);
+    doc.text('AGENCE NATIONALE DES ACTIVITES MINIERES (ANAM)', pageWidth / 2, y + 15, {
+      align: 'center',
+    });
+    doc.setDrawColor(25, 71, 106);
+    doc.line(marginX + 3, y + 18, pageWidth - marginX - 3, y + 18);
+    doc.setFontSize(12.1);
+    doc.text('FICHE D\'ENREGISTREMENT AU REGISTRE DES DEMANDES', pageWidth / 2, y + 24, {
+      align: 'center',
+    });
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(88, 97, 106);
+    doc.setFontSize(8);
+    doc.text('Document interne de tracabilite du registre des demandes', pageWidth / 2, y + 28, {
+      align: 'center',
+    });
+    y += 33;
+
+    doc.setTextColor(25, 71, 106);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10.2);
+    doc.text('Informations du registre', fieldsX, y);
+    doc.setDrawColor(25, 71, 106);
+    doc.line(fieldsX, y + 1.8, fieldsX + fieldsWidth, y + 1.8);
+    y += 6.5;
+
+    const rows: Array<[string, string]> = [
+      ['Reference fiche', referenceFiche],
+      ['Code demande', codeDemande],
+      ['Numero chronologique', numeroChronologique],
+      ['Date et heure opposables', dateOpposable],
+      ['Categorie de droit', categorieDroit],
+      ['Identite du demandeur', identiteDemandeur],
+      ['Perimetre / substance', perimetreSubstance],
+      ['Statut initial de la demande', statutInitial],
+      ['Reference du dossier numerique', refDossierNumerique],
+      ['Acteur emetteur', 'Guichet ANAM'],
+      ['Responsable de reference', responsable],
+    ];
+
+    rows.forEach((row) => drawLabelValue(row[0], row[1]));
+
+    doc.setTextColor(100, 109, 118);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.2);
+    doc.text(`Code demande: ${codeDemande}`, marginX, pageHeight - 11);
+    doc.text(`Genere le ${generationTs}`, pageWidth - marginX, pageHeight - 11, { align: 'right' });
+
+    doc.save(fileName);
+  };
+
+  const buildDemandeComplementPdf = (
+    item: DemandeItem,
+    motif: string,
+    fileName: string,
+    complementDetails?: ComplementDetailsPayload,
+  ) => {
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const marginX = 14;
+    const contentWidth = pageWidth - marginX * 2;
+    const fieldsX = marginX + 8;
+    const fieldsWidth = contentWidth - 16;
+    let y = 10;
+
+    const codeDemande = sanitizePdfText(item.code_demande || item.short_code || `DEM-${item.id_demande}`);
+    const referenceComplement = `DRC-${new Date().getFullYear()}-${String(item.id_demande ?? '0').padStart(6, '0')}`;
+    const generationTs = formatDateTime(new Date().toISOString());
+    const typePermis = sanitizePdfText(item.typePermis?.lib_type || item.typePermis?.code_type || '--');
+    const titulaire = sanitizePdfText(getTitulaire(item));
+    const responsable = sanitizePdfText(getResponsable(item));
+    const delaiLabel =
+      complementDetails?.delaiJours && complementDetails.delaiJours > 0
+        ? `${complementDetails.delaiJours} jours calendaires a compter de la notification`
+        : '15 jours calendaires a compter de la notification';
+    const effetAbsenceLabel =
+      complementDetails?.effetAbsence?.trim() ||
+      DEFAULT_COMPLEMENT_ABSENCE_EFFECT;
+    const modeNotificationLabel =
+      complementDetails?.modeNotification?.trim() ||
+      DEFAULT_COMPLEMENT_NOTIFICATION_MODE;
+    const flaggedDocuments = (complementDetails?.documents ?? [])
+      .filter((entry) => entry.decision !== 'conforme')
+      .map((entry) => {
+        if (entry.decision === 'manquant') return `${entry.nom_doc}: manquant`;
+        const issueLabels = entry.problems.length
+          ? entry.problems.map((code) => DOC_PROBLEM_LABELS[code]).join(', ')
+          : 'probleme signale';
+        const comment = String(entry.comment || '').trim();
+        return comment
+          ? `${entry.nom_doc}: ${issueLabels}. Detail: ${comment}`
+          : `${entry.nom_doc}: ${issueLabels}`;
+      });
+    const champ1Label =
+      flaggedDocuments.length > 0 ? flaggedDocuments.join(' | ') : motif || '--';
+
+    const drawLabelValue = (label: string, value: string) => {
+      const cleanValue = sanitizePdfText(value || '--');
+      const labelWidth = 63;
+      const valueWidth = fieldsWidth - labelWidth - 2;
+      const valueLines = doc.splitTextToSize(cleanValue, valueWidth);
+      const blockHeight = Math.max(6.8, valueLines.length * 4 + 1.8);
+
+      doc.setTextColor(44, 57, 70);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.4);
+      doc.text(`${label} :`, fieldsX, y + 4.8);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.4);
+      doc.text(valueLines, fieldsX + labelWidth, y + 4.8);
+
+      y += blockHeight + 3.5;
+    };
+
+    doc.setDrawColor(25, 71, 106);
+    doc.setLineWidth(0.6);
+    doc.rect(marginX, y, contentWidth, pageHeight - 20, 'S');
+
+    doc.setTextColor(30, 53, 73);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.7);
+    doc.text('REPUBLIQUE ALGERIENNE DEMOCRATIQUE ET POPULAIRE', pageWidth / 2, y + 6, {
+      align: 'center',
+    });
+    doc.setFontSize(8.4);
+    doc.text('MINISTERE DE L\'ENERGIE ET DES MINES', pageWidth / 2, y + 10.6, {
+      align: 'center',
+    });
+    doc.setFontSize(8.1);
+    doc.text('AGENCE NATIONALE DES ACTIVITES MINIERES (ANAM)', pageWidth / 2, y + 15, {
+      align: 'center',
+    });
+    doc.setDrawColor(25, 71, 106);
+    doc.line(marginX + 3, y + 18, pageWidth - marginX - 3, y + 18);
+    doc.setFontSize(11.7);
+    doc.text('DEMANDE DE REGULARISATION / PIECES COMPLEMENTAIRES', pageWidth / 2, y + 24, {
+      align: 'center',
+    });
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(88, 97, 106);
+    doc.setFontSize(8);
+    doc.text('Document de suivi pour demande de complement', pageWidth / 2, y + 28, {
+      align: 'center',
+    });
+    y += 33;
+
+    doc.setTextColor(25, 71, 106);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10.2);
+    doc.text('Informations de regularisation', fieldsX, y);
+    doc.setDrawColor(25, 71, 106);
+    doc.line(fieldsX, y + 1.8, fieldsX + fieldsWidth, y + 1.8);
+    y += 6.5;
+
+    const rows: Array<[string, string]> = [
+      ['Reference demande complement', referenceComplement],
+      ['Code demande', codeDemande],
+      ['Pieces manquantes ou irregularites', champ1Label],
+      ['Delai imparti', delaiLabel],
+      ['Effet de l\'absence de reponse', effetAbsenceLabel],
+      ['Mode de notification', modeNotificationLabel],
+      ['Titulaire / Demandeur', titulaire],
+      ['Type de permis', typePermis],
+      ['Responsable instruction', responsable],
+    ];
+
+    rows.forEach((row) => drawLabelValue(row[0], row[1]));
+
+    doc.setTextColor(100, 109, 118);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.2);
+    doc.text(`Code demande: ${codeDemande}`, marginX, pageHeight - 11);
+    doc.text(`Genere le ${generationTs}`, pageWidth - marginX, pageHeight - 11, { align: 'right' });
+
+    doc.save(fileName);
+  };
+
   const handleExportPdf = async () => {
     try {
       const data = await fetchExportDataset();
@@ -838,18 +1483,9 @@ export default function GestionDemandesAdminPage() {
   };
 
   const handleDownloadRecapRow = (item: DemandeItem) => {
-    const row = {
-      Code: item.code_demande || `DEM-${item.id_demande}`,
-      TypeProcedure: item.typeProcedure?.libelle || '--',
-      Titulaire: getTitulaire(item),
-      Wilaya: item.wilaya?.nom_wilayaFR || '--',
-      Commune: item.commune?.nom_communeFR || '--',
-      DateDepot: formatDate(item.date_demande),
-      Statut: item.statut_demande || '--',
-      Responsable: getResponsable(item),
-      Montant: getMontantValue(item),
-    };
-    buildRecapPdf([row], `demande_${item.id_demande}_recap.pdf`);
+    const code = sanitizePdfText(item.code_demande || item.short_code || `DEM-${item.id_demande}`);
+    const safeCode = code.replace(/[^a-zA-Z0-9-_]/g, '_');
+    buildFicheRegistrePdf(item, `fiche_registre_demande_${safeCode}.pdf`);
   };
 
   const pageNumbers = useMemo(() => {
@@ -1161,7 +1797,7 @@ export default function GestionDemandesAdminPage() {
                         <span>{header.label}</span>
                         {sortState.key === header.key && (
                           <span className={styles.sortIndicator}>
-                            {sortState.order === 'asc' ? '↑' : '↓'}
+                            {sortState.order === 'asc' ? '^' : 'v'}
                           </span>
                         )}
                       </th>
@@ -1254,7 +1890,7 @@ export default function GestionDemandesAdminPage() {
                                     <FiEye /> Afficher details
                                   </button>
                                   <button onClick={() => handleDownloadRecapRow(item)}>
-                                    <FiDownload /> Telecharger recap PDF
+                                    <FiDownload /> Telecharger fiche d'enregistremt
                                   </button>
                                   <button
                                     onClick={() =>
@@ -1283,6 +1919,13 @@ export default function GestionDemandesAdminPage() {
                                     }
                                   >
                                     <FiFileText /> Vue rapide (popup)
+                                  </button>
+                                  <button
+                                    className={styles.actionMenuDanger}
+                                    disabled={submitting}
+                                    onClick={() => handleDeleteDemande(item.id_demande)}
+                                  >
+                                    <FiTrash2 /> Supprimer
                                   </button>
                                 </div>
                               )}
@@ -1343,18 +1986,185 @@ export default function GestionDemandesAdminPage() {
                     ? 'Motif de rejet'
                     : 'Motif de demande de complement'}
                 </h3>
-                <p>Cette action exige un motif obligatoire.</p>
-                <textarea
-                  rows={5}
-                  value={motifText}
-                  onChange={(e) => setMotifText(e.target.value)}
-                  placeholder="Saisissez le motif..."
-                />
+                {motifAction === 'EN_COMPLEMENT' ? (
+                  <>
+                    <p>
+                      Selectionnez les documents manquants ou en anomalie, puis validez la fiche.
+                    </p>
+                    {complementDocsLoading && (
+                      <div className={styles.complementLoading}>
+                        Chargement des documents...
+                      </div>
+                    )}
+                    {complementDocsError && (
+                      <div className={styles.complementError}>{complementDocsError}</div>
+                    )}
+                    {!complementDocsLoading && complementDocs.length > 0 && (
+                      <div className={styles.complementDocsPanel}>
+                        {complementDocs.map((docItem) => {
+                          const fileUrl = docItem.file_url
+                            ? docItem.file_url.startsWith('http')
+                              ? docItem.file_url
+                              : `${apiURL || ''}${docItem.file_url}`
+                            : null;
+                          return (
+                            <div
+                              key={`complement-doc-${docItem.id_doc}`}
+                              className={styles.complementDocRow}
+                            >
+                              <div className={styles.complementDocHead}>
+                                <div>
+                                  <p>{docItem.nom_doc}</p>
+                                  <small>
+                                    Statut actuel: {formatDocStatusLabel(docItem.statutActuel)}
+                                    {docItem.isRequired ? ' | obligatoire' : ' | optionnel'}
+                                  </small>
+                                  {docItem.rejectMessage && (
+                                    <small className={styles.docHint}>
+                                      Regle: {docItem.rejectMessage}
+                                    </small>
+                                  )}
+                                </div>
+                                {fileUrl && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => window.open(fileUrl, '_blank')}
+                                  >
+                                    Ouvrir
+                                  </Button>
+                                )}
+                              </div>
+                              <div className={styles.complementDecisionGroup}>
+                                <label>
+                                  <input
+                                    type="radio"
+                                    checked={docItem.decision === 'conforme'}
+                                    onChange={() =>
+                                      updateComplementDocDecision(docItem.id_doc, 'conforme')
+                                    }
+                                  />
+                                  Conforme
+                                </label>
+                                <label>
+                                  <input
+                                    type="radio"
+                                    checked={docItem.decision === 'manquant'}
+                                    onChange={() =>
+                                      updateComplementDocDecision(docItem.id_doc, 'manquant')
+                                    }
+                                  />
+                                  Manquant
+                                </label>
+                                <label>
+                                  <input
+                                    type="radio"
+                                    checked={docItem.decision === 'probleme'}
+                                    onChange={() =>
+                                      updateComplementDocDecision(docItem.id_doc, 'probleme')
+                                    }
+                                  />
+                                  Present avec probleme
+                                </label>
+                              </div>
+
+                              {docItem.decision === 'probleme' && (
+                                <div className={styles.complementProblemsPanel}>
+                                  <div className={styles.complementProblemGrid}>
+                                    {DOC_PROBLEM_CODES.map((problemCode) => (
+                                      <label key={`${docItem.id_doc}-${problemCode}`}>
+                                        <input
+                                          type="checkbox"
+                                          checked={docItem.problems.includes(problemCode)}
+                                          onChange={() =>
+                                            toggleComplementProblem(docItem.id_doc, problemCode)
+                                          }
+                                        />
+                                        {DOC_PROBLEM_LABELS[problemCode]}
+                                      </label>
+                                    ))}
+                                  </div>
+                                  <textarea
+                                    rows={2}
+                                    value={docItem.comment}
+                                    onChange={(e) =>
+                                      updateComplementComment(
+                                        docItem.id_doc,
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="Commentaire detaille (optionnel)"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <div className={styles.complementMetaGrid}>
+                      <label className={styles.complementField}>
+                        <span>Delai (jours calendaires)</span>
+                        <input
+                          type="number"
+                          min={1}
+                          value={complementDelayDays}
+                          onChange={(e) => setComplementDelayDays(e.target.value)}
+                        />
+                      </label>
+                      <label className={styles.complementField}>
+                        <span>Mode de notification</span>
+                        <input
+                          type="text"
+                          value={complementNotificationMode}
+                          onChange={(e) => setComplementNotificationMode(e.target.value)}
+                        />
+                      </label>
+                      <label className={`${styles.complementField} ${styles.complementFieldFull}`}>
+                        <span>Effet de l'absence de reponse</span>
+                        <textarea
+                          rows={2}
+                          value={complementAbsenceEffect}
+                          onChange={(e) => setComplementAbsenceEffect(e.target.value)}
+                        />
+                      </label>
+                    </div>
+
+                    <textarea
+                      rows={3}
+                      value={motifText}
+                      onChange={(e) => setMotifText(e.target.value)}
+                      placeholder="Message libre ajoute par l'admin (optionnel)"
+                    />
+                  </>
+                ) : (
+                  <>
+                    <p>Cette action exige un motif obligatoire.</p>
+                    <textarea
+                      rows={5}
+                      value={motifText}
+                      onChange={(e) => setMotifText(e.target.value)}
+                      placeholder="Saisissez le motif..."
+                    />
+                  </>
+                )}
                 <div className={styles.modalActions}>
-                  <Button variant="outline" onClick={() => setMotifModalOpen(false)}>
+                  <Button
+                    className={styles.modalCancelBtn}
+                    variant="outline"
+                    onClick={() => {
+                      setMotifModalOpen(false);
+                      resetComplementForm();
+                    }}
+                  >
                     Annuler
                   </Button>
-                  <Button onClick={confirmMotifAction} disabled={submitting}>
+                  <Button
+                    className={styles.modalConfirmBtn}
+                    onClick={confirmMotifAction}
+                    disabled={submitting}
+                  >
                     Confirmer
                   </Button>
                 </div>
@@ -1438,3 +2248,4 @@ export default function GestionDemandesAdminPage() {
     </div>
   );
 }
+

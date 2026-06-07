@@ -68,7 +68,7 @@ const NOTIFICATIONS_ENABLED =
 
 export default function Navbar() {
   const router = useRouter();
-  const { auth, logout, isLoaded } = useAuthStore();
+  const { auth, logout, isLoaded, hasPermission } = useAuthStore();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -343,6 +343,17 @@ export default function Navbar() {
     return 'i';
   };
 
+  const hasPdfAttachment = (notification: NotificationItem) => {
+    const relatedType = String(notification.relatedEntityType || '').toLowerCase().trim();
+    const title = String(notification.title || '').toLowerCase();
+    const message = String(notification.message || '').toLowerCase();
+    return (
+      relatedType === 'demande_complement' ||
+      title.includes('pdf') ||
+      message.includes('.pdf')
+    );
+  };
+
   const formatRelativeDate = (dateString: string) => {
     const ts = new Date(dateString).getTime();
     if (!Number.isFinite(ts)) return '';
@@ -367,7 +378,10 @@ export default function Navbar() {
 
   const normalizedRoles = useMemo(() => normalizeRoles(auth?.role), [auth?.role]);
 
-  const isAdmin = useMemo(() => isAdminRole(normalizedRoles), [normalizedRoles]);
+  const isAdmin = useMemo(
+    () => hasPermission('Admin-Panel') || isAdminRole(normalizedRoles),
+    [hasPermission, normalizedRoles],
+  );
   const isOperateur = useMemo(
     () => isOperateurRole(normalizedRoles),
     [normalizedRoles],
@@ -502,7 +516,10 @@ export default function Navbar() {
     isRestrictedInvestisseur,
   ]);
 
-  const dashboardHref = getDefaultDashboardPath(normalizedRoles);
+  const dashboardHref = useMemo(
+    () => (isAdmin ? '/permis_dashboard/PermisDashboard' : getDefaultDashboardPath(normalizedRoles)),
+    [isAdmin, normalizedRoles],
+  );
 
   const initials = auth.role ? getInitials(auth.role) : '';
   const displayUsername = auth.username ?? auth.email ?? '';
@@ -531,7 +548,7 @@ export default function Navbar() {
     >
       <div className={styles['navbar-header']}>
         <div className={styles['app-logo']}>
-          <span>GUAM</span>
+          <span>GUNAM</span>
         </div>
       </div>
 
@@ -683,7 +700,12 @@ export default function Navbar() {
                         {getNotificationSymbol(notification)}
                       </div>
                       <div className={styles['notification-content']}>
-                        <h4>{notification.title}</h4>
+                        <div className={styles['notification-title-row']}>
+                          <h4>{notification.title}</h4>
+                          {hasPdfAttachment(notification) && (
+                            <span className={styles['notification-pdf-badge']}>PDF</span>
+                          )}
+                        </div>
                         <p>{notification.message}</p>
                         <span className={styles['notification-time']}>
                           {formatRelativeDate(notification.createdAt)}

@@ -56,6 +56,7 @@ const buildDemandePath = (
   demandeId: number,
   focusMessageId?: number | null,
   focusComposer?: boolean,
+  forcedTab?: "messages" | "completude",
 ): string => {
   const base =
     role === "admin"
@@ -64,8 +65,11 @@ const buildDemandePath = (
       ? `/demand_dashboard/${demandeId}`
       : `/investisseur/demandes/${demandeId}`;
 
+  const computedTab =
+    forcedTab || (focusMessageId || focusComposer ? "messages" : undefined);
+
   return buildPathWithQuery(base, {
-    tab: focusMessageId || focusComposer ? "messages" : undefined,
+    tab: computedTab,
     focusMessageId: focusMessageId ?? undefined,
     focusComposer: focusComposer ? 1 : undefined,
   });
@@ -405,6 +409,11 @@ export function resolveNotificationTargetPath(
     }
 
     return null;
+  }
+
+  if (relatedType === "demande_complement") {
+    if (!demandeId) return null;
+    return buildDemandePath(role, demandeId, null, false, "completude");
   }
 
   if (demandeId || normalize(item.category) === "demande") {

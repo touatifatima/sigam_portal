@@ -139,6 +139,17 @@ export default function NotificationsPage() {
     return styles.toneWarning;
   }, []);
 
+  const hasPdfAttachment = useCallback((notification: NotificationItem) => {
+    const relatedType = String(notification.relatedEntityType || '').toLowerCase().trim();
+    const title = String(notification.title || '').toLowerCase();
+    const message = String(notification.message || '').toLowerCase();
+    return (
+      relatedType === 'demande_complement' ||
+      title.includes('pdf') ||
+      message.includes('.pdf')
+    );
+  }, []);
+
   const loadNotifications = useCallback(async () => {
     if (!apiURL) {
       setError('API URL manquante.');
@@ -393,7 +404,12 @@ export default function NotificationsPage() {
 
                   <div className={styles.contentWrap}>
                     <div className={styles.rowTop}>
-                      <h3 className={styles.cardTitle}>{notification.title}</h3>
+                      <div className={styles.titleRow}>
+                        <h3 className={styles.cardTitle}>{notification.title}</h3>
+                        {hasPdfAttachment(notification) && (
+                          <span className={styles.pdfBadge}>PDF</span>
+                        )}
+                      </div>
                       <span className={styles.dateText}>
                         {toRelativeDate(notification.createdAt)}
                       </span>

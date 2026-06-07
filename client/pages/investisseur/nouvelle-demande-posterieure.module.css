@@ -236,7 +236,7 @@
 
 .grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
   gap: 12px;
 }
 
@@ -345,6 +345,12 @@
   color: #0d6f68;
   background: rgba(230, 252, 246, 0.9);
   border: 1px solid rgba(63, 184, 159, 0.42);
+}
+
+.warning {
+  color: #8a5a00;
+  background: rgba(255, 246, 214, 0.95);
+  border: 1px solid rgba(232, 183, 69, 0.58);
 }
 
 .section {

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { mergeTypeSpecificFields } from '../demandes/demande/demande-type-helpers';
@@ -476,6 +476,173 @@ export class DemandesService {
 
     if (!demande) return demande;
     return this.attachComputedFields(mergeTypeSpecificFields(demande));
+  }
+
+  async deleteDemandeAndRelatedData(demandeId: number) {
+    const result = await this.prisma.$transaction(async (tx) => {
+      const demande = await tx.demandePortail.findUnique({
+        where: { id_demande: demandeId },
+        select: {
+          id_demande: true,
+          typeProcedure: { select: { libelle: true } },
+          renouvellement: {
+            select: {
+              date_debut_validite: true,
+              date_fin_validite: true,
+            },
+          },
+          procedure: {
+            select: {
+              permisProcedure: {
+                take: 1,
+                select: {
+                  permis: {
+                    select: {
+                      id: true,
+                      nombre_renouvellements: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!demande) {
+        throw new NotFoundException('Demande introuvable');
+      }
+
+      const fusion = await tx.demFusion.findUnique({
+        where: { id_demande: demandeId },
+        select: { id_fusion: true },
+      });
+      if (fusion) {
+        await tx.fusionPermisSource.deleteMany({
+          where: { id_fusion: fusion.id_fusion },
+        });
+      }
+
+      const transfert = await tx.demTransfert.findUnique({
+        where: { id_demande: demandeId },
+        select: { id_transfert: true },
+      });
+      if (transfert) {
+        await tx.transfertDetenteur.deleteMany({
+          where: { id_transfert: transfert.id_transfert },
+        });
+      }
+
+      const facture = await tx.facture.findUnique({
+        where: { id_demande: demandeId },
+        select: { id_facture: true },
+      });
+      if (facture) {
+        await tx.paiement.deleteMany({
+          where: { id_facture: facture.id_facture },
+        });
+      }
+
+      await tx.dossierFournisDocumentPortail.deleteMany({
+        where: {
+          dossierFournis: {
+            id_demande: demandeId,
+          },
+        },
+      });
+      await tx.dossierFournisPortail.deleteMany({
+        where: { id_demande: demandeId },
+      });
+
+      await tx.cahierChargePortail.deleteMany({
+        where: { demandeId: demandeId },
+      });
+
+      await tx.demandeCommune.deleteMany({
+        where: { id_demande: demandeId },
+      });
+      await tx.procedureRenouvellement.deleteMany({
+        where: { id_demande: demandeId },
+      });
+      await tx.demandeVerificationGeo.deleteMany({
+        where: { id_demande: demandeId },
+      });
+      await tx.demandeMin.deleteMany({
+        where: { id_demande: demandeId },
+      });
+      await tx.inscriptionProvisoirePortail.deleteMany({
+        where: { id_demande: demandeId },
+      });
+      await tx.droitPreemption.deleteMany({
+        where: { demandeId: demandeId },
+      });
+      await tx.detenteurDemandePortail.deleteMany({
+        where: { id_demande: demandeId },
+      });
+
+      await tx.demCession.deleteMany({
+        where: { id_demande: demandeId },
+      });
+      await tx.demSubstitution.deleteMany({
+        where: { id_demande: demandeId },
+      });
+      await tx.demFermeture.deleteMany({
+        where: { id_demande: demandeId },
+      });
+      await tx.demFusion.deleteMany({
+        where: { id_demande: demandeId },
+      });
+      await tx.demTransfert.deleteMany({
+        where: { id_demande: demandeId },
+      });
+
+      await tx.demAnnulation.deleteMany({
+        where: { id_demande: demandeId },
+      });
+      await tx.demInitial.deleteMany({
+        where: { id_demande: demandeId },
+      });
+      await tx.demModification.deleteMany({
+        where: { id_demande: demandeId },
+      });
+      await tx.demRenonciation.deleteMany({
+        where: { id_demande: demandeId },
+      });
+
+      await tx.facture.deleteMany({
+        where: { id_demande: demandeId },
+      });
+
+      await tx.demandePortail.delete({
+        where: { id_demande: demandeId },
+      });
+
+      const procedureLabel = (demande.typeProcedure?.libelle ?? '').toLowerCase();
+      const isRenewalProcedure = procedureLabel.includes('renouvel');
+      const isConfirmedRenewal =
+        !!demande.renouvellement?.date_debut_validite &&
+        !!demande.renouvellement?.date_fin_validite;
+      const linkedPermit = demande.procedure?.permisProcedure?.[0]?.permis;
+
+      if (isRenewalProcedure && isConfirmedRenewal && linkedPermit) {
+        await tx.permisPortail.update({
+          where: { id: linkedPermit.id },
+          data: {
+            nombre_renouvellements: Math.max(
+              0,
+              (linkedPermit.nombre_renouvellements ?? 0) - 1,
+            ),
+          },
+        });
+      }
+
+      return {
+        success: true,
+        deletedDemandeId: demandeId,
+      };
+    });
+
+    return result;
   }
 
   async exportCSV(params: {

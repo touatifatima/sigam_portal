@@ -16,6 +16,12 @@
     radial-gradient(circle at top left, rgba(177, 70, 128, 0.1), transparent 30%),
     radial-gradient(circle at top right, rgba(111, 44, 76, 0.1), transparent 28%),
     linear-gradient(180deg, #f0f4f8 0%, #f4f7fb 46%, #f8fbfd 100%);
+  overflow-x: hidden;
+}
+
+.page,
+.page * {
+  box-sizing: border-box;
 }
 
 .page[data-theme="light"] {
@@ -38,15 +44,18 @@
 }
 
 .shell {
+  width: 100%;
   max-width: 1380px;
   margin: 0 auto;
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
   gap: 1.5rem;
   align-items: start;
+  min-width: 0;
 }
 
 .sidebar {
+  min-width: 0;
   position: sticky;
   top: 88px;
   display: flex;
@@ -57,6 +66,7 @@
 .sidebarCard,
 .hero,
 .panel {
+  min-width: 0;
   border-radius: 28px;
   border: 1px solid rgba(111, 44, 76, 0.1);
   background: #ffffff;
@@ -232,10 +242,12 @@
 }
 
 .sidebarNavLead {
+  min-width: 0;
   display: inline-flex;
   align-items: center;
   gap: 0.75rem;
   text-align: left;
+  overflow-wrap: anywhere;
 }
 
 .sidebarNavIcon {
@@ -279,6 +291,10 @@
   background: rgba(244, 248, 251, 0.7);
 }
 
+.accountCard > div:last-child {
+  min-width: 0;
+}
+
 .accountIcon {
   width: 2.2rem;
   height: 2.2rem;
@@ -311,6 +327,7 @@
 }
 
 .main {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -340,6 +357,7 @@
 
 .heroCopy,
 .heroActions {
+  min-width: 0;
   position: relative;
   z-index: 1;
 }
@@ -382,12 +400,19 @@
   max-width: 640px;
   color: var(--ink-800);
   line-height: 1.7;
+  overflow-wrap: anywhere;
 }
 
 .heroActions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
+  justify-content: flex-end;
+  max-width: 360px;
+}
+
+.heroActions > * {
+  max-width: 100%;
 }
 
 .panelGrid {
@@ -414,6 +439,7 @@
 }
 
 .panelHeading {
+  min-width: 0;
   display: flex;
   align-items: flex-start;
   gap: 0.9rem;
@@ -454,9 +480,15 @@
   border-radius: 20px;
   border: 1px solid var(--line);
   background: rgba(244, 248, 251, 0.66);
+  min-width: 0;
+}
+
+.sensitiveRow > div {
+  min-width: 0;
 }
 
 .settingCopy {
+  min-width: 0;
   max-width: 560px;
 }
 
@@ -471,6 +503,7 @@
   margin: 0.2rem 0 0;
   color: var(--ink-800);
   line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 .themeSwitch {
@@ -570,6 +603,7 @@
   color: var(--green-900);
   font-size: 0.9rem;
   font-weight: 600;
+  max-width: 100%;
 }
 
 .footerMeta {
@@ -599,6 +633,7 @@
   min-height: 48px;
   border-radius: 16px;
   font-weight: 700;
+  white-space: normal;
 }
 
 .primaryButton {
@@ -650,13 +685,34 @@
     grid-template-columns: 1fr;
   }
 
+  .main {
+    order: 1;
+  }
+
   .sidebar {
     position: static;
+    order: 2;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .sidebarCard {
+    height: 100%;
+  }
+
+  .heroActions {
+    justify-content: flex-start;
+    max-width: none;
   }
 }
 
 @media (max-width: 960px) {
   .panelGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
     grid-template-columns: 1fr;
   }
 }
@@ -674,6 +730,11 @@
 
   .hero {
     padding: 1.3rem;
+  }
+
+  .heroCopy,
+  .heroActions {
+    width: 100%;
   }
 
   .title {
@@ -711,6 +772,11 @@
   .sensitiveRow {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.8rem;
+  }
+
+  .panelHeading {
+    gap: 0.75rem;
   }
 
   .themeSwitch {
@@ -724,7 +790,78 @@
 }
 
 @media (max-width: 540px) {
+  .page {
+    padding: 0.9rem 0.65rem 1.45rem;
+  }
+
+  .shell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .sidebar,
+  .main {
+    width: 100%;
+  }
+
+  .sidebarCard,
+  .panel,
+  .hero {
+    padding: 1rem;
+    border-radius: 20px;
+  }
+
+  .accountCard {
+    flex-direction: column;
+  }
+
+  .title {
+    font-size: 1.45rem;
+    line-height: 1.14;
+  }
+
+  .subtitle,
+  .settingText {
+    font-size: 0.95rem;
+    line-height: 1.58;
+  }
+
+  .panelHeading {
+    flex-direction: column;
+  }
+
+  .sidebarNav {
+    display: grid;
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .sidebarNavButton {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .sidebarNavArrow {
+    display: none;
+  }
+
+  .themeSwitch {
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+
+  .inlineNote {
+    align-items: flex-start;
+  }
+
   .footerMeta {
     flex-direction: column;
+  }
+
+  .footerMetaItem {
+    width: 100%;
+    border-radius: 16px;
+    align-items: flex-start;
   }
 }

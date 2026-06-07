@@ -47,10 +47,15 @@ if (typeof window !== 'undefined' && !window.__SIGAM_API_PATCHED__) {
       h === 'js.arcgis.com'
     );
   };
+  const isLoopbackHost = (host: string) => {
+    const h = host.toLowerCase();
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1';
+  };
   const isInternal = (urlStr?: string) => {
     try {
       if (!urlStr) return true; // likely relative → treat as internal
       const u = new URL(urlStr, (API_BASE || window.location.origin));
+      if (isLoopbackHost(u.hostname)) return true;
       // Consider internal only if host matches configured API host
       if (INTERNAL_HOST) return u.host === INTERNAL_HOST;
       // Fallback: same-origin relative API

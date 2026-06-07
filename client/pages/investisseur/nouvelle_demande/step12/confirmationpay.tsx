@@ -38,7 +38,10 @@ const ConfirmationPaiement = () => {
   const [idProc, setIdProc] = useState<number | null>(null);
   const [idDemande, setIdDemande] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
+  const [demandeSummary, setDemandeSummary] = useState<any | null>(null);
   const confirmToastRef = useRef(false);
+  const autoAccuseRef = useRef(false);
   const successToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [data, setData] = useState<ConfirmationData>(() => ({
@@ -139,7 +142,7 @@ const ConfirmationPaiement = () => {
     if (!value) return true;
     const trimmed = value.trim();
     if (!trimmed) return true;
-    if (trimmed === "--" || trimmed === "—" || trimmed === "?") return true;
+    if (trimmed === "--" || trimmed === "-" || trimmed === "?") return true;
     return /^n\/?a$/i.test(trimmed);
   };
 
@@ -217,6 +220,7 @@ const ConfirmationPaiement = () => {
       .then((res) => {
         if (!active) return;
         const payload = res.data ?? {};
+        setDemandeSummary(payload);
         const societe = resolveTitulaire(payload);
         const typePermis = resolveTypePermis(payload);
         mergeData({
@@ -247,12 +251,13 @@ const ConfirmationPaiement = () => {
       } catch (error) {
         console.warn("[ConfirmationPay] failed to confirm paiement date", error);
       } finally {
+        setPaymentConfirmed(true);
         toast.dismiss(SUCCESS_TOAST_ID);
         toast.success(
           <div className={styles.successToastContent}>
-            <div className={styles.successToastTitle}>Paiement confirmé avec succès !</div>
+            <div className={styles.successToastTitle}>Paiement confirme avec succes !</div>
             <div className={styles.successToastText}>
-              Votre demande a bien été enregistrée et est en cours de traitement. Vous recevrez une confirmation officielle sous peu.
+              Votre demande a bien ete enregistree et est en cours de traitement. Vous recevrez une confirmation officielle sous peu.
             </div>
           </div>,
           {
@@ -355,6 +360,180 @@ const ConfirmationPaiement = () => {
     }
     return "0";
   }, [data.montant]);
+
+  const formatDateTimeWithSeconds = (isoDate?: string | null) => {
+    if (!isoDate) return "--";
+    const date = new Date(isoDate);
+    if (Number.isNaN(date.getTime())) return "--";
+    return date.toLocaleString("fr-DZ", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  };
+
+  const getAccusePiecesCount = () => {
+    const latestDossier = Array.isArray(demandeSummary?.dossiersFournis)
+      ? demandeSummary.dossiersFournis[0]
+      : null;
+    const docs = Array.isArray(latestDossier?.documents) ? latestDossier.documents : [];
+    return docs.length;
+  };
+
+  const getAccuseDepotDate = () => {
+    const latestDossier = Array.isArray(demandeSummary?.dossiersFournis)
+      ? demandeSummary.dossiersFournis[0]
+      : null;
+    return (
+      latestDossier?.date_depot ||
+      demandeSummary?.date_demande ||
+      data.datePaiement ||
+      new Date().toISOString()
+    );
+  };
+
+  const getAccuseAgent = () => {
+    const value = String(demandeSummary?.Nom_Prenom_Resp_Enregist ?? "").trim();
+    return value || "Guichet ANAM";
+  };
+
+  const getAccuseDeposant = () => {
+    if (!isPlaceholder(data.societe)) return data.societe;
+    const fallback = resolveTitulaire(demandeSummary ?? {});
+    return fallback || "Deposant";
+  };
+
+  const handleDownloadAccuseReception = (auto = false) => {
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const marginX = 14;
+    const contentWidth = pageWidth - marginX * 2;
+    const fieldsX = marginX + 8;
+    const fieldsWidth = contentWidth - 16;
+    let y = 10;
+
+    const deposant = getAccuseDeposant();
+    const agentRecepteur = getAccuseAgent();
+    const piecesCount = getAccusePiecesCount();
+    const dateDepot = formatDateTimeWithSeconds(getAccuseDepotDate());
+    const horodatage = formatDateTimeWithSeconds(new Date().toISOString());
+    const codeDemande =
+      data.codedemande || demandeSummary?.code_demande || `DEM-${idDemande ?? "--"}`;
+    const safeCodeForFile = String(codeDemande).replace(/[^a-zA-Z0-9-_]/g, "_");
+
+    const referenceCode = `ARH-${new Date().getFullYear()}-${String(
+      idDemande ?? "0",
+    ).padStart(6, "0")}`;
+    const typePermis = !isPlaceholder(data.typePermis) ? data.typePermis : "--";
+
+    const drawLabelValue = (label: string, value: string) => {
+      const cleanValue = sanitizeText(value || "--");
+      const labelWidth = 56;
+      const valueWidth = fieldsWidth - labelWidth - 2;
+      const valueLines = doc.splitTextToSize(cleanValue, valueWidth);
+      const blockHeight = Math.max(6.8, valueLines.length * 4 + 1.8);
+
+      doc.setTextColor(44, 57, 70);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.4);
+      doc.text(`${label} :`, fieldsX, y + 4.8);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.4);
+      doc.text(valueLines, fieldsX + labelWidth, y + 4.8);
+
+      y += blockHeight + 3.5;
+    };
+
+    doc.setDrawColor(25, 71, 106);
+    doc.setLineWidth(0.6);
+    doc.rect(marginX, y, contentWidth, pageHeight - 20, "S");
+
+    doc.setTextColor(30, 53, 73);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.7);
+    doc.text("REPUBLIQUE ALGERIENNE DEMOCRATIQUE ET POPULAIRE", pageWidth / 2, y + 6, {
+      align: "center",
+    });
+    doc.setFontSize(8.4);
+    doc.text("MINISTERE DE L'ENERGIE ET DES MINES", pageWidth / 2, y + 10.6, {
+      align: "center",
+    });
+    doc.setFontSize(8.1);
+    doc.text("AGENCE NATIONALE DES ACTIVITES MINIERES (ANAM)", pageWidth / 2, y + 15, {
+      align: "center",
+    });
+    doc.setDrawColor(25, 71, 106);
+    doc.line(marginX + 3, y + 18, pageWidth - marginX - 3, y + 18);
+    doc.setFontSize(13);
+    doc.text("ACCUSE DE RECEPTION HORODATE", pageWidth / 2, y + 24, {
+      align: "center",
+    });
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(88, 97, 106);
+    doc.setFontSize(8);
+    doc.text("Document de preuve du depot enregistre dans le systeme ANAM", pageWidth / 2, y + 28, {
+      align: "center",
+    });
+    y += 33;
+
+    doc.setTextColor(25, 71, 106);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10.2);
+    doc.text("Informations du depot", fieldsX, y);
+    doc.setDrawColor(25, 71, 106);
+    doc.line(fieldsX, y + 1.8, fieldsX + fieldsWidth, y + 1.8);
+    y += 6.5;
+
+    const rows: Array<[string, string]> = [
+      ["Reference accuse", referenceCode],
+      ["Code demande", codeDemande],
+      ["Reference transaction", data.transactionId || "--"],
+      ["Horodatage systeme", horodatage],
+      ["Nom du deposant", deposant],
+      ["Type de permis", typePermis],
+      ["Date et heure de depot", dateDepot],
+      ["Nombre de pieces remises", String(piecesCount)],
+      ["Agent recepteur", agentRecepteur],
+    ];
+
+    rows.forEach((row) => drawLabelValue(row[0], row[1]));
+
+    doc.setTextColor(100, 109, 118);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.2);
+    doc.text(
+      `Document officiel genere automatiquement le ${formatDateTimeWithSeconds(new Date().toISOString())}`,
+      marginX,
+      pageHeight - 11,
+    );
+    doc.text("ANAM - Registre numerique des demandes", pageWidth - marginX, pageHeight - 11, {
+      align: "right",
+    });
+
+    doc.save(`accuse-reception-${safeCodeForFile}.pdf`);
+
+    if (!auto) {
+      toast.success("Accuse de reception horodate telecharge.");
+    }
+  };
+
+  useEffect(() => {
+    if (!paymentConfirmed || !idDemande) return;
+    if (autoAccuseRef.current) return;
+
+    autoAccuseRef.current = true;
+    const timer = window.setTimeout(() => {
+      handleDownloadAccuseReception(true);
+      toast.info("Accuse de reception horodate telecharge automatiquement.");
+    }, 900);
+
+    return () => window.clearTimeout(timer);
+  }, [paymentConfirmed, idDemande]);
 
 
   const handleDownloadPDF = () => {
@@ -572,9 +751,18 @@ const ConfirmationPaiement = () => {
         <div className={styles.actions}>
           <button className={styles.btnPrimary} onClick={handleDownloadPDF} disabled={isLoading}>
             <Download size={18} />
-            Télécharger le reçu PDF
+            Telecharger le recu PDF
           </button>
-          
+
+          <button
+            className={styles.btnSecondary}
+            onClick={() => handleDownloadAccuseReception()}
+            disabled={isLoading}
+          >
+            <Download size={18} />
+            Telecharger l'accuse horodate
+          </button>
+
           <button className={styles.btnSecondary} onClick={handleSendEmail} disabled={isLoading}>
             <Mail size={18} />
             Envoyer par email

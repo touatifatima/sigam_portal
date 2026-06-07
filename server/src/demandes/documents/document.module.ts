@@ -5,9 +5,10 @@ import { DocumentsService } from './documents.service';
 import { NotificationsModule } from 'src/notifications/notifications.module';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { DocumentsReminderService } from './documents.reminder.service';
+import { SessionModule } from 'src/session/session.module';
 
 @Module({
-  imports: [PrismaModule, CessionModule, NotificationsModule],
+  imports: [PrismaModule, CessionModule, NotificationsModule, SessionModule],
   controllers: [DocumentsController],
   providers: [DocumentsService, DocumentsReminderService],
   exports: [DocumentsService],

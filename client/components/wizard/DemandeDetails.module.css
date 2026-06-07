@@ -894,6 +894,781 @@
   color:hsl(335 45% 42%);
 }
 
+/* Completude */
+.complementHeaderText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.complementTitle {
+  text-transform: none !important;
+  letter-spacing: 0.02em !important;
+  font-size: 0.98rem !important;
+  color: hsl(219 45% 22%);
+}
+
+.complementHeaderHint {
+  margin: 0;
+  font-size: 0.86rem;
+  color: hsl(216 14% 42%);
+}
+
+.complementWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  border: 1px solid hsl(220 21% 86%);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at top right, hsl(335 76% 76% / 0.06), transparent 32%),
+    linear-gradient(180deg, hsl(0 0% 100%), hsl(220 33% 98%));
+  padding: 0.95rem;
+}
+
+.complementHeroPanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.82fr);
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid hsl(215 26% 86%);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top right, hsl(335 76% 76% / 0.08), transparent 30%),
+    linear-gradient(135deg, hsl(0 0% 100%), hsl(214 56% 98%));
+  box-shadow: 0 14px 28px hsl(220 28% 16% / 0.06);
+}
+
+.complementHeroMain {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.complementHeroTopline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.complementEyebrow {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.62rem;
+  border-radius: 999px;
+  background: hsl(217 44% 95%);
+  border: 1px solid hsl(214 32% 84%);
+  color: hsl(215 42% 30%);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.complementHeroIntro h4 {
+  margin: 0;
+  font-size: 1.08rem;
+  line-height: 1.25;
+  color: hsl(220 46% 18%);
+}
+
+.complementHeroIntro p {
+  margin: 0.4rem 0 0;
+  max-width: 56ch;
+  color: hsl(218 18% 33%);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.complementStatGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.complementStatCard {
+  min-height: 76px;
+  padding: 0.8rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid hsl(214 24% 87%);
+  background: hsl(0 0% 100% / 0.88);
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.96);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.3rem;
+}
+
+.complementStatCard span {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: hsl(216 15% 45%);
+  font-weight: 800;
+}
+
+.complementStatCard strong {
+  font-size: 1.2rem;
+  line-height: 1;
+  color: hsl(219 47% 18%);
+}
+
+.complementActionPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.95rem;
+  border-radius: 16px;
+  border: 1px solid hsl(330 24% 84%);
+  background:
+    linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(333 44% 97%) 100%);
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.96);
+}
+
+.complementActionStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.complementActionNotes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding-top: 0.1rem;
+}
+
+.complementActionNotes span {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.24rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid hsl(214 24% 86%);
+  background: hsl(0 0% 100%);
+  font-size: 0.76rem;
+  color: hsl(217 18% 34%);
+  font-weight: 600;
+}
+
+.complementGuideBtn {
+  min-height: 42px;
+  padding: 0 0.95rem;
+  gap: 0.45rem;
+  border-radius: 12px;
+  font-weight: 700;
+}
+
+.complementActions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid hsl(214 24% 90%);
+}
+
+.complementInlineHint {
+  margin: -0.15rem 0 0;
+  font-size: 0.82rem;
+  color: hsl(28 76% 34%);
+  font-weight: 600;
+}
+
+.complementDownloadBtn,
+.complementRecepisseBtn,
+.complementViewBtn,
+.complementUploadBtn {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid hsl(330 18% 86% / 0.95);
+  background:
+    linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(330 29% 98%) 100%);
+  color: hsl(220 28% 32%);
+  font-weight: 700;
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.92),
+    0 8px 18px hsl(330 24% 14% / 0.08);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.25s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.complementDownloadBtn::after,
+.complementRecepisseBtn::after,
+.complementViewBtn::after,
+.complementUploadBtn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    hsl(0 0% 100% / 0.46) 48%,
+    transparent 100%
+  );
+  transform: translateX(-130%);
+  transition: transform 0.45s ease;
+  pointer-events: none;
+}
+
+.complementDownloadBtn:hover,
+.complementRecepisseBtn:hover,
+.complementViewBtn:hover,
+.complementUploadBtn:hover {
+  transform: translateY(-1px);
+  border-color: hsl(333 28% 78%);
+  color: hsl(334 44% 36%);
+  background:
+    linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(333 48% 97%) 100%);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.96),
+    0 12px 24px hsl(330 24% 14% / 0.12);
+}
+
+.complementDownloadBtn:hover::after,
+.complementRecepisseBtn:hover::after,
+.complementViewBtn:hover::after,
+.complementUploadBtn:hover::after {
+  transform: translateX(130%);
+}
+
+.complementDownloadBtn {
+  min-height: 42px;
+  padding: 0 0.95rem;
+  gap: 0.45rem;
+}
+
+.complementRecepisseBtn {
+  min-height: 42px;
+  padding: 0 0.95rem;
+  gap: 0.45rem;
+}
+
+.complementSubmitBtn {
+  position: relative;
+  overflow: hidden;
+  min-height: 42px;
+  padding: 0 1rem;
+  border: 1px solid hsl(332 39% 38%);
+  background: linear-gradient(135deg, hsl(334 43% 43%) 0%, hsl(328 47% 35%) 100%);
+  color: hsl(0 0% 100%);
+  font-weight: 700;
+  gap: 0.45rem;
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.2),
+    0 14px 30px hsl(330 34% 18% / 0.18);
+  transition: transform 0.2s ease, box-shadow 0.25s ease, filter 0.25s ease;
+}
+
+.complementSubmitBtn::before {
+  content: "";
+  position: absolute;
+  left: -42%;
+  top: -120%;
+  width: 42%;
+  height: 320%;
+  transform: rotate(24deg);
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    hsl(0 0% 100% / 0.22) 50%,
+    transparent 100%
+  );
+  transition: left 0.45s ease;
+}
+
+.complementSubmitBtn:hover {
+  filter: brightness(1.03);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.24),
+    0 16px 34px hsl(330 34% 18% / 0.24);
+}
+
+.complementSubmitBtn:hover::before {
+  left: 118%;
+}
+
+.complementEmpty {
+  border: 1px dashed hsl(217 24% 82%);
+  border-radius: 14px;
+  padding: 1.1rem;
+  background: hsl(214 32% 97%);
+}
+
+.complementEmpty h4 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 650;
+  color: hsl(220 34% 24%);
+}
+
+.complementEmpty p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: hsl(218 15% 42%);
+}
+
+.complementMetaGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.complementFlowStrip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.complementFlowItem {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  justify-content: center;
+  padding: 0.75rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid hsl(216 22% 86%);
+  background: hsl(0 0% 100%);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.complementFlowItem:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px hsl(220 20% 17% / 0.08);
+}
+
+.complementFlowCompleted {
+  border-color: hsl(146 38% 74%);
+  background: linear-gradient(180deg, hsl(0 0% 100%), hsl(144 52% 97%));
+}
+
+.complementFlowActive {
+  border-color: hsl(39 80% 76%);
+  background: linear-gradient(180deg, hsl(0 0% 100%), hsl(43 100% 97%));
+}
+
+.complementFlowPending {
+  border-color: hsl(216 22% 86%);
+  background: linear-gradient(180deg, hsl(0 0% 100%), hsl(214 44% 98%));
+}
+
+.complementFlowIndex {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 800;
+  background: hsl(214 46% 94%);
+  color: hsl(215 43% 31%);
+  border: 1px solid hsl(214 29% 82%);
+}
+
+.complementFlowText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+  text-align: center;
+}
+
+.complementFlowText strong {
+  font-size: 0.9rem;
+  color: hsl(220 42% 19%);
+}
+
+.complementFlowText span {
+  display: none;
+}
+
+.complementStateBanner {
+  border-radius: 12px;
+  padding: 0.95rem 1rem;
+  border: 1px solid transparent;
+}
+
+.complementStatePending {
+  background: linear-gradient(135deg, hsl(41 100% 96%), hsl(46 100% 92%));
+  border-color: hsl(44 88% 79%);
+}
+
+.complementStateSuccess {
+  background: linear-gradient(135deg, hsl(142 72% 96%), hsl(149 58% 91%));
+  border-color: hsl(143 44% 77%);
+}
+
+.complementStateHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.complementStateHeader h5 {
+  margin: 0;
+  font-size: 0.92rem;
+  color: hsl(220 40% 18%);
+}
+
+.complementStateBanner p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: hsl(220 20% 28%);
+}
+
+.complementMetaItem {
+  border: 1px solid hsl(214 21% 85%);
+  border-radius: 10px;
+  background: hsl(0 0% 100%);
+  padding: 0.75rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  min-height: 68px;
+}
+
+.complementMetaItem span {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: hsl(217 15% 44%);
+  font-weight: 700;
+}
+
+.complementMetaItem strong {
+  font-size: 0.95rem;
+  color: hsl(219 48% 17%);
+  font-weight: 700;
+}
+
+.complementNotice {
+  border: 1px solid hsl(211 44% 84%);
+  border-left: 4px solid hsl(211 63% 43%);
+  border-radius: 10px;
+  background: hsl(210 86% 97%);
+  padding: 0.85rem 0.95rem;
+}
+
+.complementNotice h5 {
+  margin: 0 0 0.35rem;
+  font-size: 0.88rem;
+  color: hsl(215 57% 28%);
+}
+
+.complementNotice p {
+  margin: 0;
+  color: hsl(218 22% 30%);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.complementBriefGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.complementBriefCard {
+  border: 1px solid hsl(213 30% 85%);
+  border-radius: 14px;
+  background: linear-gradient(180deg, hsl(0 0% 100%), hsl(214 80% 98%));
+  padding: 0.9rem 1rem;
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.98);
+}
+
+.complementBriefCard h5 {
+  margin: 0 0 0.35rem;
+  font-size: 0.86rem;
+  color: hsl(217 56% 27%);
+}
+
+.complementBriefCard p {
+  margin: 0;
+  font-size: 0.87rem;
+  line-height: 1.5;
+  color: hsl(218 22% 30%);
+}
+
+.complementBriefAlert {
+  border-color: hsl(39 84% 80%);
+  background: linear-gradient(180deg, hsl(44 100% 98%), hsl(38 100% 95%));
+}
+
+.complementDocsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.complementDocsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.complementHistorySection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.complementDocsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.complementDocsHeader h5 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: hsl(218 44% 22%);
+  font-weight: 700;
+}
+
+.complementDocsHeader span {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.24rem 0.56rem;
+  border-radius: 999px;
+  border: 1px solid hsl(213 25% 82%);
+  background: hsl(213 45% 96%);
+  color: hsl(213 40% 30%);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.complementDocCard {
+  border: 1px solid hsl(217 22% 86%);
+  border-radius: 11px;
+  background: hsl(0 0% 100%);
+  padding: 0.75rem 0.85rem;
+  box-shadow: 0 1px 2px hsl(220 23% 15% / 0.06);
+}
+
+.complementDocCardSuccess {
+  border-color: hsl(145 36% 74%);
+  background:
+    radial-gradient(circle at top right, hsl(142 64% 60% / 0.12), transparent 36%),
+    linear-gradient(180deg, hsl(0 0% 100%), hsl(138 43% 98%));
+  box-shadow: 0 6px 20px hsl(145 34% 20% / 0.08);
+}
+
+.complementDocCardWarning {
+  border-color: hsl(38 72% 76%);
+  background:
+    radial-gradient(circle at top right, hsl(41 100% 70% / 0.12), transparent 34%),
+    linear-gradient(180deg, hsl(0 0% 100%), hsl(41 100% 98%));
+}
+
+.complementDocCardDanger {
+  border-color: hsl(0 71% 82%);
+  background:
+    radial-gradient(circle at top right, hsl(0 84% 70% / 0.12), transparent 34%),
+    linear-gradient(180deg, hsl(0 0% 100%), hsl(0 100% 99%));
+}
+
+.complementDocHeadCompact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.complementDocTitleBlock {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.complementDocNumber {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid hsl(213 25% 80%);
+  background: hsl(214 41% 96%);
+  color: hsl(214 43% 33%);
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.complementDocHeadCompact h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: hsl(220 40% 19%);
+  font-weight: 700;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.complementDocBadges {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.complementDocIssueRow {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.62rem;
+}
+
+.complementIssueTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.52rem;
+  border-radius: 999px;
+  background: hsl(213 45% 96%);
+  border: 1px solid hsl(214 28% 84%);
+  color: hsl(215 35% 31%);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.complementDocBodyCompact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.complementDocBodyCompact p {
+  margin: 0;
+  font-size: 0.86rem;
+  color: hsl(218 16% 32%);
+  line-height: 1.42;
+}
+
+.complementDocBodyCompact p span {
+  color: hsl(218 21% 24%);
+  font-weight: 600;
+}
+
+.complementDocMetaCompact {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.complementDocMetaChip {
+  min-height: 62px;
+  padding: 0.65rem 0.7rem;
+  border-radius: 12px;
+  border: 1px solid hsl(215 22% 87%);
+  background: hsl(0 0% 100% / 0.82);
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.complementDocMetaChip span {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: hsl(217 13% 46%);
+  font-weight: 800;
+}
+
+.complementDocMetaChip strong {
+  font-size: 0.82rem;
+  color: hsl(219 36% 21%);
+  line-height: 1.35;
+}
+
+.complementDocAdminNote {
+  margin-top: 0.62rem;
+  border-radius: 12px;
+  border: 1px solid hsl(213 29% 85%);
+  background: hsl(212 75% 97%);
+  padding: 0.72rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.complementDocAdminNote p {
+  margin: 0;
+  font-size: 0.83rem;
+  line-height: 1.45;
+  color: hsl(217 21% 30%);
+}
+
+.complementDocAdminNote p span {
+  font-weight: 700;
+  color: hsl(215 42% 25%);
+}
+
+.complementDocActionsRow {
+  margin-top: 0.65rem;
+  padding-top: 0.62rem;
+  border-top: 1px solid hsl(214 26% 90%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.complementDocButtons {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.complementDocFileState {
+  font-size: 0.8rem;
+  color: hsl(215 19% 34%);
+  font-weight: 650;
+  margin-right: 0;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: hsl(214 42% 96%);
+  border: 1px solid hsl(214 24% 86%);
+}
+
+.complementViewBtn {
+  min-height: 34px;
+  padding: 0 0.7rem;
+  font-weight: 700;
+  font-size: 0.84rem;
+  gap: 0.45rem;
+}
+
+.complementUploadBtn {
+  min-height: 34px;
+  padding: 0 0.75rem;
+  font-weight: 700;
+  gap: 0.45rem;
+  font-size: 0.84rem;
+}
+
+.hiddenFileInput {
+  display: none;
+}
+
 /* Paiements List */
 .paiementsList {
   display: flex;
@@ -1091,7 +1866,7 @@
   background: var(--detail-card-bg);
   border: 1px solid var(--detail-card-border);
   border-radius: 14px;
-  padding: 1rem 1.25rem;
+  padding: 0.9rem 1.1rem;
   box-shadow: 0 1px 0 hsl(0 0% 100%), 0 10px 22px hsl(330 28% 14% / 0.07);
   transition: all 0.3s ease;
   overflow: hidden;
@@ -1121,7 +1896,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.15rem;
 }
 
 .timelineHeader h4 {
@@ -1210,6 +1985,21 @@
   .skeletonGrid {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  .complementHeroPanel {
+    grid-template-columns: 1fr;
+  }
+
+  .complementStatGrid,
+  .complementFlowStrip,
+  .complementMetaGrid,
+  .complementDocMetaCompact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .complementBriefGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 768px) {
@@ -1289,6 +2079,70 @@
     flex-direction: column;
     align-items: flex-start;
   }
+
+  .complementHeroPanel,
+  .complementActionPanel {
+    padding: 0.9rem;
+  }
+
+  .complementHeroTopline,
+  .complementHeroIntro {
+    gap: 0.6rem;
+  }
+
+  .complementStatGrid,
+  .complementFlowStrip,
+  .complementBriefGrid,
+  .complementMetaGrid,
+  .complementDocMetaCompact {
+    grid-template-columns: 1fr;
+  }
+
+  .complementActionStack,
+  .complementActions {
+    justify-content: stretch;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .complementDownloadBtn,
+  .complementGuideBtn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .complementRecepisseBtn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .complementSubmitBtn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .complementDocHeadCompact {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .complementDocsHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .complementDocActionsRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .complementDocButtons {
+    width: 100%;
+  }
+
+  .complementActionNotes {
+    padding-top: 0;
+  }
   
   .documentActions {
     width: 100%;
@@ -1328,6 +2182,24 @@
   .totalStatus {
     flex-direction: column;
     gap: 0.25rem;
+  }
+
+  .complementWrap {
+    padding: 0.8rem;
+  }
+
+  .complementHeroIntro h4 {
+    font-size: 1.03rem;
+  }
+
+  .complementStatCard {
+    min-height: 74px;
+  }
+
+  .complementDocButtons .complementViewBtn,
+  .complementDocButtons .complementUploadBtn {
+    width: 100%;
+    justify-content: center;
   }
 }
 

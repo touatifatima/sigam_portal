@@ -21,6 +21,41 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
+  const apiRouteRoots = new Set([
+    'procedure',
+    'demande',
+    'capacites',
+    'summary',
+    'statuts-juridiques',
+    'investisseur',
+    'admin',
+    'detenteur-morale',
+    'representant-legal',
+    'registre-commerce',
+    'profil',
+  ]);
+
+  app.use((req, _res, next) => {
+    try {
+      const originalUrl = String(req?.url || '');
+      const [pathname] = originalUrl.split('?');
+      if (!pathname || pathname.startsWith('/api/')) {
+        return next();
+      }
+
+      const firstSegment = pathname.split('/').filter(Boolean)[0] || '';
+      if (!apiRouteRoots.has(firstSegment)) {
+        return next();
+      }
+
+      req.url = `/api${originalUrl}`;
+    } catch {
+      // Keep the original route on any unexpected failure.
+    }
+
+    return next();
+  });
+
   app.enableCors({
     origin: [
       'http://localhost:3002',

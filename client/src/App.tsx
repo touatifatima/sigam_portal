@@ -87,6 +87,36 @@ function CadastreRouteGuard() {
   return null
 }
 
+const INVESTISSEUR_BLOCKED_OPERATOR_PREFIXES = [
+  '/operateur/permisdashboard',
+  '/operateur/scan-qr',
+  '/operateur/dashboard',
+  '/operateur/access',
+  '/operateur/create-access',
+]
+
+function InvestisseurOperatorPermisGuard() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const isLoaded = useAuthStore((s) => s.isLoaded)
+  const auth = useAuthStore((s) => s.auth)
+
+  useEffect(() => {
+    if (!isLoaded) return
+    if (!auth?.id) return
+    if (!isInvestisseurRole(auth?.role)) return
+
+    const isBlocked = INVESTISSEUR_BLOCKED_OPERATOR_PREFIXES.some(
+      (prefix) => location.pathname === prefix || location.pathname.startsWith(`${prefix}/`),
+    )
+    if (!isBlocked) return
+
+    navigate('/investisseur/InvestorDashboard', { replace: true })
+  }, [auth?.id, auth?.role, isLoaded, location.pathname, navigate])
+
+  return null
+}
+
 function RouteEventsBridge() {
   const location = useLocation()
   useEffect(() => {
@@ -265,6 +295,7 @@ function AppShell() {
           <RouteEventsBridge />
           <PendingIdentificationGuard />
           <CadastreRouteGuard />
+          <InvestisseurOperatorPermisGuard />
           <ClientLayout>
             <GlobalSpinner />
             <RemountOnRouteChange>

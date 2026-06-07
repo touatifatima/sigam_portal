@@ -11,6 +11,7 @@ import {
   FileCheck,
   GitMerge,
   HandCoins,
+  Hash,
   Lock,
   Loader2,
   LogOut,
@@ -52,11 +53,17 @@ interface ActionRapide {
   available: boolean;
 }
 
+interface AccessAction {
+  id: string;
+  label?: string | null;
+  description?: string | null;
+  available?: boolean | null;
+}
+
 interface FusionCandidate {
   id: number;
   code_permis: string;
   type_label: string;
-  titulaire: string;
 }
 
 interface TypeProcedureSummary {
@@ -81,6 +88,20 @@ const normalizeCodeQr = (value: string): string => {
   } catch {
     return raw;
   }
+};
+
+const normalizePermitCode = (value: string): string => String(value || '').trim();
+
+const getBackendMessage = (error: any): string => {
+  const message = error?.response?.data?.message;
+  if (Array.isArray(message)) return message.join(' ');
+  return String(message || '');
+};
+
+const isRouteMissingError = (error: any, route: string): boolean => {
+  const status = Number(error?.response?.status);
+  const message = getBackendMessage(error).toLowerCase();
+  return status === 404 && message.includes(`cannot get ${route}`.toLowerCase());
 };
 
 const deriveStatut = (permis: any) => {
@@ -211,10 +232,13 @@ export default function NouvelleDemandePosterieurPage() {
   const apiBase = process.env.NEXT_PUBLIC_API_URL ?? '';
 
   const [qrInput, setQrInput] = useState('');
+  const [permitCodeInput, setPermitCodeInput] = useState('');
   const [verifyStatus, setVerifyStatus] = useState<VerifyStatus>('idle');
   const [message, setMessage] = useState('');
+  const [isMismatchWarning, setIsMismatchWarning] = useState(false);
   const [permit, setPermit] = useState<PermitSummary | null>(null);
   const [permitDetails, setPermitDetails] = useState<any | null>(null);
+  const [accessActions, setAccessActions] = useState<AccessAction[]>([]);
   const [typeProceduresForPermit, setTypeProceduresForPermit] = useState<TypeProcedureSummary[]>(
     [],
   );
@@ -296,15 +320,44 @@ export default function NouvelleDemandePosterieurPage() {
   );
 
   useEffect(() => {
+    if (accessActions.length > 0) {
+      setTypeProceduresForPermit([]);
+      return;
+    }
+
     const typePermisId = Number(permitDetails?.type_permis?.id ?? permitDetails?.typePermis?.id ?? NaN);
     if (!Number.isFinite(typePermisId)) {
       setTypeProceduresForPermit([]);
       return;
     }
     void fetchTypeProceduresForPermit(typePermisId);
-  }, [fetchTypeProceduresForPermit, permitDetails?.type_permis?.id, permitDetails?.typePermis?.id]);
+  }, [
+    accessActions.length,
+    fetchTypeProceduresForPermit,
+    permitDetails?.type_permis?.id,
+    permitDetails?.typePermis?.id,
+  ]);
 
   const baseActionItems = useMemo(() => {
+    if (accessActions.length > 0) {
+      const mappedById = new Map<string, ActionRapide>();
+
+      accessActions.forEach((action) => {
+        const template = actionsRapides.find((item) => item.id === action.id);
+        if (!template || mappedById.has(action.id)) return;
+
+        mappedById.set(action.id, {
+          ...template,
+          label: action.label || template.label,
+          description: action.description || template.description,
+          available: action.available !== false,
+        });
+      });
+
+      const mapped = Array.from(mappedById.values());
+      return mapped.length > 0 ? mapped : actionsRapides;
+    }
+
     if (typeProceduresForPermit.length === 0) return actionsRapides;
 
     const mappedById = new Map<string, ActionRapide>();
@@ -321,16 +374,19 @@ export default function NouvelleDemandePosterieurPage() {
 
     const mapped = Array.from(mappedById.values());
     return mapped.length > 0 ? mapped : actionsRapides;
-  }, [typeProceduresForPermit]);
+  }, [accessActions, typeProceduresForPermit]);
 
   const actionItems = useMemo(
-    () =>
-      baseActionItems.map((action) => {
+    () => {
+      if (accessActions.length > 0) return baseActionItems;
+
+      return baseActionItems.map((action) => {
         if (action.id === 'extension') return { ...action, available: extensionEligible };
         if (action.id === 'fusion') return { ...action, available: fusionEligible };
         return action;
-      }),
-    [baseActionItems, extensionEligible, fusionEligible],
+      });
+    },
+    [accessActions.length, baseActionItems, extensionEligible, fusionEligible],
   );
 
   const filteredFusionCandidates = useMemo(() => {
@@ -339,8 +395,7 @@ export default function NouvelleDemandePosterieurPage() {
     return fusionCandidates.filter((candidate) => {
       return (
         candidate.code_permis.toLowerCase().includes(q) ||
-        candidate.type_label.toLowerCase().includes(q) ||
-        candidate.titulaire.toLowerCase().includes(q)
+        candidate.type_label.toLowerCase().includes(q)
       );
     });
   }, [fusionCandidates, fusionSearch]);
@@ -351,53 +406,87 @@ export default function NouvelleDemandePosterieurPage() {
       return;
     }
 
-    const normalized = normalizeCodeQr(qrInput);
-    if (!normalized) {
+    const normalizedQr = normalizeCodeQr(qrInput);
+    const normalizedPermitCode = normalizePermitCode(permitCodeInput);
+    if (!normalizedQr || !normalizedPermitCode) {
       setVerifyStatus('error');
-      setMessage('Veuillez saisir un code QR.');
+      setMessage('Veuillez saisir le code QR et le code permis.');
+      setIsMismatchWarning(false);
       setPermit(null);
       setPermitDetails(null);
+      setAccessActions([]);
       return;
     }
 
     setVerifyStatus('checking');
     setMessage('');
+    setIsMismatchWarning(false);
     setPermit(null);
     setPermitDetails(null);
+    setAccessActions([]);
     setExtensionModalOpen(false);
     setFusionModalOpen(false);
 
     try {
-      const permitResponse = await axios.get(`${apiBase}/operator/access`, {
-        params: { codeqr: normalized },
+      const permitResponse = await axios.get(`${apiBase}/investisseur/access`, {
+        params: {
+          codeqr: normalizedQr,
+          codePermis: normalizedPermitCode,
+        },
         withCredentials: true,
       });
-      const permitData = (permitResponse.data as any)?.permit as PermitSummary | undefined;
+
+      const responseData = permitResponse.data as any;
+      const permitData = responseData?.permit as PermitSummary | undefined;
+      const responseActions = Array.isArray(responseData?.actions) ? responseData.actions : [];
       const permitId = Number(permitData?.id);
 
       if (!Number.isFinite(permitId) || permitId <= 0) {
         setVerifyStatus('error');
         setMessage('Permis trouve, mais identifiant invalide.');
+        setIsMismatchWarning(false);
         return;
       }
 
       setPermit(permitData ?? null);
       setPermitDetails(permitData ?? null);
+      setAccessActions(
+        responseActions
+          .map((action: any) => ({
+            id: String(action?.id || ''),
+            label: action?.label ?? null,
+            description: action?.description ?? null,
+            available: action?.available ?? null,
+          }))
+          .filter((action: AccessAction) => Boolean(action.id)),
+      );
       setVerifyStatus('valid');
       setMessage('Permis trouve. Choisissez une action rapide.');
+      setIsMismatchWarning(false);
     } catch (error: any) {
       const status = Number(error?.response?.status);
-      const backendMessage = String(error?.response?.data?.message || '').toLowerCase();
+      const backendMessage = getBackendMessage(error).toLowerCase();
+      const isMismatch =
+        backendMessage.includes('ne correspondent pas') ||
+        backendMessage.includes('code qr et le code permis');
       const isNotFound =
         status === 404 ||
         backendMessage.includes('aucun permis') ||
         backendMessage.includes('introuvable') ||
         backendMessage.includes("n'existe pas");
 
-      setVerifyStatus(isNotFound ? 'not_found' : 'error');
-      setMessage(isNotFound ? "Ce permis n'existe pas." : 'Erreur de verification. Reessayez.');
+      setVerifyStatus(isMismatch ? 'error' : isNotFound ? 'not_found' : 'error');
+      setMessage(
+        isMismatch
+          ? 'Le code QR et le code permis ne correspondent pas.'
+          : isNotFound
+            ? "Ce permis n'existe pas."
+            : 'Erreur de verification. Reessayez.',
+      );
+      setIsMismatchWarning(isMismatch);
       setPermit(null);
       setPermitDetails(null);
+      setAccessActions([]);
     }
   };
 
@@ -475,27 +564,41 @@ export default function NouvelleDemandePosterieurPage() {
 
     setFusionLoadingCandidates(true);
     try {
-      const res = await axios.get(`${apiBase}/operateur/permis`, {
-        withCredentials: true,
-      });
+      let res;
+      try {
+        res = await axios.get(`${apiBase}/investisseur/access/posterieure-fusion-candidates`, {
+          params: { permisId: selectedPermitId },
+          withCredentials: true,
+        });
+      } catch (primaryError: any) {
+        if (
+          !isRouteMissingError(
+            primaryError,
+            '/investisseur/access/posterieure-fusion-candidates',
+          )
+        ) {
+          throw primaryError;
+        }
+
+        console.warn(
+          'Endpoint /investisseur/access/posterieure-fusion-candidates absent sur le serveur. Fallback vers /permis/posterieure-fusion-candidates.',
+        );
+        res = await axios.get(`${apiBase}/permis/posterieure-fusion-candidates`, {
+          params: { permisId: selectedPermitId },
+          withCredentials: true,
+        });
+      }
+
       const raw = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
-      const currentDetenteurId =
-        Number(permitDetails?.id_detenteur ?? permitDetails?.detenteur?.id_detenteur) || null;
 
       const mapped: FusionCandidate[] = raw
         .filter((p: any) => Number(p?.id) !== selectedPermitId)
-        .filter((p: any) => {
-          if (!currentDetenteurId) return true;
-          const detenteurId = Number(p?.id_detenteur ?? p?.detenteur?.id_detenteur);
-          return Number.isFinite(detenteurId) && detenteurId === currentDetenteurId;
-        })
         .map((p: any) => ({
           id: Number(p.id),
           code_permis: String(p.code_permis ?? p.code ?? `PERMIS-${p.id}`),
           type_label: String(
-            p?.typePermis?.lib_type ?? p?.typePermis?.code_type ?? p?.type ?? '--',
+            p?.type_label ?? p?.typePermis?.lib_type ?? p?.typePermis?.code_type ?? p?.type ?? '--',
           ),
-          titulaire: String(p?.detenteur?.nom_societeFR ?? p?.detenteur?.nom_societeAR ?? '--'),
         }));
 
       setFusionCandidates(mapped);
@@ -723,7 +826,7 @@ export default function NouvelleDemandePosterieurPage() {
                 <div>
                   <h2 className={styles.cardTitle}>Entrer ou verifier un permis</h2>
                   <p className={styles.cardText}>
-                    Saisissez le code QR ou le numero du permis pour charger les actions rapides disponibles.
+                    Saisissez le code QR et le code permis pour charger les actions rapides disponibles.
                   </p>
                 </div>
                 <span
@@ -742,7 +845,17 @@ export default function NouvelleDemandePosterieurPage() {
                     className={styles.input}
                     value={qrInput}
                     onChange={(event) => setQrInput(event.target.value)}
-                    placeholder="Ex: 8TQNF-6ZB5F-1G3D0-L9KX2-7F"
+                    placeholder="Code QR (obligatoire)"
+                    disabled={busy}
+                  />
+                </div>
+                <div className={styles.inputWrap}>
+                  <Hash className={styles.inputIcon} />
+                  <input
+                    className={styles.input}
+                    value={permitCodeInput}
+                    onChange={(event) => setPermitCodeInput(event.target.value)}
+                    placeholder="Code permis (obligatoire)"
                     disabled={busy}
                   />
                 </div>
@@ -766,12 +879,14 @@ export default function NouvelleDemandePosterieurPage() {
                   className={`${styles.message} ${
                     verifyStatus === 'valid'
                       ? styles.info
-                      : verifyStatus === 'error' || verifyStatus === 'not_found'
+                      : isMismatchWarning
+                        ? styles.warning
+                        : verifyStatus === 'error' || verifyStatus === 'not_found'
                         ? styles.error
                         : ''
                   }`}
                 >
-                  {(verifyStatus === 'error' || verifyStatus === 'not_found') && (
+                  {(verifyStatus === 'error' || verifyStatus === 'not_found' || isMismatchWarning) && (
                     <AlertTriangle className={styles.messageIcon} />
                   )}
                   {message}
@@ -911,7 +1026,7 @@ export default function NouvelleDemandePosterieurPage() {
                 type="text"
                 value={fusionSearch}
                 onChange={(e) => setFusionSearch(e.target.value)}
-                placeholder="Rechercher par code, type ou titulaire..."
+                placeholder="Rechercher par code ou type..."
               />
             </div>
 
@@ -934,7 +1049,6 @@ export default function NouvelleDemandePosterieurPage() {
                       <strong>{candidate.code_permis}</strong>
                       <span>{candidate.type_label}</span>
                     </div>
-                    <small>{candidate.titulaire}</small>
                   </button>
                 ))
               )}

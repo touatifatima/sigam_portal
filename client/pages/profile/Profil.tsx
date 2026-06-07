@@ -11,33 +11,17 @@ import {
 } from "@/components/ui/tooltip";
 import { toast } from "@/src/hooks/use-toast";
 import {
-  AlertCircle,
   ArrowRight,
-  Briefcase,
-  Building2,
   Calendar,
   Camera,
-  CheckCircle2,
-  FileText,
-  Globe2,
   Mail,
-  MapPin,
   Phone,
   Shield,
   Sparkles,
   User,
-  Users,
 } from "lucide-react";
 import { useAuthStore } from "@/src/store/useAuthStore";
 import styles from "./Profil.module.css";
-
-interface EntrepriseProfile {
-  entreprise_verified: boolean;
-  detenteur: any;
-  representant: any;
-  registre: any;
-  actionnaires: any[];
-}
 
 type ProfileUpdateStatus = {
   canEdit: boolean;
@@ -92,9 +76,6 @@ const Profil = () => {
   const { auth, isLoaded } = useAuthStore();
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
 
-  const [entrepriseProfile, setEntrepriseProfile] = useState<EntrepriseProfile | null>(null);
-  const [isLoadingEntreprise, setIsLoadingEntreprise] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState("personal");
   const [profileUpdateStatus, setProfileUpdateStatus] =
@@ -106,40 +87,6 @@ const Profil = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const profilePhotoStorageKey = `sigam_profile_photo_${auth.email || auth.username || "user"}`;
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    if (!auth.isEntrepriseVerified) {
-      setEntrepriseProfile(null);
-      return;
-    }
-    if (!apiURL) {
-      setLoadError("API URL manquante");
-      return;
-    }
-
-    const fetchEntreprise = async () => {
-      setIsLoadingEntreprise(true);
-      setLoadError(null);
-      try {
-        const res = await axios.get(`${apiURL}/api/profil/entreprise`, {
-          withCredentials: true,
-        });
-        setEntrepriseProfile(res.data);
-      } catch (error: any) {
-        setEntrepriseProfile(null);
-        setLoadError(
-          error?.response?.data?.message ||
-            error?.message ||
-            "Impossible de charger les informations de l'entreprise"
-        );
-      } finally {
-        setIsLoadingEntreprise(false);
-      }
-    };
-
-    void fetchEntreprise();
-  }, [apiURL, auth.isEntrepriseVerified, isLoaded]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -246,39 +193,12 @@ const Profil = () => {
     });
   };
 
-  const formatCurrency = (amount?: number | string | null) => {
-    if (amount === null || amount === undefined || String(amount).trim() === "") {
-      return "Non renseigne";
-    }
-
-    return new Intl.NumberFormat("fr-DZ", {
-      style: "currency",
-      currency: "DZD",
-      minimumFractionDigits: 0,
-    }).format(Number(amount));
-  };
-
   const formatYear = (dateString?: string | null) => {
     if (!dateString) return "--";
     const date = new Date(dateString);
     if (Number.isNaN(date.getTime())) return "--";
     return String(date.getFullYear());
   };
-
-  const detenteur = entrepriseProfile?.detenteur;
-  const representant = entrepriseProfile?.representant?.personne;
-  const registre = entrepriseProfile?.registre;
-  const actionnaires = entrepriseProfile?.actionnaires ?? [];
-  const statutJuridique =
-    detenteur?.FormeJuridiqueDetenteur?.[0]?.statutJuridique?.statut_fr ||
-    detenteur?.FormeJuridiqueDetenteur?.[0]?.statutJuridique?.code_statut ||
-    "Non renseigne";
-  const statutDetenteur =
-    {
-      PERSONNE_MORALE_ALGERIENNE: "Personne morale algerienne",
-      PERSONNE_MORALE_ETRANGERE: "Personne morale etrangere",
-      PERSONNE_PHYSIQUE_ALGERIENNE: "Personne physique algerienne",
-    }[String(detenteur?.statutDetenteur || "")] || "Non renseigne";
 
   const identityLabel = useMemo(() => {
     if (auth.Prenom || auth.nom) {
@@ -300,27 +220,19 @@ const Profil = () => {
   const sidebarMetrics = useMemo(
     () => [
       { label: "Role", value: auth.role || "Investisseur" },
-      { label: "Entreprise", value: auth.isEntrepriseVerified ? "Verifiee" : "En attente" },
-      { label: "Actionnaires", value: String(actionnaires.length) },
+      { label: "Email", value: auth.email ? "Renseigne" : "A completer" },
+      { label: "Telephone", value: auth.telephone ? "Renseigne" : "A completer" },
       { label: "Inscription", value: formatYear(auth.createdAt) },
     ],
-    [actionnaires.length, auth.createdAt, auth.isEntrepriseVerified, auth.role]
+    [auth.createdAt, auth.email, auth.role, auth.telephone]
   );
 
   const sectionLinks = useMemo(
     () => [
       { id: "personal", label: "Mon profil", icon: User },
-      ...(auth.isEntrepriseVerified
-        ? [
-            { id: "company", label: "Entreprise", icon: Building2 },
-            { id: "representative", label: "Representant", icon: Briefcase },
-            { id: "registry", label: "Registre", icon: FileText },
-            { id: "shareholders", label: "Actionnaires", icon: Users },
-          ]
-        : []),
       { id: "info-zone", label: "Informations utiles", icon: Sparkles },
     ],
-    [auth.isEntrepriseVerified]
+    []
   );
 
   const scrollToSection = (sectionId: string) => {
@@ -447,17 +359,9 @@ const Profil = () => {
                   <Shield className="w-4 h-4" />
                   {auth.role || "Investisseur"}
                 </span>
-                <span
-                  className={`${styles.statusPill} ${
-                    auth.isEntrepriseVerified ? styles.statusSuccess : styles.statusWarning
-                  }`}
-                >
-                  {auth.isEntrepriseVerified ? (
-                    <CheckCircle2 className="w-4 h-4" />
-                  ) : (
-                    <AlertCircle className="w-4 h-4" />
-                  )}
-                  {auth.isEntrepriseVerified ? "Entreprise verifiee" : "Identification requise"}
+                <span className={`${styles.statusPill} ${styles.statusSuccess}`}>
+                  <User className="w-4 h-4" />
+                  Compte utilisateur
                 </span>
               </div>
 
@@ -536,10 +440,10 @@ const Profil = () => {
             <div className={styles.hero}>
               <div className={styles.heroCopy}>
                 <span className={styles.eyebrow}>Mon profil</span>
-                <h1 className={styles.title}>Gerez vos informations personnelles et professionnelles</h1>
+                <h1 className={styles.title}>Gerez vos informations personnelles</h1>
                 <p className={styles.subtitle}>
-                  Consultez vos donnees de compte, votre entreprise et les informations
-                  reglementaires dans une interface plus lisible et plus structurée.
+                  Consultez vos donnees de compte dans une interface plus lisible et plus
+                  structuree.
                 </p>
               </div>
               <div className={styles.heroActions}>
@@ -581,276 +485,6 @@ const Profil = () => {
               </div>
             </section>
 
-            {auth.isEntrepriseVerified && entrepriseProfile && !isLoadingEntreprise ? (
-              <>
-                <section id="company" className={styles.sectionCard}>
-                  <div className={styles.sectionHeader}>
-                    <div className={styles.sectionLead}>
-                      <div className={styles.sectionIcon}>
-                        <Building2 className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <span className={styles.sectionEyebrow}>Entreprise</span>
-                        <h2 className={styles.sectionTitle}>Informations juridiques</h2>
-                        <p className={styles.sectionText}>
-                          Les informations principales de la societe rattachee a votre compte.
-                        </p>
-                      </div>
-                    </div>
-                    <span className={`${styles.sectionBadge} ${styles.sectionBadgeSuccess}`}>
-                      Verifiee
-                    </span>
-                  </div>
-
-                  <div className={styles.fieldGrid}>
-                    <ProfileField
-                      label="Nom societe (FR)"
-                      value={detenteur?.nom_societeFR || "Non renseigne"}
-                      icon={<Building2 className="w-4 h-4" />}
-                    />
-                    <ProfileField
-                      label="Nom societe (AR)"
-                      value={detenteur?.nom_societeAR || "Non renseigne"}
-                      icon={<Building2 className="w-4 h-4" />}
-                      rtl
-                    />
-                    <ProfileField label="Statut juridique" value={statutJuridique} icon={<Shield className="w-4 h-4" />} />
-                    <ProfileField label="Statut detenteur" value={statutDetenteur} icon={<Shield className="w-4 h-4" />} />
-                    <ProfileField
-                      label="Nationalite"
-                      value={detenteur?.nationaliteRef?.libelle || "Non renseigne"}
-                      icon={<Globe2 className="w-4 h-4" />}
-                    />
-                    <ProfileField
-                      label="Pays"
-                      value={detenteur?.pays?.nom_pays || "Non renseigne"}
-                      icon={<MapPin className="w-4 h-4" />}
-                    />
-                    <ProfileField
-                      label="Telephone"
-                      value={detenteur?.telephone || "Non renseigne"}
-                      icon={<Phone className="w-4 h-4" />}
-                    />
-                    <ProfileField
-                      label="Email"
-                      value={detenteur?.email || "Non renseigne"}
-                      icon={<Mail className="w-4 h-4" />}
-                    />
-                    <ProfileField
-                      label="Date de constitution"
-                      value={formatDate(detenteur?.date_constitution)}
-                      icon={<Calendar className="w-4 h-4" />}
-                    />
-                    <ProfileField
-                      label="Adresse complete"
-                      value={detenteur?.adresse_siege || "Non renseigne"}
-                      icon={<MapPin className="w-4 h-4" />}
-                      fullWidth
-                    />
-                  </div>
-                </section>
-
-                <section id="representative" className={styles.sectionCard}>
-                  <div className={styles.sectionHeader}>
-                    <div className={styles.sectionLead}>
-                      <div className={styles.sectionIcon}>
-                        <Briefcase className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <span className={styles.sectionEyebrow}>Representant</span>
-                        <h2 className={styles.sectionTitle}>Representant legal</h2>
-                        <p className={styles.sectionText}>
-                          Personne habilitee a representer l'entreprise dans les demarches.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={styles.fieldGrid}>
-                    <ProfileField
-                      label="Nom complet (FR)"
-                      value={
-                        representant
-                          ? `${representant.prenomFR || ""} ${representant.nomFR || ""}`.trim() || "Non renseigne"
-                          : "Non renseigne"
-                      }
-                      icon={<User className="w-4 h-4" />}
-                    />
-                    <ProfileField
-                      label="Nom complet (AR)"
-                      value={
-                        representant
-                          ? `${representant.prenomAR || ""} ${representant.nomAR || ""}`.trim() || "Non renseigne"
-                          : "Non renseigne"
-                      }
-                      icon={<User className="w-4 h-4" />}
-                      rtl
-                    />
-                    <ProfileField
-                      label="Qualite"
-                      value={representant?.qualification || "Non renseigne"}
-                      icon={<Briefcase className="w-4 h-4" />}
-                    />
-                    <ProfileField
-                      label="Nationalite"
-                      value={representant?.nationaliteRef?.libelle || "Non renseigne"}
-                      icon={<Globe2 className="w-4 h-4" />}
-                    />
-                    <ProfileField
-                      label="Telephone"
-                      value={representant?.telephone || "Non renseigne"}
-                      icon={<Phone className="w-4 h-4" />}
-                    />
-                    <ProfileField
-                      label="Email"
-                      value={representant?.email || "Non renseigne"}
-                      icon={<Mail className="w-4 h-4" />}
-                    />
-                    <ProfileField
-                      label="NIN"
-                      value={representant?.num_carte_identite || "Non renseigne"}
-                      icon={<Shield className="w-4 h-4" />}
-                      fullWidth
-                    />
-                  </div>
-                </section>
-
-                <section id="registry" className={styles.sectionCard}>
-                  <div className={styles.sectionHeader}>
-                    <div className={styles.sectionLead}>
-                      <div className={styles.sectionIcon}>
-                        <FileText className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <span className={styles.sectionEyebrow}>Registre</span>
-                        <h2 className={styles.sectionTitle}>Registre de commerce</h2>
-                        <p className={styles.sectionText}>
-                          Informations legales et fiscales declarees pour votre entreprise.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={styles.fieldGrid}>
-                    <ProfileField label="Numero RC" value={registre?.numero_rc || "Non renseigne"} icon={<FileText className="w-4 h-4" />} />
-                    <ProfileField
-                      label="Date d'enregistrement"
-                      value={formatDate(registre?.date_enregistrement)}
-                      icon={<Calendar className="w-4 h-4" />}
-                    />
-                    <ProfileField
-                      label="Capital social"
-                      value={formatCurrency(registre?.capital_social)}
-                      icon={<Building2 className="w-4 h-4" />}
-                    />
-                    <ProfileField label="Numero NIS" value={registre?.nis || "Non renseigne"} icon={<Shield className="w-4 h-4" />} />
-                    <ProfileField label="Numero NIF" value={registre?.nif || "Non renseigne"} icon={<Shield className="w-4 h-4" />} />
-                    <ProfileField
-                      label="Adresse du siege"
-                      value={registre?.adresse_legale || "Non renseigne"}
-                      icon={<MapPin className="w-4 h-4" />}
-                      fullWidth
-                    />
-                  </div>
-                </section>
-
-                <section id="shareholders" className={styles.sectionCard}>
-                  <div className={styles.sectionHeader}>
-                    <div className={styles.sectionLead}>
-                      <div className={styles.sectionIcon}>
-                        <Users className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <span className={styles.sectionEyebrow}>Gouvernance</span>
-                        <h2 className={styles.sectionTitle}>Actionnaires declares</h2>
-                        <p className={styles.sectionText}>
-                          Consultez les personnes declarees ainsi que leur taux de participation.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {actionnaires.length === 0 ? (
-                    <div className={styles.emptyState}>
-                      <AlertCircle className={styles.emptyStateIcon} />
-                      <p className={styles.emptyStateText}>Aucun actionnaire renseigne.</p>
-                    </div>
-                  ) : (
-                    <div className={styles.actionnaireGrid}>
-                      {actionnaires.map((actionnaire: any, index: number) => {
-                        const personne = actionnaire?.personne;
-                        return (
-                          <article
-                            key={actionnaire.id_actionnaire || index}
-                            className={styles.actionnaireCard}
-                          >
-                            <div className={styles.actionnaireHeader}>
-                              <div className={styles.actionnaireAvatar}>
-                                <Users className="w-4 h-4" />
-                              </div>
-                              <div>
-                                <h3 className={styles.actionnaireName}>
-                                  {personne
-                                    ? `${personne.prenomFR || ""} ${personne.nomFR || ""}`.trim() || "Non renseigne"
-                                    : "Non renseigne"}
-                                </h3>
-                                <p className={styles.actionnaireMeta}>
-                                  {personne?.nationaliteRef?.libelle || "Non renseigne"}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className={styles.actionnaireFields}>
-                              <div className={styles.actionnaireField}>
-                                <span>Identite</span>
-                                <strong>{personne?.num_carte_identite || "Non renseigne"}</strong>
-                              </div>
-                              <div className={styles.actionnaireField}>
-                                <span>Taux</span>
-                                <strong>
-                                  {actionnaire?.taux_participation != null
-                                    ? `${actionnaire.taux_participation}%`
-                                    : "Non renseigne"}
-                                </strong>
-                              </div>
-                              <div className={styles.actionnaireField}>
-                                <span>Pays</span>
-                                <strong>{personne?.pays?.nom_pays || "Non renseigne"}</strong>
-                              </div>
-                            </div>
-                          </article>
-                        );
-                      })}
-                    </div>
-                  )}
-                </section>
-              </>
-            ) : (
-              <section className={`${styles.sectionCard} ${styles.emptySection}`}>
-                <div className={styles.emptyState}>
-                  <AlertCircle className={styles.emptyStateIcon} />
-                  <h2 className={styles.emptyStateTitle}>Identification entreprise incomplete</h2>
-                  <p className={styles.emptyStateText}>
-                    {isLoadingEntreprise
-                      ? "Chargement des informations de l'entreprise..."
-                      : loadError ||
-                        "Completez l'identification de votre entreprise pour afficher le dossier complet."}
-                  </p>
-                  <div className={styles.noticeActions}>
-                    <Button
-                      className={styles.primaryButton}
-                      onClick={() => navigate("/investisseur/Identification/identification-entreprise")}
-                    >
-                      Completer l'identification
-                    </Button>
-                    <Button variant="outline" className={styles.secondaryButton} onClick={() => navigate("/investisseur/parametres")}>
-                      Ouvrir les parametres
-                    </Button>
-                  </div>
-                </div>
-              </section>
-            )}
-
             <section id="info-zone" className={`${styles.sectionCard} ${styles.noticeCard}`}>
               <div className={styles.sectionHeader}>
                 <div className={styles.sectionLead}>
@@ -869,8 +503,8 @@ const Profil = () => {
               </div>
 
               <p className={styles.noticeText}>
-                Pour modifier des informations sensibles de compte ou d'entreprise, utilisez la
-                procedure adaptee depuis votre espace investisseur ou contactez l'administration.
+                Pour modifier des informations sensibles de compte, utilisez la procedure adaptee
+                depuis votre espace investisseur ou contactez l'administration.
               </p>
 
               <div className={styles.noticeActions}>

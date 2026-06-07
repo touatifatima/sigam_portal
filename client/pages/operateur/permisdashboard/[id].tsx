@@ -125,7 +125,6 @@ type PermisTabKey =
   | "documents"
   | "obligations"
   | "historique"
-  | "actions"
   | "messages";
 
 const apiURL =
@@ -234,7 +233,6 @@ const parsePermisTab = (value?: string | null): PermisTabKey | null => {
     tab === "documents" ||
     tab === "obligations" ||
     tab === "historique" ||
-    tab === "actions" ||
     tab === "messages"
   ) {
     return tab as PermisTabKey;
@@ -1458,10 +1456,6 @@ const PermisDetailsOperateur = () => {
                 <Clock className="w-4 h-4" />
                 <span>Historique & Renouvellements</span>
               </TabsTrigger>
-              <TabsTrigger value="actions" className={tabsStyles.tabTrigger}>
-                <Scale className="w-4 h-4" />
-                <span>Actions rapides</span>
-              </TabsTrigger>
               <TabsTrigger value="messages" className={tabsStyles.tabTrigger}>
                 <MessageSquareText className="w-4 h-4" />
                 <span>Commentaires / Messages</span>
@@ -1856,62 +1850,6 @@ const PermisDetailsOperateur = () => {
                     ) : (
                       <p className={styles.emptyText}>Aucun historique disponible.</p>
                     )}
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="actions" className={tabsStyles.tabContent}>
-              <div className={styles.sectionGrid}>
-                <div className={`${styles.infoCard} ${styles.sectionFull}`}>
-                  <div className={styles.cardHeader}>
-                    <div className={styles.cardIcon}>
-                      <Scale className="w-5 h-5" />
-                    </div>
-                    <h2 className={styles.cardTitle}>Actions rapides</h2>
-                  </div>
-                  <div className={styles.cardContent}>
-                    {isLoadingTypeProcedures && (
-                      <p className={styles.emptyText}>Chargement des actions dynamiques...</p>
-                    )}
-                    <div className={styles.actionsGrid}>
-                      {baseActionItems.map((action) => {
-                        const ActionIcon = action.icon;
-                        const isExtensionAction = action.id === "extension";
-                        const isFusionAction = action.id === "fusion";
-                        const available = isExtensionAction
-                          ? extensionEligible
-                          : isFusionAction
-                          ? fusionEligible
-                          : action.available;
-                        const actionTitle = isExtensionAction && !available
-                          ? "Extension non disponible pour ce statut"
-                          : isFusionAction && !available
-                          ? "Fusion non disponible pour ce statut"
-                          : action.description;
-                        return (
-                          <button
-                            key={action.id}
-                            className={`${styles.actionBtn} ${!available ? styles.actionDisabled : ""}`}
-                            disabled={!available}
-                            onClick={() => available && handleActionClick(action.id)}
-                            title={actionTitle}
-                          >
-                            <div className={styles.actionIconWrapper}>
-                              <ActionIcon className="w-5 h-5" />
-                            </div>
-                            <span className={styles.actionLabel}>{action.label}</span>
-                            {!available && (
-                              <span className={styles.actionRestricted}>
-                                <Lock className="w-3 h-3" />
-                                Accès restreint
-                              </span>
-                            )}
-                            {available && <ChevronRight className={styles.actionArrow} />}
-                          </button>
-                        );
-                      })}
-                    </div>
                   </div>
                 </div>
               </div>

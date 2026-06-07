@@ -650,6 +650,7 @@ model demandePortail {
   verificationGeo          demandeVerificationGeo?
   detenteurdemande         DetenteurDemandePortail[]
   dossiersFournis          DossierFournisPortail[]
+  complements              DemandeComplement[]
   droitPreemption          DroitPreemption?
   inscriptionProvisoire    InscriptionProvisoirePortail?
   renouvellement           ProcedureRenouvellement?
@@ -1026,6 +1027,7 @@ model documentPortail {
   statutDetenteur         StatutDetenteur?
   dossierDocuments        DossierDocumentPortail[]
   dossierFournisDocuments DossierFournisDocumentPortail[]
+  complementItems         DemandeComplementItem[]
 }
 
 model DossierDocumentPortail {
@@ -1074,6 +1076,60 @@ model DossierFournisPortail {
   documents               DossierFournisDocumentPortail[]
 
   @@map("dossier_fournis")
+}
+
+model DemandeComplement {
+  id_complement      Int                    @id @default(autoincrement())
+  id_demande         Int
+  motif              String?
+  admin_message      String?
+  delai_jours        Int?
+  effet_absence      String?
+  mode_notification  String?
+  pdf_url            String?
+  pdf_filename       String?
+  recepisse_pdf_url      String?
+  recepisse_pdf_filename String?
+  submitted_at           DateTime?
+  statut_complement  String                 @default("OUVERTE")
+  created_by         Int?
+  created_at         DateTime               @default(now())
+  updated_at         DateTime               @updatedAt
+  demande            demandePortail         @relation(fields: [id_demande], references: [id_demande], onDelete: Cascade)
+  items              DemandeComplementItem[]
+
+  @@index([id_demande], map: "demande_complement_demande_idx")
+  @@index([statut_complement, created_at(sort: Desc)], map: "demande_complement_statut_created_idx")
+  @@index([id_demande, created_at(sort: Desc)], map: "demande_complement_demande_created_idx")
+  @@map("demande_complement")
+}
+
+model DemandeComplementItem {
+  id_item                 Int               @id @default(autoincrement())
+  id_complement           Int
+  id_doc                  Int?
+  nom_doc_snapshot        String
+  decision                String
+  problems                Json?
+  commentaire             String?
+  statut_actuel_snapshot  String?
+  statut_reponse          String            @default("EN_ATTENTE")
+  repondu_at              DateTime?
+  reponse_file_url        String?
+  statut_traitement       String            @default("A_TRAITER")
+  traite_at               DateTime?
+  traite_by               Int?
+  note_traitement         String?
+  created_at              DateTime          @default(now())
+  updated_at              DateTime          @updatedAt
+  complement              DemandeComplement @relation(fields: [id_complement], references: [id_complement], onDelete: Cascade)
+  document                documentPortail?  @relation(fields: [id_doc], references: [id_doc], onDelete: SetNull)
+
+  @@index([id_complement], map: "demande_complement_item_complement_idx")
+  @@index([id_doc], map: "demande_complement_item_doc_idx")
+  @@index([id_complement, statut_reponse], map: "demande_complement_item_complement_reponse_idx")
+  @@index([id_complement, statut_traitement], map: "demande_complement_item_complement_traitement_idx")
+  @@map("demande_complement_item")
 }
 
 model DossierFournisDocumentPortail {
