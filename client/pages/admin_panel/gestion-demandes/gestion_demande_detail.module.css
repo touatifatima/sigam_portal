@@ -645,25 +645,33 @@
 
 .complementSection {
   display: grid;
-  gap: 0.9rem;
+  gap: 1rem;
 }
 
 .complementStateBanner {
-  border-radius: 15px;
-  border: 1px solid #eadce8;
-  padding: 0.85rem 0.95rem;
+  border-radius: 20px;
+  border: 1px solid rgba(220, 226, 240, 0.95);
+  background:
+    radial-gradient(circle at top right, rgba(63, 94, 251, 0.06), transparent 34%),
+    linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+  padding: 1rem 1.05rem;
   display: grid;
   gap: 0.45rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 14px 30px rgba(36, 48, 78, 0.06);
 }
 
 .complementStatePending {
-  background: linear-gradient(180deg, #fff9ef 0%, #fffdf8 100%);
-  border-color: #f3ddab;
+  border-color: rgba(246, 199, 118, 0.65);
+  background:
+    radial-gradient(circle at top right, rgba(247, 170, 33, 0.08), transparent 34%),
+    linear-gradient(180deg, #fffdf7 0%, #ffffff 100%);
 }
 
 .complementStateSuccess {
-  background: linear-gradient(180deg, #effaf3 0%, #fbfffd 100%);
-  border-color: #c8ead3;
+  border-color: rgba(126, 213, 145, 0.68);
+  background:
+    radial-gradient(circle at top right, rgba(58, 175, 99, 0.08), transparent 34%),
+    linear-gradient(180deg, #fbfffc 0%, #ffffff 100%);
 }
 
 .complementStateHeader {
@@ -676,44 +684,122 @@
 
 .complementStateHeader h4 {
   margin: 0;
-  color: #3f2d43;
-  font-size: 0.98rem;
+  color: #192033;
+  font-size: 1rem;
   font-weight: 800;
 }
 
 .complementStateBanner p {
   margin: 0;
-  color: #5d5567;
+  color: #667085;
   line-height: 1.55;
 }
 
-.complementSummaryGrid {
+.complementDashboardPanel {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.complementDashboardStats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.65rem;
+  align-items: stretch;
 }
 
-.complementSummaryCard {
-  border: 1px solid #eadce8;
-  border-radius: 13px;
-  padding: 0.75rem 0.82rem;
-  background: linear-gradient(180deg, #fff 0%, #fcf8fc 100%);
+.complementDashboardStatCard {
+  min-height: 100px;
+  border-radius: 16px;
+  border: 1px solid rgba(224, 230, 238, 0.95);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 10px 22px rgba(37, 48, 74, 0.05);
+  padding: 0.85rem 0.95rem;
   display: flex;
-  flex-direction: column;
-  gap: 0.18rem;
+  align-items: center;
+  gap: 0.75rem;
 }
 
-.complementSummaryCard span {
-  color: #7d6984;
+.complementDashboardStatCard svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  color: #3056f5;
+}
+
+.complementDashboardStatCard:nth-child(2) svg {
+  color: #22a45a;
+}
+
+.complementDashboardStatCard:nth-child(3) svg {
+  color: #f59e0b;
+}
+
+.complementDashboardStatCard:nth-child(4) svg {
+  color: #ef4444;
+}
+
+.complementDashboardStatCard div {
+  min-width: 0;
+}
+
+.complementDashboardStatCard span {
+  display: block;
+  color: #6b7280;
   font-size: 0.74rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
+  text-transform: capitalize;
 }
 
-.complementSummaryCard strong {
-  color: #35283a;
+.complementDashboardStatCard strong {
+  display: block;
+  margin-top: 0.12rem;
+  color: #192033;
+  font-size: 1.8rem;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.complementDashboardGaugeWrap {
+  min-height: 100px;
+  border-radius: 16px;
+  border: 1px solid rgba(224, 230, 238, 0.95);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 10px 22px rgba(37, 48, 74, 0.05);
+  padding: 0.85rem 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.complementDashboardGauge {
+  width: 58px;
+  height: 58px;
+  border-radius: 999px;
+  padding: 5px;
+  flex-shrink: 0;
+}
+
+.complementDashboardGaugeInner {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.complementDashboardGaugeInner strong {
+  color: #2b9c62;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.complementDashboardGaugeWrap > span {
+  color: #1f2937;
   font-size: 0.92rem;
+  font-weight: 700;
 }
 
 .complementActionRow {
@@ -723,33 +809,32 @@
 }
 
 .complementBatchPanel {
-  border: 1px solid #d8e7dc;
-  border-radius: 16px;
-  background:
-    radial-gradient(circle at top right, rgba(34, 197, 94, 0.12), transparent 32%),
-    linear-gradient(180deg, #f7fff9 0%, #ffffff 100%);
-  padding: 0.9rem 0.95rem;
+  border: 1px solid rgba(223, 228, 239, 0.95);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #fcfdff 100%);
+  padding: 0.95rem 1rem;
   display: grid;
-  gap: 0.7rem;
+  gap: 0.85rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94), 0 14px 28px rgba(38, 49, 77, 0.06);
 }
 
 .complementBatchHeader {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 0.8rem;
 }
 
 .complementBatchHeader h4 {
-  margin: 0 0 0.18rem;
-  color: #234335;
-  font-size: 0.97rem;
+  margin: 0;
+  color: #14223d;
+  font-size: 1rem;
   font-weight: 800;
 }
 
 .complementBatchHeader p {
-  margin: 0;
-  color: #5d6e64;
+  margin: 0.18rem 0 0;
+  color: #667085;
   font-size: 0.85rem;
 }
 
@@ -759,27 +844,28 @@
 }
 
 .complementBatchNote span {
-  color: #456051;
-  font-size: 0.76rem;
-  font-weight: 700;
+  color: #475467;
+  font-size: 0.72rem;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
 }
 
 .complementBatchNote textarea {
-  border: 1px solid #cde0d2;
-  border-radius: 12px;
+  border: 1px solid rgba(208, 214, 227, 0.95);
+  border-radius: 14px;
   background: #fff;
-  padding: 0.7rem 0.8rem;
+  padding: 0.75rem 0.85rem;
   font: inherit;
-  color: #304338;
+  color: #1f2937;
   resize: vertical;
+  min-height: 80px;
 }
 
 .complementBatchNote textarea:focus {
   outline: none;
-  border-color: #22c55e;
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.16);
+  border-color: rgba(47, 87, 255, 0.45);
+  box-shadow: 0 0 0 3px rgba(47, 87, 255, 0.12);
 }
 
 .complementBatchActions {
@@ -789,10 +875,10 @@
 }
 
 .complementValidateBtn {
-  background: linear-gradient(135deg, #22c55e 0%, #15803d 100%) !important;
+  background: linear-gradient(180deg, #34a853 0%, #1f8e46 100%) !important;
   color: #fff !important;
-  border: 1px solid #166534 !important;
-  box-shadow: 0 12px 22px rgba(21, 128, 61, 0.18) !important;
+  border: 1px solid #18753a !important;
+  box-shadow: 0 12px 22px rgba(31, 142, 70, 0.18) !important;
 }
 
 .complementValidateBtn:hover:not(:disabled) {
@@ -801,33 +887,34 @@
 
 .complementBatchMuted {
   margin: 0;
-  color: #617266;
+  color: #667085;
   font-size: 0.84rem;
 }
 
 .complementNoticeBlock {
-  border: 1px solid #dbe7f4;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #f4f8ff 0%, #fbfdff 100%);
-  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(220, 226, 240, 0.95);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fbfcff 0%, #ffffff 100%);
+  padding: 0.85rem 0.95rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 .complementNoticeBlock h4 {
   margin: 0 0 0.3rem;
-  color: #153f76;
+  color: #14223d;
   font-size: 0.92rem;
   font-weight: 800;
 }
 
 .complementNoticeBlock p {
   margin: 0;
-  color: #41556f;
+  color: #667085;
   line-height: 1.6;
 }
 
 .complementSubsection {
   display: grid;
-  gap: 0.65rem;
+  gap: 0.7rem;
 }
 
 .complementDocList {
@@ -836,41 +923,41 @@
 }
 
 .complementDocItem {
-  border: 1px solid #eadce8;
+  border: 1px solid #e5e9f2;
   border-radius: 16px;
-  background: linear-gradient(180deg, #fff 0%, #fdfafe 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
   padding: 0.88rem 0.95rem;
   display: grid;
   gap: 0.65rem;
 }
 
 .complementDocItemSuccess {
-  border-color: #cde9d6;
+  border-color: rgba(47, 183, 111, 0.28);
   background:
-    radial-gradient(circle at top right, rgba(34, 197, 94, 0.14), transparent 34%),
-    linear-gradient(180deg, #ffffff 0%, #f7fff9 100%);
-  box-shadow: 0 10px 24px rgba(20, 83, 45, 0.08);
+    radial-gradient(circle at top right, rgba(47, 183, 111, 0.08), transparent 34%),
+    linear-gradient(180deg, #ffffff 0%, #f8fff9 100%);
+  box-shadow: 0 12px 24px rgba(20, 83, 45, 0.06);
 }
 
 .complementDocItemResponded {
-  border-color: #d7e6dc;
+  border-color: rgba(109, 132, 255, 0.24);
   background:
-    radial-gradient(circle at top right, rgba(74, 222, 128, 0.11), transparent 35%),
-    linear-gradient(180deg, #ffffff 0%, #fbfffc 100%);
+    radial-gradient(circle at top right, rgba(109, 132, 255, 0.08), transparent 35%),
+    linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
 }
 
 .complementDocItemWarning {
-  border-color: #f2d9a6;
+  border-color: rgba(249, 184, 64, 0.3);
   background:
-    radial-gradient(circle at top right, rgba(250, 204, 21, 0.12), transparent 35%),
-    linear-gradient(180deg, #ffffff 0%, #fffdf7 100%);
+    radial-gradient(circle at top right, rgba(249, 184, 64, 0.1), transparent 35%),
+    linear-gradient(180deg, #ffffff 0%, #fffdf8 100%);
 }
 
 .complementDocItemDanger {
-  border-color: #f0c8cd;
+  border-color: rgba(239, 68, 68, 0.22);
   background:
-    radial-gradient(circle at top right, rgba(248, 113, 113, 0.12), transparent 35%),
-    linear-gradient(180deg, #ffffff 0%, #fff9fa 100%);
+    radial-gradient(circle at top right, rgba(239, 68, 68, 0.08), transparent 35%),
+    linear-gradient(180deg, #ffffff 0%, #fffafb 100%);
 }
 
 .complementDocItemHead {
@@ -890,28 +977,28 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  border: 1px solid #d7e5db;
+  border: 1px solid #d8dee9;
   border-radius: 999px;
-  background: #f8fff9;
+  background: #f8fbff;
   padding: 0.3rem 0.55rem;
-  color: #2f5641;
+  color: #344054;
   font-size: 0.76rem;
   font-weight: 800;
 }
 
 .complementItemCheckbox input {
-  accent-color: #16a34a;
+  accent-color: #2f57ff;
 }
 
 .complementDocItemHead h4 {
   margin: 0;
-  color: #3d2c42;
+  color: #101828;
   font-size: 0.96rem;
   font-weight: 800;
 }
 
 .complementDocItemHead small {
-  color: #7d7184;
+  color: #667085;
   font-size: 0.75rem;
 }
 
@@ -929,13 +1016,13 @@
 
 .complementDocItemBody p {
   margin: 0;
-  color: #4e4356;
+  color: #344054;
   line-height: 1.55;
   font-size: 0.86rem;
 }
 
 .complementDocItemBody span {
-  color: #6e5b76;
+  color: #475467;
   font-weight: 700;
 }
 
@@ -946,20 +1033,20 @@
   gap: 0.75rem;
   flex-wrap: wrap;
   padding-top: 0.15rem;
-  border-top: 1px solid #f0e4ec;
+  border-top: 1px solid #edf1f7;
 }
 
 .complementDocFileState {
-  color: #6e6378;
+  color: #667085;
   font-size: 0.8rem;
   font-weight: 700;
 }
 
 .tableSection {
-  border: 1px solid #eadce8;
-  border-radius: 16px;
+  border: 1px solid rgba(223, 228, 239, 0.95);
+  border-radius: 18px;
   background: #fff;
-  box-shadow: 0 12px 28px rgba(56, 18, 45, 0.07);
+  box-shadow: 0 14px 30px rgba(37, 48, 74, 0.06);
   overflow: hidden;
 }
 
@@ -967,7 +1054,7 @@
   overflow-x: auto;
   max-height: calc(100vh - 260px);
   scrollbar-width: thin;
-  scrollbar-color: rgba(139, 58, 98, 0.42) rgba(139, 58, 98, 0.08);
+  scrollbar-color: rgba(47, 87, 255, 0.38) rgba(47, 87, 255, 0.08);
 }
 
 .tableWrap::-webkit-scrollbar {
@@ -977,17 +1064,17 @@
 
 .tableWrap::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: rgba(139, 58, 98, 0.42);
+  background: rgba(47, 87, 255, 0.38);
 }
 
 .tableWrap::-webkit-scrollbar-track {
   border-radius: 999px;
-  background: rgba(139, 58, 98, 0.08);
+  background: rgba(47, 87, 255, 0.08);
 }
 
 .table {
   width: 100%;
-  min-width: 1180px;
+  min-width: 1520px;
   border-collapse: separate;
   border-spacing: 0;
 }
@@ -996,21 +1083,21 @@
   position: sticky;
   top: 0;
   z-index: 5;
-  background: linear-gradient(180deg, #faf1f8 0%, #f8edf5 100%);
-  color: #5e4862;
-  font-size: 0.77rem;
+  background: linear-gradient(180deg, #f9fafb 0%, #f5f7fa 100%);
+  color: #475467;
+  font-size: 0.76rem;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
   text-align: left;
-  padding: 0.65rem 0.6rem;
-  border-bottom: 1px solid #eadce8;
+  padding: 0.78rem 0.7rem;
+  border-bottom: 1px solid #e5e9f2;
   white-space: nowrap;
 }
 
 .table tbody td {
-  padding: 0.7rem 0.6rem;
-  border-bottom: 1px solid #f3e7f1;
-  color: #39263f;
+  padding: 0.85rem 0.7rem;
+  border-bottom: 1px solid #edf1f7;
+  color: #1f2937;
   vertical-align: top;
 }
 
@@ -1019,21 +1106,27 @@
 }
 
 .dataRow:hover {
-  background: #fdf8ff;
-  box-shadow: inset 0 0 0 9999px rgba(139, 58, 98, 0.03);
+  background: #f8faff;
+  box-shadow: inset 0 0 0 9999px rgba(47, 87, 255, 0.02);
 }
 
 .complementTableRowSelected {
-  background: #f7fff9;
+  background: #f7fbff;
 }
 
 .checkboxCol {
-  width: 145px;
+  width: 64px;
+  text-align: center;
+}
+
+.complementIndexCol {
+  width: 56px;
+  text-align: center;
 }
 
 .complementTableDocCell {
   display: grid;
-  gap: 0.45rem;
+  gap: 0.5rem;
 }
 
 .complementTableDocTitle {
@@ -1042,30 +1135,15 @@
   gap: 0.7rem;
 }
 
-.complementTableDocIndex {
-  width: 24px;
-  height: 24px;
-  border-radius: 999px;
-  border: 1px solid #dcc9e0;
-  background: #f4f0f6;
-  color: #6b5670;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 800;
-  flex-shrink: 0;
-}
-
 .complementTableDocTitle h4 {
   margin: 0;
-  color: #3d2c42;
+  color: #101828;
   font-size: 0.96rem;
   font-weight: 800;
 }
 
 .complementTableDocTitle small {
-  color: #7d7184;
+  color: #667085;
   font-size: 0.75rem;
 }
 
@@ -1075,43 +1153,74 @@
   gap: 0.45rem;
 }
 
-.complementTableDetails {
-  display: grid;
-  gap: 0.22rem;
+.complementDocInlineIcon {
+  color: #2f57ff;
+  font-size: 1.05rem;
+  margin-top: 0.1rem;
+  flex-shrink: 0;
 }
 
-.complementTableDetails p {
-  margin: 0;
-  color: #4e4356;
-  line-height: 1.42;
-  font-size: 0.84rem;
+.complementHeaderCheck {
+  width: 16px;
+  height: 16px;
+  accent-color: #2f57ff;
+  cursor: pointer;
+  vertical-align: middle;
 }
 
-.complementTableDetails span {
-  color: #6e5b76;
-  font-weight: 700;
+.complementRowCheck {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 100%;
+  cursor: pointer;
 }
 
-.complementTableCheckCell {
-  min-width: 160px;
+.complementRowCheck input {
+  width: 16px;
+  height: 16px;
+  accent-color: #2f57ff;
+  cursor: pointer;
 }
 
-.complementSystemCheck {
+.complementStatusCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: flex-start;
+}
+
+.complementStatusCell .docStatus {
+  border-radius: 999px;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.complementProblemTag {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  border: 1px solid #d7e5db;
   border-radius: 999px;
-  background: #f8fff9;
-  padding: 0.3rem 0.55rem;
-  color: #2f5641;
-  font-size: 0.76rem;
-  font-weight: 800;
-  margin-bottom: 0.4rem;
+  padding: 0.28rem 0.68rem;
+  background: #f8fbff;
+  border: 1px solid #d9e1f0;
+  color: #344054;
+  font-size: 0.78rem;
+  font-weight: 700;
 }
 
-.complementSystemCheck input {
-  accent-color: #16a34a;
+.complementStatusCell .docStatusSuccess {
+  border-radius: 999px;
+}
+
+.complementStatusCell .docStatusWarning {
+  border-radius: 999px;
+}
+
+.complementStatusCell .docStatusDanger {
+  border-radius: 999px;
 }
 
 .complementTableActions {
@@ -1119,18 +1228,37 @@
   align-items: center;
   gap: 0.45rem;
   flex-wrap: wrap;
+  justify-content: flex-start;
 }
 
 .complementTableActionBtn {
   min-height: 34px !important;
-  border-radius: 10px !important;
+  border-radius: 12px !important;
   font-weight: 700 !important;
   gap: 0.35rem;
   padding: 0 0.75rem !important;
+  border-color: #d7deea !important;
+  background: #fff !important;
+  box-shadow: 0 8px 18px rgba(37, 48, 74, 0.06) !important;
+}
+
+.complementTableActionBtn:hover:not(:disabled) {
+  border-color: rgba(47, 87, 255, 0.28) !important;
+  background: #f8faff !important;
 }
 
 .complementTableActionBtn svg {
   font-size: 0.85rem;
+}
+
+@media (max-width: 1240px) {
+  .complementDashboardStats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .complementDashboardGaugeWrap {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 840px) {
@@ -1141,6 +1269,14 @@
 
   .complementSummaryGrid {
     grid-template-columns: 1fr;
+  }
+
+  .complementDashboardStats {
+    grid-template-columns: 1fr;
+  }
+
+  .complementDashboardGaugeWrap {
+    grid-column: auto;
   }
 
   .complementBatchHeader,
@@ -1157,7 +1293,7 @@
   }
 
   .table {
-    min-width: 980px;
+    min-width: 1320px;
   }
 }
 

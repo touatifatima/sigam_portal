@@ -20,6 +20,7 @@ import { useViewNavigator } from "../../../../src/hooks/useViewNavigator";
 import { useActivateEtape } from "@/src/hooks/useActivateEtape";
 import ProgressStepper from "../../../../components/ProgressStepper";
 import { Phase, Procedure, ProcedureEtape, ProcedurePhase } from "@/src/types/procedure";
+import { FieldHelp } from "@/components/ui/field-help";
 
 type PaymentMethod = "card" | "baridimob" | null;
 type PaymentStatus = "EN_ATTENTE" | "PAYE" | "EN_ERREUR";
@@ -549,9 +550,11 @@ const Paiement = () => {
                         </div>
                         
                         <div className={styles.inputGroup}>
-                          <label className={styles.inputLabel} htmlFor="phone">
-                            Numéro de téléphone
-                          </label>
+                          <FieldHelp
+                            label="Numéro de téléphone"
+                            htmlFor="phone"
+                            helpText="Saisissez le numéro lié à votre compte BaridiMob."
+                          />
                           <div className={styles.inputWrapper}>
                             <Phone size={18} className={styles.inputIcon} />
                             <input

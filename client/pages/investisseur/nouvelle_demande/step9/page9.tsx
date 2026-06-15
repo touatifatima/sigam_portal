@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import styles from './UserObligations9.module.css';
 import { useSearchParams } from '@/src/hooks/useSearchParams';
+import { FieldHelpLabel } from '@/components/ui/field-help';
 import { FiChevronLeft, FiChevronRight, FiDownload, FiCheckCircle, FiAlertCircle, FiClock } from 'react-icons/fi';
 import Sidebar from '../../../sidebar/Sidebar';
 import Navbar from '../../../navbar/Navbar';
@@ -497,9 +498,11 @@ const getPeriodDisplay = (obligation: Obligation) => {
                   <h2>Détail des obligations</h2>
 
                   <div className={styles.filtersBar}>
-                    <label className={styles.filterLabel} htmlFor="paymentTypeFilter">
-                      Type de paiement
-                    </label>
+                    <FieldHelpLabel
+                      htmlFor="paymentTypeFilter"
+                      label="Type de paiement"
+                      helpText="Filtrez les obligations selon le type de paiement concerné."
+                    />
                     <select
                       id="paymentTypeFilter"
                       className={styles.filterSelect}

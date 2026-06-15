@@ -17,6 +17,7 @@ import router from 'next/router';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { FieldHelpLabel } from '@/components/ui/field-help';
 
 // Data status interface
 interface DataStatus {
@@ -464,7 +465,10 @@ export default function Capacites() {
                   </div>
                   <div className={styles.formGrid}>
                     <div className={styles.formGroup}>
-                      <label className={styles.formLabel}>Durée estimée des travaux (mois)</label>
+                      <FieldHelpLabel
+                        label="Durée estimée des travaux (mois)"
+                        helpText="Indiquez la durée prévisionnelle du programme de travaux en mois."
+                      />
                       <input
                         disabled={statutProc === 'TERMINEE'}
                         type="text"
@@ -476,10 +480,10 @@ export default function Capacites() {
                       />
                     </div>
                     <div className={styles.formGroup}>
-                      <label className={styles.formLabel}>
-                        <FiCalendar className={styles.inputIcon} />
-                        Date de Début Prévue
-                      </label>
+                      <FieldHelpLabel
+                        label="Date de Début Prévue"
+                        helpText="Choisissez la date estimée de démarrage des travaux."
+                      />
                       <input
                         disabled={statutProc === 'TERMINEE'}
                         type="date"
@@ -491,7 +495,10 @@ export default function Capacites() {
                     </div>
 
                     <div className={`${styles.formGroup} ${styles.fullWidth}`}>
-                      <label className={styles.formLabel}>Description des travaux techniques</label>
+                      <FieldHelpLabel
+                        label="Description des travaux techniques"
+                        helpText="Décrivez brièvement les travaux techniques envisagés."
+                      />
                       <textarea
                         disabled={statutProc === 'TERMINEE'}
                         name="description"
@@ -512,7 +519,10 @@ export default function Capacites() {
                     <h3 className={styles.sectionTitle}>Capacités financiéres</h3>
                   </div>
                   <div className={styles.formGroup}>
-                    <label className={styles.formLabel}>Sources de financement</label>
+                    <FieldHelpLabel
+                      label="Sources de financement"
+                      helpText="Précisez les fonds, partenaires ou mécanismes financiers mobilisés."
+                    />
                     <textarea
                       disabled={statutProc === 'TERMINEE'}
                       name="financement"
@@ -596,9 +606,12 @@ export default function Capacites() {
                     <div className={styles.expertFields}>
                       <div className={styles.formGrid}>
                         <div className={`${styles.formGroup} ${styles.required}`}>
-                          <Label htmlFor="nom_expert" className={styles.formLabel}>
-                            Nom / Raison sociale
-                          </Label>
+                          <FieldHelpLabel
+                            htmlFor="nom_expert"
+                            label="Nom / Raison sociale"
+                            required
+                            helpText="Saisissez le nom officiel du bureau ou de l'expert."
+                          />
                           <Input
                             id="nom_expert"
                             type="text"
@@ -612,9 +625,11 @@ export default function Capacites() {
                           />
                         </div>
                         <div className={styles.formGroup}>
-                          <Label htmlFor="num_agrement" className={styles.formLabel}>
-                            Numéro d&apos;agrément
-                          </Label>
+                          <FieldHelpLabel
+                            htmlFor="num_agrement"
+                            label="Numéro d'agrément"
+                            helpText="Renseignez le numéro d'agrément officiel si disponible."
+                          />
                           <Input
                             id="num_agrement"
                             type="text"
@@ -627,9 +642,11 @@ export default function Capacites() {
                           />
                         </div>
                         <div className={styles.formGroup}>
-                          <Label htmlFor="specialisation" className={styles.formLabel}>
-                            Domaine d&apos;agrément / Spécialisation
-                          </Label>
+                          <FieldHelpLabel
+                            htmlFor="specialisation"
+                            label="Domaine d'agrément / Spécialisation"
+                            helpText="Précisez le domaine technique couvert par l'expert."
+                          />
                           <Input
                             id="specialisation"
                             type="text"
@@ -642,9 +659,12 @@ export default function Capacites() {
                           />
                         </div>
                         <div className={`${styles.formGroup} ${styles.required}`}>
-                          <Label htmlFor="adresse" className={styles.formLabel}>
-                            Adresse
-                          </Label>
+                          <FieldHelpLabel
+                            htmlFor="adresse"
+                            label="Adresse"
+                            required
+                            helpText="Indiquez l'adresse complète du bureau ou de l'expert."
+                          />
                           <Input
                             id="adresse"
                             type="text"
@@ -658,9 +678,12 @@ export default function Capacites() {
                           />
                         </div>
                         <div className={`${styles.formGroup} ${styles.required}`}>
-                          <Label htmlFor="tel_expert" className={styles.formLabel}>
-                            Téléphone
-                          </Label>
+                          <FieldHelpLabel
+                            htmlFor="tel_expert"
+                            label="Téléphone"
+                            required
+                            helpText="Numéro de téléphone principal pour les échanges."
+                          />
                           <Input
                             id="tel_expert"
                             type="tel"
@@ -674,9 +697,11 @@ export default function Capacites() {
                           />
                         </div>
                         <div className={styles.formGroup}>
-                          <Label htmlFor="email" className={styles.formLabel}>
-                            E-mail
-                          </Label>
+                          <FieldHelpLabel
+                            htmlFor="email"
+                            label="E-mail"
+                            helpText="Adresse email de contact du bureau ou de l'expert."
+                          />
                           <Input
                             id="email"
                             type="email"
@@ -689,9 +714,11 @@ export default function Capacites() {
                           />
                         </div>
                         <div className={styles.formGroup}>
-                          <Label htmlFor="fax_expert" className={styles.formLabel}>
-                            Fax
-                          </Label>
+                          <FieldHelpLabel
+                            htmlFor="fax_expert"
+                            label="Fax"
+                            helpText="Numéro de fax, si le bureau en utilise un."
+                          />
                           <Input
                             id="fax_expert"
                             type="text"
@@ -704,9 +731,11 @@ export default function Capacites() {
                           />
                         </div>
                         <div className={styles.formGroup}>
-                          <Label htmlFor="etat_agrement" className={styles.formLabel}>
-                            État d&apos;agrément
-                          </Label>
+                          <FieldHelpLabel
+                            htmlFor="etat_agrement"
+                            label="État d'agrément"
+                            helpText="Indiquez l'état ou l'organisme ayant délivré l'agrément."
+                          />
                           <Input
                             id="etat_agrement"
                             type="text"
@@ -719,9 +748,11 @@ export default function Capacites() {
                           />
                         </div>
                         <div className={styles.formGroup}>
-                          <Label htmlFor="date_agrement" className={styles.formLabel}>
-                            Date d&apos;agrément
-                          </Label>
+                          <FieldHelpLabel
+                            htmlFor="date_agrement"
+                            label="Date d'agrément"
+                            helpText="Indiquez la date de délivrance de l'agrément."
+                          />
                           <Input
                             id="date_agrement"
                             type="date"

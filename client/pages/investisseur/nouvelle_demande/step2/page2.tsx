@@ -11,6 +11,7 @@ import ProgressStepper from '../../../../components/ProgressStepper';
 import { useActivateEtape } from '@/src/hooks/useActivateEtape';
 import { Phase, Procedure, ProcedureEtape, ProcedurePhase } from '@/src/types/procedure';
 import { Building2, User, FileText, Users, Plus, X, AlertCircle } from 'lucide-react';
+import { FieldHelp } from '@/components/ui/field-help';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import layoutStyles from './page2.module.css';
 import styles from '../../../../components/wizard/steps/StepIdentification.module.css';
@@ -57,6 +58,9 @@ type SocieteData = {
     nom_ar: string;
     statut_id: number;
     statut_detenteur: StatutDetenteurValue | '';
+    prive: string;
+    portefeuille: string;
+    portefeuille_public_mode: boolean;
     tel: string;
     email: string;
     fax: string;
@@ -98,6 +102,9 @@ const initialData: SocieteData = {
     nom_ar: '',
     statut_id: 0,
     statut_detenteur: '',
+    prive: '',
+    portefeuille: '',
+    portefeuille_public_mode: false,
     tel: '',
     email: '',
     fax: '',
@@ -158,6 +165,78 @@ const statutDetenteurOptions: Array<{
   },
 ];
 
+const normalizeSectorValue = (value?: string | null) => {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  const lower = raw.toLowerCase();
+  if (lower.includes('public')) return 'Public';
+  if (lower.includes('priv')) return 'Privé';
+  return raw;
+};
+
+const normalizeStatutToken = (value?: string | null) =>
+  String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/gi, '')
+    .toUpperCase();
+
+const DEFAULT_FIELD_HELP =
+  'Renseignez ce champ comme il figure sur les documents officiels de la société.';
+
+const FIELD_HELP_TEXTS: Record<string, string> = {
+  'Nom société (FR)': 'Nom officiel de la société en français.',
+  'Nom société (AR)': 'Nom officiel de la société en arabe.',
+  'Date de constitution': "Date de création ou d'immatriculation de l'entreprise.",
+  'Statut juridique': 'Choisissez la forme juridique exacte de la société.',
+  Secteur: 'Indiquez si la société relève du secteur public ou privé.',
+  'Statut du detenteur': 'Choisissez le statut administratif du détenteur.',
+  Portefeuille: 'Nom du portefeuille public chargé de gérer le dossier.',
+  Pays: 'Sélectionnez le pays lié à cette information.',
+  Téléphone: 'Numéro de contact principal utilisé pour les échanges officiels.',
+  Email: 'Adresse email principale pour la réception des notifications.',
+  'Site web': 'Site internet officiel de la société, si disponible.',
+  'Numéro de fax': 'Numéro de fax de la société, si disponible.',
+  Nationalité: 'Nationalité correspondant à cette personne ou à la société.',
+  'Adresse complète': "Adresse complète de l'entreprise.",
+  'Nom (FR)': 'Nom légal de la personne en français.',
+  'Prénom (FR)': 'Prénom légal de la personne en français.',
+  'Nom (AR)': 'Nom légal de la personne en arabe.',
+  'Prénom (AR)': 'Prénom légal de la personne en arabe.',
+  'Qualité de représentant': 'Rôle légal du représentant au sein de la société.',
+  'Pouvoirs (mandat ou procuration)': 'Précisez si le représentant agit via mandat ou procuration.',
+  'Numéro NIN': "Numéro d'identification nationale du représentant.",
+  'Taux de participation (%)': 'Part du capital détenue par cette personne.',
+  'Numéro RC': "Numéro du registre de commerce de l'entreprise.",
+  "Date d'enregistrement": "Date d'enregistrement au registre de commerce.",
+  'Capital social (DA)': 'Montant du capital social déclaré.',
+  'Numéro NIS': "Numéro d'identification statistique.",
+  'Numéro NIF': "Numéro d'identification fiscale.",
+  'Adresse du siège': 'Adresse complète du siège social.',
+  Nom: 'Nom de famille de l’actionnaire.',
+  Prénom: 'Prénom de l’actionnaire.',
+  'Lieu de naissance': 'Lieu de naissance de l’actionnaire.',
+  Qualification: 'Fonction ou qualification de l’actionnaire, si nécessaire.',
+  "Numéro d'identité": "Numéro d'identité de l’actionnaire.",
+};
+
+const normalizeFieldHelpKey = (label: string): string => {
+  return String(label)
+    .replace(/\s*\*$/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const getFieldHelpText = (label: string): string => {
+  const key = normalizeFieldHelpKey(label);
+  return FIELD_HELP_TEXTS[key] ?? DEFAULT_FIELD_HELP;
+};
+
+const FieldHelpLabel = ({ label }: { label: string }) => {
+  const helpText = getFieldHelpText(label);
+  return <FieldHelp label={normalizeFieldHelpKey(label)} helpText={helpText} />;
+};
+
 export default function Step2() {
   const { currentView, navigateTo } = useViewNavigator('nouvelle-demande');
   const searchParams = useSearchParams();
@@ -185,11 +264,52 @@ export default function Step2() {
   const [refetchTrigger, setRefetchTrigger] = useState(0);
 
   const isLocked = statutProc === 'TERMINEE';
+  const isPublicSector = String(formData.infos.prive || '').toLowerCase().includes('public');
+  const selectedStatutJuridique = useMemo(
+    () =>
+      statutsJuridiques.find(
+        (statut) => statut.id_statutJuridique === Number(formData.infos.statut_id || 0),
+      ) || null,
+    [formData.infos.statut_id, statutsJuridiques],
+  );
+  const isPortefeuilleEligibleStatut = useMemo(() => {
+    const token = normalizeStatutToken(selectedStatutJuridique?.code_statut)
+      || normalizeStatutToken(selectedStatutJuridique?.statut_fr)
+      || normalizeStatutToken(selectedStatutJuridique?.statut_ar);
+    return ['EURL', 'SARL', 'SPA'].some((code) => token.includes(code));
+  }, [selectedStatutJuridique]);
+  const isPortefeuilleModeActive =
+    isPublicSector &&
+    (formData.infos.portefeuille_public_mode || isPortefeuilleEligibleStatut);
 
   const formatDate = (isoDate?: string) => {
     if (!isoDate) return '';
     return new Date(isoDate).toISOString().split('T')[0];
   };
+
+  useEffect(() => {
+    if (isPortefeuilleEligibleStatut && isPublicSector && !formData.infos.portefeuille_public_mode) {
+      setFormData((prev) => ({
+        ...prev,
+        infos: {
+          ...prev.infos,
+          portefeuille_public_mode: true,
+        },
+      }));
+      return;
+    }
+
+    if (formData.infos.portefeuille_public_mode && !isPublicSector) {
+      setFormData((prev) => ({
+        ...prev,
+        infos: {
+          ...prev.infos,
+          portefeuille_public_mode: false,
+          portefeuille: '',
+        },
+      }));
+    }
+  }, [formData.infos.portefeuille_public_mode, isPublicSector, isPortefeuilleEligibleStatut]);
 
   useEffect(() => {
     const idProcStr = searchParams?.get('id');
@@ -274,6 +394,13 @@ export default function Step2() {
               statut_id: demande.detenteur.id_statutJuridique || 0,
               statut_detenteur:
                 (demande.detenteur.statutDetenteur as StatutDetenteurValue | undefined) || '',
+              prive: normalizeSectorValue(
+                (demande.detenteur as any).Prive ?? (demande.detenteur as any).prive ?? '',
+              ),
+              portefeuille: (demande.detenteur as any).portefeuille ?? '',
+              portefeuille_public_mode: Boolean(
+                (demande.detenteur as any).portefeuille_public_mode,
+              ),
               tel: demande.detenteur.telephone || '',
               email: demande.detenteur.email || '',
               fax: demande.detenteur.fax || '',
@@ -340,7 +467,7 @@ export default function Step2() {
 
     const fetchAdditionalData = async () => {
       try {
-        const paysResponse = await axios.get<Pays[]>(`${apiURL}/statuts-juridiques/pays`);
+        const paysResponse = await axios.get<Pays[]>(`${apiURL}/api/statuts-juridiques/pays`);
         setPaysOptions(paysResponse.data);
 
         const statutsResponse = await axios.get<StatutJuridique[]>(
@@ -349,7 +476,7 @@ export default function Step2() {
         setStatutsJuridiques(statutsResponse.data);
 
         const natsResponse = await axios.get<Nationalite[]>(
-          `${apiURL}/statuts-juridiques/nationalites`,
+          `${apiURL}/api/statuts-juridiques/nationalites`,
         );
         setNationalitesOptions(natsResponse.data);
 
@@ -448,9 +575,12 @@ export default function Step2() {
     return representantTaux + actionnairesTaux;
   }, [formData.repLegal.taux_participation, formData.actionnaires]);
 
-  const isParticipationValid = Math.abs(totalParticipation - 100) <= 0.001;
+  const isParticipationValid = isPortefeuilleModeActive
+    ? true
+    : Math.abs(totalParticipation - 100) <= 0.001;
 
   const areActionnairesValid = useMemo(() => {
+    if (isPortefeuilleModeActive) return true;
     return formData.actionnaires.every((a) => {
       return (
         a.nom.trim() !== '' &&
@@ -462,28 +592,31 @@ export default function Step2() {
         !!a.id_nationalite
       );
     });
-  }, [formData.actionnaires]);
+  }, [formData.actionnaires, isPortefeuilleModeActive]);
 
   const isFormValid = useMemo(() => {
     const infosValid =
       formData.infos.nom_fr.trim() !== '' &&
       formData.infos.statut_id > 0 &&
       String(formData.infos.statut_detenteur || '').trim() !== '' &&
+      String(formData.infos.prive || '').trim() !== '' &&
+      (!isPortefeuilleModeActive || formData.infos.portefeuille.trim() !== '') &&
       !!formData.infos.id_pays &&
       formData.infos.tel.trim() !== '' &&
       formData.infos.email.trim() !== '' &&
       !!formData.infos.id_nationalite &&
       formData.infos.adresse.trim() !== '';
 
-    const repValid =
-      formData.repLegal.nom.trim() !== '' &&
-      formData.repLegal.prenom.trim() !== '' &&
-      formData.repLegal.tel.trim() !== '' &&
-      formData.repLegal.email.trim() !== '' &&
-      formData.repLegal.qualite.trim() !== '' &&
-      !!formData.repLegal.id_pays &&
-      !!formData.repLegal.id_nationalite &&
-      formData.repLegal.nin.trim() !== '';
+    const repValid = isPortefeuilleModeActive
+      ? true
+      : formData.repLegal.nom.trim() !== '' &&
+        formData.repLegal.prenom.trim() !== '' &&
+        formData.repLegal.tel.trim() !== '' &&
+        formData.repLegal.email.trim() !== '' &&
+        formData.repLegal.qualite.trim() !== '' &&
+        !!formData.repLegal.id_pays &&
+        !!formData.repLegal.id_nationalite &&
+        formData.repLegal.nin.trim() !== '';
 
     const rcValid =
       formData.rcDetails.numero_rc.trim() !== '' &&
@@ -494,7 +627,7 @@ export default function Step2() {
       formData.rcDetails.adresse_legale.trim() !== '';
 
     return infosValid && repValid && rcValid && areActionnairesValid && isParticipationValid;
-  }, [formData, areActionnairesValid, isParticipationValid]);
+  }, [formData, areActionnairesValid, isParticipationValid, isPortefeuilleModeActive]);
 
   const entrepriseMissingRequiredFields = useMemo(() => {
     const missing: string[] = [];
@@ -502,6 +635,10 @@ export default function Step2() {
     if (!formData.infos.nom_fr.trim()) missing.push('Nom societe (FR)');
     if (!(formData.infos.statut_id > 0)) missing.push('Statut juridique');
     if (!String(formData.infos.statut_detenteur || '').trim()) missing.push('Statut du detenteur');
+    if (!String(formData.infos.prive || '').trim()) missing.push('Secteur');
+    if (isPortefeuilleModeActive && !formData.infos.portefeuille.trim()) {
+      missing.push('Portefeuille');
+    }
     if (!formData.infos.id_pays) missing.push('Pays');
     if (!formData.infos.tel.trim()) missing.push('Telephone');
     if (!formData.infos.email.trim()) missing.push('Email');
@@ -641,30 +778,6 @@ export default function Step2() {
 
     setDetenteurId(detId);
 
-    if (!formData.repLegal.nin) {
-      throw new Error('NIN du repr?sentant l?gal est requis');
-    }
-
-    const repPayload = {
-      ...formData.repLegal,
-      pouvoirs: formData.repLegal.pouvoirs || null,
-      id_detenteur: detId,
-    };
-
-    let existingRepId: number | null = null;
-    try {
-      const repRes = await axios.get(`${apiURL}/api/representant-legal/${detId}`);
-      existingRepId = repRes.data?.personne?.id_personne ?? null;
-    } catch {
-      existingRepId = null;
-    }
-
-    if (existingRepId) {
-      await axios.put(`${apiURL}/api/representant-legal/by-id/${existingRepId}`, repPayload);
-    } else {
-      await axios.post(`${apiURL}/api/representant-legal`, repPayload);
-    }
-
     let existingRegistreId: number | null = null;
     try {
       const regRes = await axios.get(`${apiURL}/api/registre-commerce/${detId}`);
@@ -689,24 +802,54 @@ export default function Step2() {
       await axios.post(`${apiURL}/api/registre-commerce`, registrePayload);
     }
 
-    if (formData.actionnaires.length > 0) {
-      await axios.put(`${apiURL}/api/actionnaires/${detId}`, {
-        actionnaires: formData.actionnaires.map(a => ({
-          nom: a.nom,
-          prenom: a.prenom,
-          qualification: a.qualification,
-          numero_carte: a.numero_carte,
-          taux_participation: a.taux_participation,
-          lieu_naissance: a.lieu_naissance,
-          id_pays: a.id_pays as number,
-          id_nationalite: a.id_nationalite as number,
-        })),
-        id_detenteur: detId,
-      });
-    } else {
+    if (isPortefeuilleModeActive) {
       try {
         await axios.delete(`${apiURL}/api/actionnaires/${detId}`);
       } catch {}
+    } else {
+      if (!formData.repLegal.nin) {
+        throw new Error('NIN du repr?sentant l?gal est requis');
+      }
+
+      const repPayload = {
+        ...formData.repLegal,
+        pouvoirs: formData.repLegal.pouvoirs || null,
+        id_detenteur: detId,
+      };
+
+      let existingRepId: number | null = null;
+      try {
+        const repRes = await axios.get(`${apiURL}/api/representant-legal/${detId}`);
+        existingRepId = repRes.data?.personne?.id_personne ?? null;
+      } catch {
+        existingRepId = null;
+      }
+
+      if (existingRepId) {
+        await axios.put(`${apiURL}/api/representant-legal/by-id/${existingRepId}`, repPayload);
+      } else {
+        await axios.post(`${apiURL}/api/representant-legal`, repPayload);
+      }
+
+      if (formData.actionnaires.length > 0) {
+        await axios.put(`${apiURL}/api/actionnaires/${detId}`, {
+          actionnaires: formData.actionnaires.map(a => ({
+            nom: a.nom,
+            prenom: a.prenom,
+            qualification: a.qualification,
+            numero_carte: a.numero_carte,
+            taux_participation: a.taux_participation,
+            lieu_naissance: a.lieu_naissance,
+            id_pays: a.id_pays as number,
+            id_nationalite: a.id_nationalite as number,
+          })),
+          id_detenteur: detId,
+        });
+      } else {
+        try {
+          await axios.delete(`${apiURL}/api/actionnaires/${detId}`);
+        } catch {}
+      }
     }
   }
 
@@ -756,24 +899,10 @@ export default function Step2() {
               registre de commerce et les actionnaires.
             </p>
 
-            {codeDemande && idDemande && (
-              <div className={layoutStyles.infoCard}>
-                <div className={layoutStyles.infoHeader}>
-                  <h4 className={layoutStyles.infoTitle}>
-                    <FileText className={layoutStyles.infoIcon} />
-                    Informations Demande
-                  </h4>
-                </div>
-                <div className={layoutStyles.infoContent}>
-                  <div className={layoutStyles.infoRow}>
-                    <span className={layoutStyles.infoLabel}>Code Demande :</span>
-                    <span className={layoutStyles.infoValue}>{codeDemande}</span>
-                  </div>
-                  <div className={layoutStyles.infoRow}>
-                    <span className={layoutStyles.infoLabel}>ID Demande :</span>
-                    <span className={layoutStyles.infoValue}>{idDemande}</span>
-                  </div>
-                </div>
+            {codeDemande && (
+              <div className={layoutStyles.codeDemandLine}>
+                <span className={layoutStyles.infoLabel}>Code Demande :</span>
+                <span className={layoutStyles.infoValue}>{codeDemande}</span>
               </div>
             )}
 
@@ -801,7 +930,7 @@ export default function Step2() {
                 <div className={styles.cardContent}>
                   <div className={styles.formGrid}>
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Nom société (FR) *</label>
+                      <FieldHelpLabel label="Nom société (FR) *" />
                       <input
                         className={styles.input}
                         value={formData.infos.nom_fr}
@@ -817,7 +946,7 @@ export default function Step2() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Nom société (AR)</label>
+                      <FieldHelpLabel label="Nom société (AR)" />
                       <input
                         className={`${styles.input} ${styles.inputRtl}`}
                         value={formData.infos.nom_ar}
@@ -834,7 +963,7 @@ export default function Step2() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Date de constitution</label>
+                      <FieldHelpLabel label="Date de constitution" />
                       <input
                         className={styles.input}
                         type="date"
@@ -850,7 +979,7 @@ export default function Step2() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Statut juridique *</label>
+                      <FieldHelpLabel label="Statut juridique *" />
                       <select
                         className={styles.select}
                         value={formData.infos.statut_id || ''}
@@ -875,7 +1004,29 @@ export default function Step2() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Statut du detenteur *</label>
+                      <FieldHelpLabel label="Secteur *" />
+                      <select
+                        className={styles.select}
+                        value={formData.infos.prive}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            infos: {
+                              ...prev.infos,
+                              prive: e.target.value,
+                            },
+                          }))
+                        }
+                        disabled={isLocked}
+                      >
+                        <option value="">Sélectionner</option>
+                        <option value="Public">Public</option>
+                        <option value="Privé">Privé</option>
+                      </select>
+                    </div>
+
+                    <div className={styles.inputGroup}>
+                      <FieldHelpLabel label="Statut du detenteur *" />
                       <select
                         className={styles.select}
                         value={formData.infos.statut_detenteur}
@@ -899,8 +1050,83 @@ export default function Step2() {
                       </select>
                     </div>
 
+                    <div className={`${styles.inputGroup} ${styles.fullWidth}`}>
+                      <FieldHelpLabel label="Société publique gérée par portefeuille" />
+                      <label
+                        className={`${styles.portefeuilleToggle} ${
+                          isLocked || !isPublicSector ? styles.portefeuilleToggleDisabled : ''
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isPortefeuilleModeActive}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              infos: {
+                                ...prev.infos,
+                                portefeuille_public_mode: e.target.checked,
+                                portefeuille: e.target.checked ? prev.infos.portefeuille : '',
+                              },
+                            }))
+                          }
+                          disabled={isLocked || !isPublicSector || isPortefeuilleEligibleStatut}
+                        />
+                        <span className={styles.portefeuilleToggleBody}>
+                          <span className={styles.portefeuilleToggleTitle}>
+                            {isPortefeuilleEligibleStatut
+                              ? 'Mode portefeuille public activé automatiquement'
+                              : isPublicSector
+                                ? 'Activer le mode portefeuille public'
+                                : 'Disponible uniquement pour le secteur public'}
+                          </span>
+                          <span className={styles.portefeuilleToggleHint}>
+                            {isPublicSector
+                              ? 'Cette option active la gestion du dossier via le portefeuille public.'
+                              : 'Choisissez d’abord le secteur Public pour l’activer.'}
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+
+                    {isPortefeuilleModeActive && (
+                      <div
+                        className={`${styles.inputGroup} ${styles.fullWidth} ${styles.portefeuilleFieldCard} ${
+                          isPortefeuilleEligibleStatut ? styles.portefeuilleFieldCardAuto : ''
+                        }`}
+                      >
+                        <div className={styles.portefeuilleFieldHeader}>
+                          <div>
+                            <div className={styles.portefeuilleFieldTitle}>Portefeuille public</div>
+                            <div className={styles.portefeuilleFieldHint}>
+                              Ce champ devient obligatoire pour ce cas particulier.
+                            </div>
+                          </div>
+                          <span className={styles.portefeuilleFieldBadge}>
+                            {isPortefeuilleEligibleStatut ? 'Automatique' : 'Actif'}
+                          </span>
+                        </div>
+                        <FieldHelpLabel label="Portefeuille *" />
+                        <input
+                          className={styles.input}
+                          value={formData.infos.portefeuille}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              infos: {
+                                ...prev.infos,
+                                portefeuille: e.target.value,
+                              },
+                            }))
+                          }
+                          placeholder="Nom du portefeuille public"
+                          disabled={isLocked}
+                        />
+                      </div>
+                    )}
+
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Pays *</label>
+                      <FieldHelpLabel label="Pays *" />
                       <select
                         className={styles.select}
                         value={formData.infos.id_pays || ''}
@@ -925,7 +1151,7 @@ export default function Step2() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Téléphone *</label>
+                      <FieldHelpLabel label="Téléphone *" />
                       <input
                         className={styles.input}
                         value={formData.infos.tel}
@@ -941,7 +1167,7 @@ export default function Step2() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Email *</label>
+                      <FieldHelpLabel label="Email *" />
                       <input
                         className={styles.input}
                         type="email"
@@ -958,7 +1184,7 @@ export default function Step2() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Site web</label>
+                      <FieldHelpLabel label="Site web" />
                       <input
                         className={styles.input}
                         type="url"
@@ -976,7 +1202,7 @@ export default function Step2() {
 
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Numéro de fax</label>
+                      <FieldHelpLabel label="Numéro de fax" />
                       <input
                         className={styles.input}
                         value={formData.infos.fax}
@@ -992,7 +1218,7 @@ export default function Step2() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Nationalité *</label>
+                      <FieldHelpLabel label="Nationalité *" />
                       <select
                         className={styles.select}
                         value={formData.infos.id_nationalite ?? ''}
@@ -1019,7 +1245,7 @@ export default function Step2() {
                     </div>
 
                     <div className={`${styles.inputGroup} ${styles.fullWidth}`}>
-                      <label className={styles.label}>Adresse complète *</label>
+                      <FieldHelpLabel label="Adresse complète *" />
                       <input
                         className={styles.input}
                         value={formData.infos.adresse}
@@ -1036,6 +1262,8 @@ export default function Step2() {
                   </div>
                 </div>
               </div>
+              {!isPortefeuilleModeActive && (
+                <>
               <div className={styles.card}>
                 <div className={styles.cardHeader}>
                   <div className={styles.cardTitle}>
@@ -1049,7 +1277,7 @@ export default function Step2() {
                 <div className={styles.cardContent}>
                   <div className={styles.formGrid}>
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Nom (FR) *</label>
+                      <FieldHelpLabel label="Nom (FR) *" />
                       <input
                         className={styles.input}
                         value={formData.repLegal.nom}
@@ -1065,7 +1293,7 @@ export default function Step2() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Prénom (FR) *</label>
+                      <FieldHelpLabel label="Prénom (FR) *" />
                       <input
                         className={styles.input}
                         value={formData.repLegal.prenom}
@@ -1081,7 +1309,7 @@ export default function Step2() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Nom (AR)</label>
+                      <FieldHelpLabel label="Nom (AR)" />
                       <input
                         className={`${styles.input} ${styles.inputRtl}`}
                         value={formData.repLegal.nom_ar}
@@ -1098,7 +1326,7 @@ export default function Step2() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Prénom (AR)</label>
+                      <FieldHelpLabel label="Prénom (AR)" />
                       <input
                         className={`${styles.input} ${styles.inputRtl}`}
                         value={formData.repLegal.prenom_ar}
@@ -1115,7 +1343,7 @@ export default function Step2() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Téléphone *</label>
+                      <FieldHelpLabel label="Téléphone *" />
                       <input
                         className={styles.input}
                         value={formData.repLegal.tel}
@@ -1131,7 +1359,7 @@ export default function Step2() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Email *</label>
+                      <FieldHelpLabel label="Email *" />
                       <input
                         className={styles.input}
                         type="email"
@@ -1148,7 +1376,7 @@ export default function Step2() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Numéro de fax</label>
+                      <FieldHelpLabel label="Numéro de fax" />
                       <input
                         className={styles.input}
                         value={formData.repLegal.fax}
@@ -1164,7 +1392,7 @@ export default function Step2() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Qualité de représentant *</label>
+                      <FieldHelpLabel label="Qualité de représentant *" />
                       <select
                         className={styles.select}
                         value={formData.repLegal.qualite}
@@ -1186,7 +1414,7 @@ export default function Step2() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Pouvoirs (mandat ou procuration)</label>
+                      <FieldHelpLabel label="Pouvoirs (mandat ou procuration)" />
                       <select
                         className={styles.select}
                         value={formData.repLegal.pouvoirs}
@@ -1206,7 +1434,7 @@ export default function Step2() {
 
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Nationalité *</label>
+                      <FieldHelpLabel label="Nationalité *" />
                       <select
                         className={styles.select}
                         value={formData.repLegal.id_nationalite ?? ''}
@@ -1233,7 +1461,7 @@ export default function Step2() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Pays *</label>
+                      <FieldHelpLabel label="Pays *" />
                       <select
                         className={styles.select}
                         value={formData.repLegal.id_pays ?? ''}
@@ -1258,7 +1486,7 @@ export default function Step2() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Numéro NIN *</label>
+                      <FieldHelpLabel label="Numéro NIN *" />
                       <input
                         className={styles.input}
                         value={formData.repLegal.nin}
@@ -1274,7 +1502,7 @@ export default function Step2() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Taux de participation (%)</label>
+                      <FieldHelpLabel label="Taux de participation (%)" />
                       <input
                         className={styles.input}
                         type="number"
@@ -1297,6 +1525,8 @@ export default function Step2() {
                   </div>
                 </div>
               </div>
+                </>
+              )}
 
               <div className={styles.card}>
                 <div className={styles.cardHeader}>
@@ -1309,7 +1539,7 @@ export default function Step2() {
                 <div className={styles.cardContent}>
                   <div className={styles.formGrid}>
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Numéro RC *</label>
+                      <FieldHelpLabel label="Numéro RC *" />
                       <input
                         className={styles.input}
                         value={formData.rcDetails.numero_rc}
@@ -1325,7 +1555,7 @@ export default function Step2() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Date d'enregistrement *</label>
+                      <FieldHelpLabel label="Date d'enregistrement *" />
                       <input
                         className={styles.input}
                         type="date"
@@ -1341,7 +1571,7 @@ export default function Step2() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Capital social (DA) *</label>
+                      <FieldHelpLabel label="Capital social (DA) *" />
                       <input
                         className={styles.input}
                         type="number"
@@ -1358,7 +1588,7 @@ export default function Step2() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Numéro NIS *</label>
+                      <FieldHelpLabel label="Numéro NIS *" />
                       <input
                         className={styles.input}
                         value={formData.rcDetails.nis}
@@ -1374,7 +1604,7 @@ export default function Step2() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.label}>Numéro NIF *</label>
+                      <FieldHelpLabel label="Numéro NIF *" />
                       <input
                         className={styles.input}
                         value={formData.rcDetails.nif}
@@ -1390,7 +1620,7 @@ export default function Step2() {
                     </div>
 
                     <div className={`${styles.inputGroup} ${styles.fullWidth}`}>
-                      <label className={styles.label}>Adresse du siège *</label>
+                      <FieldHelpLabel label="Adresse du siège *" />
                       <input
                         className={styles.input}
                         value={formData.rcDetails.adresse_legale}
@@ -1407,6 +1637,9 @@ export default function Step2() {
                   </div>
                 </div>
               </div>
+
+              {!isPortefeuilleModeActive && (
+                <>
               <div className={styles.card}>
                 <div className={styles.cardHeader}>
                   <div className={styles.actionnairesHeader}>
@@ -1458,7 +1691,7 @@ export default function Step2() {
 
                         <div className={styles.formGrid}>
                           <div className={styles.inputGroup}>
-                            <label className={styles.label}>Nom *</label>
+                            <FieldHelpLabel label="Nom *" />
                             <input
                               className={styles.input}
                               value={actionnaire.nom}
@@ -1471,7 +1704,7 @@ export default function Step2() {
                           </div>
 
                           <div className={styles.inputGroup}>
-                            <label className={styles.label}>Prénom *</label>
+                            <FieldHelpLabel label="Prénom *" />
                             <input
                               className={styles.input}
                               value={actionnaire.prenom}
@@ -1484,7 +1717,7 @@ export default function Step2() {
                           </div>
 
                           <div className={styles.inputGroup}>
-                            <label className={styles.label}>Lieu de naissance *</label>
+                            <FieldHelpLabel label="Lieu de naissance *" />
                             <input
                               className={styles.input}
                               value={actionnaire.lieu_naissance}
@@ -1501,7 +1734,7 @@ export default function Step2() {
                           </div>
 
                           <div className={styles.inputGroup}>
-                            <label className={styles.label}>Nationalité *</label>
+                            <FieldHelpLabel label="Nationalité *" />
                             <select
                               className={styles.select}
                               value={actionnaire.id_nationalite ?? ''}
@@ -1524,7 +1757,7 @@ export default function Step2() {
                           </div>
 
                           <div className={styles.inputGroup}>
-                            <label className={styles.label}>Qualification</label>
+                            <FieldHelpLabel label="Qualification" />
                             <input
                               className={styles.input}
                               value={actionnaire.qualification}
@@ -1541,7 +1774,7 @@ export default function Step2() {
                           </div>
 
                           <div className={styles.inputGroup}>
-                            <label className={styles.label}>Numéro d'identité *</label>
+                            <FieldHelpLabel label="Numéro d'identité *" />
                             <input
                               className={styles.input}
                               value={actionnaire.numero_carte}
@@ -1558,7 +1791,7 @@ export default function Step2() {
                           </div>
 
                           <div className={styles.inputGroup}>
-                            <label className={styles.label}>Taux de participation (%) *</label>
+                            <FieldHelpLabel label="Taux de participation (%) *" />
                             <input
                               className={styles.input}
                               type="number"
@@ -1578,7 +1811,7 @@ export default function Step2() {
                           </div>
 
                           <div className={styles.inputGroup}>
-                            <label className={styles.label}>Pays *</label>
+                            <FieldHelpLabel label="Pays *" />
                             <select
                               className={styles.select}
                               value={actionnaire.id_pays ?? ''}
@@ -1620,6 +1853,8 @@ export default function Step2() {
                     </div>
                   </div>
                 </div>
+              )}
+                </>
               )}
             </div>
 

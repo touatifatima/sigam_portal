@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { FieldHelp } from '@/components/ui/field-help';
+import { BadgeCheck, CalendarDays, Clock3, FileText, Repeat, Ruler } from 'lucide-react';
 
 import styles from './page1_typepermis.module.css';
 import Navbar from '../../../navbar/Navbar';
@@ -252,6 +254,58 @@ export default function DemandeStart() {
     return permisOptions.find((option) => option.id === selectedPermisId) ?? null;
   }, [permisOptions, selectedPermis, selectedPermisId]);
 
+  const permitStats = useMemo(() => {
+    if (!effectivePermis) return [];
+
+    return [
+      {
+        key: 'duree',
+        label: 'Durée initiale',
+        value: `${effectivePermis.duree_initiale}`,
+        unit: 'ans',
+        note: "Durée d'octroi initiale",
+        tone: 'blue',
+        icon: CalendarDays,
+      },
+      {
+        key: 'renewals',
+        label: 'Renouvellements maximum',
+        value: `${effectivePermis.nbr_renouv_max}`,
+        unit: 'fois',
+        note: 'Nombre maximum autorisé',
+        tone: 'green',
+        icon: Repeat,
+      },
+      {
+        key: 'renewalDuration',
+        label: 'Durée du renouvellement',
+        value: `${effectivePermis.duree_renouv}`,
+        unit: 'ans',
+        note: 'Durée de chaque période',
+        tone: 'violet',
+        icon: Clock3,
+      },
+      {
+        key: 'area',
+        label: 'Superficie maximale',
+        value: `${effectivePermis.superficie_max ?? 'Non spécifiée'}`,
+        unit: 'ha',
+        note: 'Surface maximale autorisée',
+        tone: 'orange',
+        icon: Ruler,
+      },
+      {
+        key: 'delay',
+        label: 'Délai de renouvellement',
+        value: `${effectivePermis.delai_renouv}`,
+        unit: 'jours',
+        note: 'Avant expiration',
+        tone: 'red',
+        icon: BadgeCheck,
+      },
+    ];
+  }, [effectivePermis]);
+
   const handlePermisChange = async (value: string) => {
     if (!value) {
       setSelectedPermisId('');
@@ -437,9 +491,11 @@ export default function DemandeStart() {
             {pageError && <div className={styles.errorBox}>{pageError}</div>}
 
             <div data-onboarding-id="start-type-select">
-              <label className={styles.label}>
-                Type de permis <span className={styles.requiredMark}>*</span>
-              </label>
+              <FieldHelp
+                label="Type de permis"
+                required
+                helpText="Choisissez le type de permis qui correspond à votre demande."
+              />
               <Select
                 value={selectedPermisId === '' ? undefined : String(selectedPermisId)}
                 onValueChange={handlePermisChange}
@@ -471,14 +527,79 @@ export default function DemandeStart() {
 
             {effectivePermis && !detailsLoading && (
               <div className={styles.permisDetails} data-onboarding-id="start-details">
-                <h4>Details du permis selectionne</h4>
-                <ul>
-                  <li>Duree initiale: {effectivePermis.duree_initiale} ans</li>
-                  <li>Renouvellements maximum: {effectivePermis.nbr_renouv_max}</li>
-                  <li>Duree du renouvellement: {effectivePermis.duree_renouv} ans</li>
-                  <li>Superficie maximale: {effectivePermis.superficie_max ?? 'Non specifie'} ha</li>
-                  <li>Delai de renouvellement: {effectivePermis.delai_renouv} jours avant expiration</li>
-                </ul>
+                <div className={styles.permisDetailsHeader}>
+                  <div className={styles.permisDetailsHeaderIcon}>
+                    <FileText size={18} />
+                  </div>
+                  <div className={styles.permisDetailsHeaderText}>
+                    <h4>Details du permis selectionne</h4>
+                    <p>Consultez les principales caracteristiques et conditions liees a ce type de permis.</p>
+                  </div>
+                  <div className={styles.permisDetailsBadge}>Donnees reglementaires ANAM</div>
+                </div>
+
+                <div className={styles.permisDetailsBody}>
+                  <div className={styles.permisOverview}>
+                    <div className={styles.permisHeroText}>
+                      <p className={styles.permisHeroKicker}>Permis {effectivePermis.regime || 'minier'}</p>
+                      <h5>{effectivePermis.lib_type}</h5>
+                      <p className={styles.permisHeroDescription}>
+                        {effectivePermis.code_type} - {effectivePermis.regime}
+                      </p>
+                      <div className={styles.permisHeroPill}>
+                        <span className={styles.permisHeroPillLabel}>Nature du droit</span>
+                        <span className={styles.permisHeroPillValue}>Droit minier</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={styles.permisStats}>
+                    {permitStats.map((stat) => {
+                      const Icon = stat.icon;
+                      return (
+                        <div key={stat.key} className={`${styles.statCard} ${styles[`tone${stat.tone.charAt(0).toUpperCase()}${stat.tone.slice(1)}`]}`}>
+                          <div className={styles.statIconWrap}>
+                            <Icon size={18} />
+                          </div>
+                          <div className={styles.statCopy}>
+                            <p className={styles.statLabel}>{stat.label}</p>
+                            <div className={styles.statValueRow}>
+                              <span className={styles.statValue}>{stat.value}</span>
+                              <span className={styles.statUnit}>{stat.unit}</span>
+                            </div>
+                            <p className={styles.statNote}>{stat.note}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    <div className={styles.permisAside}>
+                      <div className={styles.permisAsideTitle}>Base legale</div>
+                      <p className={styles.permisAsideText}>
+                        {effectivePermis.regime || 'Régime'} - informations de référence associées à ce type de permis.
+                      </p>
+                      <button type="button" className={styles.permisAsideLink} onClick={() => toast.info('Consultez la réglementation applicable dans le guide ANAM.')}>
+                        Voir les textes
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={styles.permisDetailsFooter}>
+                  <div className={styles.permisImportant}>
+                    <span className={styles.permisImportantDot}>i</span>
+                    <span>
+                      Important : toutes les durées sont calculées à partir de la date de signature de la décision d&apos;octroi.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.permisImportantLink}
+                    onClick={() => toast.info('Consultez la réglementation du type de permis sélectionné.')}
+                  >
+                    En savoir plus
+                  </button>
+                </div>
               </div>
             )}
 

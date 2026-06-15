@@ -246,6 +246,15 @@
   color: #2d1b27;
 }
 
+.codeDemandLine {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.65rem;
+  margin: 0.25rem 0 1.5rem;
+  padding: 0.15rem 0;
+}
+
 /* Section Title */
 .stepTitle {
   font-size: 1.5rem;

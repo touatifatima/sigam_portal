@@ -57,7 +57,7 @@ export default function CreateDetenteurForm({ onCancel, onCreated, initialData: 
       try {
         const statutsRes = await axios.get(`${apiURL}/statuts-juridiques`, { withCredentials: true });
         setStatutsJuridiques(statutsRes.data);
-        const paysRes = await axios.get(`${apiURL}/statuts-juridiques/pays`, { withCredentials: true });
+        const paysRes = await axios.get(`${apiURL}/api/statuts-juridiques/pays`, { withCredentials: true });
         setPaysOptions(paysRes.data);
       } catch (error) {
         console.error('Error fetching options:', error);

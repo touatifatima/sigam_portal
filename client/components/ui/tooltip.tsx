@@ -1,8 +1,6 @@
 import * as React from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 
-import { cn } from "@/lib/utils";
-
 const TooltipProvider = TooltipPrimitive.Provider;
 
 const Tooltip = TooltipPrimitive.Root;
@@ -12,16 +10,43 @@ const TooltipTrigger = TooltipPrimitive.Trigger;
 const TooltipContent = React.forwardRef<
   React.ElementRef<typeof TooltipPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
-  <TooltipPrimitive.Content
-    ref={ref}
-    sideOffset={sideOffset}
-    className={cn(
-      "z-50 overflow-hidden rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-      className,
-    )}
-    {...props}
-  />
+>(({ className, sideOffset = 4, children, ...props }, ref) => (
+  <TooltipPrimitive.Portal>
+    <TooltipPrimitive.Content
+      ref={ref}
+      sideOffset={sideOffset}
+      className={className}
+      style={{
+        zIndex: 9999,
+        overflow: "hidden",
+        borderRadius: 12,
+        border: "1px solid rgba(226, 232, 240, 0.95)",
+        background: "rgba(255, 255, 255, 0.98)",
+        padding: "8px 10px",
+        color: "#334155",
+        fontSize: 12,
+        lineHeight: 1.45,
+        boxShadow: "0 14px 32px rgba(15, 23, 42, 0.12)",
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
+        maxWidth: 280,
+      }}
+      {...props}
+    >
+      <div style={{ position: "relative", zIndex: 1 }}>
+        {children}
+      </div>
+      <TooltipPrimitive.Arrow
+        width={8}
+        height={4}
+        style={{
+          fill: "rgba(255, 255, 255, 0.98)",
+          stroke: "rgba(226, 232, 240, 0.95)",
+          strokeWidth: 1,
+        }}
+      />
+    </TooltipPrimitive.Content>
+  </TooltipPrimitive.Portal>
 ));
 TooltipContent.displayName = TooltipPrimitive.Content.displayName;
 

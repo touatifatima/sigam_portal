@@ -2185,8 +2185,8 @@ const formatCurrency = (amount: number) => {
           axios.get(`${apiURL}/statut-permis_conf`, { withCredentials: true, signal: controller.signal }),
           axios.get(`${apiURL}/antenne_conf`, { withCredentials: true, signal: controller.signal }),
           axios.get(`${apiURL}/api/substances`, { withCredentials: true, signal: controller.signal }),
-          axios.get(`${apiURL}/statuts-juridiques/pays`, { withCredentials: true, signal: controller.signal }),
-          axios.get(`${apiURL}/statuts-juridiques/nationalites`, { withCredentials: true, signal: controller.signal }),
+          axios.get(`${apiURL}/api/statuts-juridiques/pays`, { withCredentials: true, signal: controller.signal }),
+          axios.get(`${apiURL}/api/statuts-juridiques/nationalites`, { withCredentials: true, signal: controller.signal }),
         ]);
 
         const typeData = Array.isArray(typeRes.data) ? typeRes.data : typeRes.data?.data;

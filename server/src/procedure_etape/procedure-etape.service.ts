@@ -117,49 +117,31 @@ export class ProcedureEtapeService {
     const updateData: any = { statut };
     if (link) updateData.link = link;
 
-    if (!existing) {
-      const createData: any = {
+    const upsertData: any = {
+      statut,
+      ...(link ? { link } : {}),
+    };
+
+    if (statut === StatutProcedure.EN_COURS) {
+      upsertData.date_debut = existing?.date_debut ?? now;
+    } else if (statut === StatutProcedure.TERMINEE) {
+      upsertData.date_debut = existing?.date_debut ?? now;
+      upsertData.date_fin = now;
+    }
+
+    const result = await this.prisma.procedureEtape.upsert({
+      where: { id_proc_id_etape: { id_proc, id_etape } },
+      create: {
         id_proc,
         id_etape,
         statut,
-        link,
-      };
-
-      if (statut === StatutProcedure.EN_COURS) {
-        createData.date_debut = now;
-      } else if (statut === StatutProcedure.TERMINEE) {
-        createData.date_debut = now;
-        createData.date_fin = now;
-      }
-
-      const result = await this.prisma.procedureEtape.create({
-        data: createData,
-      });
-      console.log('[setStepStatus] created ProcedureEtape:', result);
-
-      // Auto-update phase status after creating etape, if we have a phase
-      if (phaseId != null) {
-        await this.autoUpdatePhaseStatus(id_proc, phaseId);
-      }
-      return result;
-    }
-
-    if (statut === StatutProcedure.EN_COURS && !existing.date_debut) {
-      updateData.date_debut = now;
-    }
-
-    if (statut === StatutProcedure.TERMINEE) {
-      if (!existing.date_debut) {
-        updateData.date_debut = now;
-      }
-      updateData.date_fin = now;
-    }
-
-    const result = await this.prisma.procedureEtape.update({
-      where: { id_proc_id_etape: { id_proc, id_etape } },
-      data: updateData,
+        date_debut: upsertData.date_debut ?? now,
+        ...(link ? { link } : {}),
+        ...(upsertData.date_fin ? { date_fin: upsertData.date_fin } : {}),
+      },
+      update: upsertData,
     });
-    console.log('[setStepStatus] updated ProcedureEtape:', result);
+    console.log('[setStepStatus] upserted ProcedureEtape:', result);
 
     // Auto-update phase status after etape change, if we have a phase
     if (phaseId != null) {

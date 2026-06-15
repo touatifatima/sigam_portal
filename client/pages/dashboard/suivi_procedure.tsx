@@ -141,18 +141,18 @@ const LIB_PHASES = STEP_LABELS;
 
 const STATUS_CONFIG = {
   'Identification': { bg: styles['bg-blue-100'], text: styles['text-blue-800'], icon: <FiClock className={styles['text-blue-500']} /> },
-  'Capacit�s': { bg: styles['bg-blue-100'], text: styles['text-blue-800'], icon: <FiClock className={styles['text-blue-500']} /> },
+  'Capacités': { bg: styles['bg-blue-100'], text: styles['text-blue-800'], icon: <FiClock className={styles['text-blue-500']} /> },
   'Substances & Travaux': { bg: styles['bg-blue-100'], text: styles['text-blue-800'], icon: <FiClock className={styles['text-blue-500']} /> },
   'Documents': { bg: styles['bg-yellow-100'], text: styles['text-yellow-800'], icon: <FiAlertTriangle className={styles['text-yellow-500']} /> },
   'Cadastre': { bg: styles['bg-orange-300'], text: styles['text-orange-800'], icon: <FiClock className={styles['text-orange-500']} /> },
   'Avis Wali': { bg: styles['bg-orange-100'], text: styles['text-orange-800'], icon: <FiClock className={styles['text-orange-500']} /> },
-  'Comit� de direction': { bg: styles['bg-purple-100'], text: styles['text-purple-800'], icon: <FiClock className={styles['text-purple-500']} /> },
-  'G�n�ration du permis': { bg: styles['bg-green-100'], text: styles['text-green-800'], icon: <FiCheck className={styles['text-green-500']} /> },
+  'Comite de direction': { bg: styles['bg-purple-100'], text: styles['text-purple-800'], icon: <FiClock className={styles['text-purple-500']} /> },
+  'Generation du permis': { bg: styles['bg-green-100'], text: styles['text-green-800'], icon: <FiCheck className={styles['text-green-500']} /> },
   'Paiement': { bg: styles['bg-green-100'], text: styles['text-green-800'], icon: <FiClock className={styles['text-green-500']} /> },
   'en_instruction': { bg: styles['bg-blue-100'], text: styles['text-blue-800'], icon: <FiClock className={styles['text-blue-500']} /> },
   'avis_wilaya': { bg: styles['bg-orange-100'], text: styles['text-orange-800'], icon: <FiClock className={styles['text-orange-500']} /> },
   'retard': { bg: styles['bg-red-100'], text: styles['text-red-800'], icon: <FiAlertTriangle className={styles['text-red-500']} /> },
-  'accept�e': { bg: styles['bg-green-100'], text: styles['text-green-800'], icon: <FiCheck className={styles['text-green-500']} /> },
+  'acceptee': { bg: styles['bg-green-100'], text: styles['text-green-800'], icon: <FiCheck className={styles['text-green-500']} /> },
   'rejete': { bg: styles['bg-red-100'], text: styles['text-red-800'], icon: <FiX className={styles['text-red-500']} /> },
   'default': { bg: styles['bg-gray-100'], text: styles['text-gray-800'], icon: <FiClock className={styles['text-gray-500']} /> }
 };

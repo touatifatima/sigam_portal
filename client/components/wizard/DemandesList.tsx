@@ -1338,8 +1338,13 @@ const DemandesList = () => {
           </div>
           <div className={styles.heroContent}>
             <div className={styles.heroText}>
-              <span className={styles.heroEyebrow}>Portefeuille minier</span>
-              <h1 className={styles.heroTitle}>Demandes et autorisations</h1>
+              <span className={styles.heroEyebrow}>
+                Republique Algerienne · Ministere des Mines
+              </span>
+              <h1 className={styles.heroTitle}>
+                <span>Demandes et</span>
+                <span className={styles.heroTitleAccent}>autorisations</span>
+              </h1>
               <p className={styles.heroSubtitle}>
                 {!isLoading && !error
                   ? `${filteredDemandes.length} resultat${filteredDemandes.length > 1 ? "s" : ""} visible${filteredDemandes.length > 1 ? "s" : ""} avec un suivi clair de vos dossiers miniers.`

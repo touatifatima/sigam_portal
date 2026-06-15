@@ -137,9 +137,9 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
     const fetchOptions = async () => {
       try {
         const [paysRes, statutsRes, natRes] = await Promise.all([
-          axios.get<Pays[]>(`${apiURL}/statuts-juridiques/pays`),
+          axios.get<Pays[]>(`${apiURL}/api/statuts-juridiques/pays`),
           axios.get<StatutJuridique[]>(`${apiURL}/api/statuts-juridiques`),
-          axios.get<Nationalite[]>(`${apiURL}/statuts-juridiques/nationalites`),
+          axios.get<Nationalite[]>(`${apiURL}/api/statuts-juridiques/nationalites`),
         ]);
 
         if (!mounted) return;
@@ -238,7 +238,7 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
             <div className={styles.inputGroup}>
               <Label htmlFor="statutJuridique" className={styles.label}>Statut juridique *</Label>
               <Select
-                value={identification.statutJuridique || undefined}
+                value={identification.statutJuridique ?? ''}
                 onValueChange={(value) => handleChange("statutJuridique", value)}
               >
                 <SelectTrigger id="statutJuridique" className={styles.select}>
@@ -270,7 +270,7 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
             <div className={styles.inputGroup}>
               <Label htmlFor="pays" className={styles.label}>Pays *</Label>
               <Select
-                value={identification.pays || undefined}
+                value={identification.pays ?? ''}
                 onValueChange={(value) => handleChange("pays", value)}
               >
                 <SelectTrigger id="pays" className={styles.select}>
@@ -293,7 +293,7 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
             <div className={`${styles.inputGroup} ${styles.fullWidth}`}>
               <Label className={styles.label}>Statut du detenteur *</Label>
               <RadioGroup
-                value={identification.statutDetenteur || undefined}
+                value={identification.statutDetenteur ?? ''}
                 onValueChange={(value) => handleChange("statutDetenteur", value)}
                 className={styles.radioGroup}
               >
@@ -363,7 +363,7 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
             <div className={styles.inputGroup}>
               <Label htmlFor="nationalite" className={styles.label}>Nationalite *</Label>
               <Select
-                value={identification.nationalite || undefined}
+                value={identification.nationalite ?? ''}
                 onValueChange={(value) => handleChange("nationalite", value)}
               >
                 <SelectTrigger id="nationalite" className={styles.select}>
@@ -504,7 +504,7 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
             <div className={styles.inputGroup}>
               <Label htmlFor="representantQualite" className={styles.label}>Qualite de representant *</Label>
               <Select
-                value={identification.representantQualite || undefined}
+                value={identification.representantQualite ?? ''}
                 onValueChange={(value) => handleChange("representantQualite", value)}
               >
                 <SelectTrigger id="representantQualite" className={styles.select}>
@@ -527,7 +527,7 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
             <div className={styles.inputGroup}>
               <Label htmlFor="representantNationalite" className={styles.label}>Nationalite *</Label>
               <Select
-                value={identification.representantNationalite || undefined}
+                value={identification.representantNationalite ?? ''}
                 onValueChange={(value) => handleChange("representantNationalite", value)}
               >
                 <SelectTrigger id="representantNationalite" className={styles.select}>
@@ -550,7 +550,7 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
             <div className={styles.inputGroup}>
               <Label htmlFor="representantPays" className={styles.label}>Pays *</Label>
               <Select
-                value={identification.representantPays || undefined}
+                value={identification.representantPays ?? ''}
                 onValueChange={(value) => handleChange("representantPays", value)}
               >
                 <SelectTrigger id="representantPays" className={styles.select}>
@@ -753,7 +753,7 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
                   <div className={styles.inputGroup}>
                     <Label className={styles.label}>Nationalite *</Label>
                     <Select
-                      value={actionnaire.nationalite || undefined}
+                      value={actionnaire.nationalite ?? ''}
                       onValueChange={(value) =>
                         handleActionnaireChange(actionnaire.id, "nationalite", value)
                       }
@@ -814,7 +814,7 @@ export const StepIdentification = ({ data, onUpdate }: StepIdentificationProps) 
                   <div className={styles.inputGroup}>
                     <Label className={styles.label}>Pays *</Label>
                     <Select
-                      value={actionnaire.pays || undefined}
+                      value={actionnaire.pays ?? ''}
                       onValueChange={(value) =>
                         handleActionnaireChange(actionnaire.id, "pays", value)
                       }

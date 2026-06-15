@@ -355,7 +355,7 @@ export default function Step2() {
     const fetchAdditionalData = async () => {
       try {
         // Fetch countries
-        const paysResponse = await axios.get<Pays[]>(`${apiURL}/statuts-juridiques/pays`);
+        const paysResponse = await axios.get<Pays[]>(`${apiURL}/api/statuts-juridiques/pays`);
         setPaysOptions(paysResponse.data);
         
         // Fetch legal statuses

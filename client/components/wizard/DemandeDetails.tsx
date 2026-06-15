@@ -12,6 +12,7 @@ import ArcGISMap, {
 } from "@/components/arcgismap/ArcgisMap";
 import {
   ArrowLeft,
+  ChevronRight,
   FileText,
   CreditCard,
   History,
@@ -26,15 +27,13 @@ import {
   XCircle,
   FileCheck,
   AlertCircle,
+  LifeBuoy,
   Gem,
   Eye,
   Banknote,
-  MessageSquareText,
   Loader2,
-  Sparkles,
 } from "lucide-react";
 import { InvestorLayout } from "@/components/investor/InvestorLayout";
-import EntityMessagesPanel from "@/components/chat/EntityMessagesPanel";
 import PerimeterCoordinatesTable from "@/components/perimeter/PerimeterCoordinatesTable";
 import { OnboardingTour, type OnboardingStep } from "@/components/onboarding/OnboardingTour";
 import styles from "./DemandeDetails.module.css";
@@ -148,6 +147,13 @@ const buildApiUrl = (base: string, endpoint: string) => {
   const normalizedEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
   const normalizedBase = String(base || "").trim().replace(/\/+$/, "");
   if (!normalizedBase) return normalizedEndpoint;
+  if (
+    normalizedBase.endsWith("/api") &&
+    (normalizedEndpoint === "/api" || normalizedEndpoint.startsWith("/api/"))
+  ) {
+    const strippedEndpoint = normalizedEndpoint.replace(/^\/api(?=\/|$)/, "") || "/";
+    return `${normalizedBase}${strippedEndpoint}`;
+  }
   return `${normalizedBase}${normalizedEndpoint}`;
 };
 
@@ -178,8 +184,11 @@ const requestApiWithFallback = async (
   config: any,
 ) => {
   const primaryUrl = buildApiUrl(base, endpoint);
-  const localBase = "http://127.0.0.1:4016/api";
-  const localUrl = buildApiUrl(localBase, endpoint);
+  const normalizedEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  const fallbackEndpoint = normalizedEndpoint.startsWith("/api/")
+    ? normalizedEndpoint.replace(/^\/api(?=\/|$)/, "") || "/"
+    : `/api${normalizedEndpoint}`;
+  const localUrl = buildApiUrl(base, fallbackEndpoint);
 
   try {
     return await axios({
@@ -578,6 +587,18 @@ const isComplementProcessed = (statut?: string | null) => {
 const getComplementResponseStatus = (value?: string | null) =>
   String(value || "").trim().toUpperCase();
 
+const hasComplementDocumentResponse = (
+  docItem: ComplementDetailsState["documents"][number],
+) => {
+  const responseStatus = getComplementResponseStatus(docItem.statutReponse);
+  return (
+    responseStatus === "DOCUMENT_REMPLACE" ||
+    responseStatus === "SOUMIS" ||
+    Boolean(String(docItem.responseFileUrl || "").trim()) ||
+    Boolean(String(docItem.reponduAt || "").trim())
+  );
+};
+
 const formatDocumentStatusLabel = (value?: string | null) => {
   const normalized = String(value || "").trim().toLowerCase();
   if (normalized === "present" || normalized === "valide" || normalized === "conforme") {
@@ -694,9 +715,7 @@ const DemandeDetails = () => {
     | "completude"
     | "paiements"
     | "historique"
-    | "messages"
   >("general");
-  const [autoFocusMessagesComposer, setAutoFocusMessagesComposer] = useState(false);
   const [isPdfGenerating, setIsPdfGenerating] = useState(false);
   const [isComplementPdfDownloading, setIsComplementPdfDownloading] = useState(false);
   const [isComplementRecepisseDownloading, setIsComplementRecepisseDownloading] = useState(false);
@@ -704,7 +723,6 @@ const DemandeDetails = () => {
   const [uploadingDocIds, setUploadingDocIds] = useState<Record<number, boolean>>({});
   const [showComplementGuide, setShowComplementGuide] = useState(false);
   const mapRef = useRef<ArcGISMapRef | null>(null);
-  const messagesSectionRef = useRef<HTMLDivElement | null>(null);
   const complementUploadInputsRef = useRef<Record<number, HTMLInputElement | null>>({});
 
   useEffect(() => {
@@ -717,8 +735,7 @@ const DemandeDetails = () => {
       requestedTab === "documents" ||
       requestedTab === "completude" ||
       requestedTab === "paiements" ||
-      requestedTab === "historique" ||
-      requestedTab === "messages"
+      requestedTab === "historique"
     ) {
       setActiveTab(requestedTab);
     }
@@ -729,34 +746,7 @@ const DemandeDetails = () => {
     ) {
       setShowComplementGuide(true);
     }
-    setAutoFocusMessagesComposer(isTruthyQueryFlag(search.get("focusComposer")));
   }, [demandeKey]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!demandeKey || !apiURL) return;
-
-    const triggerRefresh = () => {
-      if (document.visibilityState && document.visibilityState !== "visible") {
-        return;
-      }
-      setReloadKey((current) => current + 1);
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        triggerRefresh();
-      }
-    };
-
-    window.addEventListener("focus", triggerRefresh);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener("focus", triggerRefresh);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [demandeKey, apiURL]);
 
   useEffect(() => {
     let active = true;
@@ -803,7 +793,6 @@ const DemandeDetails = () => {
           coordsRes,
           demandeProcRes,
           inscriptionRes,
-          entrepriseRes,
         ] = await Promise.all([
             requestApiWithFallback(
               apiURL,
@@ -882,11 +871,6 @@ const DemandeDetails = () => {
                   })
                   .catch(() => null)
               : Promise.resolve(null),
-            requestApiWithFallback(apiURL, "/api/profil/entreprise", {
-              method: "get",
-              withCredentials: true,
-            })
-              .catch(() => null),
           ]);
 
         if (!active) return;
@@ -990,12 +974,9 @@ const DemandeDetails = () => {
         }
 
         const demandeProcPayload = demandeProcRes?.data ?? null;
-        const entrepriseDetenteur = entrepriseRes?.data?.detenteur ?? null;
         const titulaireCandidate = resolveTitulaire(
           demandeData,
           demandeProcPayload,
-          entrepriseDetenteur,
-          entrepriseRes?.data,
         );
         setTitulaireOverride(titulaireCandidate);
 
@@ -1054,18 +1035,6 @@ const DemandeDetails = () => {
     }, 0);
     return () => window.clearTimeout(timer);
   }, [perimetrePoints]);
-
-  useEffect(() => {
-    if (activeTab !== "messages") return;
-    if (!messagesSectionRef.current) return;
-    const timer = window.setTimeout(() => {
-      messagesSectionRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 120);
-    return () => window.clearTimeout(timer);
-  }, [activeTab]);
 
   const getStatutConfig = (statut: string) => {
     const configs: Record<string, { label: string; icon: typeof Clock; className: string }> = {
@@ -1256,39 +1225,10 @@ const DemandeDetails = () => {
     };
   }, [complementDetails]);
 
-  const complementFlowItems = useMemo(() => {
-    if (!complementDetails) return [];
-
-    const submitted = isComplementSubmitted(complementDetails.statut);
-    const processed =
-      isComplementProcessed(complementDetails.statut) ||
-      (complementStats.total > 0 && complementStats.processed === complementStats.total);
-    const allCorrected =
-      complementStats.total > 0 && complementStats.corrected === complementStats.total;
-
-    return [
-      {
-        key: "requested",
-        label: "Recu",
-        state: "completed" as const,
-      },
-      {
-        key: "corrected",
-        label: "Corriges",
-        state: processed || allCorrected ? ("completed" as const) : complementStats.corrected > 0 ? ("active" as const) : ("pending" as const),
-      },
-      {
-        key: "submitted",
-        label: "Envoye",
-        state: processed || submitted ? ("completed" as const) : allCorrected ? ("active" as const) : ("pending" as const),
-      },
-      {
-        key: "reviewed",
-        label: "Controle",
-        state: processed ? ("completed" as const) : submitted ? ("active" as const) : ("pending" as const),
-      },
-    ];
-  }, [complementDetails, complementStats]);
+  const complementCompletionRate =
+    complementStats.total > 0
+      ? Math.round((complementStats.corrected / complementStats.total) * 100)
+      : 0;
 
   const complementHistoryItems = useMemo(() => {
     if (!complementDetails) return [];
@@ -1341,7 +1281,7 @@ const DemandeDetails = () => {
         title: "Documents corriges par le demandeur",
         description: `${updatedRequestedDocs.length} document(s) ont ete corriges ou remplaces.`,
         date: latestUpdate,
-        state: isComplementSubmitted(complementDetails.statut) ? "completed" : "active",
+        state: updatedRequestedDocs.length > 0 ? "completed" : "active",
       });
     }
 
@@ -1812,33 +1752,22 @@ const DemandeDetails = () => {
         itemStatus: mappedComplement?.documents?.find((entry) => entry.id_item === itemId)
           ?.statutReponse ?? null,
       });
-      if (mappedComplement) {
-        setComplementDetails(mappedComplement);
-      } else {
-        setComplementDetails((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            documents: prev.documents.map((entry) =>
-              entry.id_item === itemId || entry.id_doc === docId
-                ? {
-                    ...entry,
-                    statutReponse: "DOCUMENT_REMPLACE",
-                    reponduAt: nowIso,
-                    responseFileUrl: uploadedFileUrl || entry.responseFileUrl,
-                  }
-                : entry,
-            ),
-          };
+      const baseComplement = mappedComplement || complementDetails;
+      if (baseComplement) {
+        setComplementDetails({
+          ...baseComplement,
+          documents: baseComplement.documents.map((entry) =>
+            entry.id_item === itemId || entry.id_doc === docId
+              ? {
+                  ...entry,
+                  statutReponse: "DOCUMENT_REMPLACE",
+                  reponduAt: nowIso,
+                  responseFileUrl: uploadedFileUrl || entry.responseFileUrl,
+                }
+              : entry,
+          ),
         });
       }
-
-      console.info("[DemandeDetails] forcing complement refresh after upload", {
-        id_demande: demande.id_demande,
-        docId,
-        itemId,
-      });
-      setReloadKey((prev) => prev + 1);
 
       toast.success("Document corrige televerse avec succes.");
     } catch (uploadError: any) {
@@ -1919,8 +1848,7 @@ const DemandeDetails = () => {
     if (complementDetails.documents.length === 0) return true;
 
     return complementDetails.documents.every((docItem) => {
-      const responseStatus = getComplementResponseStatus(docItem.statutReponse);
-      if (responseStatus === "DOCUMENT_REMPLACE" || responseStatus === "SOUMIS") {
+      if (hasComplementDocumentResponse(docItem)) {
         return true;
       }
 
@@ -2057,6 +1985,7 @@ const DemandeDetails = () => {
         ? documentsById.get(docItem.id_doc)
         : null;
     const responseStatus = getComplementResponseStatus(docItem.statutReponse);
+    const hasUserResponse = hasComplementDocumentResponse(docItem);
     const generatedTs = toTimestamp(complementDetails?.generatedAt || null);
     const updatedTs = toTimestamp(docItem.reponduAt || currentDoc?.updatedAt || null);
     const replacedAfterRequest =
@@ -2078,7 +2007,7 @@ const DemandeDetails = () => {
         cardClassName: styles.complementDocCardSuccess,
       };
     }
-    if (responseStatus === "DOCUMENT_REMPLACE") {
+    if (responseStatus === "DOCUMENT_REMPLACE" || hasUserResponse || replacedAfterRequest) {
       return {
         label: "Document corrige",
         helper: "Pret pour la soumission finale",
@@ -2090,14 +2019,6 @@ const DemandeDetails = () => {
       return {
         label: "Soumis au service",
         helper: "Joint a la soumission",
-        className: styles.badgeSuccess,
-        cardClassName: styles.complementDocCardSuccess,
-      };
-    }
-    if (replacedAfterRequest) {
-      return {
-        label: "Fichier corrige",
-        helper: "Nouvelle version deposee",
         className: styles.badgeSuccess,
         cardClassName: styles.complementDocCardSuccess,
       };
@@ -2212,11 +2133,10 @@ const DemandeDetails = () => {
                 value as
                   | "general"
                   | "substances"
-                  | "documents"
-                  | "completude"
-                  | "paiements"
-                  | "historique"
-                  | "messages",
+                | "documents"
+                | "completude"
+                | "paiements"
+                | "historique",
               )
             }
             className={styles.tabs}
@@ -2245,10 +2165,6 @@ const DemandeDetails = () => {
               <TabsTrigger value="historique" className={styles.tabTrigger}>
                 <History className="w-4 h-4" />
                 <span>Historique</span>
-              </TabsTrigger>
-              <TabsTrigger value="messages" className={styles.tabTrigger}>
-                <MessageSquareText className="w-4 h-4" />
-                <span>Messages</span>
               </TabsTrigger>
             </TabsList>
 
@@ -2452,10 +2368,10 @@ const DemandeDetails = () => {
                   </div>
                   <div className={styles.complementHeaderText}>
                     <CardTitle className={`${styles.cardTitle} ${styles.complementTitle}`}>
-                      Completude
+                      Complétude du dossier
                     </CardTitle>
                     <p className={styles.complementHeaderHint}>
-                      Corrigez les pieces puis envoyez.
+                      Corrigez les pièces manquantes puis envoyez.
                     </p>
                   </div>
                 </CardHeader>
@@ -2470,43 +2386,85 @@ const DemandeDetails = () => {
                     </div>
                   ) : (
                     <div className={styles.complementWrap}>
-                      <div
-                        className={styles.complementHeroPanel}
-                        data-onboarding-id="completude-hero"
-                      >
+                      <div className={styles.complementHeroPanel} data-onboarding-id="completude-hero">
                         <div className={styles.complementHeroMain}>
                           <div className={styles.complementHeroTopline}>
-                            <span className={styles.complementEyebrow}>
-                              Dossier a regulariser
-                            </span>
+                            <div className={styles.complementHeroHeading}>
+                              <div className={styles.complementHeroIcon}>
+                                <AlertCircle className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <h4>Complétude du dossier</h4>
+                                <p>Corrigez les pièces manquantes puis envoyez.</p>
+                              </div>
+                            </div>
                             <Badge className={complementStatusDescriptor.className}>
                               {complementStatusDescriptor.label}
                             </Badge>
                           </div>
-                          <div className={styles.complementHeroIntro}>
-                            <h4>Corrigez les pieces demandees.</h4>
-                            <p>Ajoutez les fichiers manquants puis envoyez.</p>
-                          </div>
-                          <div className={styles.complementStatGrid}>
-                            <div className={styles.complementStatCard}>
-                              <span>Docs</span>
-                              <strong>{complementStats.total}</strong>
+
+                          <div className={styles.complementGaugeRow}>
+                            <div className={styles.complementGaugeBlock}>
+                              <div
+                                className={styles.complementGaugeRing}
+                                style={{
+                                  background: `conic-gradient(#d84d6b ${
+                                    complementCompletionRate * 3.6
+                                  }deg, #eceaf1 0deg)`,
+                                }}
+                              >
+                                <div className={styles.complementGaugeInner}>
+                                  <strong>{complementCompletionRate}%</strong>
+                                </div>
+                              </div>
                             </div>
-                            <div className={styles.complementStatCard}>
-                              <span>Corriges</span>
-                              <strong>{complementStats.corrected}</strong>
-                            </div>
-                            <div className={styles.complementStatCard}>
-                              <span>Restants</span>
-                              <strong>{complementStats.remaining}</strong>
+                            <div className={styles.complementGaugeCopy}>
+                              <strong>
+                                {complementStats.corrected} / {complementStats.total} étapes validées
+                              </strong>
+                              <div className={styles.complementProgressBar}>
+                                <span style={{ width: `${complementCompletionRate}%` }} />
+                              </div>
+                              <p>
+                                {complementStats.remaining} document
+                                {complementStats.remaining > 1 ? "s" : ""} à corriger
+                              </p>
                             </div>
                           </div>
                         </div>
 
-                        <div
-                          className={styles.complementActionPanel}
-                          data-onboarding-id="completude-actions"
-                        >
+                        <div className={styles.complementStatGrid}>
+                          <div className={styles.complementStatCard}>
+                            <div className={styles.complementStatIcon}>
+                              <FileText className="w-4 h-4" />
+                            </div>
+                            <div className={styles.complementStatCopy}>
+                              <strong>{complementStats.total}</strong>
+                              <span>Reçus</span>
+                            </div>
+                          </div>
+                          <div className={styles.complementStatCard}>
+                            <div className={styles.complementStatIcon}>
+                              <CheckCircle2 className="w-4 h-4" />
+                            </div>
+                            <div className={styles.complementStatCopy}>
+                              <strong>{complementStats.corrected}</strong>
+                              <span>Corrigés</span>
+                            </div>
+                          </div>
+                          <div className={styles.complementStatCard}>
+                            <div className={styles.complementStatIcon}>
+                              <Clock className="w-4 h-4" />
+                            </div>
+                            <div className={styles.complementStatCopy}>
+                              <strong>{complementStats.remaining}</strong>
+                              <span>Restant</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className={styles.complementShortcutPanel} data-onboarding-id="completude-actions">
+                          <h5>Raccourcis</h5>
                           <div className={styles.complementActionStack}>
                             <Button
                               type="button"
@@ -2520,9 +2478,7 @@ const DemandeDetails = () => {
                               ) : (
                                 <Download className="w-4 h-4" />
                               )}
-                              {isComplementPdfDownloading
-                                ? "Chargement..."
-                                : "Fiche"}
+                              {isComplementPdfDownloading ? "Chargement..." : "Télécharger la fiche"}
                             </Button>
                             {canDownloadComplementRecepisse && (
                               <Button
@@ -2537,28 +2493,22 @@ const DemandeDetails = () => {
                                 ) : (
                                   <FileCheck className="w-4 h-4" />
                                 )}
-                                {isComplementRecepisseDownloading
-                                  ? "Chargement..."
-                                  : "Recu"}
+                                {isComplementRecepisseDownloading ? "Chargement..." : "Télécharger le reçu"}
                               </Button>
                             )}
-                            {!isAdminDetailView &&
-                              !isComplementSubmitted(complementDetails.statut) &&
-                              !isComplementProcessed(complementDetails.statut) && (
+                            {!isAdminDetailView && canSubmitComplement && (
                               <Button
                                 type="button"
                                 className={styles.complementSubmitBtn}
                                 onClick={() => void handleSubmitComplement()}
-                                disabled={isSubmittingComplement || !canSubmitComplement}
+                                disabled={isSubmittingComplement}
                               >
                                 {isSubmittingComplement ? (
                                   <Loader2 className="w-4 h-4 animate-spin" />
                                 ) : (
                                   <CheckCircle2 className="w-4 h-4" />
                                 )}
-                                {isSubmittingComplement
-                                  ? "Envoi..."
-                                  : "Envoyer"}
+                                {isSubmittingComplement ? "Envoi..." : "Envoyer"}
                               </Button>
                             )}
                             <Button
@@ -2567,122 +2517,46 @@ const DemandeDetails = () => {
                               className={styles.complementGuideBtn}
                               onClick={() => setShowComplementGuide(true)}
                             >
-                              <Sparkles className="w-4 h-4" />
-                              Aide
+                              <LifeBuoy className="w-4 h-4" />
+                              Besoin d'aide ?
                             </Button>
                           </div>
                           <div className={styles.complementActionNotes}>
-                            <span>{`Notif. ${complementGeneratedLabel}`}</span>
-                            <span>{`Delai ${complementDelaiLabel}`}</span>
-                            <span>{`Etat ${complementStatutLabel}`}</span>
+                            <span>{`Note: ${complementGeneratedLabel}`}</span>
+                            <span>{`Delai: ${complementDelaiLabel}`}</span>
+                            <span>{`Etat: ${complementStatutLabel}`}</span>
                           </div>
-                          {!isAdminDetailView &&
-                            !isComplementSubmitted(complementDetails.statut) &&
-                            !isComplementProcessed(complementDetails.statut) &&
-                            hasPendingComplementUploads && (
-                              <p className={styles.complementInlineHint}>
-                                Envoi en cours. Attendez la mise a jour.
-                              </p>
-                            )}
-                          {!isAdminDetailView &&
-                            !isComplementSubmitted(complementDetails.statut) &&
-                            !isComplementProcessed(complementDetails.statut) &&
-                            !hasPendingComplementUploads &&
-                            !allComplementDocsResponded && (
-                              <p className={styles.complementInlineHint}>
-                                Corrigez tous les documents avant l'envoi.
-                              </p>
-                            )}
                         </div>
                       </div>
 
-                      <div
-                        className={styles.complementFlowStrip}
-                        data-onboarding-id="completude-flow"
-                      >
-                        {complementFlowItems.map((item, index) => (
-                          <div
-                            key={item.key}
-                            className={`${styles.complementFlowItem} ${
-                              item.state === "completed"
-                                ? styles.complementFlowCompleted
-                                : item.state === "active"
-                                  ? styles.complementFlowActive
-                                  : styles.complementFlowPending
-                            }`}
-                          >
-                            <span className={styles.complementFlowIndex}>{index + 1}</span>
-                            <div className={styles.complementFlowText}>
-                              <strong>{item.label}</strong>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className={styles.complementMetaGrid}>
-                        <div className={styles.complementMetaItem}>
-                          <span>Notif.</span>
-                          <strong>{complementGeneratedLabel}</strong>
+                      <div className={styles.complementDocsSection} data-onboarding-id="completude-docs">
+                        <div className={styles.complementDocsHeader}>
+                          <h5>Pièces demandées ({complementDetails.documents.length})</h5>
+                          <span>Filtrer par statut</span>
                         </div>
-                        <div className={styles.complementMetaItem}>
-                          <span>Delai</span>
-                          <strong>{complementDelaiLabel}</strong>
-                        </div>
-                        <div className={styles.complementMetaItem}>
-                          <span>Canal</span>
-                          <strong>{safeText(complementDetails.modeNotification)}</strong>
-                        </div>
-                      </div>
 
-                      <div className={styles.complementBriefGrid}>
-                        {(complementDetails.motif || complementDetails.adminMessage) && (
-                          <div className={styles.complementBriefCard}>
-                            <h5>Motif</h5>
-                            <p>{safeText(complementDetails.motif || complementDetails.adminMessage)}</p>
-                          </div>
-                        )}
-                        {complementDetails.effetAbsence && (
-                          <div className={`${styles.complementBriefCard} ${styles.complementBriefAlert}`}>
-                            <h5>Absence</h5>
-                            <p>{safeText(complementDetails.effetAbsence)}</p>
-                          </div>
-                        )}
-                      </div>
-
-                      {complementDetails.documents.length === 0 ? (
-                        <div className={styles.complementEmpty}>
-                          <h4>Aucune piece detaillee</h4>
-                          <p>Consultez le motif et les consignes ci-dessus.</p>
-                        </div>
-                      ) : (
-                        <div
-                          className={styles.complementDocsSection}
-                          data-onboarding-id="completude-docs"
-                        >
-                          <div className={styles.complementDocsHeader}>
-                            <h5>Pieces</h5>
-                            <span>
-                              {complementStats.remaining > 0
-                                ? `${complementStats.remaining} a corriger`
-                                : "Pret a envoyer"}
-                            </span>
-                          </div>
-                          <div className={styles.complementDocsList}>
-                          {complementDetails.documents.map((docItem, index) => {
-                            const decisionClass =
-                              docItem.decision === "manquant"
-                                ? styles.badgeDanger
-                                : docItem.decision === "probleme"
-                                  ? styles.badgeWarning
-                                  : styles.badgeMuted;
-                            const docState = getComplementDocumentState(docItem);
-
-                            return (
-                              <div
-                                key={`complement-doc-${docItem.id_doc ?? index}`}
-                                className={`${styles.complementDocCard} ${docState.cardClassName}`}
-                              >
-                                {(() => {
+                        <div className={styles.complementTableSection}>
+                          <div className={styles.complementTableWrap}>
+                            <table className={styles.complementTable}>
+                              <thead>
+                                <tr>
+                                  <th className={styles.complementTableIconHead}></th>
+                                  <th className={styles.complementTableNameCol}>Pièce demandée</th>
+                                  <th className={styles.complementTableStatusCol}>Statut</th>
+                                  <th className={styles.complementTableDetailCol}>Détail</th>
+                                  <th className={styles.complementTableDateCol}>Mise à jour</th>
+                                  <th className={styles.complementTableActionCol}>Action</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {complementDetails.documents.map((docItem, index) => {
+                                  const decisionClass =
+                                    docItem.decision === "manquant"
+                                      ? styles.badgeDanger
+                                      : docItem.decision === "probleme"
+                                        ? styles.badgeWarning
+                                        : styles.badgeMuted;
+                                  const docState = getComplementDocumentState(docItem);
                                   const currentDoc = docItem.id_doc
                                     ? documentsById.get(docItem.id_doc)
                                     : null;
@@ -2697,9 +2571,6 @@ const DemandeDetails = () => {
                                       demande?.id_demande,
                                       currentDoc?.idDoc ?? docItem.id_doc,
                                     );
-                                  const currentStatusLabel = formatDocumentStatusLabel(
-                                    currentDoc?.statut || docItem.statutActuel || "--",
-                                  );
                                   const responseStatus = getComplementResponseStatus(
                                     docItem.statutReponse,
                                   );
@@ -2713,14 +2584,26 @@ const DemandeDetails = () => {
                                     generatedTs != null && updatedTs != null
                                       ? updatedTs >= generatedTs
                                       : false;
+                                  const hasUserResponse = hasComplementDocumentResponse(docItem);
+                                  const currentStatusLabel =
+                                    responseStatus === "SOUMIS"
+                                      ? "Soumis"
+                                      : responseStatus === "DOCUMENT_REMPLACE" ||
+                                          hasUserResponse ||
+                                          replacedAfterRequest
+                                        ? "Document corrigé"
+                                        : formatDocumentStatusLabel(
+                                            currentDoc?.statut || docItem.statutActuel || "--",
+                                          );
                                   const fileStateLabel = !currentFileUrl
                                     ? "Aucun fichier"
                                     : responseStatus === "SOUMIS"
                                       ? "Soumis"
                                       : responseStatus === "DOCUMENT_REMPLACE" ||
+                                          hasUserResponse ||
                                           replacedAfterRequest
-                                        ? "Document corrige"
-                                        : "Depose";
+                                        ? "Document corrigé"
+                                        : "Déposé";
                                   const canUpload =
                                     typeof docItem.id_doc === "number" &&
                                     typeof docItem.id_item === "number" &&
@@ -2731,74 +2614,73 @@ const DemandeDetails = () => {
                                   const docUploadId = canUpload ? docItem.id_doc : null;
                                   const isUploading =
                                     docUploadId != null ? Boolean(uploadingDocIds[docUploadId]) : false;
+                                  const rowIconClass =
+                                    docState.cardClassName === styles.complementDocCardSuccess
+                                      ? styles.complementRowIconSuccess
+                                      : docState.cardClassName === styles.complementDocCardDanger
+                                        ? styles.complementRowIconDanger
+                                        : styles.complementRowIconWarning;
 
                                   return (
-                                    <>
-                                      <div className={styles.complementDocHeadCompact}>
-                                        <div className={styles.complementDocTitleBlock}>
-                                          <span className={styles.complementDocNumber}>
-                                            {index + 1}
-                                          </span>
-                                          <h4>{docItem.nom_doc}</h4>
-                                        </div>
-                                        <div className={styles.complementDocBadges}>
-                                          <Badge className={docState.className}>{docState.label}</Badge>
-                                        </div>
-                                      </div>
-                                      <div className={styles.complementDocIssueRow}>
-                                        <Badge className={decisionClass}>
-                                          {DOC_DECISION_LABELS[docItem.decision]}
-                                        </Badge>
-                                        {docItem.problems.map((problem) => (
-                                          <span
-                                            key={`${docItem.id_item ?? index}-${problem}`}
-                                            className={styles.complementIssueTag}
-                                          >
-                                            {DOC_PROBLEM_LABELS[problem] || problem}
-                                          </span>
-                                        ))}
-                                      </div>
-                                      <div className={styles.complementDocMetaCompact}>
-                                        <div className={styles.complementDocMetaChip}>
-                                          <span>Initial</span>
-                                          <strong>{safeText(docItem.statutActuel || "--")}</strong>
-                                        </div>
-                                        <div className={styles.complementDocMetaChip}>
-                                          <span>Actuel</span>
-                                          <strong>{currentStatusLabel}</strong>
-                                        </div>
-                                        <div className={styles.complementDocMetaChip}>
-                                          <span>Maj</span>
-                                          <strong>
-                                            {formatDateTime(
-                                              docItem.reponduAt || currentDoc?.updatedAt || null,
-                                            )}
-                                          </strong>
-                                        </div>
-                                      </div>
-                                      {(docItem.comment || docItem.noteTraitement) && (
-                                        <div className={styles.complementDocAdminNote}>
-                                          {docItem.comment && (
-                                            <p>
-                                              <span>Service:</span> {docItem.comment}
-                                            </p>
+                                    <tr key={`complement-doc-${docItem.id_doc ?? index}`}>
+                                      <td className={styles.complementTableIconCell}>
+                                        <span className={`${styles.complementRowIcon} ${rowIconClass}`}>
+                                          {docState.cardClassName === styles.complementDocCardSuccess ? (
+                                            <CheckCircle2 className="w-4 h-4" />
+                                          ) : docState.cardClassName === styles.complementDocCardDanger ? (
+                                            <XCircle className="w-4 h-4" />
+                                          ) : (
+                                            <Clock className="w-4 h-4" />
                                           )}
-                                          {docItem.noteTraitement && (
-                                            <p>
-                                              <span>Traitement:</span> {docItem.noteTraitement}
-                                            </p>
-                                          )}
-                                        </div>
-                                      )}
-                                      <div className={styles.complementDocActionsRow}>
-                                        <span className={styles.complementDocFileState}>
-                                          {fileStateLabel}
                                         </span>
-                                        <div className={styles.complementDocButtons}>
+                                      </td>
+                                      <td className={styles.complementTableNameCol}>
+                                        <div className={styles.complementDocNameBlock}>
+                                          <div className={styles.complementDocNameLine}>
+                                            <h4>{docItem.nom_doc}</h4>
+                                          </div>
+                                          <Badge className={decisionClass}>
+                                            {DOC_DECISION_LABELS[docItem.decision]}
+                                          </Badge>
+                                          <div className={styles.complementDocIssues}>
+                                            {docItem.problems.length > 0 ? (
+                                              docItem.problems.map((problem) => (
+                                                <span
+                                                  key={`${docItem.id_item ?? index}-${problem}`}
+                                                  className={styles.complementIssueTag}
+                                                >
+                                                  {DOC_PROBLEM_LABELS[problem] || problem}
+                                                </span>
+                                              ))
+                                            ) : (
+                                              <span className={styles.complementIssueTagMuted}>—</span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td className={styles.complementTableStatusCol}>
+                                        <Badge className={docState.className}>{docState.label}</Badge>
+                                      </td>
+                                      <td className={styles.complementTableDetailCol}>
+                                        <div className={styles.complementTableDetails}>
+                                          <span>
+                                            Initial : {safeText(docItem.statutActuel || "--")}
+                                          </span>
+                                          <span>Actuel : {currentStatusLabel}</span>
+                                        </div>
+                                      </td>
+                                      <td className={styles.complementTableDateCol}>
+                                        <span className={styles.complementTableDate}>
+                                          {formatDateTime(docItem.reponduAt || currentDoc?.updatedAt || null)}
+                                        </span>
+                                      </td>
+                                      <td className={styles.complementTableActionCol}>
+                                        <div className={styles.complementTableActions}>
                                           {currentFileUrl && (
                                             <Button
                                               type="button"
-                                              variant="ghost"
+                                              variant="outline"
+                                              size="sm"
                                               className={styles.complementViewBtn}
                                               onClick={() => window.open(currentFileUrl, "_blank")}
                                             >
@@ -2829,6 +2711,7 @@ const DemandeDetails = () => {
                                               <Button
                                                 type="button"
                                                 variant="outline"
+                                                size="sm"
                                                 className={styles.complementUploadBtn}
                                                 disabled={isUploading}
                                                 onClick={() =>
@@ -2840,29 +2723,42 @@ const DemandeDetails = () => {
                                                 ) : (
                                                   <Upload className="w-4 h-4" />
                                                 )}
-                                                {isUploading ? "Envoi..." : "Corriger"}
+                                                {isUploading ? "Envoi..." : "Déposer"}
                                               </Button>
                                             </>
                                           )}
                                         </div>
-                                      </div>
-                                    </>
+                                      </td>
+                                    </tr>
                                   );
-                                })()}
-                              </div>
-                            );
-                          })}
+                                })}
+                              </tbody>
+                            </table>
                           </div>
                         </div>
-                      )}
 
-                      <div
-                        className={styles.complementHistorySection}
-                        data-onboarding-id="completude-history"
-                      >
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className={styles.complementHistoryLink}
+                          onClick={() =>
+                            document
+                              .querySelector('[data-onboarding-id="completude-history"]')
+                              ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                          }
+                        >
+                          Voir l'historique complet
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
+
+                      <div className={styles.complementHistorySection} data-onboarding-id="completude-history">
                         <div className={styles.complementDocsHeader}>
                           <h5>Historique</h5>
-                          <span>{complementHistoryItems.length} etape{complementHistoryItems.length > 1 ? "s" : ""}</span>
+                          <span>
+                            {complementHistoryItems.length} action
+                            {complementHistoryItems.length > 1 ? "s" : ""}
+                          </span>
                         </div>
                         <div className={styles.timeline}>
                           {complementHistoryItems.map((item) => {
@@ -2903,12 +2799,38 @@ const DemandeDetails = () => {
                                     </Badge>
                                   </div>
                                   {item.date && (
-                                    <span className={styles.timelineDate}>{formatDateTime(item.date)}</span>
+                                    <span className={styles.timelineDate}>
+                                      {formatDateTime(item.date)}
+                                    </span>
                                   )}
                                 </div>
                               </div>
                             );
                           })}
+                        </div>
+                      </div>
+
+                      <div className={styles.complementSupportCard}>
+                        <div className={styles.complementSupportLeft}>
+                          <div className={styles.complementSupportIcon}>
+                            <LifeBuoy className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h5>Besoin d'aide ?</h5>
+                            <p>Consulter notre guide ou contacter le support.</p>
+                          </div>
+                        </div>
+                        <div className={styles.complementSupportRight}>
+                          <div className={styles.complementSupportState}>
+                            <span>Statut du dossier</span>
+                            <Badge className={complementStatusDescriptor.className}>
+                              {complementStatusDescriptor.label}
+                            </Badge>
+                          </div>
+                          <div className={styles.complementSupportDate}>
+                            <Calendar className="w-4 h-4" />
+                            <span>Depuis le {dateDepotLabel}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -3032,19 +2954,6 @@ const DemandeDetails = () => {
               )}
             </TabsContent>
 
-            <TabsContent value="messages" className={styles.tabContent}>
-              <div id="messages-section" ref={messagesSectionRef}>
-                <Card className={`${styles.infoCard} ${styles.fullWidth}`}>
-                  <CardContent>
-                    <EntityMessagesPanel
-                      entityType="demande"
-                      entityCode={codeDemande}
-                      autoFocusComposer={autoFocusMessagesComposer}
-                    />
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
           </Tabs>
         </div>
       </div>

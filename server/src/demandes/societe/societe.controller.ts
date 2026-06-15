@@ -60,6 +60,20 @@ export class SocieteController {
     });
   }
 
+  @Get('statuts-juridiques/pays')
+  async getPays() {
+    return this.prisma.pays.findMany({
+      orderBy: { nom_pays: 'asc' },
+    });
+  }
+
+  @Get('statuts-juridiques/nationalites')
+  async getNationalites() {
+    return this.prisma.nationalite.findMany({
+      orderBy: { libelle: 'asc' },
+    });
+  }
+
   @Post('investisseur/identification')
   async saveInvestisseurIdentification(@Body() data: any, @Req() req: Request) {
     const token = req.cookies?.auth_token;

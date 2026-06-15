@@ -2,6 +2,9 @@
 'use client';
 import { FiChevronDown } from 'react-icons/fi';
 import {
+  ArrowRight,
+  CreditCard,
+  Headphones,
   User,
   Settings,
   LogOut,
@@ -9,6 +12,12 @@ import {
   Map as MapIcon,
   WandSparkles,
   Menu,
+  BadgeCheck,
+  ChevronRight,
+  Bell,
+  Download,
+  FileText,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -336,12 +345,31 @@ export default function Navbar() {
   };
 
   const getNotificationSymbol = (notification: NotificationItem) => {
-    const t = String(notification.type || '').toUpperCase();
-    if (t === 'ALERTE') return '!';
-    if (t === 'REPONSE') return 'MSG';
-    if (t === 'AVIS') return 'OK';
-    return 'i';
+    const raw = `${notification.category || ''} ${notification.type || ''} ${notification.title || ''}`.toLowerCase();
+    if (raw.includes('paiement') || raw.includes('satim')) return BadgeCheck;
+    if (raw.includes('maintenance') || raw.includes('system')) return Bell;
+    if (raw.includes('document') || raw.includes('pièce') || raw.includes('piece')) return FileText;
+    if (raw.includes('pdf') || raw.includes('télécharg') || raw.includes('telecharg')) return Download;
+    if (raw.includes('approuv') || raw.includes('valid')) return ShieldCheck;
+    return FileText;
   };
+
+  const getNotificationTone = (notification: NotificationItem, index: number) => {
+    const raw = `${notification.category || ''} ${notification.type || ''} ${notification.title || ''}`.toLowerCase();
+    if (raw.includes('paiement') || raw.includes('payment')) return 'green';
+    if (raw.includes('document') || raw.includes('pièce') || raw.includes('piece')) return 'amber';
+    if (raw.includes('maintenance') || raw.includes('system')) return 'gray';
+    if (raw.includes('recherche') || raw.includes('avis')) return 'violet';
+    if (raw.includes('demande') || raw.includes('permis') || raw.includes('complément') || raw.includes('complement')) {
+      return index % 2 === 0 ? 'blue' : 'amber';
+    }
+    return ['green', 'blue', 'amber', 'violet'][index % 4];
+  };
+
+  const getNotificationCategoryLabel = (notification: NotificationItem) =>
+    String(notification.category || notification.type || 'DEMANDE')
+      .replace(/_/g, ' ')
+      .toUpperCase();
 
   const hasPdfAttachment = (notification: NotificationItem) => {
     const relatedType = String(notification.relatedEntityType || '').toLowerCase().trim();
@@ -521,8 +549,22 @@ export default function Navbar() {
     [isAdmin, normalizedRoles],
   );
 
-  const initials = auth.role ? getInitials(auth.role) : '';
+  const profileMenuItems = useMemo(
+    () => [
+      { label: 'Tableau de bord', href: dashboardHref, icon: LayoutDashboard },
+      { label: 'Mon profil', href: '/investisseur/profil', icon: User },
+      { label: 'Mes informations', href: '/investisseur/modifier-profil', icon: FileText },
+      { label: 'Mes documents', href: '/documentation', icon: FileText },
+      { label: 'Mes paiements', href: '/investisseur/statistiques', icon: CreditCard },
+      { label: 'Mes autorisations', href: '/investisseur/demandes', icon: ShieldCheck },
+      { label: 'Paramètres', href: '/investisseur/parametres', icon: Settings },
+      { label: "Centre d'aide", href: '/faq', icon: Headphones },
+    ],
+    [],
+  );
+
   const displayUsername = auth.username ?? auth.email ?? '';
+  const initials = getInitials(displayUsername || auth.role || '');
   const displayEmail = auth.email ?? '';
   const canCreateDemande = isInvestisseur;
   const precheckHref = '/investisseur/interactive';
@@ -665,13 +707,17 @@ export default function Navbar() {
           {isNotificationsOpen && (
             <div className={styles['notifications-dropdown']}>
               <div className={styles['notifications-header']}>
-                <h3>Notifications ({unreadCount} non lues)</h3>
+                <div className={styles['notifications-title-group']}>
+                  <h3>Notifications</h3>
+                  <span className={styles['notifications-count-badge']}>{unreadCount}</span>
+                </div>
                 {unreadCount > 0 && (
                   <button
                     className={styles['mark-all-read']}
                     onClick={markAllAsRead}
                   >
                     Tout marquer comme lu
+                    <BadgeCheck size={16} />
                   </button>
                 )}
               </div>
@@ -685,37 +731,42 @@ export default function Navbar() {
                   <div className={styles['no-notifications']}>
                     <p>Aucune notification</p>
                   </div>
-                ) : (
-                  notifications?.map((notification) => (
-                    <div
-                      key={notification.id}
-                      className={`${styles['notification-item']} ${
-                        !notification.isRead ? styles['unread'] : ''
-                      } ${
-                        navigatingNotificationId === notification.id ? styles['navigating'] : ''
-                      }`}
-                      onClick={() => void handleNotificationClick(notification)}
-                    >
-                      <div className={styles['notification-symbol']}>
-                        {getNotificationSymbol(notification)}
-                      </div>
-                      <div className={styles['notification-content']}>
-                        <div className={styles['notification-title-row']}>
-                          <h4>{notification.title}</h4>
-                          {hasPdfAttachment(notification) && (
-                            <span className={styles['notification-pdf-badge']}>PDF</span>
-                          )}
+              ) : (
+                  notifications?.map((notification, index) => {
+                    const tone = getNotificationTone(notification, index);
+                    const NotificationIcon = getNotificationSymbol(notification);
+                    const categoryLabel = getNotificationCategoryLabel(notification);
+                    const hasCategory = Boolean(String(notification.category || notification.type || '').trim());
+
+                    return (
+                      <div
+                        key={notification.id}
+                        className={`${styles['notification-item']} ${styles[`notification-tone-${tone}`]} ${
+                          !notification.isRead ? styles['unread'] : ''
+                        } ${
+                          navigatingNotificationId === notification.id ? styles['navigating'] : ''
+                        }`}
+                        onClick={() => void handleNotificationClick(notification)}
+                      >
+                        <span className={styles['notification-status-dot']} aria-hidden="true" />
+                        <div className={styles['notification-symbol']}>
+                          <NotificationIcon size={17} strokeWidth={2.2} />
                         </div>
-                        <p>{notification.message}</p>
-                        <span className={styles['notification-time']}>
-                          {formatRelativeDate(notification.createdAt)}
-                        </span>
+                        <div className={styles['notification-content']}>
+                          <h4>{notification.title}</h4>
+                          <p>{notification.message}</p>
+                          <span className={styles['notification-time']}>
+                            {formatRelativeDate(notification.createdAt)}
+                          </span>
+                        </div>
+                        {hasCategory && (
+                          <span className={styles['notification-category-badge']}>
+                            {categoryLabel}
+                          </span>
+                        )}
                       </div>
-                      {!notification.isRead && (
-                        <div className={styles['unread-dot']}></div>
-                      )}
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
               <div className={styles['notifications-footer']}>
@@ -724,7 +775,8 @@ export default function Navbar() {
                   className={styles['see-all-link']}
                   onClick={() => setIsNotificationsOpen(false)}
                 >
-                  Voir toutes les notifications
+                  <span>Voir toutes les notifications</span>
+                  <ArrowRight size={16} />
                 </Link>
               </div>
             </div>
@@ -755,72 +807,78 @@ export default function Navbar() {
 
           {isDropdownOpen && (
             <div className={styles['dropdown-menu']} role="menu">
-              {isRestrictedInvestisseur ? (
+              <div className={styles['profile-dropdown-header']}>
+                <div className={styles['profile-avatar-large']} aria-hidden="true">
+                  <span>{initials || 'SM'}</span>
+                </div>
+                <div className={styles['profile-header-copy']}>
+                  <div className={styles['profile-header-title-row']}>
+                    <span className={styles['profile-header-name']}>
+                      {displayUsername || 'Société Minière SARL'}
+                    </span>
+                    {(auth?.isEntrepriseVerified ?? false) && (
+                      <BadgeCheck className={styles['profile-verified-icon']} size={16} />
+                    )}
+                  </div>
+                  <span className={styles['profile-header-status']}>
+                    {auth?.isEntrepriseVerified ? 'Entreprise vérifiée' : 'Entreprise en attente'}
+                  </span>
+                  <span className={styles['profile-header-id']}>NIF : 123456789012345</span>
+                </div>
+                <FiChevronDown className={styles['profile-header-chevron']} />
+              </div>
+
+              <div className={styles['profile-completion-card']}>
+                <div className={styles['profile-completion-copy']}>
+                  <span>Complétion du profil</span>
+                  <strong>92% terminé</strong>
+                </div>
+                <div className={styles['profile-completion-ring']} aria-hidden="true">
+                  <span>92%</span>
+                </div>
+                <div className={styles['profile-completion-track']} aria-hidden="true">
+                  <span />
+                </div>
+              </div>
+
+              <div className={styles['profile-menu-list']} role="menu">
+                {profileMenuItems.map((item) => {
+                  const Icon = item.icon;
+                  const isGuideItem = item.href === '/faq';
+                  return (
+                    <Link
+                      key={item.label}
+                      href={item.href}
+                      className={styles['profile-menu-item']}
+                      onClick={(event) => {
+                        if (isGuideItem) {
+                          event.preventDefault();
+                          void handleRestartOnboarding();
+                          return;
+                        }
+
+                        setIsDropdownOpen(false);
+                      }}
+                      role="menuitem"
+                    >
+                      <Icon className={styles['profile-menu-item-icon']} size={16} />
+                      <span className={styles['profile-menu-item-label']}>{item.label}</span>
+                      <ChevronRight className={styles['profile-menu-item-chevron']} size={14} />
+                    </Link>
+                  );
+                })}
+              </div>
+
+              <div className={styles['profile-footer']}>
+                <div className={styles['profile-footer-divider']} />
                 <button
                   onClick={handleLogout}
-                  className={`${styles['dropdown-item']} ${styles['logout']}`}
+                  className={`${styles['profile-menu-item']} ${styles['profile-menu-item-logout']}`}
                 >
-                  <LogOut className={styles['dropdown-icon']} size={18} />
-                  <span>Deconnexion</span>
+                  <LogOut className={styles['profile-menu-item-icon']} size={18} />
+                  <span className={styles['profile-menu-item-label']}>Déconnexion</span>
                 </button>
-              ) : (
-                <>
-                  <Link
-                    href={dashboardHref}
-                    className={styles['dropdown-item']}
-                    onClick={() => setIsDropdownOpen(false)}
-                  >
-                    <LayoutDashboard className={styles['dropdown-icon']} size={18} />
-                    <span>Tableau de bord</span>
-                  </Link>
-
-                  <Link
-                    href="/notification"
-                    className={styles['dropdown-item']}
-                    onClick={() => setIsDropdownOpen(false)}
-                  >
-                    <span className={styles['dropdown-icon']} aria-hidden="true">N</span>
-                    <span>Notifications</span>
-                  </Link>
-
-                  <Link
-                    href="/investisseur/profil"
-                    className={styles['dropdown-item']}
-                    onClick={() => setIsDropdownOpen(false)}
-                  >
-                    <User className={styles['dropdown-icon']} size={18} />
-                    <span>Mon profil</span>
-                  </Link>
-
-                  <Link
-                    href="/investisseur/parametres"
-                    className={styles['dropdown-item']}
-                    onClick={() => setIsDropdownOpen(false)}
-                  >
-                    <Settings className={styles['dropdown-icon']} size={18} />
-                    <span>Parametres</span>
-                  </Link>
-
-                  {(isInvestisseur || isCadastre) && (
-                    <button
-                      type="button"
-                      onClick={() => void handleRestartOnboarding()}
-                      className={styles['dropdown-item']}
-                    >
-                      <WandSparkles className={styles['dropdown-icon']} size={18} />
-                      <span>Relancer le guide</span>
-                    </button>
-                  )}
-
-                  <button
-                    onClick={handleLogout}
-                    className={`${styles['dropdown-item']} ${styles['logout']}`}
-                  >
-                    <LogOut className={styles['dropdown-icon']} size={18} />
-                    <span>Deconnexion</span>
-                  </button>
-                </>
-              )}
+              </div>
             </div>
           )}
         </div>

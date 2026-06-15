@@ -83,11 +83,12 @@
   display: grid;
   grid-template-columns: repeat(1, 1fr);
   gap: 1rem;
+  align-items: stretch;
 }
 
 @media (min-width: 768px) {
   .formGrid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -100,6 +101,205 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.fieldLabelWithHelp {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.fieldHelpWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #8b3a62;
+  cursor: help;
+  outline: none;
+}
+
+.fieldHelpWrap:focus-visible .fieldHelpIcon,
+.fieldHelpWrap:hover .fieldHelpIcon {
+  color: #6f274c;
+  transform: translateY(-1px) scale(1.04);
+}
+
+.fieldHelpIcon {
+  width: 0.92rem;
+  height: 0.92rem;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.fieldHelpBubble {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 0.6rem);
+  z-index: 20;
+  width: max(220px, min(70vw, 300px));
+  padding: 0.75rem 0.85rem;
+  border-radius: 12px;
+  background: rgba(32, 19, 28, 0.96);
+  color: #fff;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  box-shadow: 0 18px 40px rgba(32, 19, 28, 0.22);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.fieldHelpBubble::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 14px;
+  width: 12px;
+  height: 12px;
+  background: rgba(32, 19, 28, 0.96);
+  transform: rotate(45deg);
+}
+
+.fieldHelpWrap:hover .fieldHelpBubble,
+.fieldHelpWrap:focus-visible .fieldHelpBubble {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.portefeuilleToggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid #e5d5dd;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fffafd 0%, #fff6f9 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transition: all 0.25s ease;
+  cursor: pointer;
+}
+
+.portefeuilleToggle:hover {
+  border-color: rgba(139, 58, 98, 0.25);
+  background: linear-gradient(180deg, #ffffff 0%, #fff7fb 100%);
+}
+
+.portefeuilleToggleDisabled {
+  cursor: not-allowed;
+  opacity: 0.82;
+}
+
+.portefeuilleToggle input {
+  margin-top: 0.2rem;
+  width: 1.15rem;
+  height: 1.15rem;
+  accent-color: #8b3a62;
+  flex: 0 0 auto;
+}
+
+.portefeuilleToggleBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.portefeuilleToggleTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #2d1b27;
+}
+
+.portefeuilleToggleHint {
+  font-size: 0.84rem;
+  line-height: 1.35;
+  color: #6b4d5e;
+}
+
+.portefeuilleFieldCard {
+  position: relative;
+  overflow: hidden;
+  padding: 1rem 1.1rem 1.05rem;
+  border: 1px solid rgba(139, 58, 98, 0.16);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(139, 58, 98, 0.08), transparent 34%),
+    linear-gradient(180deg, #fffdfd 0%, #fff7fa 100%);
+  box-shadow:
+    0 18px 40px rgba(139, 58, 98, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.portefeuilleFieldCard::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(180deg, #d94f78 0%, #8b3a62 100%);
+  opacity: 0.9;
+}
+
+.portefeuilleFieldCardAuto {
+  border-color: rgba(39, 174, 96, 0.22);
+  background:
+    radial-gradient(circle at top right, rgba(39, 174, 96, 0.08), transparent 34%),
+    linear-gradient(180deg, #fcfffd 0%, #f6fffb 100%);
+  box-shadow:
+    0 18px 40px rgba(39, 174, 96, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.portefeuilleFieldCardAuto::before {
+  background: linear-gradient(180deg, #2fb86e 0%, #1f8a52 100%);
+}
+
+.portefeuilleFieldHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.portefeuilleFieldTitle {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #311925;
+}
+
+.portefeuilleFieldHint {
+  margin-top: 0.24rem;
+  font-size: 0.84rem;
+  line-height: 1.35;
+  color: #6c5a67;
+}
+
+.portefeuilleFieldBadge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff6fb 0%, #fdeef4 100%);
+  border: 1px solid rgba(139, 58, 98, 0.18);
+  color: #8b3a62;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.portefeuilleFieldCardAuto .portefeuilleFieldBadge {
+  background: linear-gradient(180deg, #eefcf6 0%, #dff7ea 100%);
+  border-color: rgba(39, 174, 96, 0.24);
+  color: #1f8a52;
+  box-shadow: 0 6px 16px rgba(39, 174, 96, 0.08);
 }
 
 .radioGroup {
@@ -187,6 +387,9 @@
   transition: all 0.3s ease;
   font-family: inherit;
   accent-color: #8b3a62;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .input::placeholder {
@@ -219,6 +422,9 @@
   color: #2b2730;
   font-size: 0.95rem;
   transition: all 0.2s ease;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .select:hover {

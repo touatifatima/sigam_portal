@@ -183,8 +183,8 @@ export default function CessionStep1Page() {
     if (!apiURL) return;
     try {
       const [paysRes, natRes] = await Promise.all([
-        axios.get(`${apiURL}/statuts-juridiques/pays`, { withCredentials: true }),
-        axios.get(`${apiURL}/statuts-juridiques/nationalites`, {
+        axios.get(`${apiURL}/api/statuts-juridiques/pays`, { withCredentials: true }),
+        axios.get(`${apiURL}/api/statuts-juridiques/nationalites`, {
           withCredentials: true,
         }),
       ]);

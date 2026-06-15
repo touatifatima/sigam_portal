@@ -40,7 +40,7 @@ export const useChat = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
   
-  const apiURLRaw = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  const apiURLRaw = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3016';
   const apiURL = apiURLRaw.replace(/\/+$/, '');
   const socketBaseUrl = apiURL.replace(/\/api$/, '');
   const { auth } = useAuthStore();

@@ -17,6 +17,7 @@ import router from 'next/router';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { FieldHelpLabel } from '@/components/ui/field-help';
 
 // Data status interface
 interface DataStatus {
@@ -714,7 +715,10 @@ export default function Capacites() {
                     </div>
 
                     <div className={`${styles.formGroup} ${styles.fullWidth}`}>
-                      <label className={styles.formLabel}>Description des travaux techniques</label>
+                      <FieldHelpLabel
+                        label="Description des travaux techniques"
+                        helpText="D?crivez bri?vement les travaux techniques envisag?s."
+                      />
                       <textarea
                         disabled={statutProc === 'TERMINEE'}
                         name="description"
@@ -735,7 +739,10 @@ export default function Capacites() {
                     <h3 className={styles.sectionTitle}>Capacités financiéres</h3>
                   </div>
                   <div className={styles.formGroup}>
-                    <label className={styles.formLabel}>Sources de financement</label>
+                    <FieldHelpLabel
+                      label="Sources de financement"
+                      helpText="Pr?cisez les fonds, partenaires ou m?canismes financiers mobilis?s."
+                    />
                     <textarea
                       disabled={statutProc === 'TERMINEE'}
                       name="financement"

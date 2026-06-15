@@ -643,6 +643,7 @@ export default function GestionDemandeDetailAdminPage() {
     DEFAULT_COMPLEMENT_NOTIFICATION_MODE,
   );
   const messagesSectionRef = useRef<HTMLElement | null>(null);
+  const complementSelectAllRef = useRef<HTMLInputElement | null>(null);
 
   const isAdmin =
     hasPermission('Admin-Panel') ||
@@ -896,6 +897,20 @@ export default function GestionDemandeDetailAdminPage() {
       responded,
     };
   }, [complementDetails, isComplementDocumentReady, isComplementDocumentResponded]);
+
+  const allSelectableComplementIdsSelected =
+    complementProcessingStats.selectableIds.length > 0 &&
+    complementProcessingStats.selectableIds.every((id) => selectedComplementItemIds.includes(id));
+
+  const someSelectableComplementIdsSelected =
+    complementProcessingStats.selectableIds.some((id) => selectedComplementItemIds.includes(id)) &&
+    !allSelectableComplementIdsSelected;
+
+  useEffect(() => {
+    if (complementSelectAllRef.current) {
+      complementSelectAllRef.current.indeterminate = someSelectableComplementIdsSelected;
+    }
+  }, [someSelectableComplementIdsSelected]);
 
   const complementHistoryRows = useMemo(() => {
     if (!complementDetails) return [];
@@ -1654,27 +1669,26 @@ export default function GestionDemandeDetailAdminPage() {
     }
   };
 
-  const complementGeneratedLabel = formatDateTime(complementDetails?.generatedAt || null);
-  const complementSubmittedLabel = formatDateTime(complementDetails?.submittedAt || null);
-  const complementDelaiLabel =
-    complementDetails?.delaiJours && complementDetails.delaiJours > 0
-      ? `${complementDetails.delaiJours} jours`
-      : '--';
-  const complementStatutLabel = useMemo(() => {
-    if (!complementDetails) return '--';
+  const complementDashboardStats = useMemo(() => {
+    if (!complementDetails) return null;
+    const total = complementProcessingStats.total;
+    const validated = complementProcessingStats.processed;
+    const toReview = complementDetails.documents.filter(
+      (docItem) => String(docItem.decision || '').trim().toLowerCase() === 'probleme',
+    ).length;
+    const rejected = complementDetails.documents.filter(
+      (docItem) => String(docItem.decision || '').trim().toLowerCase() === 'manquant',
+    ).length;
+    const completionRate = total > 0 ? Math.round((validated / total) * 100) : 0;
+    return {
+      total,
+      validated,
+      toReview,
+      rejected,
+      completionRate,
+    };
+  }, [complementDetails, complementProcessingStats.processed, complementProcessingStats.total]);
 
-    const statut = String(complementDetails.statut || '').trim().toUpperCase();
-    if (isComplementProcessed(statut)) {
-      return 'Traite et valide';
-    }
-    if (isComplementSubmitted(statut)) {
-      return 'Soumis pour verification';
-    }
-    if (complementProcessingStats.responded > 0) {
-      return `Documents corriges (${complementProcessingStats.responded} reponse(s))`;
-    }
-    return 'En attente de reponse';
-  }, [complementDetails, complementProcessingStats.responded]);
   const getAdminComplementDocumentState = (
     docItem: ComplementDetailsState['documents'][number],
   ) => {
@@ -2036,30 +2050,51 @@ export default function GestionDemandeDetailAdminPage() {
                   </div>
                 )}
 
-                <div className={styles.complementSummaryGrid}>
-                  <div className={styles.complementSummaryCard}>
-                    <span>Date de notification</span>
-                    <strong>{complementGeneratedLabel}</strong>
-                  </div>
-                  <div className={styles.complementSummaryCard}>
-                    <span>Date de soumission</span>
-                    <strong>{complementSubmittedLabel}</strong>
-                  </div>
-                  <div className={styles.complementSummaryCard}>
-                    <span>Delai de reponse</span>
-                    <strong>{complementDelaiLabel}</strong>
-                  </div>
-                  <div className={styles.complementSummaryCard}>
-                    <span>Mode de notification</span>
-                    <strong>{safeText(complementDetails.modeNotification)}</strong>
-                  </div>
-                  <div className={styles.complementSummaryCard}>
-                    <span>Statut complement</span>
-                    <strong>{complementStatutLabel}</strong>
-                  </div>
-                  <div className={styles.complementSummaryCard}>
-                    <span>Statut demande</span>
-                    <strong>{safeText(demande?.statut_demande)}</strong>
+                <div className={styles.complementDashboardPanel}>
+                  <div className={styles.complementDashboardStats}>
+                    <div className={styles.complementDashboardStatCard}>
+                      <FiFileText />
+                      <div>
+                        <span>Requis</span>
+                        <strong>{complementDashboardStats?.total ?? 0}</strong>
+                      </div>
+                    </div>
+                    <div className={styles.complementDashboardStatCard}>
+                      <FiCheck />
+                      <div>
+                        <span>Valides</span>
+                        <strong>{complementDashboardStats?.validated ?? 0}</strong>
+                      </div>
+                    </div>
+                    <div className={styles.complementDashboardStatCard}>
+                      <FiClock />
+                      <div>
+                        <span>A verifier</span>
+                        <strong>{complementDashboardStats?.toReview ?? 0}</strong>
+                      </div>
+                    </div>
+                    <div className={styles.complementDashboardStatCard}>
+                      <FiX />
+                      <div>
+                        <span>Rejete</span>
+                        <strong>{complementDashboardStats?.rejected ?? 0}</strong>
+                      </div>
+                    </div>
+                    <div className={styles.complementDashboardGaugeWrap}>
+                      <div
+                        className={styles.complementDashboardGauge}
+                        style={{
+                          background: `conic-gradient(#2fb76f ${
+                            (complementDashboardStats?.completionRate ?? 0) * 3.6
+                          }deg, #e6ece8 0deg)`,
+                        }}
+                      >
+                        <div className={styles.complementDashboardGaugeInner}>
+                          <strong>{complementDashboardStats?.completionRate ?? 0}%</strong>
+                        </div>
+                      </div>
+                      <span>Complétude</span>
+                    </div>
                   </div>
                 </div>
 
@@ -2194,10 +2229,33 @@ export default function GestionDemandeDetailAdminPage() {
                         <table className={styles.table}>
                           <thead>
                             <tr>
+                              <th className={styles.checkboxCol}>
+                                <input
+                                  ref={complementSelectAllRef}
+                                  type="checkbox"
+                                  className={styles.complementHeaderCheck}
+                                  checked={allSelectableComplementIdsSelected}
+                                  disabled={
+                                    validatingComplementItems ||
+                                    complementProcessingStats.selectableIds.length === 0
+                                  }
+                                  onChange={(event) => {
+                                    if (event.target.checked) {
+                                      selectAllPendingComplementItems();
+                                    } else {
+                                      clearComplementItemSelection();
+                                    }
+                                  }}
+                                  aria-label="Tout sélectionner"
+                                />
+                              </th>
+                              <th className={styles.complementIndexCol}>#</th>
                               <th>Document</th>
-                              <th>Details</th>
-                              <th className={styles.checkboxCol}>Systeme coche</th>
-                              <th>Actions</th>
+                              <th>Statut initial</th>
+                              <th>Statut actuel</th>
+                              <th>Problème détecté</th>
+                              <th>Dernière mise à jour</th>
+                              <th>Action</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -2233,8 +2291,6 @@ export default function GestionDemandeDetailAdminPage() {
                                 isComplementDocumentReady(docItem);
                               const isSelected =
                                 itemId != null ? selectedComplementItemIds.includes(itemId) : false;
-                              const responseStatus = getComplementResponseStatus(docItem.statutReponse);
-                              const systemChecked = canValidateDoc || isSelected;
 
                               return (
                                 <tr
@@ -2242,13 +2298,26 @@ export default function GestionDemandeDetailAdminPage() {
                                   className={`${styles.dataRow} ${
                                     isSelected ? styles.complementTableRowSelected : ''
                                   }`}
-                                >
+                                  >
+                                  <td className={styles.checkboxCol}>
+                                    <label className={styles.complementRowCheck}>
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        disabled={!canValidateDoc || validatingComplementItems}
+                                        onChange={() => {
+                                          if (itemId == null) return;
+                                          toggleComplementItemSelection(itemId);
+                                        }}
+                                        aria-label={`Selectionner ${docItem.nom_doc}`}
+                                      />
+                                    </label>
+                                  </td>
+                                  <td className={styles.complementIndexCol}>{index + 1}</td>
                                   <td>
                                     <div className={styles.complementTableDocCell}>
                                       <div className={styles.complementTableDocTitle}>
-                                        <span className={styles.complementTableDocIndex}>
-                                          {index + 1}
-                                        </span>
+                                        <FiFileText className={styles.complementDocInlineIcon} />
                                         <div>
                                           <h4>{docItem.nom_doc}</h4>
                                           <small>Document #{index + 1}</small>
@@ -2261,68 +2330,37 @@ export default function GestionDemandeDetailAdminPage() {
                                     </div>
                                   </td>
                                   <td>
-                                    <div className={styles.complementTableDetails}>
-                                      <p>
-                                        <span>Motif:</span>{' '}
-                                        {formatComplementDecisionLabel(docItem.decision)}
-                                      </p>
-                                      <p>
-                                        <span>Initial:</span>{' '}
+                                    <div className={styles.complementStatusCell}>
+                                      <Badge className={styles.docStatus}>
                                         {formatDocStatusLabel(docItem.statutActuel)}
-                                      </p>
-                                      <p>
-                                        <span>Actuel:</span> {currentStatusLabel}
-                                      </p>
-                                      <p>
-                                        <span>Suivi:</span> {docState.helper}
-                                      </p>
-                                      {docItem.reponduAt && (
-                                        <p>
-                                          <span>Corrige le:</span> {formatDateTime(docItem.reponduAt)}
-                                        </p>
-                                      )}
-                                      {currentDoc?.updatedAt && (
-                                        <p>
-                                          <span>Mise a jour:</span>{' '}
-                                          {formatDateTime(currentDoc.updatedAt)}
-                                        </p>
-                                      )}
-                                      {problemsLabel && (
-                                        <p>
-                                          <span>Problemes:</span> {problemsLabel}
-                                        </p>
-                                      )}
-                                      {docItem.comment && (
-                                        <p>
-                                          <span>Commentaire:</span> {docItem.comment}
-                                        </p>
-                                      )}
-                                      {docItem.noteTraitement && (
-                                        <p>
-                                          <span>Note:</span> {docItem.noteTraitement}
-                                        </p>
+                                      </Badge>
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <div className={styles.complementStatusCell}>
+                                      <Badge className={docState.className}>{currentStatusLabel}</Badge>
+                                      <span className={styles.complementDocFileState}>
+                                        {docState.helper}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <div className={styles.complementStatusCell}>
+                                      {problemsLabel ? (
+                                        <span className={styles.complementProblemTag}>
+                                          {problemsLabel}
+                                        </span>
+                                      ) : (
+                                        <span className={styles.complementDocFileState}>—</span>
                                       )}
                                     </div>
                                   </td>
-                                  <td className={styles.complementTableCheckCell}>
-                                    <label className={styles.complementSystemCheck}>
-                                      <input
-                                        type="checkbox"
-                                        checked={systemChecked}
-                                        readOnly
-                                        disabled
-                                      />
-                                      <span>{systemChecked ? 'Oui' : 'Non'}</span>
-                                    </label>
-                                    <span className={styles.complementDocFileState}>
-                                      {currentFileUrl
-                                        ? responseStatus === 'SOUMIS'
-                                          ? 'Soumis'
-                                          : responseStatus === 'DOCUMENT_REMPLACE'
-                                            ? 'Pret a soumettre'
-                                            : 'Depose'
-                                        : 'Aucun fichier'}
-                                    </span>
+                                  <td>
+                                    <div className={styles.complementStatusCell}>
+                                      <span className={styles.complementDocFileState}>
+                                        {formatDateTime(docItem.reponduAt || currentDoc?.updatedAt || null)}
+                                      </span>
+                                    </div>
                                   </td>
                                   <td>
                                     <div className={styles.complementTableActions}>

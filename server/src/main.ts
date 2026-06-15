@@ -16,7 +16,7 @@ try {
   // Older Node versions may not support this API.
 }
 
-async function bootstrap() {
+  async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.use(cookieParser());
@@ -28,7 +28,6 @@ async function bootstrap() {
     'summary',
     'statuts-juridiques',
     'investisseur',
-    'admin',
     'detenteur-morale',
     'representant-legal',
     'registre-commerce',
@@ -39,6 +38,7 @@ async function bootstrap() {
     try {
       const originalUrl = String(req?.url || '');
       const [pathname] = originalUrl.split('?');
+
       if (!pathname || pathname.startsWith('/api/')) {
         return next();
       }

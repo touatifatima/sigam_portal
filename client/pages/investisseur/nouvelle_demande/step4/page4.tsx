@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from '@/src/hooks/useSearchParams';
+import { FieldHelpLabel } from '@/components/ui/field-help';
 import axios from 'axios';
 import {
   FiChevronLeft, FiChevronRight, FiMapPin, FiFileText, FiX, FiPlus,
@@ -1921,7 +1922,10 @@ const checkButtonConditions = () => {
   const UTMSettings = () => (
     <div className={styles['utm-settings']}>
       <div className={styles['form-group']}>
-        <label className={styles['form-label']}>Zone UTM</label>
+        <FieldHelpLabel
+          label="Zone UTM"
+          helpText="Sélectionnez la zone UTM correspondant à votre zone de travail."
+        />
         <Select
           value={String(utmZone)}
           onValueChange={(value) => setUtmZone(parseInt(value, 10))}
@@ -1944,7 +1948,10 @@ const checkButtonConditions = () => {
         </Select>
       </div>
       <div className={styles['form-group']}>
-        <label className={styles['form-label']}>Appliquer</label>
+        <FieldHelpLabel
+          label="Appliquer"
+          helpText="Appliquez la zone UTM sélectionnée à tous les points."
+        />
         <button
           type="button"
           className={styles['btn-apply-utm']}
@@ -2014,7 +2021,10 @@ const checkButtonConditions = () => {
           </div>
           <div className={styles['modal-body']}>
             <div className={styles['form-group']}>
-              <label className={styles['form-label']}>Systéme cible</label>
+              <FieldHelpLabel
+                label="Systéme cible"
+                helpText="Choisissez le système de coordonnées cible pour la conversion."
+              />
               
               <Select
                 value={conversionSettings.system}
@@ -2048,7 +2058,10 @@ const checkButtonConditions = () => {
             {conversionSettings.system === 'UTM' && (
               <>
                 <div className={styles['form-group']}>
-                  <label className={styles['form-label']}>Zone UTM</label>
+                  <FieldHelpLabel
+                    label="Zone UTM"
+                    helpText="Choisissez la zone UTM de destination pour la conversion."
+                  />
                   
                   <Select
                     value={String(conversionSettings.zone)}
@@ -2377,7 +2390,11 @@ const checkButtonConditions = () => {
                   </div>
                   <div className={styles['form-card-body']}>
                     <div className={styles['form-group']}>
-                      <label className={styles['form-label']}>Substance Principale *</label>
+                      <FieldHelpLabel
+                        label="Substance Principale *"
+                        required
+                        helpText="Sélectionnez la substance principale concernée par la demande."
+                      />
                       
                       <Select
                         value={principalSubstanceId != null ? String(principalSubstanceId) : undefined}
@@ -2406,7 +2423,10 @@ const checkButtonConditions = () => {
                     </div>
 
                     <div className={styles['form-group']}>
-                      <label className={styles['form-label']}>Substances Secondaires (optionnel)</label>
+                      <FieldHelpLabel
+                        label="Substances Secondaires (optionnel)"
+                        helpText="Ajoutez les substances secondaires si elles font partie du projet."
+                      />
                       <div className={styles['secondary-list']}>
                         {secondaryRows.map((row) => {
                           const usedIds = secondarySubstanceIds.filter(

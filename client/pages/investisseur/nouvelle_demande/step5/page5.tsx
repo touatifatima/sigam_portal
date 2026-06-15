@@ -5,6 +5,7 @@ import * as turf from '@turf/turf';
 import styles from './cadastre5.module.css';
 import { useRouter } from 'next/router';
 import { useSearchParams } from '@/src/hooks/useSearchParams';
+import { FieldHelpLabel } from '@/components/ui/field-help';
 import axios from 'axios';
 import Navbar from '@/pages/navbar/Navbar';
 import Sidebar from '@/pages/sidebar/Sidebar';
@@ -2506,27 +2507,45 @@ const handleMapClick = useCallback((x: number, y: number) => {
                           </div>
                           <div className={styles['info-grid']}>
                             <div>
-                              <label>Situation géographique OK</label>
+                              <FieldHelpLabel
+                                label="Situation géographique OK"
+                                helpText="Confirme que la parcelle est bien située dans la zone attendue."
+                              />
                               <input type="checkbox" checked={sitGeoOk} onChange={(e) => setSitGeoOk(e.target.checked)} />
                             </div>
                             <div>
-                              <label>Absence d'empiétements</label>
+                              <FieldHelpLabel
+                                label="Absence d'empiétements"
+                                helpText="Indique si le périmètre empiète sur une zone existante."
+                              />
                               <input type="checkbox" checked={empietOk} onChange={(e) => setEmpietOk(e.target.checked)} />
                             </div>
                             <div>
-                              <label>Géométrie correcte</label>
+                              <FieldHelpLabel
+                                label="Géométrie correcte"
+                                helpText="Valide la forme géométrique du périmètre."
+                              />
                               <input type="checkbox" checked={geomOk} onChange={(e) => setGeomOk(e.target.checked)} />
                             </div>
                             <div>
-                              <label>Superficie conforme</label>
+                              <FieldHelpLabel
+                                label="Superficie conforme"
+                                helpText="Précise si la surface est conforme aux exigences du dossier."
+                              />
                               <input type="checkbox" checked={superfOk} onChange={(e) => setSuperfOk(e.target.checked)} />
                             </div>
                             <div>
-                              <label>Superficie déclarée (ha)</label>
+                              <FieldHelpLabel
+                                label="Superficie déclarée (ha)"
+                                helpText="Surface déclarée par le demandeur dans le dossier."
+                              />
                               <input value={superficieDeclaree ?? ''} onChange={() => {}} disabled />
                             </div>
                             <div>
-                              <label>Superficie cadastrale (ha)</label>
+                              <FieldHelpLabel
+                                label="Superficie cadastrale (ha)"
+                                helpText="Surface cadastrale calculée ou vérifiée par le système."
+                              />
                               <input
                                 type="number"
                                 value={(superficieCadastrale ?? superficie) || 0}
@@ -2587,7 +2606,10 @@ const handleMapClick = useCallback((x: number, y: number) => {
                           <h3>Informations administratives</h3>
                           <div className={styles['info-grid']}>
                             <div>
-                              <label>Code demande</label>
+                              <FieldHelpLabel
+                                label="Code demande"
+                                helpText="Identifiant métier de la demande en cours."
+                              />
                               <input
                                 value={permitData.code}
                                 onChange={(e) => setPermitData({ ...permitData, code: e.target.value })}
@@ -2595,7 +2617,10 @@ const handleMapClick = useCallback((x: number, y: number) => {
                               />
                             </div>
                             <div>
-                              <label>Type permis</label>
+                              <FieldHelpLabel
+                                label="Type permis"
+                                helpText="Type de permis associé à cette demande."
+                              />
                               <input
                                 value={permitData.type}
                                 onChange={(e) => setPermitData({ ...permitData, type: e.target.value })}
@@ -2603,7 +2628,10 @@ const handleMapClick = useCallback((x: number, y: number) => {
                               />
                             </div>
                             <div>
-                              <label>Titulaire</label>
+                              <FieldHelpLabel
+                                label="Titulaire"
+                                helpText="Nom du titulaire du permis lié à la demande."
+                              />
                               <input
                                 value={permitData.holder}
                                 onChange={(e) => setPermitData({ ...permitData, holder: e.target.value })}
@@ -2611,7 +2639,10 @@ const handleMapClick = useCallback((x: number, y: number) => {
                               />
                             </div>
                             <div>
-                              <label>Wilaya</label>
+                              <FieldHelpLabel
+                                label="Wilaya"
+                                helpText="Wilaya concernée par la géolocalisation du périmètre."
+                              />
                               <input
                                 value={permitData.wilaya}
                                 onChange={(e) => setPermitData({ ...permitData, wilaya: e.target.value })}
@@ -2619,7 +2650,10 @@ const handleMapClick = useCallback((x: number, y: number) => {
                               />
                             </div>
                             <div>
-                              <label>Daira</label>
+                              <FieldHelpLabel
+                                label="Daira"
+                                helpText="Daira rattachée au périmètre déclaré."
+                              />
                               <input
                                 value={permitData.daira}
                                 onChange={(e) => setPermitData({ ...permitData, daira: e.target.value })}
@@ -2627,7 +2661,10 @@ const handleMapClick = useCallback((x: number, y: number) => {
                               />
                             </div>
                             <div>
-                              <label>Commune</label>
+                              <FieldHelpLabel
+                                label="Commune"
+                                helpText="Commune rattachée au périmètre déclaré."
+                              />
                               <input
                                 value={permitData.commune}
                                 onChange={(e) => setPermitData({ ...permitData, commune: e.target.value })}
@@ -2635,15 +2672,24 @@ const handleMapClick = useCallback((x: number, y: number) => {
                               />
                             </div>
                             <div>
-                              <label>Lieu détecté - Wilaya</label>
+                              <FieldHelpLabel
+                                label="Lieu détecté - Wilaya"
+                                helpText="Wilaya détectée automatiquement par le système."
+                              />
                               <p>{detectedLieu.wilaya || 'Non détecté'}</p>
                             </div>
                             <div>
-                              <label>Lieu détecté - Commune</label>
+                              <FieldHelpLabel
+                                label="Lieu détecté - Commune"
+                                helpText="Commune détectée automatiquement par le système."
+                              />
                               <p>{detectedLieu.commune || 'Non détecté'}</p>
                             </div>
                             <div>
-                              <label>Lieu détecté - Ville</label>
+                              <FieldHelpLabel
+                                label="Lieu détecté - Ville"
+                                helpText="Ville détectée automatiquement par le système."
+                              />
                               <p>{detectedLieu.ville || 'Non détecté'}</p>
                             </div>
                             <div style={{ gridColumn: '1 / -1', marginTop: 8 }}>
@@ -2664,15 +2710,24 @@ const handleMapClick = useCallback((x: number, y: number) => {
                           <h3>Caractéristiques techniques</h3>
                           <div className={styles['info-grid']}>
                             <div>
-                              <label>Nombre de points</label>
+                              <FieldHelpLabel
+                                label="Nombre de points"
+                                helpText="Nombre total de points saisis dans le polygone."
+                              />
                               <p>{points.length}</p>
                             </div>
                             <div>
-                              <label>Superficie</label>
+                              <FieldHelpLabel
+                                label="Superficie"
+                                helpText="Surface totale calculée du périmètre."
+                              />
                               <p>{Number.isFinite(superficie) ? superficie.toFixed(2) : '0.00'} ha</p>
                             </div>
                             <div>
-                              <label>Statut validation</label>
+                              <FieldHelpLabel
+                                label="Statut validation"
+                                helpText="État actuel de la validation cadastrale."
+                              />
                               <p className={polygonValid && allFilled ? styles['valid'] : styles['invalid']}>
                                 {polygonValid && allFilled ? 'Valide' : 'Non valide'}
                               </p>

@@ -464,6 +464,8 @@ model DetenteurMoralePortail {
   PP                      Boolean?
   National                Boolean?
   Privé                  Boolean?
+  portefeuille      String?
+  portefeuille_public_mode Boolean? @default(false)
   remarques               String?
   nom_societeFR           String?
   nom_societeAR           String?

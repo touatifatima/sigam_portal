@@ -36,7 +36,7 @@ export const isCadastreRole = (value: RoleValue): boolean =>
 export const getDefaultDashboardPath = (value: RoleValue): string => {
   if (isAdminRole(value)) return "/permis_dashboard/PermisDashboard";
   if (isCadastreRole(value)) return "/cadastre/dashboard";
-  if (isOperateurRole(value)) return "/investisseur/InvestorDashboard";
+  if (isOperateurRole(value)) return "/operateur/dashboard";
   return "/investisseur/InvestorDashboard";
 };
 
@@ -51,7 +51,7 @@ export const getPostLoginPath = ({
   isEntrepriseVerified,
   shouldShowWelcome,
 }: PostLoginPathOptions): string => {
-  if (isAdminRole(role) || isCadastreRole(role)) {
+  if (isAdminRole(role) || isCadastreRole(role) || isOperateurRole(role)) {
     return getDefaultDashboardPath(role);
   }
 

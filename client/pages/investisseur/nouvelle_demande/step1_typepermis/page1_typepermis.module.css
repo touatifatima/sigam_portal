@@ -427,83 +427,415 @@
 /* Permis details card */
 .permisDetails {
   margin-top: 20px;
-  border: 1px solid #e7eded;
-  border-radius: 14px;
+  border: 1px solid rgba(223, 228, 241, 0.95);
+  border-radius: 24px;
   overflow: hidden;
-  background: #ffffff;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.06);
+  background:
+    radial-gradient(circle at top left, rgba(170, 77, 255, 0.08), transparent 28%),
+    radial-gradient(circle at top right, rgba(67, 97, 238, 0.06), transparent 24%),
+    linear-gradient(180deg, #ffffff 0%, #fbfbfe 100%);
+  box-shadow: 0 18px 42px rgba(76, 85, 128, 0.12);
+  position: relative;
 }
 
-.permisDetails h4 {
-  margin: 0;
-  padding: 14px 16px;
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--text-main);
-  background: #f7f8fb;
-  border-bottom: 1px solid var(--border);
-}
-
-.permisDetails ul {
-  margin: 0;
-  padding: 14px 18px 16px 32px;
-  display: grid;
-  gap: 8px;
-}
-
-.permisDetails li {
-  color: var(--text-main);
-  line-height: 1.45;
-  word-break: break-word;
+.permisDetails::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(90deg, #b21f5b 0%, #cc4f7b 54%, #f0c76a 100%);
 }
 
 .permisDetailsHeader {
-  background: #e8f6f6;
-  padding: 16px 18px;
-  display: flex;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 18px;
   align-items: center;
-  color: var(--text-main);
-  font-weight: 700;
-  font-size: 16px;
+  padding: 20px 22px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(8px);
 }
 
-.permisDetailsText {
+.permisDetailsHeaderIcon {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(145deg, #b71d5a 0%, #cf4d7e 52%, #8f1744 100%);
+  box-shadow: 0 14px 28px rgba(183, 29, 90, 0.26);
+}
+
+.permisDetailsHeaderText h4 {
   margin: 0;
-  color: var(--text-muted);
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #2d1b27;
+  letter-spacing: -0.02em;
+}
+
+.permisDetailsHeaderText p {
+  margin: 6px 0 0;
+  color: #667085;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.permisDetailsBadge {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(182, 46, 102, 0.2);
+  background: linear-gradient(180deg, rgba(253, 236, 243, 0.98) 0%, rgba(255, 248, 250, 0.96) 100%);
+  color: #9b2c58;
+  font-size: 0.84rem;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 8px 18px rgba(155, 44, 88, 0.08);
+}
+
+.permisDetailsBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(0, 1.82fr);
+  gap: 18px;
+  padding: 18px 22px 20px;
+  align-items: start;
+}
+
+.permisOverview {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  align-content: start;
+}
+
+.permisHeroVisual {
+  position: relative;
+  min-height: 212px;
+  border-radius: 22px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.72), transparent 18%),
+    radial-gradient(circle at 84% 28%, rgba(255, 255, 255, 0.24), transparent 20%),
+    radial-gradient(circle at 50% 90%, rgba(155, 44, 88, 0.08), transparent 30%),
+    linear-gradient(160deg, #fff0f5 0%, #f7eef2 46%, #eefaf2 100%);
+  border: 1px solid rgba(239, 204, 218, 0.95);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.permisHeroGlow {
+  position: absolute;
+  inset: auto -30px -44px auto;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(155, 44, 88, 0.22) 0%, rgba(155, 44, 88, 0.08) 48%, transparent 72%);
+  filter: blur(4px);
+}
+
+.permisHeroBadge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(182, 46, 102, 0.18);
+  color: #9b2c58;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.permisHeroBlocks {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: end center;
+  padding: 24px 0 26px;
+  gap: 0;
+}
+
+.permisHeroBlocks span {
+  position: absolute;
+  width: 78px;
+  height: 22px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(155, 44, 88, 0.18), rgba(255, 255, 255, 0.08));
+  box-shadow: 0 12px 24px rgba(155, 44, 88, 0.1);
+}
+
+.permisHeroBlocks span:nth-child(1) {
+  transform: translate(-28px, 28px) rotate(-12deg);
+}
+
+.permisHeroBlocks span:nth-child(2) {
+  transform: translate(16px, 26px) rotate(16deg);
+  width: 92px;
+}
+
+.permisHeroBlocks span:nth-child(3) {
+  transform: translate(0, 64px) rotate(0deg);
+  width: 124px;
+  height: 28px;
+}
+
+.permisHeroText {
+  padding: 4px 2px 0;
+}
+
+.permisHeroKicker {
+  margin: 0 0 8px;
+  color: #9b2c58;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.permisHeroText h5 {
+  margin: 0;
+  font-size: clamp(1.15rem, 2vw, 1.8rem);
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  color: #9b2c58;
+  font-weight: 900;
+}
+
+.permisHeroDescription {
+  margin: 10px 0 0;
+  color: #5d6480;
+  font-size: 0.98rem;
+  line-height: 1.55;
+}
+
+.permisHeroPill {
+  margin-top: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(255, 244, 248, 0.9);
+  border: 1px solid rgba(215, 152, 176, 0.55);
+}
+
+.permisHeroPillLabel {
+  font-size: 0.82rem;
+  color: #7b5262;
+  font-weight: 700;
+}
+
+.permisHeroPillValue {
+  font-size: 1rem;
+  color: #1b9a5a;
+  font-weight: 900;
 }
 
 .permisStats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
-  padding: 16px;
+  align-content: start;
 }
 
 .statCard {
-  background: #f6f2ee;
-  border-radius: 12px;
-  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(228, 232, 242, 0.96);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+  padding: 16px 16px 18px;
+  min-height: 152px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  min-height: 104px;
+  gap: 12px;
+  box-shadow: 0 10px 24px rgba(44, 56, 111, 0.06);
+}
+
+.toneBlue {
+  border-color: rgba(214, 228, 255, 0.95);
+}
+
+.toneGreen {
+  border-color: rgba(203, 239, 213, 0.92);
+}
+
+.toneViolet {
+  border-color: rgba(225, 212, 255, 0.94);
+}
+
+.toneOrange {
+  border-color: rgba(255, 228, 191, 0.94);
+}
+
+.toneRed {
+  border-color: rgba(255, 207, 218, 0.94);
+}
+
+.statIconWrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: #2563eb;
+  background: linear-gradient(180deg, #edf4ff 0%, #f8fbff 100%);
+}
+
+.toneGreen .statIconWrap {
+  color: #16a34a;
+  background: linear-gradient(180deg, #eefcf3 0%, #f8fffb 100%);
+}
+
+.toneViolet .statIconWrap {
+  color: #7c3aed;
+  background: linear-gradient(180deg, #f3efff 0%, #fbf9ff 100%);
+}
+
+.toneOrange .statIconWrap {
+  color: #f97316;
+  background: linear-gradient(180deg, #fff4e8 0%, #fffaf4 100%);
+}
+
+.toneRed .statIconWrap {
+  color: #ef4444;
+  background: linear-gradient(180deg, #fff0f3 0%, #fffafd 100%);
+}
+
+.statCopy {
+  display: grid;
+  gap: 6px;
 }
 
 .statLabel {
-  color: var(--text-muted);
-  font-size: 15px;
+  margin: 0;
+  color: #1f2940;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.statValueRow {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: baseline;
+  gap: 6px;
 }
 
 .statValue {
-  font-size: 24px;
+  font-size: 1.9rem;
+  font-weight: 900;
+  line-height: 1;
+  color: #2563eb;
+}
+
+.toneGreen .statValue {
+  color: #16a34a;
+}
+
+.toneViolet .statValue {
+  color: #7c3aed;
+}
+
+.toneOrange .statValue {
+  color: #f97316;
+}
+
+.toneRed .statValue {
+  color: #ef4444;
+}
+
+.statUnit {
+  color: #5d6480;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.statNote {
+  margin: 0;
+  color: #77809a;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.permisAside {
+  border-radius: 18px;
+  border: 1px solid rgba(216, 228, 248, 0.95);
+  background: linear-gradient(180deg, rgba(246, 250, 255, 0.98) 0%, rgba(251, 253, 255, 1) 100%);
+  padding: 18px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  justify-content: flex-start;
+  min-height: 100%;
+  align-self: stretch;
+}
+
+.permisAsideTitle {
+  color: #2563eb;
+  font-size: 1rem;
   font-weight: 800;
-  color: var(--text-main);
+}
+
+.permisAsideText {
+  margin: 0;
+  color: #5d6480;
+  font-size: 0.94rem;
+  line-height: 1.5;
+}
+
+.permisAsideLink {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  padding: 0;
+  color: #2563eb;
+  font-size: 0.92rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.permisDetailsFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 22px 20px;
+}
+
+.permisImportant {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #fff3f7 0%, #fffdfd 100%);
+  border: 1px solid rgba(215, 152, 176, 0.36);
+  color: #7b5262;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.permisImportantDot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #fde1ea;
+  color: #9b2c58;
+  font-weight: 900;
+  flex: 0 0 auto;
+}
+
+.permisImportantLink {
+  border: none;
+  background: none;
+  padding: 0 4px;
+  color: #9b2c58;
+  font-size: 0.92rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 /* Buttons */
@@ -575,6 +907,32 @@
   .card {
     padding: 24px 22px;
   }
+
+  .permisDetailsHeader {
+    grid-template-columns: auto 1fr;
+  }
+
+  .permisDetailsBadge {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .permisDetailsBody {
+    grid-template-columns: 1fr;
+  }
+
+  .permisStats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .permisAside {
+    grid-column: 1 / -1;
+  }
+
+  .permisDetailsFooter {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 @media (max-width: 768px) {
@@ -631,7 +989,38 @@
     padding: 0;
   }
 
-  .permisDetails ul {
-    padding: 12px 14px 14px 24px;
+  .permisDetailsHeader {
+    padding: 16px 16px 14px;
+    grid-template-columns: 1fr;
+  }
+
+  .permisDetailsHeaderIcon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .permisDetailsBody {
+    padding: 14px 16px 16px;
+    gap: 14px;
+  }
+
+  .permisHeroVisual {
+    min-height: 188px;
+  }
+
+  .permisStats {
+    grid-template-columns: 1fr;
+  }
+
+  .statCard {
+    min-height: auto;
+  }
+
+  .permisDetailsFooter {
+    padding: 0 16px 16px;
+  }
+
+  .permisImportant {
+    padding: 12px 14px;
   }
 }

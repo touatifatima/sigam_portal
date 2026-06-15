@@ -66,6 +66,27 @@ const persistCredentials = () => {
     console.warn('Failed to persist ArcGIS credentials', e);
   }
 };
+
+const isArcgisBasemapAbortLog = (...args: unknown[]) => {
+  const text = args
+    .map((arg) => {
+      if (typeof arg === 'string') return arg;
+      if (arg && typeof arg === 'object') {
+        const err = arg as { name?: string; message?: string };
+        return `${err.name || ''} ${err.message || ''}`.trim();
+      }
+      return '';
+    })
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    text.includes('[esri.Basemap] #load() Failed to load basemap') ||
+    text.includes('AbortError') ||
+    text.includes('Aborted')
+  );
+};
+
 loadPersistedCredentials();
 try {
   const anyEsriId = esriId as any;
@@ -420,6 +441,25 @@ export interface ArcGISMapRef {
   };
   const [enterpriseLayers, setEnterpriseLayers] = useState<any[]>([]);
   const enterpriseLayersRef = useRef<any[]>([]);
+  useEffect(() => {
+    const originalError = console.error;
+    const originalWarn = console.warn;
+
+    console.error = (...args: any[]) => {
+      if (isArcgisBasemapAbortLog(...args)) return;
+      originalError(...args);
+    };
+
+    console.warn = (...args: any[]) => {
+      if (isArcgisBasemapAbortLog(...args)) return;
+      originalWarn(...args);
+    };
+
+    return () => {
+      console.error = originalError;
+      console.warn = originalWarn;
+    };
+  }, []);
 
   // Persist layer toggles so fullscreen (2nd map instance) and refresh keep the same selection.
   const ACTIVE_LAYERS_KEY = 'sigam_arcgis_active_layers';

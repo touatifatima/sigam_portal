@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   ChevronDown,
+  ArrowLeft,
   MessageCircle,
   XCircle,
 } from 'lucide-react';
@@ -281,6 +282,7 @@ export default function NotificationsPage() {
         <div className={styles.headerCard}>
           <div className={styles.headerMain}>
             <Link href={dashboardHref} className={`${styles.linkBtn} ${styles.backLink}`}>
+              <ArrowLeft className="w-4 h-4" />
               Retour tableau de bord
             </Link>
             <h1 className={styles.title}>Mes notifications</h1>
