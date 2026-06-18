@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
+  AlertCircle,
   ArrowRight,
   Bell,
   Building2,
@@ -15,6 +16,7 @@ import {
   HelpCircle,
   Home,
   Map,
+  Loader2,
   Plus,
   Search,
   ShieldCheck,
@@ -23,6 +25,7 @@ import {
 } from "lucide-react";
 import Navbar from "@/pages/navbar/Navbar";
 import styles from "./Dashboard.module.css";
+import heroDashboardImage from "@/src/assets/ChatGPT Image 17 juin 2026, 11_21_32.png";
 import algeriaPremiumMapUrl from "@/src/assets/algeria-premium-map.png";
 import { useAuthStore } from "@/src/store/useAuthStore";
 import { useAuthReady } from "@/src/hooks/useAuthReady";
@@ -62,12 +65,14 @@ type StatCard = {
   tone: "blue" | "gold" | "violet" | "green" | "red";
 };
 
-type RequestItem = {
+type RecentRequestTone = "blue" | "amber" | "green" | "red";
+
+type RecentRequestCard = {
   title: string;
-  ref: string;
+  reference: string;
   status: string;
   progress: number;
-  tone: "blue" | "amber" | "red";
+  tone: RecentRequestTone;
   updated: string;
 };
 
@@ -76,6 +81,80 @@ type ProcessStep = {
   date: string;
   state: "done" | "active" | "pending";
   icon: typeof CheckCircle2;
+};
+
+type TrackerStepState = "done" | "active" | "pending";
+
+type TrackerStep = {
+  label: string;
+  date: string;
+  state: TrackerStepState;
+  icon: typeof CheckCircle2 | typeof Clock3;
+};
+
+type TrackerRequestItem = {
+  id_demande: number;
+  code_demande?: string | null;
+  short_code?: string | null;
+  date_demande?: string | null;
+  duree_instruction?: number | null;
+  statut_demande?: string | null;
+  dossier_recevable?: boolean | null;
+  date_instruction?: string | null;
+  date_refus?: string | null;
+  utilisateurId?: number | null;
+  typePermis?: { code_type?: string | null; lib_type?: string | null } | null;
+  typeProcedure?: { libelle?: string | null } | null;
+};
+
+type TrackerDetailResponse = {
+  id_demande: number;
+  code_demande?: string | null;
+  short_code?: string | null;
+  statut_demande?: string | null;
+  date_demande?: string | null;
+  date_instruction?: string | null;
+  date_refus?: string | null;
+  date_fin_instruction?: string | null;
+  remarques?: string | null;
+  Nom_Prenom_Resp_Enregist?: string | null;
+  utilisateurId?: number | null;
+  typePermis?: { code_type?: string | null; lib_type?: string | null } | null;
+  typeProcedure?: { libelle?: string | null } | null;
+  facture?: {
+    statut?: string | null;
+    paiements?: Array<{
+      date_paiement?: string | null;
+      etat_paiement?: string | null;
+      montant_paye?: number | null;
+    }> | null;
+  } | null;
+  procedure?: {
+    statut_proc?: string | null;
+    date_fin_proc?: string | null;
+    ProcedureEtape?: Array<{
+      statut?: string | null;
+      date_debut?: string | null;
+      date_fin?: string | null;
+      etape?: {
+        nom_etape?: string | null;
+        lib_etape?: string | null;
+        ordre_etape?: number | null;
+      } | null;
+    }> | null;
+  } | null;
+};
+
+type TrackerResult = {
+  reference: string;
+  title: string;
+  status: string;
+  statusTone: "blue" | "gold" | "green" | "red" | "violet";
+  lastUpdated: string;
+  estimatedRemaining: string;
+  responsibleService: string;
+  nextAction: string;
+  steps: TrackerStep[];
 };
 
 type PaymentItem = {
@@ -148,7 +227,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Accueil", icon: Home, href: "/investisseur/InvestorDashboard" },
   { label: "Mes demandes", icon: FileText, href: "/investisseur/demandes" },
   { label: "Paiements", icon: CreditCard, href: "/investisseur/statistiques" },
-  { label: "Carte minière", icon: Map, href: "/carte/carte_public" },
+  { label: "Carte miniÃ¨re", icon: Map, href: "/carte/carte_public" },
   { label: "Documents", icon: FileText, href: "/documentation" },
   { label: "Aide & Support", icon: HelpCircle, href: "/faq" },
 ];
@@ -156,70 +235,325 @@ const NAV_ITEMS: NavItem[] = [
 const HERO_FEATURES: HeroFeature[] = [
   {
     title: "100% en ligne",
-    description: "Sans déplacement",
+    description: "Sans dÃ©placement",
     icon: Building2,
   },
   {
-    title: "Sécurisé",
-    description: "Données protégées",
+    title: "SÃ©curisÃ©",
+    description: "DonnÃ©es protÃ©gÃ©es",
     icon: ShieldCheck,
   },
   {
-    title: "Paiements sécurisés",
+    title: "Paiements sÃ©curisÃ©s",
     description: "Via SATIM",
     icon: CreditCard,
   },
 ];
 
-const REQUEST_ITEMS: RequestItem[] = [
-  {
-    title: "Autorisation de prospection",
-    ref: "MIN-2025-00124",
-    status: "En instruction",
-    progress: 65,
-    tone: "blue",
-    updated: "Il y a 2 jours",
-  },
-  {
-    title: "Permis d'exploitation",
-    ref: "MIN-2025-00123",
-    status: "Analyse technique",
-    progress: 40,
-    tone: "amber",
-    updated: "Il y a 3 jours",
-  },
-  {
-    title: "Permis de recherche",
-    ref: "MIN-2025-00122",
-    status: "Paiement requis",
-    progress: 90,
-    tone: "red",
-    updated: "Il y a 5 jours",
-  },
-];
-
 const PROCESS_STEPS: ProcessStep[] = [
   { label: "Soumise", date: "12/05/2025", state: "done", icon: CheckCircle2 },
-  { label: "Reçue", date: "13/05/2025", state: "done", icon: CheckCircle2 },
+  { label: "ReÃ§ue", date: "13/05/2025", state: "done", icon: CheckCircle2 },
   { label: "En instruction", date: "16/05/2025", state: "active", icon: Clock3 },
   { label: "Validation", date: "En attente", state: "pending", icon: CheckCircle2 },
   { label: "Paiement", date: "En attente", state: "pending", icon: CheckCircle2 },
-  { label: "Délivrée", date: "En attente", state: "pending", icon: CheckCircle2 },
+  { label: "DÃ©livrÃ©e", date: "En attente", state: "pending", icon: CheckCircle2 },
 ];
+
+const normalizeReference = (value: string) =>
+  value.trim().toUpperCase().replace(/\s+/g, "");
+
+const formatDateLabel = (value?: string | null) => {
+  if (!value) return "En attente";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "En attente";
+  return date.toLocaleDateString("fr-FR");
+};
+
+const formatRelativeDateLabel = (value?: string | null) => {
+  if (!value) return "Aucune mise Ã  jour";
+  const ts = new Date(value).getTime();
+  if (!Number.isFinite(ts)) return "Aucune mise Ã  jour";
+
+  const diffMs = Date.now() - ts;
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+
+  if (diffMs < minute) return "Ã€ l'instant";
+  if (diffMs < hour) return `Il y a ${Math.floor(diffMs / minute)} min`;
+  if (diffMs < day) return `Il y a ${Math.floor(diffMs / hour)} h`;
+  if (diffMs < 7 * day) return `Il y a ${Math.floor(diffMs / day)} j`;
+
+  return new Date(value).toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+
+
+const toTimestamp = (value?: string | null) => {
+  if (!value) return null;
+  const ts = new Date(value).getTime();
+  return Number.isFinite(ts) ? ts : null;
+};
+
+const computeBusinessDeadline = (item: TrackerRequestItem) => {
+  if (!item.duree_instruction || !item.date_demande) return null;
+
+  const total = item.duree_instruction;
+  const start = new Date(item.date_demande);
+  start.setHours(0, 0, 0, 0);
+
+  const addBusinessDays = (base: Date, businessDays: number) => {
+    const result = new Date(base);
+    let added = 0;
+    while (added < businessDays) {
+      result.setDate(result.getDate() + 1);
+      const day = result.getDay();
+      if (day !== 0 && day !== 6) {
+        added += 1;
+      }
+    }
+    return result;
+  };
+
+  const countBusinessDaysBetween = (from: Date, to: Date) => {
+    const d1 = new Date(from);
+    const d2 = new Date(to);
+    d1.setHours(0, 0, 0, 0);
+    d2.setHours(0, 0, 0, 0);
+    if (d2 < d1) return 0;
+
+    let days = 0;
+    const cursor = new Date(d1);
+    while (cursor <= d2) {
+      const day = cursor.getDay();
+      if (day !== 0 && day !== 6) {
+        days += 1;
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return days;
+  };
+
+  const deadline = addBusinessDays(start, total);
+
+  if (item.dossier_recevable && item.date_instruction) {
+    const closure = new Date(item.date_instruction);
+    const used = countBusinessDaysBetween(start, closure);
+    const remaining = Math.max(total - used, 0);
+    return { mode: "recevable" as const, used, remaining, total, deadline };
+  }
+
+  if (item.statut_demande === "REJETEE" && item.date_refus) {
+    const closure = new Date(item.date_refus);
+    const used = countBusinessDaysBetween(start, closure);
+    const remaining = Math.max(total - used, 0);
+    return { mode: "rejetee" as const, used, remaining, total, deadline };
+  }
+
+  const now = new Date();
+  const nowFloor = new Date(now);
+  nowFloor.setHours(0, 0, 0, 0);
+
+  if (nowFloor >= deadline) {
+    return { mode: "ongoing" as const, used: total, remaining: 0, total, deadline };
+  }
+
+  const remaining = countBusinessDaysBetween(nowFloor, deadline);
+  const used = Math.max(total - remaining, 0);
+
+  return { mode: "ongoing" as const, used, remaining, total, deadline };
+};
+
+const resolveTrackerStage = (item: TrackerRequestItem, detail?: TrackerDetailResponse | null) => {
+  const raw = normalizeReference(
+    String(detail?.statut_demande ?? item.statut_demande ?? detail?.procedure?.statut_proc ?? ""),
+  );
+
+  if (raw.includes("DELIV") || raw.includes("LIVR") || detail?.procedure?.date_fin_proc) {
+    return 5;
+  }
+  if (raw.includes("PAI") || (detail?.facture?.paiements?.length ?? 0) > 0) {
+    return 4;
+  }
+  if (raw.includes("VALID") || raw.includes("ACCEP") || raw.includes("APPROUV")) {
+    return 3;
+  }
+  if (raw.includes("INSTR") || raw.includes("ANALYS") || raw.includes("COURS")) {
+    return 2;
+  }
+  if (raw.includes("RECU") || raw.includes("RECEP") || raw.includes("RECEV")) {
+    return 1;
+  }
+  if (raw.includes("DEPOT") || raw.includes("SOU") || raw.includes("INIT")) {
+    return 0;
+  }
+
+  if (item.date_instruction || detail?.date_instruction) return 2;
+  if (item.date_demande || detail?.date_demande) return 1;
+  return 0;
+};
+
+const buildTrackerSteps = (item: TrackerRequestItem, detail?: TrackerDetailResponse | null): TrackerStep[] => {
+  const stage = resolveTrackerStage(item, detail);
+  const paymentDate = detail?.facture?.paiements?.find((entry) => entry?.date_paiement)?.date_paiement;
+  const procedureSteps = detail?.procedure?.ProcedureEtape ?? [];
+  const firstProcedureDate =
+    procedureSteps.find((entry) => entry?.date_debut)?.date_debut ??
+    procedureSteps.find((entry) => entry?.date_fin)?.date_fin ??
+    null;
+
+  const stepDates = [
+    detail?.date_demande ?? item.date_demande,
+    firstProcedureDate ?? detail?.date_instruction ?? item.date_instruction ?? item.date_demande,
+    detail?.date_instruction ?? item.date_instruction ?? firstProcedureDate ?? item.date_demande,
+    detail?.date_fin_instruction ?? detail?.procedure?.date_fin_proc ?? detail?.date_instruction ?? item.date_instruction,
+    paymentDate ?? detail?.date_fin_instruction ?? detail?.procedure?.date_fin_proc ?? null,
+    detail?.procedure?.date_fin_proc ?? paymentDate ?? detail?.date_fin_instruction ?? null,
+  ];
+
+  return ["Soumise", "ReÃ§ue", "En instruction", "Validation", "Paiement", "DÃ©livrÃ©e"].map(
+    (label, index) => ({
+      label,
+      date: index <= stage ? formatDateLabel(stepDates[index]) : "En attente",
+      state: index < stage ? "done" : index === stage ? "active" : "pending",
+      icon: index === 2 ? Clock3 : CheckCircle2,
+    }),
+  );
+};
+
+const buildTrackerResult = (item: TrackerRequestItem, detail?: TrackerDetailResponse | null): TrackerResult => {
+  const reference = String(
+    detail?.code_demande || detail?.short_code || item.code_demande || `DEM-${item.id_demande}`,
+  );
+  const status = String(detail?.statut_demande || item.statut_demande || detail?.procedure?.statut_proc || "--");
+  const title =
+    detail?.typeProcedure?.libelle ||
+    detail?.typePermis?.lib_type ||
+    item.typeProcedure?.libelle ||
+    item.typePermis?.lib_type ||
+    "Demande miniÃ¨re";
+
+  const timestamps = [
+    toTimestamp(detail?.date_demande ?? item.date_demande),
+    toTimestamp(detail?.date_instruction ?? item.date_instruction),
+    toTimestamp(detail?.date_fin_instruction),
+    toTimestamp(detail?.date_refus ?? item.date_refus),
+    toTimestamp(detail?.procedure?.date_fin_proc),
+    ...(detail?.facture?.paiements ?? [])
+      .map((entry) => toTimestamp(entry?.date_paiement))
+      .filter((value): value is number => typeof value === "number" && Number.isFinite(value)),
+  ].filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+
+  const latestTimestamp = timestamps.length > 0 ? Math.max(...timestamps) : null;
+  const lastUpdated = latestTimestamp
+    ? new Date(latestTimestamp).toLocaleDateString("fr-FR")
+    : "En attente";
+
+  const deadlineInfo = computeBusinessDeadline(item);
+  const estimatedRemaining =
+    deadlineInfo?.mode === "recevable"
+      ? `DÃ©lai clÃ´turÃ© en ${deadlineInfo.used} jour(s) ouvrable(s)`
+      : deadlineInfo?.mode === "rejetee"
+        ? `ClÃ´turÃ© en ${deadlineInfo.used} jour(s) ouvrable(s)`
+        : deadlineInfo
+          ? `Il reste ${deadlineInfo.remaining} jour(s) ouvrable(s)`
+          : "Estimation indisponible";
+
+  const stage = resolveTrackerStage(item, detail);
+  const responsibleService =
+    detail?.Nom_Prenom_Resp_Enregist ||
+    detail?.procedure?.statut_proc ||
+    detail?.typeProcedure?.libelle ||
+    "Service d'instruction";
+
+  const nextActionByStage = [
+    "DÃ©pÃ´t enregistrÃ©. En attente de rÃ©ception.",
+    "RÃ©ception du dossier en cours.",
+    "Instruction technique en cours.",
+    "Validation administrative en attente.",
+    "Paiement attendu ou en cours de confirmation.",
+    "DÃ©livrance du dossier en cours.",
+  ];
+
+  const statusTone: TrackerResult["statusTone"] = /REJET/i.test(status)
+    ? "red"
+    : /PAI|PAY/i.test(status)
+      ? "gold"
+      : /DELIV|LIVR/i.test(status)
+        ? "green"
+        : /VALID|ACCEP|APPROUV/i.test(status)
+          ? "green"
+          : /INSTR|ANALYS|COURS/i.test(status)
+            ? "gold"
+            : "blue";
+
+  return {
+    reference,
+    title,
+    status,
+    statusTone,
+    lastUpdated,
+    estimatedRemaining,
+    responsibleService,
+    nextAction: nextActionByStage[Math.min(stage, nextActionByStage.length - 1)],
+    steps: buildTrackerSteps(item, detail),
+  };
+};
+
+const buildRecentRequestCard = (item: TrackerRequestItem, detail?: TrackerDetailResponse | null): RecentRequestCard => {
+  const tracker = buildTrackerResult(item, detail);
+  const activeIndex = tracker.steps.findIndex((step) => step.state === "active");
+  const completedCount = tracker.steps.filter((step) => step.state === "done").length;
+  const progressByStage = [18, 34, 65, 78, 90, 100];
+  const progress =
+    activeIndex >= 0
+      ? progressByStage[activeIndex] ??
+        Math.min(100, Math.max(12, Math.round(((activeIndex + 1) / tracker.steps.length) * 100)))
+      : completedCount >= tracker.steps.length
+        ? 100
+        : Math.max(10, Math.round((completedCount / Math.max(tracker.steps.length, 1)) * 100));
+
+  const tone: RecentRequestTone =
+    tracker.statusTone === "red"
+      ? "red"
+      : tracker.statusTone === "green"
+        ? "green"
+        : tracker.statusTone === "gold"
+          ? "amber"
+          : "blue";
+
+  return {
+    title: tracker.title,
+    reference: tracker.reference,
+    status: tracker.status,
+    progress,
+    tone,
+    updated: formatRelativeDateLabel(
+      detail?.date_fin_instruction ??
+        detail?.procedure?.date_fin_proc ??
+        detail?.date_instruction ??
+        detail?.date_demande ??
+        item.date_demande,
+    ),
+  };
+};
 
 const PAYMENTS: PaymentItem[] = [
   {
     code: "MIN-2025-00120",
     label: "Permis d'exploitation",
     amount: "450 000 DZD",
-    status: "Payé",
+    status: "PayÃ©",
     date: "12/05/2025",
   },
   {
     code: "MIN-2025-00118",
     label: "Autorisation de prospection",
     amount: "75 000 DZD",
-    status: "Payé",
+    status: "PayÃ©",
     date: "05/05/2025",
   },
 ];
@@ -228,10 +562,10 @@ const QUICK_LINKS: QuickLink[] = [
   { label: "Nouvelle demande", icon: Plus, href: "/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis", tone: "blue" },
   { label: "Mes demandes", icon: FileText, href: "/investisseur/demandes", tone: "green" },
   { label: "Paiements", icon: CreditCard, href: "/investisseur/statistiques", tone: "gold" },
-  { label: "Carte minière", icon: Map, href: "/carte/carte_public", tone: "violet" },
+  { label: "Carte miniÃ¨re", icon: Map, href: "/carte/carte_public", tone: "violet" },
   { label: "Documents", icon: FileText, href: "/documentation", tone: "red" },
-  { label: "Modèles & Guides", icon: FileText, href: "/documentation", tone: "blue" },
-  { label: "Législation", icon: FileText, href: "/documentation", tone: "gold" },
+  { label: "ModÃ¨les & Guides", icon: FileText, href: "/documentation", tone: "blue" },
+  { label: "LÃ©gislation", icon: FileText, href: "/documentation", tone: "gold" },
   { label: "FAQ", icon: HelpCircle, href: "/faq", tone: "violet" },
 ];
 
@@ -258,7 +592,7 @@ const HERO_STATS: StatCard[] = [
     tone: "violet",
   },
   {
-    label: "Demandes approuvées",
+    label: "Demandes approuvÃ©es",
     value: "24",
     hint: "+5 ce mois",
     icon: CheckCircle2,
@@ -272,7 +606,7 @@ const HERO_STATS: StatCard[] = [
     tone: "red",
   },
   {
-    label: "Total payé (2025)",
+    label: "Total payÃ© (2025)",
     value: "3 250 000 DZD",
     hint: "+22% vs 2024",
     icon: CreditCard,
@@ -285,10 +619,25 @@ const toList = <T,>(payload: unknown): T[] => {
   if (
     payload &&
     typeof payload === "object" &&
+    Array.isArray((payload as { items?: unknown }).items)
+  ) {
+    return (payload as { items: T[] }).items;
+  }
+  if (
+    payload &&
+    typeof payload === "object" &&
     "data" in payload &&
     Array.isArray((payload as { data?: unknown }).data)
   ) {
     return (payload as { data: T[] }).data;
+  }
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "data" in payload &&
+    Array.isArray((payload as { data?: { items?: unknown } }).data?.items)
+  ) {
+    return (payload as { data: { items: T[] } }).data.items;
   }
   return [];
 };
@@ -299,11 +648,18 @@ export default function Dashboard() {
   const { auth } = useAuthStore();
   const isAuthReady = useAuthReady();
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
+  const [demandes, setDemandes] = useState<TrackerRequestItem[]>([]);
   const [stats, setStats] = useState<StatState>({
     demandesEnCours: 0,
     permisActifs: 0,
   });
+  const [recentRequests, setRecentRequests] = useState<RecentRequestCard[]>([]);
+  const [recentRequestsLoading, setRecentRequestsLoading] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [trackReference, setTrackReference] = useState("");
+  const [trackLoading, setTrackLoading] = useState(false);
+  const [trackError, setTrackError] = useState<string | null>(null);
+  const [trackedRequest, setTrackedRequest] = useState<TrackerResult | null>(null);
 
   useEffect(() => {
     if (!isAuthReady) return;
@@ -326,11 +682,12 @@ export default function Dashboard() {
         const demandesResult = await axios.get(`${apiURL}/demandes/mes-demandes`, {
           withCredentials: true,
         });
-        const demandes = toList<unknown>(demandesResult.data);
+        const userDemandes = toList<TrackerRequestItem>(demandesResult.data);
 
         if (!isActive) return;
+        setDemandes(userDemandes);
         setStats({
-          demandesEnCours: demandes.length,
+          demandesEnCours: userDemandes.length,
           permisActifs: 0,
         });
       } catch {
@@ -345,6 +702,70 @@ export default function Dashboard() {
       isActive = false;
     };
   }, [apiURL, auth?.role]);
+
+  useEffect(() => {
+    let isActive = true;
+    const latestDemandes = [...demandes]
+      .filter((item) => item.id_demande != null)
+      .sort((a, b) => {
+        const dateDelta = (toTimestamp(b.date_demande) ?? 0) - (toTimestamp(a.date_demande) ?? 0);
+        if (dateDelta !== 0) return dateDelta;
+        return b.id_demande - a.id_demande;
+      })
+      .slice(0, 3);
+
+    const loadRecentRequests = async () => {
+      if (latestDemandes.length === 0) {
+        if (isActive) {
+          setRecentRequests([]);
+          setRecentRequestsLoading(false);
+        }
+        return;
+      }
+
+      setRecentRequestsLoading(true);
+
+      try {
+        const cards = await Promise.all(
+          latestDemandes.map(async (item) => {
+            try {
+              const response = await axios.get(`${apiURL}/demandes_dashboard/${encodeURIComponent(String(item.id_demande))}`, {
+                withCredentials: true,
+              });
+              const detail = (response.data?.data ?? response.data) as TrackerDetailResponse;
+              if (auth?.id && detail?.utilisateurId && detail.utilisateurId !== auth.id) {
+                return buildRecentRequestCard(item);
+              }
+              return buildRecentRequestCard(item, detail);
+            } catch {
+              return buildRecentRequestCard(item);
+            }
+          }),
+        );
+
+        if (isActive) {
+          setRecentRequests(cards);
+        }
+      } finally {
+        if (isActive) {
+          setRecentRequestsLoading(false);
+        }
+      }
+    };
+
+    if (!apiURL) {
+      setRecentRequests(latestDemandes.map((item) => buildRecentRequestCard(item)));
+      return () => {
+        isActive = false;
+      };
+    }
+
+    void loadRecentRequests();
+
+    return () => {
+      isActive = false;
+    };
+  }, [apiURL, auth?.id, demandes]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -365,7 +786,7 @@ export default function Dashboard() {
   }, [location.search]);
 
   const companyName = useMemo(
-    () => auth?.username || auth?.nom || auth?.email || "Société Minière SARL",
+    () => auth?.username || auth?.nom || auth?.email || "SociÃ©tÃ© MiniÃ¨re SARL",
     [auth?.email, auth?.nom, auth?.username],
   );
 
@@ -393,6 +814,89 @@ export default function Dashboard() {
     navigate(href);
   };
 
+  const handleTrackRequest = useCallback(async () => {
+    const reference = normalizeReference(trackReference);
+
+    if (!reference) {
+      setTrackError("Veuillez saisir une rÃ©fÃ©rence de demande");
+      setTrackedRequest(null);
+      return;
+    }
+
+    if (!apiURL) {
+      setTrackError("Impossible de rÃ©cupÃ©rer le suivi pour le moment");
+      setTrackedRequest(null);
+      return;
+    }
+
+    const matchesReference = (item: any) => {
+      const candidates = [
+        item.code_demande,
+        item.short_code,
+        item.id_demande != null ? String(item.id_demande) : null,
+      ]
+        .filter(Boolean)
+        .map((value) => normalizeReference(String(value)));
+
+      return candidates.includes(reference);
+    };
+
+    setTrackLoading(true);
+    setTrackError(null);
+
+    try {
+      let matched = demandes.find(matchesReference);
+
+      if (!matched) {
+        const searchResponse = await axios.get(`${apiURL}/demandes_dashboard?page=1&pageSize=50&search=${encodeURIComponent(trackReference.trim())}`, {
+          withCredentials: true,
+        });
+        const remoteDemandes = toList<TrackerRequestItem>(searchResponse.data);
+        matched = remoteDemandes.find(matchesReference);
+
+        if (matched && auth?.id) {
+          const ownerId = Number(matched.utilisateurId ?? 0);
+          if (ownerId && ownerId !== auth.id) {
+            setTrackError("Vous nâ€™avez pas accÃ¨s Ã  cette demande");
+            setTrackedRequest(null);
+            return;
+          }
+        }
+      }
+
+      if (!matched) {
+        setTrackError("Aucune demande trouvÃ©e avec cette rÃ©fÃ©rence");
+        setTrackedRequest(null);
+        return;
+      }
+
+      const detailResponse = await axios.get(
+        `${apiURL}/demandes_dashboard/${encodeURIComponent(String(matched.id_demande))}`,
+        {
+          withCredentials: true,
+        },
+      );
+
+      const detail = (detailResponse.data?.data ?? detailResponse.data) as TrackerDetailResponse;
+      if (auth?.id && detail?.utilisateurId && detail.utilisateurId !== auth.id) {
+        setTrackError("Vous nâ€™avez pas accÃ¨s Ã  cette demande");
+        setTrackedRequest(null);
+        return;
+      }
+
+      setTrackedRequest(buildTrackerResult(matched, detail));
+    } catch (error) {
+      if (axios.isAxiosError(error) && [401, 403].includes(error.response?.status ?? 0)) {
+        setTrackError("Vous nâ€™avez pas accÃ¨s Ã  cette demande");
+      } else {
+        setTrackError("Impossible de rÃ©cupÃ©rer le suivi pour le moment");
+      }
+      setTrackedRequest(null);
+    } finally {
+      setTrackLoading(false);
+    }
+  }, [apiURL, auth?.id, demandes, trackReference]);
+
   if (!isAuthReady) {
     return (
       <div className={styles.loadingState}>
@@ -412,8 +916,8 @@ export default function Dashboard() {
               <img src="/anamlogo.png" alt="ANAM" className={styles.brandLogo} />
             </span>
             <span className={styles.brandText}>
-              <span className={styles.brandKicker}>République Algérienne</span>
-              <span className={styles.brandTitle}>Ministère des Mines</span>
+              <span className={styles.brandKicker}>RÃ©publique AlgÃ©rienne</span>
+              <span className={styles.brandTitle}>MinistÃ¨re des Mines</span>
             </span>
           </button>
 
@@ -464,7 +968,7 @@ export default function Dashboard() {
               </span>
               <span className={styles.userMeta}>
                 <span className={styles.userName}>{companyName}</span>
-                <span className={styles.userRole}>Entreprise vérifiée</span>
+                <span className={styles.userRole}>Entreprise vÃ©rifiÃ©e</span>
               </span>
               <ChevronDown size={16} className={styles.userChevron} />
             </button>
@@ -474,19 +978,27 @@ export default function Dashboard() {
 
       <main className={styles.main}>
         <section className={styles.hero} data-onboarding-id="dashboard-hero">
-          <div className={styles.heroBackdrop} />
+          <div
+            className={styles.heroBackdrop}
+            style={{ backgroundImage: `url(${heroDashboardImage})` }}
+          />
           <div className={styles.heroOverlay} />
 
           <div className={styles.heroGrid}>
             <div className={styles.heroContent}>
               <p className={styles.heroEyebrow}>GUICHET UNIQUE MINIER</p>
-              <h1 className={styles.heroTitle}>
-                Toutes vos <em>démarches</em>
-                <br />
-                minières, <em>en un seul endroit.</em>
+              <h1 className={styles.heroTitle} aria-label="Toutes vos démarches minières, en un seul endroit.">
+                <span className={styles.heroTitleLine}>
+                  <span className={styles.heroTitleWhite}>Toutes vos </span>
+                  <span className={styles.heroTitleGold}>démarches</span>
+                </span>
+                <span className={styles.heroTitleLine}>
+                  <span className={styles.heroTitleWhite}>minières, </span>
+                  <span className={styles.heroTitleGold}>en un seul endroit.</span>
+                </span>
               </h1>
               <p className={styles.heroLead}>
-                Simplifiez, suivez et gérez l&apos;ensemble de vos demandes et permis
+                Simplifiez, suivez et gÃ©rez l&apos;ensemble de vos demandes et permis
                 miniers en toute transparence.
               </p>
 
@@ -532,7 +1044,7 @@ export default function Dashboard() {
               <div className={styles.heroPanelHeader}>
                 <h2>Statut de mon entreprise</h2>
                 <span className={auth?.isEntrepriseVerified ? styles.statusVerified : styles.statusPending}>
-                  {auth?.isEntrepriseVerified ? "Vérifiée" : "En attente"}
+                  {auth?.isEntrepriseVerified ? "VÃ©rifiÃ©e" : "En attente"}
                 </span>
               </div>
               <div className={styles.heroPanelBody}>
@@ -573,15 +1085,21 @@ export default function Dashboard() {
         <section className={styles.contentGrid}>
           <section className={`${styles.card} ${styles.requestsCard}`} data-onboarding-id="dashboard-card-demandes">
             <div className={styles.cardHeader}>
-              <h2>Mes demandes récentes</h2>
+              <h2>Mes demandes rÃ©centes</h2>
               <button type="button" className={styles.cardLinkButton} onClick={() => navigate("/investisseur/demandes")}>
                 Voir tout
               </button>
             </div>
 
             <div className={styles.requestList}>
-              {REQUEST_ITEMS.map((request) => (
-                <article key={request.ref} className={styles.requestRow}>
+              {recentRequestsLoading && recentRequests.length === 0 ? (
+                <div className={styles.requestEmptyState}>
+                  <div className={styles.requestEmptyPulse} />
+                  <p>Chargement des derniÃ¨res demandes...</p>
+                </div>
+              ) : recentRequests.length > 0 ? (
+                recentRequests.map((request) => (
+                  <article key={request.reference} className={styles.requestRow}>
                   <div className={`${styles.requestIcon} ${styles[`requestTone_${request.tone}`]}`}>
                     <FileText size={18} />
                   </div>
@@ -590,7 +1108,7 @@ export default function Dashboard() {
                     <div className={styles.requestTopLine}>
                       <div>
                         <h3>{request.title}</h3>
-                        <p>Réf : {request.ref}</p>
+                        <p>RÃ©f : {request.reference}</p>
                       </div>
                       <span className={`${styles.requestStatus} ${styles[`requestStatus_${request.tone}`]}`}>
                         {request.status}
@@ -605,11 +1123,17 @@ export default function Dashboard() {
                     </div>
 
                     <div className={styles.requestFoot}>
-                      <span className={styles.requestFootHint}>Mis à jour : {request.updated}</span>
+                      <span className={styles.requestFootHint}>Mis Ã  jour : {request.updated}</span>
                     </div>
                   </div>
                 </article>
-              ))}
+                ))
+              ) : (
+                <div className={styles.requestEmptyState}>
+                  <FileText size={18} />
+                  <p>Aucune demande rÃ©cente trouvÃ©e.</p>
+                </div>
+              )}
             </div>
           </section>
 
@@ -618,22 +1142,86 @@ export default function Dashboard() {
               <h2>Suivi d&apos;une demande</h2>
             </div>
 
-            <p className={styles.sectionLead}>Entrez le numéro de référence pour suivre l&apos;avancement</p>
+            <p className={styles.sectionLead}>Entrez le numÃ©ro de rÃ©fÃ©rence pour suivre l&apos;avancement</p>
 
             <div className={styles.trackRow}>
               <label className={styles.trackField}>
                 <Search size={18} />
-                <input type="text" placeholder="Ex : MIN-2025-00124" aria-label="Numéro de référence" />
+                <input
+                  type="text"
+                  placeholder="Ex : MIN-2025-00124"
+                  aria-label="NumÃ©ro de rÃ©fÃ©rence"
+                  value={trackReference}
+                  onChange={(event) => {
+                    setTrackReference(event.target.value);
+                    if (trackError) setTrackError(null);
+                  }}
+                />
               </label>
-              <button type="button" className={styles.trackButton}>
-                Suivre
+              <button
+                type="button"
+                className={styles.trackButton}
+                onClick={() => void handleTrackRequest()}
+                disabled={trackLoading}
+              >
+                {trackLoading ? (
+                  <>
+                    <Loader2 size={16} className={styles.trackSpinner} />
+                    <span>Recherche...</span>
+                  </>
+                ) : (
+                  <span>Suivre</span>
+                )}
               </button>
             </div>
 
+            {trackError && (
+              <div className={styles.trackError} role="alert">
+                <AlertCircle size={16} />
+                <span>{trackError}</span>
+              </div>
+            )}
+
+            {trackedRequest && (
+              <div className={`${styles.trackResult} ${styles[`trackTone_${trackedRequest.statusTone}`]}`}>
+                <div className={styles.trackResultHeader}>
+                  <div className={styles.trackResultTitleBlock}>
+                    <p className={styles.trackResultEyebrow}>Suivi instantanÃ©</p>
+                    <h3>{trackedRequest.title}</h3>
+                  </div>
+                  <span className={styles.trackResultBadge}>{trackedRequest.reference}</span>
+                </div>
+
+                <div className={styles.trackResultGrid}>
+                  <div className={styles.trackResultItem}>
+                    <span>Statut actuel</span>
+                    <strong>{trackedRequest.status}</strong>
+                  </div>
+                  <div className={styles.trackResultItem}>
+                    <span>DerniÃ¨re mise Ã  jour</span>
+                    <strong>{trackedRequest.lastUpdated}</strong>
+                  </div>
+                  <div className={styles.trackResultItem}>
+                    <span>Temps restant estimÃ©</span>
+                    <strong>{trackedRequest.estimatedRemaining}</strong>
+                  </div>
+                  <div className={styles.trackResultItem}>
+                    <span>Service responsable</span>
+                    <strong>{trackedRequest.responsibleService}</strong>
+                  </div>
+                </div>
+
+                <p className={styles.trackResultAction}>{trackedRequest.nextAction}</p>
+              </div>
+            )}
+
             <div className={styles.stepsBlock}>
-              <p className={styles.stepsTitle}>Étapes du processus</p>
-              <div className={styles.stepsGrid}>
-                {PROCESS_STEPS.map((step) => {
+              <p className={styles.stepsTitle}>Ã‰tapes du processus</p>
+              <div
+                key={trackedRequest?.reference ?? "default"}
+                className={`${styles.stepsGrid} ${trackedRequest ? styles.stepsGridAnimated : ""}`}
+              >
+                {(trackedRequest?.steps ?? PROCESS_STEPS).map((step) => {
                   const Icon = step.icon;
                   const stepClass =
                     step.state === "done"
@@ -645,7 +1233,7 @@ export default function Dashboard() {
                   return (
                     <div key={step.label} className={styles.stepItem}>
                       <div className={`${styles.stepDot} ${stepClass}`}>
-                        <Icon size={15} />
+                        <Icon size={14} />
                       </div>
                       <strong>{step.label}</strong>
                       <span>{step.date}</span>
@@ -666,7 +1254,7 @@ export default function Dashboard() {
 
             <div className={styles.paymentHighlight}>
               <div>
-                <p>Montant à régler</p>
+                <p>Montant Ã  rÃ©gler</p>
                 <strong>125 000 DZD</strong>
                 <span>2 paiement(s) en attente</span>
               </div>
@@ -691,7 +1279,7 @@ export default function Dashboard() {
                     <span>{payment.date}</span>
                   </div>
 
-                  <button type="button" className={styles.downloadButton} aria-label={`Télécharger le reçu ${payment.code}`}>
+                  <button type="button" className={styles.downloadButton} aria-label={`TÃ©lÃ©charger le reÃ§u ${payment.code}`}>
                     <Download size={16} />
                   </button>
                 </article>
@@ -703,7 +1291,7 @@ export default function Dashboard() {
         <section className={styles.contentGridSecondary} data-onboarding-id="dashboard-quick-access">
           <section className={`${styles.card} ${styles.quickAccessCard}`}>
             <div className={styles.cardHeader}>
-              <h2>Accès rapides</h2>
+              <h2>AccÃ¨s rapides</h2>
             </div>
 
             <div className={styles.quickGrid}>
@@ -724,9 +1312,9 @@ export default function Dashboard() {
           <section className={`${styles.card} ${styles.mapCard}`}>
             <div className={styles.mapCopy}>
               <div className={styles.cardHeader}>
-                <h2>Carte minière interactive</h2>
+                <h2>Carte miniÃ¨re interactive</h2>
               </div>
-              <p className={styles.sectionLead}>Explorer les zones minières, gisements et titres miniers.</p>
+              <p className={styles.sectionLead}>Explorer les zones miniÃ¨res, gisements et titres miniers.</p>
               <button type="button" className={styles.mapButton} onClick={() => navigate("/carte/carte_public")}>
                 <span>Ouvrir la carte</span>
                 <ArrowRight size={15} />
@@ -740,7 +1328,7 @@ export default function Dashboard() {
             <div className={styles.mapLegend}>
               <span><i className={styles.legendDotOrange} /> Gisements</span>
               <span><i className={styles.legendDotGreen} /> Zones ouvertes</span>
-              <span><i className={styles.legendDotRed} /> Zones réservées</span>
+              <span><i className={styles.legendDotRed} /> Zones rÃ©servÃ©es</span>
               <span><i className={styles.legendDotBlue} /> Mes permis</span>
               <span><i className={styles.legendDotViolet} /> Mes demandes</span>
             </div>
@@ -750,8 +1338,8 @@ export default function Dashboard() {
         <section className={styles.footerGrid}>
           <section className={styles.newsletterCard}>
             <div>
-              <h2>Restez informé</h2>
-              <p>Recevez les dernières actualités et mises à jour du secteur minier.</p>
+              <h2>Restez informÃ©</h2>
+              <p>Recevez les derniÃ¨res actualitÃ©s et mises Ã  jour du secteur minier.</p>
             </div>
             <form className={styles.newsletterForm}>
               <input type="email" placeholder="Votre adresse email" aria-label="Adresse email" />
@@ -766,7 +1354,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <h2>Besoin d&apos;aide ?</h2>
-                <p>Notre équipe est à votre disposition</p>
+                <p>Notre Ã©quipe est Ã  votre disposition</p>
               </div>
             </div>
 

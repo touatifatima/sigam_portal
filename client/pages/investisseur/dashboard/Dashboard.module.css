@@ -283,9 +283,9 @@
   position: absolute;
   inset: 0;
   background: url("../../../src/assets/magnific_wide-shot-of-a-large-open_xgvJiosjfW.png") center center / cover no-repeat;
-  background-position: 62% 54%;
-  transform: scale(1.1);
-  filter: saturate(1.02) contrast(1.02);
+  background-position: 60% 48%;
+  transform: scale(1.06);
+  filter: saturate(1.04) contrast(1.03);
 }
 
 .heroOverlay {
@@ -324,12 +324,34 @@
 .heroTitle {
   margin: 0;
   color: #fff;
-  font-family: "Fraunces", Georgia, serif;
-  font-size: clamp(2.4rem, 4.6vw, 4.55rem);
-  line-height: 0.96;
-  font-weight: 800;
-  letter-spacing: -0.05em;
-  max-width: 12.5ch;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.08em;
+  width: fit-content;
+  max-width: min(100%, 34rem);
+  font-family: "Fraunces", "Playfair Display", "Times New Roman", serif;
+  font-size: clamp(2.7rem, 4.15vw, 5rem);
+  line-height: 0.88;
+  font-weight: 900;
+  letter-spacing: -0.045em;
+  text-wrap: pretty;
+  text-shadow: 0 2px 16px rgba(9, 14, 26, 0.42);
+}
+
+.heroTitleLine {
+  display: block;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.heroTitleWhite {
+  color: #fff;
+}
+
+.heroTitleGold {
+  color: #d4a017;
+  font-style: italic;
 }
 
 .heroTitle em {
@@ -676,6 +698,11 @@
   background: #fff0ed;
 }
 
+.requestTone_green {
+  color: #16a36c;
+  background: #e5f7ef;
+}
+
 .requestBody {
   min-width: 0;
 }
@@ -723,6 +750,11 @@
   background: #ffe6e3;
 }
 
+.requestStatus_green {
+  color: #16a36c;
+  background: #e5f7ef;
+}
+
 .progressRow {
   margin-top: 0.65rem;
   display: flex;
@@ -755,6 +787,10 @@
   background: linear-gradient(90deg, #ff9990 0%, #ef6b5b 100%);
 }
 
+.progressFill_green {
+  background: linear-gradient(90deg, #8fe2bd 0%, #16a36c 100%);
+}
+
 .progressRow span {
   color: #55606f;
   font-size: 0.78rem;
@@ -770,6 +806,34 @@
 .requestFootHint {
   color: #6c7584;
   font-size: 0.74rem;
+}
+
+.requestEmptyState {
+  min-height: 220px;
+  border-radius: 18px;
+  border: 1px dashed rgba(217, 220, 228, 0.95);
+  background: linear-gradient(180deg, #fbfcfe 0%, #ffffff 100%);
+  display: grid;
+  place-items: center;
+  gap: 0.65rem;
+  color: #6b7280;
+  text-align: center;
+  padding: 1.1rem;
+}
+
+.requestEmptyState p {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.requestEmptyPulse {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, rgba(216, 148, 29, 0.18), rgba(216, 148, 29, 0.04));
+  border: 1px solid rgba(216, 148, 29, 0.2);
+  box-shadow: 0 12px 28px rgba(216, 148, 29, 0.1);
 }
 
 .trackRow {
@@ -790,6 +854,13 @@
   background: #fff;
   color: #99a2b2;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.trackField:focus-within {
+  border-color: rgba(216, 148, 29, 0.45);
+  box-shadow: 0 10px 24px rgba(216, 148, 29, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  transform: translateY(-1px);
 }
 
 .trackField input {
@@ -813,6 +884,25 @@
   font-weight: 900;
   cursor: pointer;
   box-shadow: 0 10px 20px rgba(191, 124, 18, 0.22);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+
+.trackButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 22px rgba(191, 124, 18, 0.25);
+}
+
+.trackButton:disabled {
+  cursor: wait;
+  opacity: 0.82;
+}
+
+.trackSpinner {
+  animation: spin 0.85s linear infinite;
 }
 
 .stepsBlock {
@@ -830,6 +920,10 @@
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 0.45rem;
+}
+
+.stepsGridAnimated {
+  animation: trackerReveal 0.24s ease-out;
 }
 
 .stepItem {
@@ -873,6 +967,143 @@
   margin-top: 0.18rem;
   color: #8a92a0;
   font-size: 0.72rem;
+}
+
+.trackError {
+  margin-top: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 14px;
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  background: linear-gradient(180deg, #fff7f7 0%, #fffdfd 100%);
+  color: #b42318;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.trackResult {
+  margin-top: 0.85rem;
+  padding: 0.95rem;
+  border-radius: 18px;
+  border: 1px solid rgba(228, 232, 239, 0.98);
+  background: linear-gradient(180deg, #fffefb 0%, #ffffff 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.trackTone_blue {
+  border-color: rgba(47, 116, 255, 0.14);
+}
+
+.trackTone_gold {
+  border-color: rgba(216, 148, 29, 0.18);
+}
+
+.trackTone_green {
+  border-color: rgba(18, 160, 111, 0.16);
+}
+
+.trackTone_red {
+  border-color: rgba(239, 107, 91, 0.18);
+}
+
+.trackTone_violet {
+  border-color: rgba(139, 92, 246, 0.16);
+}
+
+.trackResultHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.trackResultTitleBlock {
+  min-width: 0;
+}
+
+.trackResultEyebrow {
+  margin: 0;
+  color: #d18a12;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.trackResultTitleBlock h3 {
+  margin: 0.2rem 0 0;
+  color: #172033;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.trackResultBadge {
+  flex-shrink: 0;
+  padding: 0.38rem 0.65rem;
+  border-radius: 999px;
+  background: #f6f8fb;
+  color: #5d6778;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.trackResultGrid {
+  margin-top: 0.85rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.trackResultItem {
+  padding: 0.72rem 0.75rem;
+  border-radius: 14px;
+  background: #fafbfd;
+  border: 1px solid rgba(230, 234, 241, 0.92);
+}
+
+.trackResultItem span {
+  display: block;
+  color: #6f7685;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.trackResultItem strong {
+  display: block;
+  margin-top: 0.22rem;
+  color: #172033;
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.trackResultAction {
+  margin: 0.85rem 0 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(230, 234, 241, 0.92);
+  color: #5d6778;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  font-weight: 600;
+}
+
+@keyframes trackerReveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .contentGrid > .card:nth-child(2) {
@@ -1441,7 +1672,7 @@
   }
 
   .heroPanel {
-    max-width: 420px;
+    max-width: none;
   }
 
   .contentGrid,
@@ -1470,6 +1701,25 @@
   }
 }
 
+@media (max-width: 980px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .heroGrid {
+    min-height: auto;
+    padding: 1.8rem;
+  }
+
+  .heroContent {
+    max-width: none;
+  }
+
+  .heroPanel {
+    width: 100%;
+  }
+}
+
 @media (max-width: 760px) {
   .headerInner {
     padding-inline: 0.85rem;
@@ -1482,6 +1732,10 @@
 
   .main {
     padding-inline: 0.85rem;
+    transform: scale(0.98);
+    transform-origin: top center;
+    width: calc(100% / 0.98);
+    margin-inline: auto;
   }
 
   .hero {
@@ -1492,17 +1746,23 @@
     padding: 1.15rem;
   }
 
+  .heroContent {
+    max-width: 100%;
+  }
+
   .heroTitle {
-    font-size: clamp(2rem, 9vw, 3rem);
+    font-size: clamp(2.15rem, 8.4vw, 3.45rem);
+    gap: 0.06em;
   }
 
   .heroFeatures {
-    gap: 0.75rem;
+    gap: 0.65rem;
   }
 
   .heroFeature {
     min-width: 0;
     width: 100%;
+    max-width: none;
   }
 
   .heroActions {
@@ -1517,6 +1777,47 @@
 
   .statsGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .card {
+    padding: 0.95rem;
+  }
+
+  .requestTopLine {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.45rem;
+  }
+
+  .requestStatus {
+    white-space: normal;
+  }
+
+  .trackRow {
+    flex-direction: column;
+  }
+
+  .trackButton {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  .trackResultGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .trackResultHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .trackResultBadge {
+    align-self: flex-start;
+  }
+
+  .stepsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
   }
 
   .paymentHighlight,
@@ -1576,6 +1877,31 @@
 }
 
 @media (max-width: 520px) {
+  .main {
+    padding-inline: 0.7rem;
+    padding-top: 0.9rem;
+    padding-bottom: 1.4rem;
+    transform: scale(0.96);
+    transform-origin: top center;
+    width: calc(100% / 0.96);
+    margin-inline: auto;
+  }
+
+  .hero {
+    border-radius: 20px;
+  }
+
+  .heroGrid {
+    padding: 0.95rem;
+    gap: 0.9rem;
+  }
+
+  .heroEyebrow {
+    letter-spacing: 0.18em;
+    font-size: 0.68rem;
+    margin-bottom: 0.65rem;
+  }
+
   .topNavItem {
     height: 58px;
     padding-inline: 0.7rem;
@@ -1598,8 +1924,32 @@
     grid-template-columns: 1fr;
   }
 
+  .statCard {
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 0.7rem;
+    padding: 0.85rem;
+    border-radius: 16px;
+  }
+
+  .statIcon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .contentGrid,
+  .contentGridSecondary,
+  .footerGrid {
+    gap: 0.75rem;
+  }
+
+  .requestList {
+    gap: 0.75rem;
+    margin-top: 0.8rem;
+  }
+
   .requestRow {
     grid-template-columns: 1fr;
+    gap: 0.65rem;
   }
 
   .requestIcon {
@@ -1611,6 +1961,31 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 0.3rem;
+  }
+
+  .paymentHighlight {
+    padding: 0.85rem;
+  }
+
+  .mapVisual {
+    width: 100%;
+    min-height: 132px;
+    border-radius: 18px;
+  }
+
+  .mapImage {
+    width: 80%;
+    height: 80%;
+    transform: translateY(8%) scale(1);
+  }
+
+  .mapLegend {
+    min-width: 0;
+    gap: 0.35rem;
+  }
+
+  .mapLegend span {
+    font-size: 0.75rem;
   }
 
   .supportActions {
