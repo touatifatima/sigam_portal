@@ -1336,17 +1336,6 @@ export default function Dashboard() {
         </section>
 
         <section className={styles.footerGrid}>
-          <section className={styles.newsletterCard}>
-            <div>
-              <h2>Restez informÃ©</h2>
-              <p>Recevez les derniÃ¨res actualitÃ©s et mises Ã  jour du secteur minier.</p>
-            </div>
-            <form className={styles.newsletterForm}>
-              <input type="email" placeholder="Votre adresse email" aria-label="Adresse email" />
-              <button type="button">S&apos;abonner</button>
-            </form>
-          </section>
-
           <section className={styles.supportCard} id="support">
             <div className={styles.supportCopy}>
               <div className={styles.supportBadge}>

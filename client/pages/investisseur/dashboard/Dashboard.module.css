@@ -1477,17 +1477,6 @@
   gap: 0.95rem;
 }
 
-.newsletterCard {
-  grid-column: span 6;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  border-color: #f0e1c0;
-  background: linear-gradient(180deg, #fffdf8 0%, #fff8ec 100%);
-}
-
-.newsletterCard h2,
 .supportCard h2 {
   margin: 0;
   color: #172033;
@@ -1495,46 +1484,14 @@
   font-weight: 900;
 }
 
-.newsletterCard p,
 .supportCard p {
   margin: 0.25rem 0 0;
   color: #707786;
   font-size: 0.9rem;
 }
 
-.newsletterForm {
-  display: flex;
-  flex: 1;
-  justify-content: flex-end;
-  gap: 0.65rem;
-  min-width: 280px;
-}
-
-.newsletterForm input {
-  flex: 1;
-  min-width: 180px;
-  min-height: 46px;
-  border: 1px solid #eee1c7;
-  border-radius: 12px;
-  padding: 0 0.95rem;
-  background: #fff;
-  outline: none;
-  font: inherit;
-}
-
-.newsletterForm button {
-  min-height: 46px;
-  padding: 0 1rem;
-  border: 0;
-  border-radius: 12px;
-  background: #f3c96a;
-  color: #975d0e;
-  font-weight: 900;
-  cursor: pointer;
-}
-
 .supportCard {
-  grid-column: span 6;
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1624,7 +1581,6 @@
   .contentGrid > .card:nth-child(3),
   .quickAccessCard,
   .mapCard,
-  .newsletterCard,
   .supportCard {
     grid-column: span 12;
   }
@@ -1686,7 +1642,6 @@
   .contentGrid > .card:nth-child(3),
   .quickAccessCard,
   .mapCard,
-  .newsletterCard,
   .supportCard {
     grid-column: span 12;
   }
@@ -1821,7 +1776,6 @@
   }
 
   .paymentHighlight,
-  .newsletterCard,
   .supportCard {
     flex-direction: column;
     align-items: flex-start;
@@ -1854,17 +1808,6 @@
 
   .stepsGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .newsletterForm {
-    width: 100%;
-    min-width: 0;
-    flex-direction: column;
-  }
-
-  .newsletterForm input,
-  .newsletterForm button {
-    width: 100%;
   }
 
   .supportActions {
