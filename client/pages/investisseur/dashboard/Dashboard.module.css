@@ -695,6 +695,10 @@
 .progressFill_amber { background: linear-gradient(90deg, #fde68a, var(--gold-md)); }
 .progressFill_red   { background: linear-gradient(90deg, #fecdd3, var(--red)); }
 
+.progressFill_green {
+  background: linear-gradient(90deg, #8fe2bd 0%, #16a36c 100%);
+}
+
 .progressRow span {
   color: var(--ink-3); font-size: .7rem; font-weight: 700;
   min-width: 3ch; text-align: right; font-variant-numeric: tabular-nums;
@@ -764,6 +768,10 @@
     var(--border)  100%
   );
   z-index: 0;
+}
+
+.stepsGridAnimated {
+  animation: trackerReveal 0.24s ease-out;
 }
 
 .stepItem {

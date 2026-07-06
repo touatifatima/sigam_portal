@@ -27,7 +27,6 @@ try {
     'capacites',
     'summary',
     'statuts-juridiques',
-    'investisseur',
     'detenteur-morale',
     'representant-legal',
     'registre-commerce',
