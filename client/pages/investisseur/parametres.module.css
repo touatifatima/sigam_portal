@@ -292,7 +292,7 @@
   background: rgba(244, 248, 251, 0.7);
 }
 
-.accountCard > div:last-child {
+.accountCard>div:last-child {
   min-width: 0;
 }
 
@@ -412,7 +412,7 @@
   max-width: 360px;
 }
 
-.heroActions > * {
+.heroActions>* {
   max-width: 100%;
 }
 
@@ -484,7 +484,7 @@
   min-width: 0;
 }
 
-.sensitiveRow > div {
+.sensitiveRow>div {
   min-width: 0;
 }
 
