@@ -28,6 +28,7 @@ import styles from "./Dashboard.module.css";
 import algerieMapUrl from "@/src/assets/algerie.png";
 import { useAuthStore } from "@/src/store/useAuthStore";
 import { useAuthReady } from "@/src/hooks/useAuthReady";
+import heroDashboardImage from "@/src/assets/ChatGPT Image 17 juin 2026, 11_21_32.png";
 import { getDefaultDashboardPath, isCadastreRole } from "@/src/utils/roleNavigation";
 import { OnboardingTour, type OnboardingStep } from "@/components/onboarding/OnboardingTour";
 import {
