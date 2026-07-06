@@ -1,0 +1,42 @@
+# =========================
+# Database - Portail
+# =========================
+DATABASE_URL_PORTAIL="postgresql://postgres:Kingstar06@localhost:5432/sigam_only"
+
+TYPEORM_HOST=localhost
+TYPEORM_PORT=5432
+TYPEORM_USERNAME=postgres
+TYPEORM_PASSWORD=Kingstar06
+TYPEORM_DATABASE=sigam_only
+
+# =========================
+# Database - SIG (PostGIS)
+# =========================
+GIS_DATABASE_URL="postgresql://postgres:Kingstar06@localhost:5432/sig_gis"
+
+# =========================
+# App & Security
+# =========================
+JWT_SECRET="ANAM_dev2025@"
+PORT=3016
+RECAPTCHA_SECRET_KEY=6LdYTtIsAAAAAAACfRBsfwB4-IlFOguuxKkOBV5Z
+RECAPTCHA_MIN_SCORE=0.5
+RECAPTCHA_VERIFY_TIMEOUT_MS=8000
+RECAPTCHA_VERIFY_URLS=https://www.google.com/recaptcha/api/siteverify,https://www.recaptcha.net/recaptcha/api/siteverify
+RECAPTCHA_CA_BUNDLE_PATH=C:/Users/ANAM1406/Desktop/sigam_portal/server/certs/windows-ca-bundle.pem
+NODE_USE_SYSTEM_CA=1
+NODE_EXTRA_CA_CERTS=C:/Users/ANAM1406/Desktop/sigam_portal/server/certs/windows-ca-bundle.pem
+
+
+
+SMTP_TLS_SERVERNAME=smtp.gmail.com
+SMTP_TLS_REJECT_UNAUTHORIZED=false
+
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=fatmazohratouati80@gmail.com
+SMTP_PASS=hgkicfgvjurbckxx
+SMTP_FROM="ANAM Portail <no-reply@pom.dz>"
+
+
+

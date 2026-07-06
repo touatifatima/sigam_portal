@@ -1,22 +1,21 @@
 /* Navbar Styles */
 .navbar {
-  --brand: #8b3a62;
-  --brand-rose: #a65279;
-  --brand-dark: #2c2a56;
-  --brand-soft: #f0f3ff;
-  --border: rgba(139, 58, 98, 0.24);
-  --text: #2e2942;
-  --brand-gradient: linear-gradient(135deg, #8b3a62 0%, #8b3a62 100%);
-  --brand-gradient-hover: linear-gradient(135deg, #a65279 0%, #a65279 100%);
+  --brand: #b8850e;
+  --brand-dark: #0d1f3c;
+  --brand-soft: #fef9ec;
+  --border: rgba(215, 195, 145, 0.32);
+  --text: #1a2539;
+  --brand-gradient: linear-gradient(135deg, #d4a017 0%, #b8850e 100%);
+  --brand-gradient-hover: linear-gradient(135deg, #e0b020 0%, #c8930f 100%);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 2rem;
+  padding: 0 1.75rem;
   background: #ffffff;
   color: var(--brand-dark);
   height: 64px;
-  border-bottom: 1px solid var(--border);
-  box-shadow: 0 10px 24px rgba(139, 58, 98, 0.2);
+  border-bottom: 1px solid rgba(215, 195, 145, 0.38);
+  box-shadow: 0 1px 0 rgba(0,0,0,.04), 0 4px 16px rgba(10, 22, 50, 0.07);
 }
 
 .navbar-cadastre {
@@ -80,11 +79,29 @@
 
 .app-logo {
   display: flex;
-  align-items: baseline;
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  color: var(--text);
+  align-items: center;
+  gap: 0.55rem;
+  text-decoration: none;
+}
+
+.app-logo span {
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: var(--brand-dark);
+  line-height: 1;
+}
+
+/* Gold accent bar left of GUNAM */
+.app-logo::before {
+  content: "";
+  display: block;
+  width: 4px;
+  height: 28px;
+  border-radius: 99px;
+  background: linear-gradient(180deg, #e2b030 0%, #b8850e 100%);
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(184, 133, 14, 0.35);
 }
 
 .app-version {
@@ -116,23 +133,23 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.42rem 0.82rem;
+  padding: 0.4rem 0.85rem;
   border-radius: 999px;
-  border: 1px solid rgba(139, 58, 98, 0.26);
-  background: #faf3f7;
-  color: #7b3256;
-  font-size: 0.8rem;
-  font-weight: 600;
+  border: 1px solid rgba(13, 31, 60, 0.18);
+  background: rgba(13, 31, 60, 0.04);
+  color: #1a2c4a;
+  font-size: 0.79rem;
+  font-weight: 700;
   text-decoration: none;
   transition: all 0.2s ease;
   white-space: nowrap;
 }
 
 .role-nav-link:hover {
-  background: #f5e8ef;
-  border-color: rgba(139, 58, 98, 0.44);
-  color: #652744;
-  box-shadow: 0 6px 16px rgba(139, 58, 98, 0.18);
+  background: rgba(13, 31, 60, 0.08);
+  border-color: rgba(184, 133, 14, 0.42);
+  color: #0d1f3c;
+  box-shadow: 0 4px 12px rgba(13, 31, 60, 0.1);
 }
 
 .nav-cta {
@@ -798,22 +815,22 @@
 }
 
 .notification-icon {
-  width: 46px;
-  height: 46px;
-  border: 1px solid rgba(220, 228, 238, 0.95);
-  background: linear-gradient(180deg, #ffffff 0%, #fbfbfb 100%);
-  color: #42222d;
-  box-shadow: 0 12px 24px rgba(20, 28, 40, 0.08);
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(215, 195, 145, 0.45);
+  background: linear-gradient(180deg, #ffffff 0%, #fffdf7 100%);
+  color: #3a2c12;
+  box-shadow: 0 2px 8px rgba(10, 22, 50, 0.07);
 }
 
 .notification-icon svg {
-  color: #42222d;
+  color: #3a2c12;
 }
 
 .notification-icon:hover {
-  border-color: rgba(216, 171, 87, 0.42);
-  background: linear-gradient(180deg, #fffefb 0%, #fff7ea 100%);
-  box-shadow: 0 16px 26px rgba(20, 28, 40, 0.12);
+  border-color: rgba(184, 133, 14, 0.5);
+  background: linear-gradient(180deg, #fffdf5 0%, #fff8e0 100%);
+  box-shadow: 0 4px 16px rgba(184, 133, 14, 0.18);
 }
 
 .notifications-dropdown {
