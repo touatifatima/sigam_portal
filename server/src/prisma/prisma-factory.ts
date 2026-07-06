@@ -4,9 +4,11 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { config as loadEnv } from 'dotenv';
 import * as path from 'path';
 
-// Ensure environment variables (including DATABASE_URL) are loaded
-// when this module is imported, regardless of how the script is run.
+// Ensure environment variables are loaded when this module is imported,
+// regardless of how the script is run. Some local setups use `env` instead
+// of the conventional `.env`.
 loadEnv({ path: path.resolve(process.cwd(), '.env') });
+loadEnv({ path: path.resolve(process.cwd(), 'env') });
 
 // Reusable PrismaClient options using the Postgres adapter.
 export function createPrismaClientOptions(): any {
@@ -14,7 +16,7 @@ export function createPrismaClientOptions(): any {
 
   if (!connectionString) {
     throw new Error(
-      'DATABASE_URL is not set. Please define it in server/.env or your environment.',
+      'DATABASE_URL_PORTAIL is not set. Please define it in server/.env, server/env, or your environment.',
     );
   }
 

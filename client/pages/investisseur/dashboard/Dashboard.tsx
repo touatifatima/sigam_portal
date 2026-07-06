@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import Navbar from "@/pages/navbar/Navbar";
 import styles from "./Dashboard.module.css";
-import algeriaPremiumMapUrl from "@/src/assets/algeria-premium-map.png";
+import algerieMapUrl from "@/src/assets/algerie.png";
 import { useAuthStore } from "@/src/store/useAuthStore";
 import { useAuthReady } from "@/src/hooks/useAuthReady";
 import { getDefaultDashboardPath, isCadastreRole } from "@/src/utils/roleNavigation";
@@ -483,7 +483,9 @@ export default function Dashboard() {
               <h1 className={styles.heroTitle}>
                 Toutes vos <em>démarches</em>
                 <br />
-                minières, <em>en un seul endroit.</em>
+                minières, <em>en un seul</em>
+                <br />
+                <em>endroit.</em>
               </h1>
               <p className={styles.heroLead}>
                 Simplifiez, suivez et gérez l&apos;ensemble de vos demandes et permis
@@ -530,27 +532,70 @@ export default function Dashboard() {
 
             <aside className={styles.heroPanel}>
               <div className={styles.heroPanelHeader}>
-                <h2>Statut de mon entreprise</h2>
+                <h2>Mon entreprise</h2>
                 <span className={auth?.isEntrepriseVerified ? styles.statusVerified : styles.statusPending}>
-                  {auth?.isEntrepriseVerified ? "Vérifiée" : "En attente"}
+                  {auth?.isEntrepriseVerified ? "✓ Vérifiée" : "En attente"}
                 </span>
               </div>
-              <div className={styles.heroPanelBody}>
-                <p className={styles.heroPanelCompany}>{companyName}</p>
-                <p className={styles.heroPanelMeta}>NIF : 123456789012345</p>
-                <p className={styles.heroPanelMeta}>Statut : Actif</p>
+
+              <div className={styles.heroPanelCompanyRow}>
+                <div className={styles.heroPanelAvatar}>{companyInitials}</div>
+                <div className={styles.heroPanelBody}>
+                  <p className={styles.heroPanelCompany}>{companyName}</p>
+                  <p className={styles.heroPanelMeta}>NIF : 123456789012345</p>
+                  <p className={styles.heroPanelMeta}>Statut : <span className={styles.heroPanelActive}>Actif</span></p>
+                </div>
               </div>
+
+              <div className={styles.heroPanelStats}>
+                <div className={styles.heroPanelStat}>
+                  <strong>{stats.demandesEnCours || 17}</strong>
+                  <span>Demandes</span>
+                </div>
+                <div className={styles.heroPanelStatDivider} />
+                <div className={styles.heroPanelStat}>
+                  <strong>08</strong>
+                  <span>Permis actifs</span>
+                </div>
+                <div className={styles.heroPanelStatDivider} />
+                <div className={styles.heroPanelStat}>
+                  <strong>24</strong>
+                  <span>Approuvées</span>
+                </div>
+              </div>
+
               <button
                 type="button"
                 className={styles.heroPanelAction}
                 onClick={() => navigate("/investisseur/profil")}
               >
-                <User size={16} />
+                <User size={15} />
                 <span>Voir mon profil</span>
               </button>
             </aside>
           </div>
         </section>
+
+        {/* ── Barre de raccourcis rapides ── */}
+        <div className={styles.quickBar}>
+          {QUICK_LINKS
+            .filter(item => item.label !== "Paiements" && item.label !== "Mes demandes")
+            .map(item => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  className={`${styles.quickBarBtn} ${styles[`quickTone_${item.tone}`]}`}
+                  onClick={() => handleNavigate(item.href)}
+                >
+                  <span className={styles.quickBarIcon}><Icon size={18} /></span>
+                  <span className={styles.quickBarLabel}>{item.label}</span>
+                </button>
+              );
+            })
+          }
+        </div>
 
         <section className={styles.statsGrid} data-onboarding-id="dashboard-status">
           {HERO_STATS.map((item, index) => {
@@ -656,6 +701,69 @@ export default function Dashboard() {
             </div>
           </section>
 
+        </section>
+
+        <section className={styles.contentGridSecondary} data-onboarding-id="dashboard-quick-access">
+          <section className={`${styles.card} ${styles.mapCard}`}>
+            {/* Orbes décoratifs */}
+            <div className={styles.mapOrb1} aria-hidden="true" />
+            <div className={styles.mapOrb2} aria-hidden="true" />
+
+            <div className={styles.mapLeft}>
+              <div className={styles.mapCopy}>
+                <span className={styles.mapBadge}>
+                  <Map size={12} />
+                  Géologie &amp; Ressources
+                </span>
+                <h2 className={styles.mapTitle}>Carte minière<br />interactive</h2>
+                <p className={styles.mapDesc}>Explorez les zones minières, gisements et titres miniers actifs sur le territoire algérien.</p>
+
+                <div className={styles.mapMiniStats}>
+                  <div className={styles.mapMiniStat}>
+                    <strong>127</strong>
+                    <span>Concessions</span>
+                  </div>
+                  <div className={styles.mapMiniStatDiv} />
+                  <div className={styles.mapMiniStat}>
+                    <strong>48</strong>
+                    <span>Zones actives</span>
+                  </div>
+                  <div className={styles.mapMiniStatDiv} />
+                  <div className={styles.mapMiniStat}>
+                    <strong>09</strong>
+                    <span>Wilayas</span>
+                  </div>
+                </div>
+
+                <button type="button" className={styles.mapButton} onClick={() => navigate("/carte/carte_public")}>
+                  <span>Ouvrir la carte</span>
+                  <ArrowRight size={15} />
+                </button>
+              </div>
+
+              <div className={styles.mapLegend}>
+                <p className={styles.mapLegendTitle}>Légende</p>
+                <div className={styles.mapLegendGrid}>
+                  <span className={styles.legendPill}><i className={styles.legendDotOrange} />Gisements</span>
+                  <span className={styles.legendPill}><i className={styles.legendDotGreen} />Zones ouvertes</span>
+                  <span className={styles.legendPill}><i className={styles.legendDotRed} />Zones réservées</span>
+                  <span className={styles.legendPill}><i className={styles.legendDotBlue} />Mes permis</span>
+                  <span className={styles.legendPill}><i className={styles.legendDotViolet} />Mes demandes</span>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.mapVisual}>
+              <iframe
+                src="https://sig.anam.dz/portal/apps/experiencebuilder/experience?id=fc56f54b45264df2a5f4e07fd2462664"
+                className={styles.mapIframe}
+                title="Carte minière interactive"
+                loading="lazy"
+                allowFullScreen
+              />
+            </div>
+          </section>
+
           <section className={`${styles.card} ${styles.paymentCard}`}>
             <div className={styles.cardHeader}>
               <h2>Paiements</h2>
@@ -684,65 +792,16 @@ export default function Dashboard() {
                     <strong>{payment.code}</strong>
                     <span>{payment.label}</span>
                   </div>
-
                   <div className={styles.paymentMeta}>
                     <strong>{payment.amount}</strong>
                     <span className={styles.paymentPaid}>{payment.status}</span>
                     <span>{payment.date}</span>
                   </div>
-
                   <button type="button" className={styles.downloadButton} aria-label={`Télécharger le reçu ${payment.code}`}>
                     <Download size={16} />
                   </button>
                 </article>
               ))}
-            </div>
-          </section>
-        </section>
-
-        <section className={styles.contentGridSecondary} data-onboarding-id="dashboard-quick-access">
-          <section className={`${styles.card} ${styles.quickAccessCard}`}>
-            <div className={styles.cardHeader}>
-              <h2>Accès rapides</h2>
-            </div>
-
-            <div className={styles.quickGrid}>
-              {QUICK_LINKS.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <button key={item.label} type="button" className={`${styles.quickLink} ${styles[`quickTone_${item.tone}`]}`} onClick={() => handleNavigate(item.href)}>
-                    <span className={styles.quickIcon}>
-                      <Icon size={19} />
-                    </span>
-                    <span className={styles.quickLabel}>{item.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className={`${styles.card} ${styles.mapCard}`}>
-            <div className={styles.mapCopy}>
-              <div className={styles.cardHeader}>
-                <h2>Carte minière interactive</h2>
-              </div>
-              <p className={styles.sectionLead}>Explorer les zones minières, gisements et titres miniers.</p>
-              <button type="button" className={styles.mapButton} onClick={() => navigate("/carte/carte_public")}>
-                <span>Ouvrir la carte</span>
-                <ArrowRight size={15} />
-              </button>
-            </div>
-
-            <div className={styles.mapVisual} aria-hidden="true">
-              <AlgeriaMapIllustration />
-            </div>
-
-            <div className={styles.mapLegend}>
-              <span><i className={styles.legendDotOrange} /> Gisements</span>
-              <span><i className={styles.legendDotGreen} /> Zones ouvertes</span>
-              <span><i className={styles.legendDotRed} /> Zones réservées</span>
-              <span><i className={styles.legendDotBlue} /> Mes permis</span>
-              <span><i className={styles.legendDotViolet} /> Mes demandes</span>
             </div>
           </section>
         </section>
@@ -795,7 +854,7 @@ export default function Dashboard() {
 function AlgeriaMapIllustration() {
   return (
     <div className={styles.mapStage} aria-hidden="true">
-      <img className={styles.mapImage} src={algeriaPremiumMapUrl} alt="" aria-hidden="true" />
+      <img className={styles.mapImage} src={algerieMapUrl} alt="" aria-hidden="true" />
     </div>
   );
 }
