@@ -40,14 +40,14 @@ export class ActualitesService {
 
   private readonly defaults = [
     {
-      slug: 'lancement-guichet-numerique-pom',
-      title: 'Lancement du guichet numerique POM pour les demandes minieres',
+      slug: 'lancement-guichet-numerique-GUNAM',
+      title: 'Lancement du guichet numerique GUNAM pour les demandes minieres',
       excerpt:
         'Le portail evolue avec un parcours de depot plus rapide, une meilleure tracabilite et un suivi de dossier en temps reel.',
       content:
         "Le Portail des Activites Minieres met en service une nouvelle experience de depot numerique. Les utilisateurs peuvent preparer leurs pieces, suivre les etapes et recevoir des notifications consolidees depuis un seul espace.",
       category: 'Actualite' as ActualiteCategory,
-      author: 'Equipe POM',
+      author: 'Equipe GUNAM',
       imageUrl:
         'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1200&h=700&fit=crop&auto=format&q=80',
       isPublished: true,
@@ -368,7 +368,7 @@ export class ActualitesService {
             this.normalizeText(
               input.author,
               existing.author || 'Equipe POM',
-            ) || 'Equipe POM',
+            ) || 'Equipe GUNAM',
           imageUrl:
             typeof input.imageUrl === 'string'
               ? this.normalizeText(input.imageUrl) || null

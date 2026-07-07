@@ -29,8 +29,14 @@ import algerieMapUrl from "@/src/assets/algerie.png";
 import { useAuthStore } from "@/src/store/useAuthStore";
 import { useAuthReady } from "@/src/hooks/useAuthReady";
 import heroDashboardImage from "@/src/assets/ChatGPT Image 17 juin 2026, 11_21_32.png";
-import { getDefaultDashboardPath, isCadastreRole } from "@/src/utils/roleNavigation";
-import { OnboardingTour, type OnboardingStep } from "@/components/onboarding/OnboardingTour";
+import {
+  getDefaultDashboardPath,
+  isCadastreRole,
+} from "@/src/utils/roleNavigation";
+import {
+  OnboardingTour,
+  type OnboardingStep,
+} from "@/components/onboarding/OnboardingTour";
 import {
   getHasSeenOnboarding,
   getOnboardingActive,
@@ -157,12 +163,27 @@ type TrackerResult = {
   steps: TrackerStep[];
 };
 
-type PaymentItem = {
-  code: string;
-  label: string;
-  amount: string;
-  status: string;
-  date: string;
+type DashboardPaymentStatus =
+  "paid" | "pending" | "failed" | "expired" | "cancelled";
+
+type DashboardPaymentSummary = {
+  totalDue: number;
+  pendingCount: number;
+};
+
+type DashboardPaymentItem = {
+  id: number;
+  requestReference: string;
+  permitType: string;
+  amount: number;
+  status: DashboardPaymentStatus;
+  paymentDate: string;
+  receiptUrl?: string | null;
+};
+
+type DashboardPaymentsResponse = {
+  summary: DashboardPaymentSummary;
+  latestPayments: DashboardPaymentItem[];
 };
 
 type QuickLink = {
@@ -227,7 +248,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Accueil", icon: Home, href: "/investisseur/InvestorDashboard" },
   { label: "Mes demandes", icon: FileText, href: "/investisseur/demandes" },
   { label: "Paiements", icon: CreditCard, href: "/investisseur/statistiques" },
-  { label: "Carte miniÃ¨re", icon: Map, href: "/carte/carte_public" },
+  { label: "Carte minière", icon: Map, href: "/carte/carte_public" },
   { label: "Documents", icon: FileText, href: "/documentation" },
   { label: "Aide & Support", icon: HelpCircle, href: "/faq" },
 ];
@@ -235,16 +256,16 @@ const NAV_ITEMS: NavItem[] = [
 const HERO_FEATURES: HeroFeature[] = [
   {
     title: "100% en ligne",
-    description: "Sans dÃ©placement",
+    description: "Sans déplacement",
     icon: Building2,
   },
   {
-    title: "SÃ©curisÃ©",
-    description: "DonnÃ©es protÃ©gÃ©es",
+    title: "Sécurisé",
+    description: "Données protégées",
     icon: ShieldCheck,
   },
   {
-    title: "Paiements sÃ©curisÃ©s",
+    title: "Paiements sécurisés",
     description: "Via SATIM",
     icon: CreditCard,
   },
@@ -252,11 +273,31 @@ const HERO_FEATURES: HeroFeature[] = [
 
 const PROCESS_STEPS: ProcessStep[] = [
   { label: "Soumise", date: "12/05/2025", state: "done", icon: CheckCircle2 },
-  { label: "ReÃ§ue", date: "13/05/2025", state: "done", icon: CheckCircle2 },
-  { label: "En instruction", date: "16/05/2025", state: "active", icon: Clock3 },
-  { label: "Validation", date: "En attente", state: "pending", icon: CheckCircle2 },
-  { label: "Paiement", date: "En attente", state: "pending", icon: CheckCircle2 },
-  { label: "DÃ©livrÃ©e", date: "En attente", state: "pending", icon: CheckCircle2 },
+  { label: "Refusée", date: "13/05/2025", state: "done", icon: CheckCircle2 },
+  {
+    label: "En instruction",
+    date: "16/05/2025",
+    state: "active",
+    icon: Clock3,
+  },
+  {
+    label: "Validation",
+    date: "En attente",
+    state: "pending",
+    icon: CheckCircle2,
+  },
+  {
+    label: "Paiement",
+    date: "En attente",
+    state: "pending",
+    icon: CheckCircle2,
+  },
+  {
+    label: "DÃ©livrÃ©e",
+    date: "En attente",
+    state: "pending",
+    icon: CheckCircle2,
+  },
 ];
 
 const normalizeReference = (value: string) =>
@@ -267,6 +308,84 @@ const formatDateLabel = (value?: string | null) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "En attente";
   return date.toLocaleDateString("fr-FR");
+};
+
+const formatAmountDzd = (value?: number | null) => {
+  const amount = Number(value ?? 0);
+  const formatted = new Intl.NumberFormat("fr-FR", {
+    maximumFractionDigits: 0,
+  })
+    .format(Number.isFinite(amount) ? amount : 0)
+    .replace(/\u202f/g, " ");
+
+  return `${formatted} DZD`;
+};
+
+const formatPaymentDate = (value?: string | null) => {
+  if (!value) return "--";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--";
+  return date.toLocaleDateString("fr-FR");
+};
+
+const PAYMENT_STATUS_LABELS: Record<DashboardPaymentStatus, string> = {
+  paid: "Payé",
+  pending: "En attente",
+  failed: "Échoué",
+  expired: "Expiré",
+  cancelled: "Annulé",
+};
+
+const getPaymentStatusClassName = (status: DashboardPaymentStatus) => {
+  switch (status) {
+    case "paid":
+      return styles.paymentStatusPaid;
+    case "failed":
+      return styles.paymentStatusFailed;
+    case "expired":
+      return styles.paymentStatusExpired;
+    case "cancelled":
+      return styles.paymentStatusCancelled;
+    case "pending":
+    default:
+      return styles.paymentStatusPending;
+  }
+};
+
+const getPaymentReceiptHref = (
+  apiURL: string | undefined,
+  receiptUrl?: string | null,
+) => {
+  if (!receiptUrl) return null;
+  if (/^https?:\/\//i.test(receiptUrl)) return receiptUrl;
+  if (!apiURL) return receiptUrl;
+  return `${apiURL.replace(/\/+$/, "")}${receiptUrl.startsWith("/") ? "" : "/"}${receiptUrl}`;
+};
+
+const normalizePaymentStatus = (value: unknown): DashboardPaymentStatus => {
+  const normalized = String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\s_-]+/g, "")
+    .trim()
+    .toLowerCase();
+
+  if (!normalized) return "pending";
+  if (normalized.includes("paid") || normalized.includes("paye")) return "paid";
+  if (normalized.includes("fail") || normalized.includes("echou"))
+    return "failed";
+  if (normalized.includes("expir")) return "expired";
+  if (normalized.includes("cancel") || normalized.includes("annul"))
+    return "cancelled";
+  if (
+    normalized.includes("attente") ||
+    normalized.includes("pending") ||
+    normalized.includes("due")
+  ) {
+    return "pending";
+  }
+
+  return "pending";
 };
 
 const formatRelativeDateLabel = (value?: string | null) => {
@@ -290,7 +409,6 @@ const formatRelativeDateLabel = (value?: string | null) => {
     year: "numeric",
   });
 };
-
 
 const toTimestamp = (value?: string | null) => {
   if (!value) return null;
@@ -358,7 +476,13 @@ const computeBusinessDeadline = (item: TrackerRequestItem) => {
   nowFloor.setHours(0, 0, 0, 0);
 
   if (nowFloor >= deadline) {
-    return { mode: "ongoing" as const, used: total, remaining: 0, total, deadline };
+    return {
+      mode: "ongoing" as const,
+      used: total,
+      remaining: 0,
+      total,
+      deadline,
+    };
   }
 
   const remaining = countBusinessDaysBetween(nowFloor, deadline);
@@ -367,21 +491,41 @@ const computeBusinessDeadline = (item: TrackerRequestItem) => {
   return { mode: "ongoing" as const, used, remaining, total, deadline };
 };
 
-const resolveTrackerStage = (item: TrackerRequestItem, detail?: TrackerDetailResponse | null) => {
+const resolveTrackerStage = (
+  item: TrackerRequestItem,
+  detail?: TrackerDetailResponse | null,
+) => {
   const raw = normalizeReference(
-    String(detail?.statut_demande ?? item.statut_demande ?? detail?.procedure?.statut_proc ?? ""),
+    String(
+      detail?.statut_demande ??
+        item.statut_demande ??
+        detail?.procedure?.statut_proc ??
+        "",
+    ),
   );
 
-  if (raw.includes("DELIV") || raw.includes("LIVR") || detail?.procedure?.date_fin_proc) {
+  if (
+    raw.includes("DELIV") ||
+    raw.includes("LIVR") ||
+    detail?.procedure?.date_fin_proc
+  ) {
     return 5;
   }
   if (raw.includes("PAI") || (detail?.facture?.paiements?.length ?? 0) > 0) {
     return 4;
   }
-  if (raw.includes("VALID") || raw.includes("ACCEP") || raw.includes("APPROUV")) {
+  if (
+    raw.includes("VALID") ||
+    raw.includes("ACCEP") ||
+    raw.includes("APPROUV")
+  ) {
     return 3;
   }
-  if (raw.includes("INSTR") || raw.includes("ANALYS") || raw.includes("COURS")) {
+  if (
+    raw.includes("INSTR") ||
+    raw.includes("ANALYS") ||
+    raw.includes("COURS")
+  ) {
     return 2;
   }
   if (raw.includes("RECU") || raw.includes("RECEP") || raw.includes("RECEV")) {
@@ -396,9 +540,14 @@ const resolveTrackerStage = (item: TrackerRequestItem, detail?: TrackerDetailRes
   return 0;
 };
 
-const buildTrackerSteps = (item: TrackerRequestItem, detail?: TrackerDetailResponse | null): TrackerStep[] => {
+const buildTrackerSteps = (
+  item: TrackerRequestItem,
+  detail?: TrackerDetailResponse | null,
+): TrackerStep[] => {
   const stage = resolveTrackerStage(item, detail);
-  const paymentDate = detail?.facture?.paiements?.find((entry) => entry?.date_paiement)?.date_paiement;
+  const paymentDate = detail?.facture?.paiements?.find(
+    (entry) => entry?.date_paiement,
+  )?.date_paiement;
   const procedureSteps = detail?.procedure?.ProcedureEtape ?? [];
   const firstProcedureDate =
     procedureSteps.find((entry) => entry?.date_debut)?.date_debut ??
@@ -407,34 +556,65 @@ const buildTrackerSteps = (item: TrackerRequestItem, detail?: TrackerDetailRespo
 
   const stepDates = [
     detail?.date_demande ?? item.date_demande,
-    firstProcedureDate ?? detail?.date_instruction ?? item.date_instruction ?? item.date_demande,
-    detail?.date_instruction ?? item.date_instruction ?? firstProcedureDate ?? item.date_demande,
-    detail?.date_fin_instruction ?? detail?.procedure?.date_fin_proc ?? detail?.date_instruction ?? item.date_instruction,
-    paymentDate ?? detail?.date_fin_instruction ?? detail?.procedure?.date_fin_proc ?? null,
-    detail?.procedure?.date_fin_proc ?? paymentDate ?? detail?.date_fin_instruction ?? null,
+    firstProcedureDate ??
+      detail?.date_instruction ??
+      item.date_instruction ??
+      item.date_demande,
+    detail?.date_instruction ??
+      item.date_instruction ??
+      firstProcedureDate ??
+      item.date_demande,
+    detail?.date_fin_instruction ??
+      detail?.procedure?.date_fin_proc ??
+      detail?.date_instruction ??
+      item.date_instruction,
+    paymentDate ??
+      detail?.date_fin_instruction ??
+      detail?.procedure?.date_fin_proc ??
+      null,
+    detail?.procedure?.date_fin_proc ??
+      paymentDate ??
+      detail?.date_fin_instruction ??
+      null,
   ];
 
-  return ["Soumise", "ReÃ§ue", "En instruction", "Validation", "Paiement", "DÃ©livrÃ©e"].map(
-    (label, index) => ({
-      label,
-      date: index <= stage ? formatDateLabel(stepDates[index]) : "En attente",
-      state: index < stage ? "done" : index === stage ? "active" : "pending",
-      icon: index === 2 ? Clock3 : CheckCircle2,
-    }),
-  );
+  return [
+    "Soumise",
+    "Refusée",
+    "En instruction",
+    "Validation",
+    "Paiement",
+    "Délivrée",
+  ].map((label, index) => ({
+    label,
+    date: index <= stage ? formatDateLabel(stepDates[index]) : "En attente",
+    state: index < stage ? "done" : index === stage ? "active" : "pending",
+    icon: index === 2 ? Clock3 : CheckCircle2,
+  }));
 };
 
-const buildTrackerResult = (item: TrackerRequestItem, detail?: TrackerDetailResponse | null): TrackerResult => {
+const buildTrackerResult = (
+  item: TrackerRequestItem,
+  detail?: TrackerDetailResponse | null,
+): TrackerResult => {
   const reference = String(
-    detail?.code_demande || detail?.short_code || item.code_demande || `DEM-${item.id_demande}`,
+    detail?.code_demande ||
+      detail?.short_code ||
+      item.code_demande ||
+      `DEM-${item.id_demande}`,
   );
-  const status = String(detail?.statut_demande || item.statut_demande || detail?.procedure?.statut_proc || "--");
+  const status = String(
+    detail?.statut_demande ||
+      item.statut_demande ||
+      detail?.procedure?.statut_proc ||
+      "--",
+  );
   const title =
     detail?.typeProcedure?.libelle ||
     detail?.typePermis?.lib_type ||
     item.typeProcedure?.libelle ||
     item.typePermis?.lib_type ||
-    "Demande miniÃ¨re";
+    "Demande minière";
 
   const timestamps = [
     toTimestamp(detail?.date_demande ?? item.date_demande),
@@ -444,10 +624,17 @@ const buildTrackerResult = (item: TrackerRequestItem, detail?: TrackerDetailResp
     toTimestamp(detail?.procedure?.date_fin_proc),
     ...(detail?.facture?.paiements ?? [])
       .map((entry) => toTimestamp(entry?.date_paiement))
-      .filter((value): value is number => typeof value === "number" && Number.isFinite(value)),
-  ].filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+      .filter(
+        (value): value is number =>
+          typeof value === "number" && Number.isFinite(value),
+      ),
+  ].filter(
+    (value): value is number =>
+      typeof value === "number" && Number.isFinite(value),
+  );
 
-  const latestTimestamp = timestamps.length > 0 ? Math.max(...timestamps) : null;
+  const latestTimestamp =
+    timestamps.length > 0 ? Math.max(...timestamps) : null;
   const lastUpdated = latestTimestamp
     ? new Date(latestTimestamp).toLocaleDateString("fr-FR")
     : "En attente";
@@ -455,9 +642,9 @@ const buildTrackerResult = (item: TrackerRequestItem, detail?: TrackerDetailResp
   const deadlineInfo = computeBusinessDeadline(item);
   const estimatedRemaining =
     deadlineInfo?.mode === "recevable"
-      ? `DÃ©lai clÃ´turÃ© en ${deadlineInfo.used} jour(s) ouvrable(s)`
+      ? `Délai clôturé en ${deadlineInfo.used} jour(s) ouvrable(s)`
       : deadlineInfo?.mode === "rejetee"
-        ? `ClÃ´turÃ© en ${deadlineInfo.used} jour(s) ouvrable(s)`
+        ? `Clôturé en ${deadlineInfo.used} jour(s) ouvrable(s)`
         : deadlineInfo
           ? `Il reste ${deadlineInfo.remaining} jour(s) ouvrable(s)`
           : "Estimation indisponible";
@@ -470,12 +657,12 @@ const buildTrackerResult = (item: TrackerRequestItem, detail?: TrackerDetailResp
     "Service d'instruction";
 
   const nextActionByStage = [
-    "DÃ©pÃ´t enregistrÃ©. En attente de rÃ©ception.",
-    "RÃ©ception du dossier en cours.",
+    "Dépôt enregistré. En attente de réception.",
+    "Réception du dossier en cours.",
     "Instruction technique en cours.",
     "Validation administrative en attente.",
     "Paiement attendu ou en cours de confirmation.",
-    "DÃ©livrance du dossier en cours.",
+    "Délivrance du dossier en cours.",
   ];
 
   const statusTone: TrackerResult["statusTone"] = /REJET/i.test(status)
@@ -498,23 +685,42 @@ const buildTrackerResult = (item: TrackerRequestItem, detail?: TrackerDetailResp
     lastUpdated,
     estimatedRemaining,
     responsibleService,
-    nextAction: nextActionByStage[Math.min(stage, nextActionByStage.length - 1)],
+    nextAction:
+      nextActionByStage[Math.min(stage, nextActionByStage.length - 1)],
     steps: buildTrackerSteps(item, detail),
   };
 };
 
-const buildRecentRequestCard = (item: TrackerRequestItem, detail?: TrackerDetailResponse | null): RecentRequestCard => {
+const buildRecentRequestCard = (
+  item: TrackerRequestItem,
+  detail?: TrackerDetailResponse | null,
+): RecentRequestCard => {
   const tracker = buildTrackerResult(item, detail);
-  const activeIndex = tracker.steps.findIndex((step) => step.state === "active");
-  const completedCount = tracker.steps.filter((step) => step.state === "done").length;
+  const activeIndex = tracker.steps.findIndex(
+    (step) => step.state === "active",
+  );
+  const completedCount = tracker.steps.filter(
+    (step) => step.state === "done",
+  ).length;
   const progressByStage = [18, 34, 65, 78, 90, 100];
   const progress =
     activeIndex >= 0
-      ? progressByStage[activeIndex] ??
-        Math.min(100, Math.max(12, Math.round(((activeIndex + 1) / tracker.steps.length) * 100)))
+      ? (progressByStage[activeIndex] ??
+        Math.min(
+          100,
+          Math.max(
+            12,
+            Math.round(((activeIndex + 1) / tracker.steps.length) * 100),
+          ),
+        ))
       : completedCount >= tracker.steps.length
         ? 100
-        : Math.max(10, Math.round((completedCount / Math.max(tracker.steps.length, 1)) * 100));
+        : Math.max(
+            10,
+            Math.round(
+              (completedCount / Math.max(tracker.steps.length, 1)) * 100,
+            ),
+          );
 
   const tone: RecentRequestTone =
     tracker.statusTone === "red"
@@ -541,31 +747,44 @@ const buildRecentRequestCard = (item: TrackerRequestItem, detail?: TrackerDetail
   };
 };
 
-const PAYMENTS: PaymentItem[] = [
-  {
-    code: "MIN-2025-00120",
-    label: "Permis d'exploitation",
-    amount: "450 000 DZD",
-    status: "PayÃ©",
-    date: "12/05/2025",
-  },
-  {
-    code: "MIN-2025-00118",
-    label: "Autorisation de prospection",
-    amount: "75 000 DZD",
-    status: "PayÃ©",
-    date: "05/05/2025",
-  },
-];
-
 const QUICK_LINKS: QuickLink[] = [
-  { label: "Nouvelle demande", icon: Plus, href: "/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis", tone: "blue" },
-  { label: "Mes demandes", icon: FileText, href: "/investisseur/demandes", tone: "green" },
-  { label: "Paiements", icon: CreditCard, href: "/investisseur/statistiques", tone: "gold" },
-  { label: "Carte miniÃ¨re", icon: Map, href: "/carte/carte_public", tone: "violet" },
+  {
+    label: "Nouvelle demande",
+    icon: Plus,
+    href: "/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis",
+    tone: "blue",
+  },
+  {
+    label: "Mes demandes",
+    icon: FileText,
+    href: "/investisseur/demandes",
+    tone: "green",
+  },
+  {
+    label: "Paiements",
+    icon: CreditCard,
+    href: "/investisseur/statistiques",
+    tone: "gold",
+  },
+  {
+    label: "Carte minière",
+    icon: Map,
+    href: "/carte/carte_public",
+    tone: "violet",
+  },
   { label: "Documents", icon: FileText, href: "/documentation", tone: "red" },
-  { label: "ModÃ¨les & Guides", icon: FileText, href: "/documentation", tone: "blue" },
-  { label: "LÃ©gislation", icon: FileText, href: "/documentation", tone: "gold" },
+  {
+    label: "Modèles & Guides",
+    icon: FileText,
+    href: "/documentation",
+    tone: "blue",
+  },
+  {
+    label: "Législation",
+    icon: FileText,
+    href: "/documentation",
+    tone: "gold",
+  },
   { label: "FAQ", icon: HelpCircle, href: "/faq", tone: "violet" },
 ];
 
@@ -592,7 +811,7 @@ const HERO_STATS: StatCard[] = [
     tone: "violet",
   },
   {
-    label: "Demandes approuvÃ©es",
+    label: "Demandes approuvées",
     value: "24",
     hint: "+5 ce mois",
     icon: CheckCircle2,
@@ -606,7 +825,7 @@ const HERO_STATS: StatCard[] = [
     tone: "red",
   },
   {
-    label: "Total payÃ© (2025)",
+    label: "Total payée (2025)",
     value: "3 250 000 DZD",
     hint: "+22% vs 2024",
     icon: CreditCard,
@@ -659,7 +878,13 @@ export default function Dashboard() {
   const [trackReference, setTrackReference] = useState("");
   const [trackLoading, setTrackLoading] = useState(false);
   const [trackError, setTrackError] = useState<string | null>(null);
-  const [trackedRequest, setTrackedRequest] = useState<TrackerResult | null>(null);
+  const [trackedRequest, setTrackedRequest] = useState<TrackerResult | null>(
+    null,
+  );
+  const [paymentsData, setPaymentsData] =
+    useState<DashboardPaymentsResponse | null>(null);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [paymentsError, setPaymentsError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAuthReady) return;
@@ -679,9 +904,12 @@ export default function Dashboard() {
 
     const loadStats = async () => {
       try {
-        const demandesResult = await axios.get(`${apiURL}/demandes/mes-demandes`, {
-          withCredentials: true,
-        });
+        const demandesResult = await axios.get(
+          `${apiURL}/demandes/mes-demandes`,
+          {
+            withCredentials: true,
+          },
+        );
         const userDemandes = toList<TrackerRequestItem>(demandesResult.data);
 
         if (!isActive) return;
@@ -703,12 +931,70 @@ export default function Dashboard() {
     };
   }, [apiURL, auth?.role]);
 
+  const loadPayments = useCallback(async () => {
+    if (!apiURL) {
+      setPaymentsData(null);
+      setPaymentsError("Impossible de joindre l'API des paiements");
+      return;
+    }
+
+    setPaymentsLoading(true);
+    setPaymentsError(null);
+
+    try {
+      const response = await axios.get(`${apiURL}/api/dashboard/payments`, {
+        withCredentials: true,
+      });
+      const payload = (response.data?.data ?? response.data) as
+        Partial<DashboardPaymentsResponse> | undefined;
+      const summary = payload?.summary ?? { totalDue: 0, pendingCount: 0 };
+      const latestPayments = Array.isArray(payload?.latestPayments)
+        ? payload.latestPayments
+        : [];
+
+      setPaymentsData({
+        summary: {
+          totalDue: Number(summary.totalDue || 0),
+          pendingCount: Number(summary.pendingCount || 0),
+        },
+        latestPayments: latestPayments
+          .slice(0, 5)
+          .map((payment) => ({
+            id: Number(payment.id || 0),
+            requestReference: String(
+              payment.requestReference || payment.id || "N/A",
+            ),
+            permitType: String(payment.permitType || "Demande minière"),
+            amount: Number(payment.amount || 0),
+            status: normalizePaymentStatus(payment.status),
+            paymentDate: String(payment.paymentDate || ""),
+            receiptUrl: payment.receiptUrl ?? null,
+          }))
+          .filter((payment) => Number.isFinite(payment.id) && payment.id > 0),
+      });
+    } catch (error) {
+      console.error("Failed to load dashboard payments", error);
+      setPaymentsData(null);
+      setPaymentsError("Impossible de charger les paiements pour le moment");
+    } finally {
+      setPaymentsLoading(false);
+    }
+  }, [apiURL]);
+
+  useEffect(() => {
+    if (!isAuthReady) return;
+    if (isCadastreRole(auth?.role)) return;
+    void loadPayments();
+  }, [auth?.id, auth?.role, isAuthReady, loadPayments]);
+
   useEffect(() => {
     let isActive = true;
     const latestDemandes = [...demandes]
       .filter((item) => item.id_demande != null)
       .sort((a, b) => {
-        const dateDelta = (toTimestamp(b.date_demande) ?? 0) - (toTimestamp(a.date_demande) ?? 0);
+        const dateDelta =
+          (toTimestamp(b.date_demande) ?? 0) -
+          (toTimestamp(a.date_demande) ?? 0);
         if (dateDelta !== 0) return dateDelta;
         return b.id_demande - a.id_demande;
       })
@@ -729,11 +1015,19 @@ export default function Dashboard() {
         const cards = await Promise.all(
           latestDemandes.map(async (item) => {
             try {
-              const response = await axios.get(`${apiURL}/demandes_dashboard/${encodeURIComponent(String(item.id_demande))}`, {
-                withCredentials: true,
-              });
-              const detail = (response.data?.data ?? response.data) as TrackerDetailResponse;
-              if (auth?.id && detail?.utilisateurId && detail.utilisateurId !== auth.id) {
+              const response = await axios.get(
+                `${apiURL}/demandes_dashboard/${encodeURIComponent(String(item.id_demande))}`,
+                {
+                  withCredentials: true,
+                },
+              );
+              const detail = (response.data?.data ??
+                response.data) as TrackerDetailResponse;
+              if (
+                auth?.id &&
+                detail?.utilisateurId &&
+                detail.utilisateurId !== auth.id
+              ) {
                 return buildRecentRequestCard(item);
               }
               return buildRecentRequestCard(item, detail);
@@ -754,7 +1048,9 @@ export default function Dashboard() {
     };
 
     if (!apiURL) {
-      setRecentRequests(latestDemandes.map((item) => buildRecentRequestCard(item)));
+      setRecentRequests(
+        latestDemandes.map((item) => buildRecentRequestCard(item)),
+      );
       return () => {
         isActive = false;
       };
@@ -786,15 +1082,27 @@ export default function Dashboard() {
   }, [location.search]);
 
   const companyName = useMemo(
-    () => auth?.username || auth?.nom || auth?.email || "SociÃ©tÃ© MiniÃ¨re SARL",
+    () =>
+      auth?.username || auth?.nom || auth?.email || "Société Minière SARL",
     [auth?.email, auth?.nom, auth?.username],
   );
 
   const companyInitials = useMemo(() => {
     const parts = companyName.split(/\s+/).filter(Boolean);
-    const initials = parts.slice(0, 2).map((part) => part[0] ?? "").join("");
+    const initials = parts
+      .slice(0, 2)
+      .map((part) => part[0] ?? "")
+      .join("");
     return initials ? initials.toUpperCase() : "SM";
   }, [companyName]);
+
+  const paymentSummary = paymentsData?.summary ?? {
+    totalDue: 0,
+    pendingCount: 0,
+  };
+  const latestPayments = paymentsData?.latestPayments ?? [];
+  const hasPayments = latestPayments.length > 0;
+  const hasPendingPayments = paymentSummary.pendingCount > 0;
 
   const handleCloseOnboarding = () => {
     setShowOnboarding(false);
@@ -808,7 +1116,9 @@ export default function Dashboard() {
 
   const handleNavigate = (href: string) => {
     if (href.startsWith("#")) {
-      document.querySelector(href)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document
+        .querySelector(href)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
     navigate(href);
@@ -818,13 +1128,13 @@ export default function Dashboard() {
     const reference = normalizeReference(trackReference);
 
     if (!reference) {
-      setTrackError("Veuillez saisir une rÃ©fÃ©rence de demande");
+      setTrackError("Veuillez saisir une référence de demande");
       setTrackedRequest(null);
       return;
     }
 
     if (!apiURL) {
-      setTrackError("Impossible de rÃ©cupÃ©rer le suivi pour le moment");
+      setTrackError("Impossible de récupérer le suivi pour le moment");
       setTrackedRequest(null);
       return;
     }
@@ -848,16 +1158,19 @@ export default function Dashboard() {
       let matched = demandes.find(matchesReference);
 
       if (!matched) {
-        const searchResponse = await axios.get(`${apiURL}/demandes_dashboard?page=1&pageSize=50&search=${encodeURIComponent(trackReference.trim())}`, {
-          withCredentials: true,
-        });
+        const searchResponse = await axios.get(
+          `${apiURL}/demandes_dashboard?page=1&pageSize=50&search=${encodeURIComponent(trackReference.trim())}`,
+          {
+            withCredentials: true,
+          },
+        );
         const remoteDemandes = toList<TrackerRequestItem>(searchResponse.data);
         matched = remoteDemandes.find(matchesReference);
 
         if (matched && auth?.id) {
           const ownerId = Number(matched.utilisateurId ?? 0);
           if (ownerId && ownerId !== auth.id) {
-            setTrackError("Vous nâ€™avez pas accÃ¨s Ã  cette demande");
+            setTrackError("Vous n'avez pas accès à cette demande");
             setTrackedRequest(null);
             return;
           }
@@ -865,7 +1178,7 @@ export default function Dashboard() {
       }
 
       if (!matched) {
-        setTrackError("Aucune demande trouvÃ©e avec cette rÃ©fÃ©rence");
+        setTrackError("Aucune demande trouvée avec cette référence");
         setTrackedRequest(null);
         return;
       }
@@ -877,19 +1190,27 @@ export default function Dashboard() {
         },
       );
 
-      const detail = (detailResponse.data?.data ?? detailResponse.data) as TrackerDetailResponse;
-      if (auth?.id && detail?.utilisateurId && detail.utilisateurId !== auth.id) {
-        setTrackError("Vous nâ€™avez pas accÃ¨s Ã  cette demande");
+      const detail = (detailResponse.data?.data ??
+        detailResponse.data) as TrackerDetailResponse;
+      if (
+        auth?.id &&
+        detail?.utilisateurId &&
+        detail.utilisateurId !== auth.id
+      ) {
+        setTrackError("Vous n'avez pas accès à cette demande");
         setTrackedRequest(null);
         return;
       }
 
       setTrackedRequest(buildTrackerResult(matched, detail));
     } catch (error) {
-      if (axios.isAxiosError(error) && [401, 403].includes(error.response?.status ?? 0)) {
-        setTrackError("Vous nâ€™avez pas accÃ¨s Ã  cette demande");
+      if (
+        axios.isAxiosError(error) &&
+        [401, 403].includes(error.response?.status ?? 0)
+      ) {
+        setTrackError("Vous n'avez pas accès à cette demande");
       } else {
-        setTrackError("Impossible de rÃ©cupÃ©rer le suivi pour le moment");
+        setTrackError("Impossible de récupérer le suivi pour le moment");
       }
       setTrackedRequest(null);
     } finally {
@@ -911,13 +1232,23 @@ export default function Dashboard() {
       <Navbar />
       <header className={styles.header}>
         <div className={styles.headerInner}>
-          <button className={styles.brand} type="button" onClick={() => navigate("/investisseur/InvestorDashboard")}>
+          <button
+            className={styles.brand}
+            type="button"
+            onClick={() => navigate("/investisseur/InvestorDashboard")}
+          >
             <span className={styles.brandMark}>
-              <img src="/anamlogo.png" alt="ANAM" className={styles.brandLogo} />
+              <img
+                src="/anamlogo.png"
+                alt="ANAM"
+                className={styles.brandLogo}
+              />
             </span>
             <span className={styles.brandText}>
-              <span className={styles.brandKicker}>RÃ©publique AlgÃ©rienne</span>
-              <span className={styles.brandTitle}>MinistÃ¨re des Mines</span>
+              <span className={styles.brandKicker}>
+                République Algérienne
+              </span>
+              <span className={styles.brandTitle}>Ministère des Mines</span>
             </span>
           </button>
 
@@ -927,7 +1258,8 @@ export default function Dashboard() {
               const isActive =
                 item.href === "/investisseur/InvestorDashboard"
                   ? location.pathname === "/investisseur/InvestorDashboard"
-                  : item.href !== "#support" && location.pathname.startsWith(item.href);
+                  : item.href !== "#support" &&
+                    location.pathname.startsWith(item.href);
 
               return (
                 <button
@@ -961,14 +1293,18 @@ export default function Dashboard() {
               onClick={() => navigate("/investisseur/profil")}
             >
               <span className={styles.userAvatar}>
-                <img src="/anamlogo.png" alt="" className={styles.userAvatarImage} />
+                <img
+                  src="/anamlogo.png"
+                  alt=""
+                  className={styles.userAvatarImage}
+                />
                 <span className={styles.userAvatarFallback} aria-hidden="true">
                   {companyInitials}
                 </span>
               </span>
               <span className={styles.userMeta}>
                 <span className={styles.userName}>{companyName}</span>
-                <span className={styles.userRole}>Entreprise vÃ©rifiÃ©e</span>
+                <span className={styles.userRole}>Entreprise vérifiée</span>
               </span>
               <ChevronDown size={16} className={styles.userChevron} />
             </button>
@@ -995,8 +1331,8 @@ export default function Dashboard() {
                 <em>endroit.</em>
               </h1>
               <p className={styles.heroLead}>
-                Simplifiez, suivez et gÃ©rez l&apos;ensemble de vos demandes et permis
-                miniers en toute transparence.
+                Simplifiez, suivez et gérez l&apos;ensemble de vos demandes et
+                permis miniers en toute transparence.
               </p>
 
               <div className={styles.heroFeatures}>
@@ -1021,7 +1357,11 @@ export default function Dashboard() {
                   type="button"
                   className={styles.primaryAction}
                   data-onboarding-id="dashboard-new-request"
-                  onClick={() => navigate("/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis")}
+                  onClick={() =>
+                    navigate(
+                      "/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis",
+                    )
+                  }
                 >
                   <Plus size={18} />
                   <span>Nouvelle demande</span>
@@ -1040,7 +1380,13 @@ export default function Dashboard() {
             <aside className={styles.heroPanel}>
               <div className={styles.heroPanelHeader}>
                 <h2>Mon entreprise</h2>
-                <span className={auth?.isEntrepriseVerified ? styles.statusVerified : styles.statusPending}>
+                <span
+                  className={
+                    auth?.isEntrepriseVerified
+                      ? styles.statusVerified
+                      : styles.statusPending
+                  }
+                >
                   {auth?.isEntrepriseVerified ? "✓ Vérifiée" : "En attente"}
                 </span>
               </div>
@@ -1050,7 +1396,10 @@ export default function Dashboard() {
                 <div className={styles.heroPanelBody}>
                   <p className={styles.heroPanelCompany}>{companyName}</p>
                   <p className={styles.heroPanelMeta}>NIF : 123456789012345</p>
-                  <p className={styles.heroPanelMeta}>Statut : <span className={styles.heroPanelActive}>Actif</span></p>
+                  <p className={styles.heroPanelMeta}>
+                    Statut :{" "}
+                    <span className={styles.heroPanelActive}>Actif</span>
+                  </p>
                 </div>
               </div>
 
@@ -1085,31 +1434,42 @@ export default function Dashboard() {
 
         {/* ── Barre de raccourcis rapides ── */}
         <div className={styles.quickBar}>
-          {QUICK_LINKS
-            .filter(item => item.label !== "Paiements" && item.label !== "Mes demandes")
-            .map(item => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.label}
-                  type="button"
-                  className={`${styles.quickBarBtn} ${styles[`quickTone_${item.tone}`]}`}
-                  onClick={() => handleNavigate(item.href)}
-                >
-                  <span className={styles.quickBarIcon}><Icon size={18} /></span>
-                  <span className={styles.quickBarLabel}>{item.label}</span>
-                </button>
-              );
-            })
-          }
+          {QUICK_LINKS.filter(
+            (item) =>
+              item.label !== "Paiements" && item.label !== "Mes demandes",
+          ).map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.label}
+                type="button"
+                className={`${styles.quickBarBtn} ${styles[`quickTone_${item.tone}`]}`}
+                onClick={() => handleNavigate(item.href)}
+              >
+                <span className={styles.quickBarIcon}>
+                  <Icon size={18} />
+                </span>
+                <span className={styles.quickBarLabel}>{item.label}</span>
+              </button>
+            );
+          })}
         </div>
 
-        <section className={styles.statsGrid} data-onboarding-id="dashboard-status">
+        <section
+          className={styles.statsGrid}
+          data-onboarding-id="dashboard-status"
+        >
           {HERO_STATS.map((item, index) => {
             const Icon = item.icon;
             return (
-              <article key={item.label} className={styles.statCard} style={{ animationDelay: `${index * 0.05}s` }}>
-                <div className={`${styles.statIcon} ${styles[`statTone_${item.tone}`]}`}>
+              <article
+                key={item.label}
+                className={styles.statCard}
+                style={{ animationDelay: `${index * 0.05}s` }}
+              >
+                <div
+                  className={`${styles.statIcon} ${styles[`statTone_${item.tone}`]}`}
+                >
                   <Icon size={18} />
                 </div>
                 <div className={styles.statBody}>
@@ -1123,10 +1483,17 @@ export default function Dashboard() {
         </section>
 
         <section className={styles.contentGrid}>
-          <section className={`${styles.card} ${styles.requestsCard}`} data-onboarding-id="dashboard-card-demandes">
+          <section
+            className={`${styles.card} ${styles.requestsCard}`}
+            data-onboarding-id="dashboard-card-demandes"
+          >
             <div className={styles.cardHeader}>
               <h2>Mes demandes rÃ©centes</h2>
-              <button type="button" className={styles.cardLinkButton} onClick={() => navigate("/investisseur/demandes")}>
+              <button
+                type="button"
+                className={styles.cardLinkButton}
+                onClick={() => navigate("/investisseur/demandes")}
+              >
                 Voir tout
               </button>
             </div>
@@ -1139,34 +1506,46 @@ export default function Dashboard() {
                 </div>
               ) : recentRequests.length > 0 ? (
                 recentRequests.map((request) => (
-                  <article key={request.reference} className={styles.requestRow}>
-                  <div className={`${styles.requestIcon} ${styles[`requestTone_${request.tone}`]}`}>
-                    <FileText size={18} />
-                  </div>
+                  <article
+                    key={request.reference}
+                    className={styles.requestRow}
+                  >
+                    <div
+                      className={`${styles.requestIcon} ${styles[`requestTone_${request.tone}`]}`}
+                    >
+                      <FileText size={18} />
+                    </div>
 
-                  <div className={styles.requestBody}>
-                    <div className={styles.requestTopLine}>
-                      <div>
-                        <h3>{request.title}</h3>
-                        <p>RÃ©f : {request.reference}</p>
+                    <div className={styles.requestBody}>
+                      <div className={styles.requestTopLine}>
+                        <div>
+                          <h3>{request.title}</h3>
+                          <p>RÃ©f : {request.reference}</p>
+                        </div>
+                        <span
+                          className={`${styles.requestStatus} ${styles[`requestStatus_${request.tone}`]}`}
+                        >
+                          {request.status}
+                        </span>
                       </div>
-                      <span className={`${styles.requestStatus} ${styles[`requestStatus_${request.tone}`]}`}>
-                        {request.status}
-                      </span>
-                    </div>
 
-                    <div className={styles.progressRow}>
-                      <div className={styles.progressTrack}>
-                        <div className={`${styles.progressFill} ${styles[`progressFill_${request.tone}`]}`} style={{ width: `${request.progress}%` }} />
+                      <div className={styles.progressRow}>
+                        <div className={styles.progressTrack}>
+                          <div
+                            className={`${styles.progressFill} ${styles[`progressFill_${request.tone}`]}`}
+                            style={{ width: `${request.progress}%` }}
+                          />
+                        </div>
+                        <span>{request.progress}%</span>
                       </div>
-                      <span>{request.progress}%</span>
-                    </div>
 
-                    <div className={styles.requestFoot}>
-                      <span className={styles.requestFootHint}>Mis Ã  jour : {request.updated}</span>
+                      <div className={styles.requestFoot}>
+                        <span className={styles.requestFootHint}>
+                          Mis Ã  jour : {request.updated}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </article>
+                  </article>
                 ))
               ) : (
                 <div className={styles.requestEmptyState}>
@@ -1182,7 +1561,9 @@ export default function Dashboard() {
               <h2>Suivi d&apos;une demande</h2>
             </div>
 
-            <p className={styles.sectionLead}>Entrez le numÃ©ro de rÃ©fÃ©rence pour suivre l&apos;avancement</p>
+            <p className={styles.sectionLead}>
+              Entrez le numÃ©ro de rÃ©fÃ©rence pour suivre l&apos;avancement
+            </p>
 
             <div className={styles.trackRow}>
               <label className={styles.trackField}>
@@ -1190,7 +1571,7 @@ export default function Dashboard() {
                 <input
                   type="text"
                   placeholder="Ex : MIN-2025-00124"
-                  aria-label="NumÃ©ro de rÃ©fÃ©rence"
+                  aria-label="Numéro de référence"
                   value={trackReference}
                   onChange={(event) => {
                     setTrackReference(event.target.value);
@@ -1223,13 +1604,19 @@ export default function Dashboard() {
             )}
 
             {trackedRequest && (
-              <div className={`${styles.trackResult} ${styles[`trackTone_${trackedRequest.statusTone}`]}`}>
+              <div
+                className={`${styles.trackResult} ${styles[`trackTone_${trackedRequest.statusTone}`]}`}
+              >
                 <div className={styles.trackResultHeader}>
                   <div className={styles.trackResultTitleBlock}>
-                    <p className={styles.trackResultEyebrow}>Suivi instantanÃ©</p>
+                    <p className={styles.trackResultEyebrow}>
+                      Suivi instantanÃ©
+                    </p>
                     <h3>{trackedRequest.title}</h3>
                   </div>
-                  <span className={styles.trackResultBadge}>{trackedRequest.reference}</span>
+                  <span className={styles.trackResultBadge}>
+                    {trackedRequest.reference}
+                  </span>
                 </div>
 
                 <div className={styles.trackResultGrid}>
@@ -1251,7 +1638,9 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <p className={styles.trackResultAction}>{trackedRequest.nextAction}</p>
+                <p className={styles.trackResultAction}>
+                  {trackedRequest.nextAction}
+                </p>
               </div>
             )}
 
@@ -1283,10 +1672,12 @@ export default function Dashboard() {
               </div>
             </div>
           </section>
-
         </section>
 
-        <section className={styles.contentGridSecondary} data-onboarding-id="dashboard-quick-access">
+        <section
+          className={styles.contentGridSecondary}
+          data-onboarding-id="dashboard-quick-access"
+        >
           <section className={`${styles.card} ${styles.mapCard}`}>
             {/* Orbes décoratifs */}
             <div className={styles.mapOrb1} aria-hidden="true" />
@@ -1298,8 +1689,15 @@ export default function Dashboard() {
                   <Map size={12} />
                   Géologie &amp; Ressources
                 </span>
-                <h2 className={styles.mapTitle}>Carte minière<br />interactive</h2>
-                <p className={styles.mapDesc}>Explorez les zones minières, gisements et titres miniers actifs sur le territoire algérien.</p>
+                <h2 className={styles.mapTitle}>
+                  Carte minière
+                  <br />
+                  interactive
+                </h2>
+                <p className={styles.mapDesc}>
+                  Explorez les zones minières, gisements et titres miniers
+                  actifs sur le territoire algérien.
+                </p>
 
                 <div className={styles.mapMiniStats}>
                   <div className={styles.mapMiniStat}>
@@ -1318,7 +1716,11 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <button type="button" className={styles.mapButton} onClick={() => navigate("/carte/carte_public")}>
+                <button
+                  type="button"
+                  className={styles.mapButton}
+                  onClick={() => navigate("/carte/carte_public")}
+                >
                   <span>Ouvrir la carte</span>
                   <ArrowRight size={15} />
                 </button>
@@ -1327,11 +1729,26 @@ export default function Dashboard() {
               <div className={styles.mapLegend}>
                 <p className={styles.mapLegendTitle}>Légende</p>
                 <div className={styles.mapLegendGrid}>
-                  <span className={styles.legendPill}><i className={styles.legendDotOrange} />Gisements</span>
-                  <span className={styles.legendPill}><i className={styles.legendDotGreen} />Zones ouvertes</span>
-                  <span className={styles.legendPill}><i className={styles.legendDotRed} />Zones réservées</span>
-                  <span className={styles.legendPill}><i className={styles.legendDotBlue} />Mes permis</span>
-                  <span className={styles.legendPill}><i className={styles.legendDotViolet} />Mes demandes</span>
+                  <span className={styles.legendPill}>
+                    <i className={styles.legendDotOrange} />
+                    Gisements
+                  </span>
+                  <span className={styles.legendPill}>
+                    <i className={styles.legendDotGreen} />
+                    Zones ouvertes
+                  </span>
+                  <span className={styles.legendPill}>
+                    <i className={styles.legendDotRed} />
+                    Zones réservées
+                  </span>
+                  <span className={styles.legendPill}>
+                    <i className={styles.legendDotBlue} />
+                    Mes permis
+                  </span>
+                  <span className={styles.legendPill}>
+                    <i className={styles.legendDotViolet} />
+                    Mes demandes
+                  </span>
                 </div>
               </div>
             </div>
@@ -1350,62 +1767,161 @@ export default function Dashboard() {
           <section className={`${styles.card} ${styles.paymentCard}`}>
             <div className={styles.cardHeader}>
               <h2>Paiements</h2>
-              <button type="button" className={styles.cardLinkButton} onClick={() => navigate("/investisseur/statistiques")}>
+              <button
+                type="button"
+                className={styles.cardLinkButton}
+                onClick={() => navigate("/investisseur/statistiques")}
+              >
                 Voir tout
               </button>
             </div>
 
-            <div className={styles.paymentHighlight}>
-              <div>
-                <p>Montant Ã  rÃ©gler</p>
-                <strong>125 000 DZD</strong>
-                <span>2 paiement(s) en attente</span>
+            {paymentsLoading ? (
+              <div className={styles.paymentState}>
+                <Loader2 size={20} className={styles.paymentSpinner} />
+                <div>
+                  <strong>Chargement des paiements</strong>
+                  <p>Récupération des dernières informations en cours.</p>
+                </div>
               </div>
-              <button type="button" className={styles.payButton}>
-                <LockIcon />
-                <span>Payer maintenant</span>
-              </button>
-            </div>
+            ) : paymentsError ? (
+              <div className={styles.paymentState}>
+                <AlertCircle
+                  size={20}
+                  className={styles.paymentStateIconError}
+                />
+                <div>
+                  <strong>Impossible de charger les paiements</strong>
+                  <p>{paymentsError}</p>
+                </div>
+                <button
+                  type="button"
+                  className={styles.cardLinkButton}
+                  onClick={() => void loadPayments()}
+                >
+                  Réessayer
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className={styles.paymentHighlight}>
+                  <div>
+                    <p>Montant à régler</p>
+                    <strong>{formatAmountDzd(paymentSummary.totalDue)}</strong>
+                    <span>
+                      {hasPendingPayments
+                        ? `${paymentSummary.pendingCount} paiement(s) en attente`
+                        : "Aucun paiement en attente"}
+                    </span>
+                  </div>
+                  {hasPendingPayments ? (
+                    <button
+                      type="button"
+                      className={styles.payButton}
+                      onClick={() =>
+                        navigate("/investisseur/statistiques#paiements")
+                      }
+                    >
+                      <LockIcon />
+                      <span>Payer maintenant</span>
+                    </button>
+                  ) : (
+                    <div className={styles.paymentNoAction}>
+                      <CheckCircle2 size={16} />
+                      <span>Aucun paiement en attente</span>
+                    </div>
+                  )}
+                </div>
 
-            <div className={styles.paymentList}>
-              <p className={styles.paymentSectionTitle}>Derniers paiements</p>
-              {PAYMENTS.map((payment) => (
-                <article key={payment.code} className={styles.paymentRow}>
-                  <div className={styles.paymentInfo}>
-                    <strong>{payment.code}</strong>
-                    <span>{payment.label}</span>
-                  </div>
-                  <div className={styles.paymentMeta}>
-                    <strong>{payment.amount}</strong>
-                    <span className={styles.paymentPaid}>{payment.status}</span>
-                    <span>{payment.date}</span>
-                  </div>
-                  <button type="button" className={styles.downloadButton} aria-label={`Télécharger le reçu ${payment.code}`}>
-                    <Download size={16} />
-                  </button>
-                </article>
-              ))}
-            </div>
+                <div className={styles.paymentList}>
+                  <p className={styles.paymentSectionTitle}>
+                    Derniers paiements
+                  </p>
+                  {hasPayments ? (
+                    latestPayments.map((payment) => {
+                      const status = payment.status;
+                      const receiptHref = getPaymentReceiptHref(
+                        apiURL,
+                        payment.receiptUrl,
+                      );
+                      const statusClassName = getPaymentStatusClassName(status);
+
+                      return (
+                        <article key={payment.id} className={styles.paymentRow}>
+                          <div className={styles.paymentInfo}>
+                            <strong>{payment.requestReference}</strong>
+                            <span>{payment.permitType}</span>
+                          </div>
+                          <div className={styles.paymentMeta}>
+                            <strong>{formatAmountDzd(payment.amount)}</strong>
+                            <span
+                              className={`${styles.paymentStatusBadge} ${statusClassName}`}
+                            >
+                              {PAYMENT_STATUS_LABELS[status] ?? status}
+                            </span>
+                            <span>
+                              {formatPaymentDate(payment.paymentDate)}
+                            </span>
+                          </div>
+                          {status === "paid" && receiptHref ? (
+                            <a
+                              href={receiptHref}
+                              className={styles.downloadButton}
+                              aria-label={`Télécharger le reçu ${payment.requestReference}`}
+                              title="Télécharger le reçu"
+                              download
+                            >
+                              <Download size={16} />
+                            </a>
+                          ) : (
+                            <span
+                              className={styles.downloadSpacer}
+                              aria-hidden="true"
+                            />
+                          )}
+                        </article>
+                      );
+                    })
+                  ) : (
+                    <div className={styles.paymentStateCompact}>
+                      <WalletCards size={18} />
+                      <div>
+                        <strong>Aucun paiement enregistré</strong>
+                        <p>
+                          Les paiements liés à vos demandes apparaîtront ici dès
+                          qu&apos;ils seront disponibles.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </section>
-        </section>
-
-        <section className={styles.footerGrid}>
           <section className={styles.supportCard} id="support">
             <div className={styles.supportCopy}>
               <div className={styles.supportBadge}>
                 <Headphones size={17} />
               </div>
-              <div>
+              <div className={styles.supportCopyText}>
                 <h2>Besoin d&apos;aide ?</h2>
                 <p>Notre Ã©quipe est Ã  votre disposition</p>
               </div>
             </div>
 
             <div className={styles.supportActions}>
-              <button type="button" className={styles.supportButton} onClick={() => navigate("/contact")}>
+              <button
+                type="button"
+                className={styles.supportButton}
+                onClick={() => navigate("/contact")}
+              >
                 Contacter le support
               </button>
-              <button type="button" className={styles.supportIconButton} onClick={() => navigate("/faq")}>
+              <button
+                type="button"
+                className={styles.supportIconButton}
+                onClick={() => navigate("/faq")}
+              >
                 <HelpCircle size={18} />
               </button>
             </div>
@@ -1426,7 +1942,12 @@ export default function Dashboard() {
 function AlgeriaMapIllustration() {
   return (
     <div className={styles.mapStage} aria-hidden="true">
-      <img className={styles.mapImage} src={algerieMapUrl} alt="" aria-hidden="true" />
+      <img
+        className={styles.mapImage}
+        src={algerieMapUrl}
+        alt=""
+        aria-hidden="true"
+      />
     </div>
   );
 }

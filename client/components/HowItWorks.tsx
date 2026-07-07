@@ -45,7 +45,7 @@ export const HowItWorks = () => {
             <span className={styles.label}>Investir dans le secteur minier</span>
             <h2 className={styles.title}>
               Explorez l'Algerie, investissez via{" "}
-              <span className={styles.titleHighlight}>POM</span>
+              <span className={styles.titleHighlight}>GUNAM</span>
             </h2>
             <p className={styles.description}>
               Decouvrez les services et options qui accelerent votre processus

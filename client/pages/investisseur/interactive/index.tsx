@@ -1646,7 +1646,7 @@ export default function InteractiveDemandePage() {
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles.mainContent}>
           <div className={styles.breadcrumb}>
-            <span>POM</span>
+            <span>GUNAM</span>
             <FiChevronRight className={styles.breadcrumbArrow} />
             <span>Verification prealable</span>
           </div>

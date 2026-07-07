@@ -47,7 +47,7 @@ export const Footer = () => {
                   decoding="async"
                 />
                 <div>
-                  <span className={styles.brandTitle}>POM</span>
+                  <span className={styles.brandTitle}>GUNAM</span>
                   <p className={styles.brandSubtitle}>Portail Minier National</p>
                 </div>
               </a>

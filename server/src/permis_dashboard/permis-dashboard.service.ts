@@ -1,48 +1,91 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+type DashboardPaymentStatus =
+  | 'paid'
+  | 'pending'
+  | 'failed'
+  | 'expired'
+  | 'cancelled';
+
 @Injectable()
 export class PermisDashboardService {
   constructor(private prisma: PrismaService) {}
+
+  private normalizePaymentStatus(
+    value: string | null | undefined,
+  ): DashboardPaymentStatus {
+    const normalized = String(value ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[\s_-]+/g, '')
+      .trim()
+      .toLowerCase();
+
+    if (!normalized) return 'pending';
+    if (normalized.includes('paid') || normalized.includes('paye'))
+      return 'paid';
+    if (normalized.includes('fail') || normalized.includes('echou'))
+      return 'failed';
+    if (normalized.includes('expir')) return 'expired';
+    if (normalized.includes('cancel') || normalized.includes('annul'))
+      return 'cancelled';
+    if (
+      normalized.includes('attente') ||
+      normalized.includes('pending') ||
+      normalized.includes('due')
+    ) {
+      return 'pending';
+    }
+
+    return 'pending';
+  }
 
   async getDashboardStats() {
     const now = new Date();
     const sixMonthsLater = new Date();
     sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
 
-    const [totalPermis, activePermis, pendingDemands, expiredPermis, expiringSoon, surfaceAgg, topDetGroup] =
-      await Promise.all([
-        this.prisma.permisPortail.count(),
-        this.prisma.permisPortail.count({
-          where: { statut: { lib_statut: 'En vigueur' } },
-        }),
-        this.prisma.procedurePortail.count({
-          where: { statut_proc: 'EN_COURS' },
-        }),
-        this.prisma.permisPortail.count({
-          where: {
-            date_expiration: { lt: now },
-            statut: { lib_statut: 'En vigueur' },
-          },
-        }),
-        this.prisma.permisPortail.count({
-          where: {
-            date_expiration: { gt: now, lte: sixMonthsLater },
-          },
-        }),
-        this.prisma.permisPortail.aggregate({
-          _sum: { superficie: true },
-          _avg: { superficie: true },
-          _max: { superficie: true },
-        }),
-        this.prisma.permisPortail.groupBy({
-          by: ['id_detenteur'],
-          where: { id_detenteur: { not: null } },
-          _count: { id: true },
-          orderBy: { _count: { id: 'desc' } },
-          take: 10,
-        }),
-      ]);
+    const [
+      totalPermis,
+      activePermis,
+      pendingDemands,
+      expiredPermis,
+      expiringSoon,
+      surfaceAgg,
+      topDetGroup,
+    ] = await Promise.all([
+      this.prisma.permisPortail.count(),
+      this.prisma.permisPortail.count({
+        where: { statut: { lib_statut: 'En vigueur' } },
+      }),
+      this.prisma.procedurePortail.count({
+        where: { statut_proc: 'EN_COURS' },
+      }),
+      this.prisma.permisPortail.count({
+        where: {
+          date_expiration: { lt: now },
+          statut: { lib_statut: 'En vigueur' },
+        },
+      }),
+      this.prisma.permisPortail.count({
+        where: {
+          date_expiration: { gt: now, lte: sixMonthsLater },
+        },
+      }),
+      this.prisma.permisPortail.aggregate({
+        _sum: { superficie: true },
+        _avg: { superficie: true },
+        _max: { superficie: true },
+      }),
+      this.prisma.permisPortail.groupBy({
+        by: ['id_detenteur'],
+        where: { id_detenteur: { not: null } },
+        _count: { id: true },
+        orderBy: { _count: { id: 'desc' } },
+        take: 10,
+      }),
+    ]);
 
     const detIds = topDetGroup
       .map((g) => g.id_detenteur)
@@ -77,6 +120,85 @@ export class PermisDashboardService {
         max: Number(surfaceAgg._max.superficie || 0),
       },
       topTitulaires,
+    };
+  }
+
+  async getDashboardPayments(userId: number) {
+    const safeUserId = Number(userId);
+    if (!Number.isFinite(safeUserId) || safeUserId <= 0) {
+      return {
+        summary: {
+          totalDue: 0,
+          pendingCount: 0,
+        },
+        latestPayments: [],
+      };
+    }
+
+    const [allPayments, latestPayments] = await Promise.all([
+      this.prisma.paiement.findMany({
+        where: { idUtilisateur: safeUserId },
+        select: {
+          montant_paye: true,
+          etat_paiement: true,
+        },
+      }),
+      this.prisma.paiement.findMany({
+        where: { idUtilisateur: safeUserId },
+        orderBy: { date_paiement: 'desc' },
+        take: 5,
+        include: {
+          facture: {
+            include: {
+              demande: {
+                select: {
+                  code_demande: true,
+                  short_code: true,
+                  typePermis: {
+                    select: {
+                      lib_type: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+    ]);
+
+    const summary = allPayments.reduce(
+      (acc, payment) => {
+        const status = this.normalizePaymentStatus(payment.etat_paiement);
+        if (status === 'pending') {
+          acc.totalDue += Number(payment.montant_paye || 0);
+          acc.pendingCount += 1;
+        }
+        return acc;
+      },
+      {
+        totalDue: 0,
+        pendingCount: 0,
+      },
+    );
+
+    return {
+      summary,
+      latestPayments: latestPayments.map((payment) => {
+        const demande = payment.facture?.demande ?? null;
+        const requestReference =
+          demande?.code_demande || demande?.short_code || `PAY-${payment.id}`;
+
+        return {
+          id: payment.id,
+          requestReference,
+          permitType: demande?.typePermis?.lib_type || 'Demande minière',
+          amount: Number(payment.montant_paye || 0),
+          status: this.normalizePaymentStatus(payment.etat_paiement),
+          paymentDate: payment.date_paiement.toISOString(),
+          receiptUrl: payment.justificatif_url || null,
+        };
+      }),
     };
   }
 
@@ -410,7 +532,8 @@ export class PermisDashboardService {
 
     const nameMap: Record<number, string> = {};
     substances.forEach((sub) => {
-      nameMap[sub.id_sub] = sub.nom_subFR || sub.nom_subAR || `Substance ${sub.id_sub}`;
+      nameMap[sub.id_sub] =
+        sub.nom_subFR || sub.nom_subAR || `Substance ${sub.id_sub}`;
     });
 
     return ranked.map((row) => ({

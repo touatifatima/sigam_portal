@@ -779,7 +779,7 @@ export default function Step5_Documents() {
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles['main-content']}>
           <div className={styles['breadcrumb']}>
-            <span>POM</span>
+            <span></span>
             <FiChevronRight className={styles['breadcrumb-arrow']} />
             <span>Documents</span>
           </div>

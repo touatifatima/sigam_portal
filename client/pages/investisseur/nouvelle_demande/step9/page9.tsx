@@ -428,7 +428,7 @@ const getPeriodDisplay = (obligation: Obligation) => {
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles.mainContent}>
           <div className={styles.breadcrumb}>
-            <span>POM</span>
+            <span>GUNAM</span>
             <FiChevronRight className={styles.breadcrumbArrow} />
             <span>Mes obligations fiscales</span>
           </div>

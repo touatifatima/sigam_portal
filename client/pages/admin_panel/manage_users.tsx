@@ -337,7 +337,7 @@ return (
       <Sidebar currentView={currentView} navigateTo={navigateTo} />
       <main className={styles['main-content']}>
         <div className={styles['breadcrumb']}>
-          <span>POM</span>
+          <span>GUNAM</span>
           <FiChevronRight className={styles['breadcrumb-arrow']} />
           <span>Manage Users</span>
         </div>

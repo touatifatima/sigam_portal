@@ -589,9 +589,18 @@ export default function Navbar() {
       }`}
     >
       <div className={styles['navbar-header']}>
-        <div className={styles['app-logo']}>
+        <Link
+          href={dashboardHref}
+          className={styles['app-logo']}
+          aria-label="Aller au tableau de bord"
+          onClick={() => {
+            setIsCompactMenuOpen(false);
+            setIsDropdownOpen(false);
+            setIsNotificationsOpen(false);
+          }}
+        >
           <span>GUNAM</span>
-        </div>
+        </Link>
       </div>
 
       <div className={styles['navbar-actions']}>

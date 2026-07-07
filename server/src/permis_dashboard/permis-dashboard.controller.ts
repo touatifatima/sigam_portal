@@ -1,11 +1,34 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpException,
+  HttpStatus,
+  Req,
+} from '@nestjs/common';
 import { PermisDashboardService } from './permis-dashboard.service';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { SessionService } from '../session/session.service';
+import { Request } from 'express';
 
 @ApiTags('Dashboard')
 @Controller('api/dashboard')
 export class PermisDashboardController {
-  constructor(private readonly dashboardService: PermisDashboardService) {}
+  constructor(
+    private readonly dashboardService: PermisDashboardService,
+    private readonly sessionService: SessionService,
+  ) {}
+
+  private extractAuthToken(req: Request): string | null {
+    const cookieToken = req.cookies?.auth_token;
+    if (cookieToken) return cookieToken;
+
+    const authHeader = req.headers.authorization;
+    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      return authHeader.slice('Bearer '.length).trim();
+    }
+
+    return null;
+  }
 
   @Get('stats')
   @ApiOperation({ summary: 'Get dashboard statistics' })
@@ -15,6 +38,29 @@ export class PermisDashboardController {
   })
   async getStats() {
     return this.dashboardService.getDashboardStats();
+  }
+
+  @Get('payments')
+  @ApiOperation({
+    summary: 'Get dashboard payments for the authenticated user',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Dashboard payments retrieved successfully',
+  })
+  async getPayments(@Req() req: Request) {
+    const token = this.extractAuthToken(req);
+    if (!token) {
+      throw new HttpException('Non authentifie', HttpStatus.UNAUTHORIZED);
+    }
+
+    const session = await this.sessionService.validateSession(token);
+    const userId = session?.user?.id ?? session?.userId;
+    if (!userId) {
+      throw new HttpException('Session invalide', HttpStatus.UNAUTHORIZED);
+    }
+
+    return this.dashboardService.getDashboardPayments(Number(userId));
   }
 
   @Get('evolution')
@@ -82,4 +128,3 @@ export class PermisDashboardController {
     return this.dashboardService.getTopSubstances();
   }
 }
-

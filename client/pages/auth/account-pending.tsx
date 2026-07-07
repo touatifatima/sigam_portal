@@ -17,7 +17,7 @@ export default function AccountPendingPage() {
         <p className={styles.message}>
           Desole, votre compte est en attente de validation. L&apos;administration ANAM
           doit encore verifier et confirmer l&apos;identification de votre entreprise.
-          Si cela fait plus d&apos;une semaine, contactez-nous a <strong>pom@anam.dz</strong>.
+          Si cela fait plus d&apos;une semaine, contactez-nous a <strong>GUNAM@anam.dz</strong>.
           Merci de votre patience.
         </p>
 

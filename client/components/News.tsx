@@ -8,7 +8,7 @@ const news = [
   {
     date: "15 Nov 2024",
     category: "Actualite",
-    title: "Lancement de la nouvelle plateforme POM 2.0",
+    title: "Lancement de la nouvelle plateforme GUNAM 2.0",
     description:
       "Decouvrez les nouvelles fonctionnalites de la plateforme pour une meilleure experience utilisateur.",
     image:

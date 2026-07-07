@@ -69,7 +69,7 @@ export const Services = () => {
         <ScrollReveal>
           <div className={styles.header}>
             <div className={styles.headerContent}>
-              <span className={styles.label}>Plateforme POM</span>
+              <span className={styles.label}>Plateforme GUNAM</span>
               <h2 className={styles.title}>Solutions numériques et outils innovants</h2>
               <p className={styles.description}>
                 Nous offrons une expérience intelligente et des technologies modernes 

@@ -82,6 +82,8 @@
   align-items: center;
   gap: 0.55rem;
   text-decoration: none;
+  cursor: pointer;
+  width: fit-content;
 }
 
 .app-logo span {

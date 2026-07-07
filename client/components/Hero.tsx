@@ -54,8 +54,8 @@ const slides: Slide[] = [
     title: "Technologie au service de",
     highlight: "l'investissement minier",
     subtitle:
-      "POM: une plateforme moderne de suivi en temps reel, d'analyse geologique et de gestion numerique de vos permis.",
-    cta: "Decouvrir POM",
+      "GUNAM: une plateforme moderne de suivi en temps reel, d'analyse geologique et de gestion numerique de vos permis.",
+    cta: "Decouvrir GUNAM",
     ctaLink: "/auth/login",
   },
   {

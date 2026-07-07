@@ -1019,7 +1019,7 @@ const Facture = () => {
                 <header className={styles.header}>
                   <div className={styles.headerTop}>
                     <div className={styles.brandBlock}>
-                      <span className={styles.brandLogo}>POM</span>
+                      <span className={styles.brandLogo}>GUNAM</span>
                       <span className={styles.brandSubtitle}>
                         Plateforme des demandes minières
                       </span>

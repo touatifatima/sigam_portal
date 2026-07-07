@@ -2128,7 +2128,7 @@ const checkButtonConditions = () => {
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles['main-content']}>
           <div className={styles['breadcrumb']}>
-            <span>POM</span>
+            <span>GUNAM</span>
             <FiChevronRight className={styles['breadcrumb-arrow']} />
             <span>Localisation & Substances</span>
           </div>

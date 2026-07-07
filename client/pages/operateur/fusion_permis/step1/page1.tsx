@@ -336,7 +336,7 @@ export default function FusionCadastreStep1Page() {
         <main className={styles['main-content']}>
           <div className={styles['content-wrapper']}>
             <div className={styles.breadcrumb}>
-              <span>POM</span>
+              <span>GUNAM</span>
               <span className={styles['breadcrumb-arrow']}>{'>'}</span>
               <span>Fusion permis</span>
               <span className={styles['breadcrumb-arrow']}>{'>'}</span>

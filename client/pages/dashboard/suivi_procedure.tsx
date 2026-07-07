@@ -941,7 +941,7 @@ const toggleDropdown = (demandeId: number) => {
         return (
           <>
             <div className={styles.breadcrumb}>
-              <span>POM</span>
+              <span>GUNAM</span>
               <FiChevronRight className={styles.breadcrumbArrow} />
               <span>Dashboard</span>
               <FiChevronRight className={styles.breadcrumbArrow} />
