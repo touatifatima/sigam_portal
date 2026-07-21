@@ -3062,3 +3062,1909 @@ display: flex;
 .cardRow .cardWarning {
   color: #000000 !important;
 }
+
+/* Premium admin dashboard refresh */
+.app-container {
+  background:
+    radial-gradient(circle at 10% 8%, rgba(37, 99, 235, 0.08), transparent 22%),
+    radial-gradient(circle at 88% 10%, rgba(245, 184, 65, 0.08), transparent 18%),
+    linear-gradient(180deg, #f8fafc 0%, #f4f7fb 45%, #eef2f8 100%);
+}
+
+.app-content {
+  align-items: flex-start;
+}
+
+.main-content {
+  background: transparent;
+  padding: 1.5rem 1.5rem 2rem;
+}
+
+.contentWrapper {
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.header {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1.35rem 17rem 1.45rem 1.4rem;
+  min-height: 180px;
+  margin-bottom: 1rem;
+  border-radius: 28px;
+  border: 1px solid rgba(226, 232, 240, 0.96);
+  background:
+    radial-gradient(circle at 78% 16%, rgba(37, 99, 235, 0.08), transparent 22%),
+    radial-gradient(circle at 90% 28%, rgba(245, 184, 65, 0.08), transparent 18%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.995), rgba(248, 250, 253, 0.98));
+  box-shadow:
+    0 18px 44px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88);
+  overflow: hidden;
+}
+
+.header::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: linear-gradient(90deg, #2563eb 0%, #3b82f6 48%, #c8890d 100%);
+}
+
+.headerTitle {
+  position: relative;
+  z-index: 1;
+  max-width: 860px;
+  padding-right: 1rem;
+}
+
+.heroBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 247, 223, 0.98), rgba(255, 251, 239, 0.95));
+  border: 1px solid rgba(245, 184, 65, 0.22);
+  color: #9a6700;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  box-shadow: 0 8px 18px rgba(245, 184, 65, 0.08);
+}
+
+.heroBadge svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.headerTitle h1 {
+  margin-top: 0.85rem;
+  font-size: clamp(1.75rem, 2.2vw, 2.5rem);
+  line-height: 1.08;
+  letter-spacing: -0.05em;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.headerTitle p {
+  margin-top: 0.55rem;
+  max-width: 720px;
+  color: #64748b;
+  font-size: 0.98rem;
+}
+
+.headerActions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.timestamp {
+  padding: 0.75rem 0.95rem;
+  border-radius: 999px;
+  background: rgba(248, 250, 252, 0.96);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  color: #475569;
+  font-size: 0.79rem;
+  font-weight: 600;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+}
+
+.refreshButton {
+  min-height: 44px;
+  padding: 0.55rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  color: #1d4ed8;
+  font-size: 0.85rem;
+  font-weight: 800;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+}
+
+.refreshButton:hover {
+  background: linear-gradient(180deg, #ffffff 0%, #eef5ff 100%);
+  color: #0f172a;
+  transform: translateY(-1px);
+}
+
+.headerVisual {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  width: 250px;
+  height: 140px;
+  pointer-events: none;
+  opacity: 0.96;
+}
+
+.headerVisualGlow {
+  position: absolute;
+  inset: 8px 0 auto auto;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245, 184, 65, 0.18) 0%, rgba(245, 184, 65, 0.08) 44%, transparent 72%);
+  filter: blur(8px);
+}
+
+.headerVisualCard {
+  position: absolute;
+  top: 0;
+  right: 34px;
+  width: 110px;
+  height: 100px;
+  border-radius: 22px;
+  border: 1px solid rgba(226, 232, 240, 0.98);
+  background:
+    radial-gradient(circle at 28% 24%, rgba(255, 255, 255, 0.82), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 253, 0.96));
+  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.1);
+  transform: rotate(-4deg);
+}
+
+.headerVisualCardIcon {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  width: 1.55rem;
+  height: 1.55rem;
+  color: #2563eb;
+}
+
+.headerVisualLine {
+  position: absolute;
+  right: 14px;
+  top: 24px;
+  width: 42px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.headerVisualLineMid {
+  top: 40px;
+  width: 58px;
+}
+
+.headerVisualLineLow {
+  top: 56px;
+  width: 36px;
+}
+
+.headerVisualShield {
+  position: absolute;
+  right: 12px;
+  bottom: 2px;
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg, rgba(255, 233, 176, 0.96), rgba(255, 204, 87, 0.95));
+  border: 1px solid rgba(245, 184, 65, 0.16);
+  box-shadow: 0 16px 28px rgba(245, 184, 65, 0.2);
+}
+
+.headerVisualShieldIcon {
+  width: 1.45rem;
+  height: 1.45rem;
+  color: #ffffff;
+}
+
+.cardRow {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.card {
+  min-height: 126px;
+  padding: 1.05rem 1.05rem 1rem;
+  border-radius: 24px;
+  border: 1px solid rgba(226, 232, 240, 0.98);
+  background:
+    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.86), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.995), rgba(248, 250, 253, 0.98));
+  box-shadow:
+    0 14px 32px rgba(15, 23, 42, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  border-radius: inherit;
+  opacity: 0.9;
+}
+
+.card::after {
+  background: radial-gradient(circle at 88% 8%, rgba(255, 255, 255, 0.72), transparent 24%);
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.11);
+}
+
+.cardIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  padding: 0.85rem;
+  margin-right: 0.95rem;
+  flex-shrink: 0;
+  box-shadow:
+    0 14px 28px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.teal .cardIcon {
+  color: #2563eb;
+  background: linear-gradient(145deg, rgba(37, 99, 235, 0.16), rgba(37, 99, 235, 0.06));
+}
+
+.yellow .cardIcon {
+  color: #d97706;
+  background: linear-gradient(145deg, rgba(245, 184, 65, 0.16), rgba(245, 184, 65, 0.07));
+}
+
+.blue .cardIcon {
+  color: #2563eb;
+  background: linear-gradient(145deg, rgba(59, 130, 246, 0.16), rgba(59, 130, 246, 0.06));
+}
+
+.pink .cardIcon {
+  color: #db2777;
+  background: linear-gradient(145deg, rgba(244, 114, 182, 0.16), rgba(244, 114, 182, 0.07));
+}
+
+.orange .cardIcon {
+  color: #f59e0b;
+  background: linear-gradient(145deg, rgba(249, 115, 22, 0.16), rgba(249, 115, 22, 0.07));
+}
+
+.cardContent {
+  gap: 0.15rem;
+}
+
+.cardContent h4 {
+  color: #64748b !important;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.cardRow .cardContent h4 {
+  color: #64748b !important;
+}
+
+.cardContent p {
+  color: #0f172a !important;
+  font-size: 1.55rem;
+  line-height: 1.05;
+  font-weight: 900;
+}
+
+.cardRow .cardContent p {
+  color: #0f172a !important;
+}
+
+.cardPercentage,
+.cardWarning {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #64748b !important;
+}
+
+.cardRow .cardPercentage,
+.cardRow .cardWarning {
+  color: #64748b !important;
+}
+
+.card.teal::before {
+  background: linear-gradient(180deg, #2563eb, #60a5fa);
+}
+
+.card.yellow::before {
+  background: linear-gradient(180deg, #f59e0b, #fbbf24);
+}
+
+.card.blue::before {
+  background: linear-gradient(180deg, #3b82f6, #60a5fa);
+}
+
+.card.pink::before {
+  background: linear-gradient(180deg, #db2777, #f472b6);
+}
+
+.card.orange::before {
+  background: linear-gradient(180deg, #f59e0b, #fb923c);
+}
+
+.chartsGrid,
+.enrichedGrid {
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.chartCard,
+.enrichedCard {
+  position: relative;
+  border-radius: 26px;
+  border: 1px solid rgba(226, 232, 240, 0.96);
+  background:
+    radial-gradient(circle at 90% 8%, rgba(37, 99, 235, 0.04), transparent 22%),
+    radial-gradient(circle at 8% 10%, rgba(245, 184, 65, 0.05), transparent 18%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.995), rgba(248, 250, 253, 0.985));
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07);
+  padding: 1.25rem;
+  overflow: hidden;
+}
+
+.chartCard::after,
+.enrichedCard::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 88% 8%, rgba(255, 255, 255, 0.6), transparent 24%);
+}
+
+.chartHeader {
+  gap: 1rem;
+}
+
+.chartTitle {
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.chartMeta,
+.chartTrend {
+  color: #64748b;
+}
+
+.chartSeriesLegend {
+  display: inline-flex;
+  gap: 0.5rem;
+  margin: 0.3rem 0 0.8rem;
+}
+
+.seriesPill {
+  min-height: 30px;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.seriesPermis {
+  background: rgba(37, 99, 235, 0.08);
+  color: #2563eb;
+}
+
+.seriesDemandes {
+  background: rgba(245, 184, 65, 0.12);
+  color: #9a6700;
+}
+
+.typeLegend {
+  gap: 0.65rem;
+}
+
+.typeLegendItem {
+  padding: 0.35rem 0.5rem;
+  border-radius: 12px;
+}
+
+.typeLegendName {
+  color: #0f172a;
+}
+
+.typeLegendMeta {
+  color: #64748b;
+}
+
+.enrichedGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.leaderboardList {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.leaderRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px auto;
+  gap: 0.85rem;
+  align-items: center;
+}
+
+.leaderMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.rankBadge {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg, rgba(37, 99, 235, 0.12), rgba(245, 184, 65, 0.12));
+  color: #0f172a;
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+.leaderName {
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 0.92rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.leaderBar {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.14);
+  overflow: hidden;
+}
+
+.leaderBar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2563eb, #60a5fa);
+}
+
+.leaderBarWarm span {
+  background: linear-gradient(90deg, #f59e0b, #fb923c);
+}
+
+.leaderValue {
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.segmentedControl {
+  display: inline-flex;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: rgba(241, 245, 249, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.segment,
+.segmentActive {
+  min-height: 34px;
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  border: none;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.segment {
+  color: #64748b;
+  background: transparent;
+}
+
+.segmentActive {
+  color: #0f172a;
+  background: linear-gradient(180deg, #ffffff, #eef5ff);
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08);
+}
+
+.recentActivitiesSection {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.dashboardInsightsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.encaissementsSection {
+  width: 100%;
+  height: 100%;
+}
+
+.encaissementsCard {
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+  min-height: 682px;
+  border-radius: 28px;
+  border: 1px solid rgba(226, 232, 240, 0.88);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.06), transparent 28%),
+    radial-gradient(circle at 14% 10%, rgba(59, 130, 246, 0.08), transparent 20%),
+    radial-gradient(circle at 88% 12%, rgba(245, 184, 65, 0.08), transparent 20%),
+    linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  box-shadow:
+    0 16px 36px rgba(15, 23, 42, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  display: flex;
+  flex-direction: column;
+  padding: 1.2rem;
+}
+
+.encaissementsHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.encaissementsKicker {
+  display: inline-flex;
+  padding: 0.28rem 0.72rem;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.08);
+  color: #2563eb;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.5rem;
+}
+
+.encaissementsTitle {
+  margin: 0;
+  color: #1e293b;
+  font-size: 1.1rem;
+  font-weight: 850;
+  letter-spacing: -0.02em;
+}
+
+.encaissementsSubtitle {
+  margin: 0.35rem 0 0;
+  color: #64748b;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.encaissementsHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.encaissementsPeriods {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: rgba(248, 250, 252, 0.95);
+  border: 1px solid rgba(226, 232, 240, 0.95);
+}
+
+.encaissementsPeriod,
+.encaissementsPeriodActive {
+  min-height: 34px;
+  padding: 0 0.85rem;
+  border-radius: 999px;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 220ms ease, box-shadow 220ms ease, background 220ms ease;
+}
+
+.encaissementsPeriod {
+  background: transparent;
+  color: #64748b;
+}
+
+.encaissementsPeriodActive {
+  color: #0f172a;
+  background: linear-gradient(180deg, #ffffff, #eef5ff);
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08);
+}
+
+.encaissementsPeriod:hover,
+.encaissementsPeriodActive:hover {
+  transform: translateY(-1px);
+}
+
+.encaissementsPeriod svg,
+.encaissementsPeriodActive svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.encaissementsMenu {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  color: #64748b;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+  cursor: pointer;
+  transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+}
+
+.encaissementsMenu:hover {
+  transform: translateY(-1px);
+  border-color: rgba(37, 99, 235, 0.4);
+  box-shadow: 0 14px 26px rgba(15, 23, 42, 0.1);
+}
+
+.encaissementsMenu svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.encaissementsLoading {
+  min-height: 290px;
+  flex: 1;
+  border-radius: 24px;
+  border: 1px dashed rgba(203, 213, 225, 0.88);
+  background: linear-gradient(180deg, #ffffff, #fbfcfe);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem 1.5rem;
+}
+
+.encaissementsLoadingRing {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: 4px solid rgba(37, 99, 235, 0.14);
+  border-top-color: #2563eb;
+  animation: spin 1s linear infinite;
+}
+
+.encaissementsLoadingText {
+  margin-top: 0.9rem;
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.encaissementsChartWrap {
+  position: relative;
+  flex: 1;
+  min-height: 360px;
+  border-radius: 30px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background:
+    radial-gradient(circle at 50% 48%, rgba(59, 130, 246, 0.08), transparent 16%),
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.7), transparent 58%),
+    linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+  overflow: hidden;
+  animation: encaissementsRise 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.encaissementsChartAura {
+  position: absolute;
+  inset: 12% 16%;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(59, 130, 246, 0.12) 0%, rgba(99, 102, 241, 0.06) 42%, transparent 76%);
+  filter: blur(10px);
+  pointer-events: none;
+}
+
+.encaissementsChartWrap :global(.recharts-wrapper) {
+  position: relative;
+  z-index: 1;
+}
+
+.encaissementsCenterValue {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  pointer-events: none;
+  z-index: 2;
+  animation: encaissementsCenterPop 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.encaissementsCenterValue span {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.encaissementsCenterBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  margin-bottom: 0.25rem;
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.06));
+  color: #2563eb !important;
+  letter-spacing: 0.045em !important;
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.1);
+}
+
+.encaissementsCenterValue strong {
+  margin-top: 0.45rem;
+  color: #0f172a;
+  font-size: clamp(2rem, 3.1vw, 3.2rem);
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: -0.06em;
+}
+
+.encaissementsCenterValue small {
+  margin-top: 0.45rem;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 750;
+  max-width: 80%;
+}
+
+.encaissementsLegendHint {
+  margin-top: 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  align-self: center;
+  padding: 0.55rem 0.8rem;
+  border-radius: 20px;
+  background: rgba(248, 250, 252, 0.96);
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+  animation: encaissementsRise 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.encaissementsLegendDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.75);
+}
+
+.encaissementsLegendHint strong {
+  display: block;
+  color: #1e293b;
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.encaissementsLegendHint span {
+  display: block;
+  color: #64748b;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.encaissementsEmptyChart {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  color: #94a3b8;
+}
+
+.encaissementsEmptyChart svg {
+  width: 2rem;
+  height: 2rem;
+}
+
+.encaissementsBottomPanel {
+  margin-top: 0.95rem;
+  padding: 1rem 1rem 1.05rem;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(59, 130, 246, 0.12), transparent 24%),
+    linear-gradient(180deg, #2a2f44 0%, #1f2437 100%);
+  color: #ffffff;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 16px 28px rgba(15, 23, 42, 0.08);
+  animation: encaissementsRise 560ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.encaissementsMetric {
+  padding: 0.35rem 0.35rem 0.3rem;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: transform 220ms ease, background 220ms ease, border-color 220ms ease;
+}
+
+.encaissementsMetric:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.encaissementsMetricLabel {
+  color: rgba(203, 213, 225, 0.9);
+  font-size: 0.72rem;
+  font-weight: 800;
+  margin-bottom: 0.45rem;
+  text-transform: uppercase;
+  letter-spacing: 0.055em;
+}
+
+.encaissementsMetricValue {
+  color: #ffffff;
+  font-size: clamp(1.7rem, 2.2vw, 2.35rem);
+  line-height: 1.05;
+  font-weight: 950;
+  letter-spacing: -0.05em;
+}
+
+.encaissementsMetricTrendUp,
+.encaissementsMetricTrendDown {
+  margin-top: 0.45rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 0.34rem 0.6rem;
+  border-radius: 999px;
+}
+
+.encaissementsMetricTrendUp {
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.encaissementsMetricTrendDown {
+  color: #fda4af;
+  background: rgba(244, 63, 94, 0.12);
+}
+
+.encaissementsMetricTrendUp svg,
+.encaissementsMetricTrendDown svg {
+  width: 0.92rem;
+  height: 0.92rem;
+}
+
+.encaissementsTooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.96);
+  color: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.22);
+}
+
+.encaissementsTooltip strong {
+  font-size: 0.86rem;
+  font-weight: 850;
+  color: #ffffff;
+}
+
+.encaissementsTooltip span {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(226, 232, 240, 0.94);
+}
+
+@keyframes encaissementsRise {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes encaissementsCenterPop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.investorDistributionSection {
+  width: 100%;
+  height: 100%;
+}
+
+.investorDistributionCard {
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+  border-radius: 28px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  background:
+    radial-gradient(circle at 20% 12%, rgba(167, 139, 250, 0.08), transparent 24%),
+    radial-gradient(circle at 82% 14%, rgba(59, 130, 246, 0.06), transparent 22%),
+    linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.07);
+  padding: 1.15rem 1.15rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.investorDistributionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.investorDistributionKicker {
+  display: inline-flex;
+  padding: 0.28rem 0.72rem;
+  border-radius: 999px;
+  background: rgba(167, 139, 250, 0.1);
+  color: #7c3aed;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.5rem;
+}
+
+.investorDistributionTitle {
+  margin: 0;
+  color: #1e293b;
+  font-size: 1.1rem;
+  font-weight: 850;
+  letter-spacing: -0.02em;
+}
+
+.investorDistributionSubtitle {
+  margin: 0.35rem 0 0;
+  color: #64748b;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.investorDistributionHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: none;
+}
+
+.investorDistributionCounter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 38px;
+  padding: 0 0.85rem;
+  border-radius: 999px;
+  border: 1px solid rgba(196, 181, 253, 0.38);
+  background: linear-gradient(180deg, #ffffff, #f5f3ff);
+  color: #4c1d95;
+  font-size: 0.82rem;
+  font-weight: 800;
+  box-shadow: 0 10px 22px rgba(124, 58, 237, 0.08);
+}
+
+.investorDistributionCounter svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.investorDistributionMenu {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  color: #64748b;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+  cursor: pointer;
+  transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+}
+
+.investorDistributionMenu:hover {
+  transform: translateY(-1px);
+  border-color: rgba(167, 139, 250, 0.42);
+  box-shadow: 0 14px 26px rgba(15, 23, 42, 0.1);
+}
+
+.investorDistributionMenu svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.investorDistributionLoading,
+.investorDistributionEmpty {
+  min-height: 270px;
+  border-radius: 24px;
+  border: 1px dashed rgba(203, 213, 225, 0.88);
+  background: linear-gradient(180deg, #ffffff, #fbfcfe);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem 1.5rem;
+}
+
+.investorDistributionLoadingPulse {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: 4px solid rgba(167, 139, 250, 0.14);
+  border-top-color: #8b5cf6;
+  animation: spin 1s linear infinite;
+}
+
+.investorDistributionLoadingText {
+  margin-top: 0.9rem;
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.investorDistributionEmpty svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.investorDistributionEmpty h5 {
+  margin: 0.9rem 0 0.3rem;
+  color: #1e293b;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.investorDistributionEmpty p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  max-width: 40rem;
+}
+
+.investorDistributionEmptyHint {
+  margin-top: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(196, 181, 253, 0.35);
+  background: rgba(167, 139, 250, 0.08);
+  color: #6d28d9;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.investorDistributionMap {
+  overflow: hidden;
+  border-radius: 24px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  flex: 1;
+}
+
+.investorDistributionLeaflet {
+  width: 100%;
+  height: 320px;
+  border-radius: inherit;
+}
+
+.investorDistributionMap :global(.leaflet-control-attribution) {
+  font-size: 0.68rem;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.investorDistributionBars {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.95rem;
+}
+
+.investorDistributionBarCard {
+  padding: 0.9rem 0.95rem 0.92rem;
+  border-radius: 20px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+}
+
+.investorDistributionBarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.7rem;
+}
+
+.investorDistributionBarName {
+  color: #1e293b;
+  font-size: 0.9rem;
+  font-weight: 800;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.investorDistributionBarMeta {
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.investorDistributionBarTrack {
+  height: 11px;
+  border-radius: 999px;
+  background: rgba(226, 232, 240, 0.8);
+  overflow: hidden;
+}
+
+.investorDistributionBarFill,
+.investorDistributionBarFillAlt {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  box-shadow: 0 8px 16px rgba(124, 58, 237, 0.18);
+  background: linear-gradient(90deg, #8b5cf6 0%, #a78bfa 100%);
+}
+
+.investorDistributionBarFillAlt {
+  background: linear-gradient(90deg, #94a3b8 0%, #cbd5e1 100%);
+  box-shadow: 0 8px 16px rgba(148, 163, 184, 0.16);
+}
+
+.investorDistributionTooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  color: #0f172a;
+  font-size: 0.78rem;
+}
+
+.investorDistributionTooltip strong {
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.investorDistributionTooltip span {
+  color: #475569;
+  font-weight: 600;
+}
+
+.modalOverlay {
+  background: rgba(2, 6, 23, 0.5);
+  backdrop-filter: blur(10px);
+}
+
+.modal {
+  border-radius: 28px;
+  border: 1px solid rgba(226, 232, 240, 0.96);
+  box-shadow: 0 28px 60px rgba(2, 6, 23, 0.22);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.modalHeader {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.closeButton {
+  border-radius: 999px;
+}
+
+.modalBody {
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+}
+
+.modalContentContainer {
+  gap: 1rem;
+}
+
+.modalFilters {
+  gap: 0.75rem;
+}
+
+.dataTable {
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  border-radius: 18px;
+}
+
+.dataTable thead th {
+  background: linear-gradient(180deg, #f8fafc, #eef2f7);
+  color: #334155;
+}
+
+.dataTable tbody td {
+  background: #ffffff;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.statusBadge {
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+}
+
+.statusActive {
+  background: rgba(16, 185, 129, 0.1);
+  color: #047857;
+}
+
+.statusExpired {
+  background: rgba(239, 68, 68, 0.1);
+  color: #b91c1c;
+}
+
+.statusPending {
+  background: rgba(245, 184, 65, 0.14);
+  color: #9a6700;
+}
+
+@media (max-width: 1280px) {
+  .cardRow {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .headerVisual {
+    width: 220px;
+  }
+}
+
+@media (max-width: 1080px) {
+  .chartsGrid,
+  .enrichedGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboardInsightsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .cardRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  .main-content {
+    padding: 1rem;
+  }
+
+  .header {
+    flex-direction: column;
+    padding: 1.1rem;
+    border-radius: 24px;
+    min-height: 0;
+  }
+
+  .headerActions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .headerVisual {
+    position: static;
+    width: 100%;
+    height: 120px;
+    align-self: flex-end;
+  }
+
+  .cardRow {
+    grid-template-columns: 1fr;
+  }
+
+  .leaderRow {
+    grid-template-columns: 1fr;
+  }
+
+  .encaissementsCard {
+    min-height: 0;
+  }
+
+  .encaissementsBottomPanel {
+    grid-template-columns: 1fr;
+  }
+
+  .encaissementsHeader,
+  .investorDistributionHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .encaissementsHeaderActions,
+  .investorDistributionHeaderActions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .encaissementsPeriods {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .dashboardInsightsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .investorDistributionHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .investorDistributionHeaderActions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .investorDistributionBars {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Activity Statistics card inspired by the template */
+.activitySection {
+  margin-bottom: 1rem;
+}
+
+.activityShell {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(290px, 0.8fr);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.activityCard {
+  position: relative;
+  overflow: hidden;
+  min-height: 470px;
+  padding: 1.35rem 1.35rem 1.25rem;
+  border-radius: 28px;
+  border: 1px solid #edf2f7;
+  background:
+    radial-gradient(circle at 8% 14%, rgba(59, 130, 246, 0.05), transparent 24%),
+    radial-gradient(circle at 86% 10%, rgba(245, 184, 65, 0.06), transparent 18%),
+    linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+  box-shadow:
+    0 18px 42px rgba(15, 23, 42, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.activityCard::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 84% 12%, rgba(255, 255, 255, 0.65), transparent 22%);
+}
+
+.activityCardHeader {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 0.9rem;
+}
+
+.activityTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #1f2937;
+  letter-spacing: -0.02em;
+}
+
+.activitySubtitle {
+  margin: 0.35rem 0 0;
+  color: #94a3b8;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.activityHeaderActions {
+  display: flex;
+  align-items: center;
+}
+
+.activitySelect {
+  min-height: 36px;
+  padding: 0.4rem 2.2rem 0.4rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  color: #334155;
+  font-size: 0.9rem;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+}
+
+.activitySelect:focus {
+  outline: none;
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+.activityLegend {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 0.8rem;
+}
+
+.activityLegendPill {
+  min-height: 28px;
+  padding: 0 0.72rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: opacity 240ms ease, transform 240ms ease, box-shadow 240ms ease;
+  will-change: opacity, transform;
+}
+
+.activityLegendTraitees {
+  background: rgba(245, 184, 65, 0.14);
+  color: #9a6700;
+}
+
+.activityLegendDeposees {
+  background: rgba(167, 139, 250, 0.12);
+  color: #7c3aed;
+}
+
+.activityLegendEnCours {
+  background: rgba(209, 213, 219, 0.26);
+  color: #64748b;
+}
+
+.activityChartWrap {
+  position: relative;
+  z-index: 1;
+  height: 330px;
+}
+
+.activitySide {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-content: start;
+}
+
+.activityMetricCard {
+  position: relative;
+  overflow: hidden;
+  min-height: 156px;
+  padding: 0.95rem 1rem 1rem;
+  border-radius: 22px;
+  border: 1px solid #edf2f7;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+}
+
+.activityMetricCard::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 36px;
+  border-radius: 22px 22px 0 0;
+}
+
+.activityMetricTop {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 28px;
+  padding: 0 0.72rem;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.activityMetricTop svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.activityMetricValue {
+  position: relative;
+  z-index: 1;
+  margin-top: 1rem;
+  font-size: 1.7rem;
+  font-weight: 900;
+  color: #1f2937;
+  letter-spacing: -0.03em;
+}
+
+.activityMetricLabel {
+  position: relative;
+  z-index: 1;
+  margin-top: 0.35rem;
+  color: #94a3b8;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.activityMetricPink::before {
+  background: linear-gradient(90deg, #ff6b9a 0%, #ff7da8 100%);
+}
+
+.activityMetricCyan::before {
+  background: linear-gradient(90deg, #1fc9f4 0%, #35d3f6 100%);
+}
+
+.activityMetricPurple::before {
+  background: linear-gradient(90deg, #bb86fc 0%, #c084fc 100%);
+}
+
+.activityMetricLavender::before {
+  background: linear-gradient(90deg, #eceaff 0%, #f4f2ff 100%);
+}
+
+.activityMetricLavender .activityMetricTop {
+  color: #6d28d9;
+}
+
+.activityMetricLavender .activityMetricLabel {
+  color: #a5b4fc;
+}
+
+.activityMetricLavender .activityMetricValue {
+  color: #1f2937;
+}
+
+.activityPromoCard {
+  position: relative;
+  overflow: hidden;
+  grid-column: 1 / -1;
+  min-height: 150px;
+  padding: 1rem 1rem 1rem;
+  border-radius: 22px;
+  border: 1px solid #edf2f7;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.78), transparent 24%),
+    linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.activityPromoCard h5 {
+  margin: 0;
+  color: #f8fafc;
+  font-size: 1rem;
+  font-weight: 800;
+  position: relative;
+  z-index: 1;
+}
+
+.activityPromoCard p {
+  margin: 0.55rem 0 0;
+  color: #d8c8ff;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  position: relative;
+  z-index: 1;
+}
+
+.activityPromoCard button {
+  align-self: flex-start;
+  margin-top: 0.7rem;
+  border: none;
+  background: transparent;
+  color: #f5b841;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.activityPromoCard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 82% 18%, rgba(245, 184, 65, 0.18), transparent 24%),
+    linear-gradient(180deg, rgba(124, 58, 237, 0.9), rgba(168, 85, 247, 0.76));
+}
+
+.activityPerformanceCard {
+  position: relative;
+  overflow: hidden;
+  grid-column: 1 / -1;
+  min-height: 360px;
+  padding: 1.1rem 1.1rem 1rem;
+  border-radius: 22px;
+  border: 1px solid #e9e5ff;
+  background:
+    radial-gradient(circle at 22% 16%, rgba(255, 255, 255, 0.95), transparent 28%),
+    radial-gradient(circle at 82% 14%, rgba(139, 92, 246, 0.06), transparent 22%),
+    linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+}
+
+.activityPerformanceCard:hover {
+  transform: translateY(-2px);
+  border-color: #ddd6fe;
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.1);
+}
+
+.activityPerformanceHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  position: relative;
+  z-index: 1;
+}
+
+.activityPerformanceHeader h5 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 1.02rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.activityPerformanceMenu {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid rgba(196, 181, 253, 0.55);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 240, 255, 0.86));
+  color: #7c3aed;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 10px 22px rgba(124, 58, 237, 0.12);
+  cursor: pointer;
+  transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+}
+
+.activityPerformanceMenu:hover {
+  transform: translateY(-1px);
+  border-color: rgba(167, 139, 250, 0.7);
+  box-shadow: 0 14px 28px rgba(124, 58, 237, 0.18);
+}
+
+.activityPerformanceMenu svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.activityPerformanceGaugeWrap {
+  position: relative;
+  height: 186px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.1rem;
+}
+
+.activityPerformanceGaugeWrap :global(.recharts-wrapper) {
+  overflow: visible;
+}
+
+.activityPerformanceGaugeValue {
+  position: absolute;
+  top: 48%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2.15rem;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  color: #111827;
+}
+
+.activityPerformanceGaugeLabel {
+  position: absolute;
+  top: calc(48% + 34px);
+  left: 50%;
+  transform: translateX(-50%);
+  color: #64748b;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.activityPerformanceStats {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.72rem;
+  margin-top: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.activityPerformanceStat {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 18px;
+  border: 1px solid #edf2f7;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.05);
+  transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+}
+
+.activityPerformanceStat:hover {
+  transform: translateY(-1px);
+  border-color: #e9d5ff;
+  box-shadow: 0 14px 24px rgba(15, 23, 42, 0.08);
+}
+
+.activityPerformanceStatIconWrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  color: #7c3aed;
+  background:
+    radial-gradient(circle at 30% 24%, rgba(255, 255, 255, 0.95), transparent 42%),
+    linear-gradient(180deg, rgba(139, 92, 246, 0.12), rgba(167, 139, 250, 0.06));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.activityPerformanceStatIconWrap svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.activityPerformanceStatContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.activityPerformanceStatTitle {
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.activityPerformanceStatContent strong {
+  color: #1e293b;
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+@media (max-width: 1080px) {
+  .activityShell {
+    grid-template-columns: 1fr;
+  }
+
+  .activitySide {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .activityCard {
+    min-height: 0;
+    padding: 1.1rem;
+  }
+
+  .activityCardHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .activitySelect {
+    width: 100%;
+  }
+
+  .activitySide {
+    grid-template-columns: 1fr;
+  }
+
+  .activityPromoCard,
+  .activityPerformanceCard {
+    grid-column: auto;
+  }
+
+  .activityPerformanceGaugeWrap {
+    height: 176px;
+  }
+}

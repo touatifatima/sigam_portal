@@ -6,6 +6,7 @@ import {
   FiFileText, 
   FiActivity, 
   FiUsers, 
+  FiShield,
   FiRefreshCw,
   FiTrendingUp,
   FiX,
@@ -19,22 +20,26 @@ import {
   FiFilter,
   FiPlus,
   FiAlertTriangle,
-  FiChevronDown
+  FiChevronDown,
+  FiCheckCircle,
+  FiClock,
+  FiMoreHorizontal
 } from 'react-icons/fi';
 import axios from 'axios';
 import {
   ResponsiveContainer,
-  AreaChart,
-  Area,
   XAxis,
   YAxis,
   Tooltip,
-  PieChart,
-  Pie,
   Cell,
   CartesianGrid,
+  ComposedChart,
   BarChart,
   Bar,
+  Area,
+  Line,
+  RadialBarChart,
+  RadialBar,
   RadarChart,
   Radar,
   PolarGrid,
@@ -54,6 +59,11 @@ import { format as formatDate } from 'date-fns';
 import { computePermisSuperficie, getPermisWilayaName, getPermisTitulaireName, getPermisSubstances } from '@/utils/permisHelpers';
 import { fetchRecentActivities, generateActivitiesFromPermis } from '@/src/types/activityService';
 import RecentActivities from './RecentActivities';
+import InvestorDistributionCard, { InvestorDistributionData } from './InvestorDistributionCard';
+import EncaissementsCard, {
+  EncaissementPeriod,
+  EncaissementsOverviewData,
+} from './EncaissementsCard';
 import { useLoading } from '@/components/globalspinner/LoadingContext';
 export interface RecentActivity {
   id: number;
@@ -100,6 +110,15 @@ type TopSubstance = {
   count: number;
 };
 
+type ActivityView = 'month' | 'year' | 'day';
+type ActivitySeriesKey = 'deposees' | 'traitees' | 'enCours';
+type ActivitySeriesPoint = {
+  label: string;
+  deposees: number;
+  traitees: number;
+  enCours: number;
+};
+
 export type Permis = {
   id: number;
   code_permis: string;
@@ -138,6 +157,7 @@ type Demande = {
   id_demande: number;
   code_demande: string;
   date_demande: string;
+  statut_demande?: string;
   statut_juridique_terrain: string;
   procedure: {
     num_proc: string;
@@ -147,6 +167,17 @@ type Demande = {
     nom_societeFR: string;
   };
 };
+
+type DemandePerformanceStats = {
+  total: number;
+  processed: number;
+  inProgress: number;
+  avgTreatmentDays: number | null;
+  progressRate: number;
+};
+
+type InvestorDistributionDataState = InvestorDistributionData | null;
+type EncaissementsOverviewDataState = EncaissementsOverviewData | null;
 
 
 type ExportFormat = 'csv' | 'excel';
@@ -171,9 +202,10 @@ export default function PermisDashboard() {
   const [antenneStats, setAntenneStats] = useState<RegionStat[]>([]);
   const [now, setNow] = useState<Date>(new Date());
   
-  const [evolutionData, setEvolutionData] = useState<EvolutionData[]>([]);
+  const [, setEvolutionData] = useState<EvolutionData[]>([]);
   const [typeData, setTypeData] = useState<TypeDistribution[]>([]);
   const [statusData, setStatusData] = useState<TypeDistribution[]>([]);
+  const [activityView, setActivityView] = useState<ActivityView>('month');
   const displayTypeData = useMemo(() => {
     if (typeData.length === 0) return [];
     const sorted = [...typeData].sort((a, b) => b.value - a.value);
@@ -197,6 +229,19 @@ export default function PermisDashboard() {
     () => displayTypeData.reduce((sum, entry) => sum + entry.value, 0),
     [displayTypeData],
   );
+  const [activeActivitySeries, setActiveActivitySeries] = useState<ActivitySeriesKey | null>(null);
+  const getActivitySeriesOpacity = useCallback(
+    (series: ActivitySeriesKey) => {
+      if (!activeActivitySeries) return 1;
+      return activeActivitySeries === series ? 1 : 0.2;
+    },
+    [activeActivitySeries],
+  );
+  const getActivitySeriesStrokeWidth = useCallback(
+    (series: ActivitySeriesKey, baseWidth: number) =>
+      activeActivitySeries === series ? baseWidth + 1 : baseWidth,
+    [activeActivitySeries],
+  );
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState<boolean>(false);
@@ -218,15 +263,21 @@ export default function PermisDashboard() {
   const [apiSurfaceStats, setApiSurfaceStats] = useState<{ total: number; avg: number; max: number } | null>(null);
   const [topTitulaires, setTopTitulaires] = useState<{ name: string; count: number }[]>([]);
   const [topSubstances, setTopSubstances] = useState<TopSubstance[]>([]);
-  const evolutionTrend = useMemo(() => {
-    if (evolutionData.length < 2) return null;
-    const current = evolutionData[evolutionData.length - 1];
-    const previous = evolutionData[evolutionData.length - 2];
-    return {
-      permisDelta: current.permis - previous.permis,
-      demandesDelta: current.demandes - previous.demandes,
-    };
-  }, [evolutionData]);
+  const [activityPermisData, setActivityPermisData] = useState<Permis[]>([]);
+  const [activityDemandesData, setActivityDemandesData] = useState<Demande[]>([]);
+  const [demandesPerformanceStats, setDemandesPerformanceStats] = useState<DemandePerformanceStats>({
+    total: 0,
+    processed: 0,
+    inProgress: 0,
+    avgTreatmentDays: null,
+    progressRate: 0,
+  });
+  const [investorDistributionData, setInvestorDistributionData] =
+    useState<InvestorDistributionDataState>(null);
+  const [encaissementsPeriod, setEncaissementsPeriod] = useState<EncaissementPeriod>('year');
+  const [encaissementsData, setEncaissementsData] =
+    useState<EncaissementsOverviewDataState>(null);
+  const [encaissementsLoading, setEncaissementsLoading] = useState(true);
   // Surfaces et titulaires (vision operationnelle)
   
   const baseDetenteurRanking = useMemo(() => {
@@ -255,7 +306,7 @@ export default function PermisDashboard() {
     try { resetLoading(); } catch {}
   }, [resetLoading]);
 
-  // Horloge temps r?el
+  // Horloge temps réel
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000 * 60);
     return () => clearInterval(timer);
@@ -293,19 +344,16 @@ const [selectedRegionMode, setSelectedRegionMode] = useState<'wilaya' | 'antenne
 const fetchActivities = useCallback(async () => {
   setLoadingActivities(true);
   try {
-    // Try to fetch from API first
     const activities = await fetchRecentActivities();
-    
+
     if (activities.length > 0) {
       setRecentActivities(activities);
     } else {
-      // Fallback: generate activities from permis data
       const generatedActivities = generateActivitiesFromPermis(permisList);
       setRecentActivities(generatedActivities);
     }
   } catch (error) {
     console.error('Error loading activities:', error);
-    // Fallback: generate activities from permis data
     const generatedActivities = generateActivitiesFromPermis(permisList);
     setRecentActivities(generatedActivities);
   } finally {
@@ -337,6 +385,89 @@ useEffect(() => {
 const getWilayaName = useCallback((permis: Permis): string => {
   return getPermisWilayaName(permis) || 'N/A';
 }, []);
+
+const activityChartData = useMemo<ActivitySeriesPoint[]>(() => {
+  const sourceDemandes = activityDemandesData.length ? activityDemandesData : demandesData;
+  const today = new Date();
+
+  const parseDate = (value: string | null | undefined) => {
+    if (!value) return null;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const buildRanges = () => {
+    if (activityView === 'year') {
+      return Array.from({ length: 6 }, (_, idx) => {
+        const year = today.getFullYear() - 5 + idx;
+        const start = new Date(year, 0, 1);
+        const end = new Date(year, 11, 31, 23, 59, 59, 999);
+        return {
+          label: String(year),
+          start,
+          end,
+        };
+      });
+    }
+
+    if (activityView === 'day') {
+      const base = new Date(today);
+      base.setHours(0, 0, 0, 0);
+      base.setDate(base.getDate() - 13);
+
+      return Array.from({ length: 14 }, (_, idx) => {
+        const start = new Date(base);
+        start.setDate(base.getDate() + idx);
+        const end = new Date(start);
+        end.setHours(23, 59, 59, 999);
+        return {
+          label: format(start, 'dd MMM', { locale: fr }),
+          start,
+          end,
+        };
+      });
+    }
+
+    const base = startOfMonth(addMonths(today, -11));
+    return Array.from({ length: 12 }, (_, idx) => {
+      const start = startOfMonth(addMonths(base, idx));
+      const end = endOfMonth(start);
+      return {
+        label: format(start, 'MMM yy', { locale: fr }),
+        start,
+        end,
+      };
+    });
+  };
+
+  const ranges = buildRanges();
+
+  return ranges.map((range) => {
+    const within = (dateValue: string | null | undefined) => {
+      const parsed = parseDate(dateValue);
+      return !!parsed && parsed >= range.start && parsed <= range.end;
+    };
+
+    const deposees = sourceDemandes.filter((item) => within(item.date_demande)).length;
+    const traitees = sourceDemandes.filter((item) => {
+      if (!within(item.date_demande)) return false;
+      const status = String(item.statut_demande ?? '').toUpperCase();
+      return ['ACCEPTEE', 'REJETEE', 'APPROUVEE', 'APPROUVE', 'VALIDEE', 'TERMINEE'].includes(status);
+    }).length;
+    const enCours = sourceDemandes.filter((item) => {
+      if (!within(item.date_demande)) return false;
+      const status = String(item.statut_demande ?? '').toUpperCase();
+      return ['EN_COURS', 'EN_ATTENTE', 'EN_COMPLEMENT'].includes(status);
+    }).length;
+
+    return {
+      label: range.label,
+      deposees,
+      traitees,
+      enCours,
+    };
+  });
+}, [activityDemandesData, activityView, demandesData]);
 
 const topWilayaStats = useMemo(
   () => [...wilayaStats].sort((a, b) => b.value - a.value).slice(0, 8),
@@ -498,29 +629,106 @@ const expiringTimeline = useMemo(() => {
         evolutionResponse,
         typesResponse,
         statusResponse,
+        demandesStatsResponse,
         expiringResponse,
         wilayaResponse,
         antenneResponse,
         topSubstancesResponse,
+        activityPermisResponse,
+        activityDemandesResponse,
+        investorDistributionResponse,
       ] = await Promise.all([
         axios.get(`${apiURL}/api/dashboard/stats`),
         axios.get(`${apiURL}/api/dashboard/evolution`),
         axios.get(`${apiURL}/api/dashboard/types`),
         axios.get(`${apiURL}/api/dashboard/status-distribution`),
+        axios.get(`${apiURL}/demandes_dashboard/stats`, {
+          withCredentials: true,
+        }).catch(() => ({ data: {} })),
         axios.get(`${apiURL}/api/dashboard/expiring-soon`),
         axios.get(`${apiURL}/api/dashboard/by-wilaya`),
         axios.get(`${apiURL}/api/dashboard/by-antenne`),
         axios.get(`${apiURL}/api/dashboard/top-substances`).catch(() => ({ data: [] })),
+        axios.get(`${apiURL}/Permisdashboard`, {
+          params: {
+            page: 1,
+            limit: 500,
+          },
+          withCredentials: true,
+        }).catch(() => ({ data: [] })),
+        axios.get(`${apiURL}/demandes_dashboard`, {
+          params: {
+            page: 1,
+            pageSize: 500,
+            sortBy: 'date_demande',
+            sortOrder: 'desc',
+          },
+          withCredentials: true,
+        }).catch(() => ({ data: [] })),
+        axios.get(`${apiURL}/api/dashboard/investor-repartition`, {
+          withCredentials: true,
+        }).catch(() => ({
+          data: {
+            totalInvestors: 0,
+            countries: [],
+            noCountry: { count: 0, percentage: 0 },
+          },
+        })),
       ]);
 
       const expSoonList = Array.isArray(expiringResponse.data) ? expiringResponse.data : [];
       setExpiringSoonPermis(expSoonList);
       setExpiringSoonFromApi(true);
+
+      const demandesStatsData = demandesStatsResponse.data ?? {};
+      const byStatut = Array.isArray(demandesStatsData.byStatut) ? demandesStatsData.byStatut : [];
+      const ongoingStatuses = new Set(['EN_COURS', 'EN_ATTENTE', 'EN_COMPLEMENT']);
+      const inProgressCount = byStatut.reduce((sum: number, item: any) => {
+        const status = String(item?.statut_demande ?? '').toUpperCase();
+        const count = Number(item?._count?._all ?? 0);
+        return sum + (ongoingStatuses.has(status) ? count : 0);
+      }, 0);
+      const totalDemandes = Number(demandesStatsData.total ?? 0);
+      const processedCount = Math.max(totalDemandes - inProgressCount, 0);
+      const progressRate = totalDemandes > 0 ? Math.round((processedCount / totalDemandes) * 100) : 0;
+      setDemandesPerformanceStats({
+        total: totalDemandes,
+        processed: processedCount,
+        inProgress: inProgressCount,
+        avgTreatmentDays: Number.isFinite(Number(demandesStatsData.avgInstructionDays))
+          ? Number(demandesStatsData.avgInstructionDays)
+          : null,
+        progressRate,
+      });
+
       setTopTitulaires(statsResponse.data?.topTitulaires || []);
       setApiSurfaceStats(statsResponse.data?.surface || null);
       setWilayaStats(Array.isArray(wilayaResponse.data) ? wilayaResponse.data : []);
       setAntenneStats(Array.isArray(antenneResponse.data) ? antenneResponse.data : []);
       setTopSubstances(Array.isArray(topSubstancesResponse.data) ? topSubstancesResponse.data : []);
+      const activityPermisRaw = activityPermisResponse.data?.data ?? activityPermisResponse.data ?? [];
+      const activityDemandesRaw =
+        activityDemandesResponse.data?.items ??
+        activityDemandesResponse.data?.data ??
+        activityDemandesResponse.data ??
+        [];
+      setActivityPermisData(Array.isArray(activityPermisRaw) ? activityPermisRaw : []);
+      setActivityDemandesData(Array.isArray(activityDemandesRaw) ? activityDemandesRaw : []);
+      const investorDistributionRaw = investorDistributionResponse.data ?? null;
+      setInvestorDistributionData(
+        investorDistributionRaw && typeof investorDistributionRaw === 'object'
+          ? {
+              totalInvestors: Number(investorDistributionRaw.totalInvestors ?? 0),
+              countries: Array.isArray(investorDistributionRaw.countries)
+                ? investorDistributionRaw.countries
+                : [],
+              noCountry: {
+                count: Number(investorDistributionRaw.noCountry?.count ?? 0),
+                percentage: Number(investorDistributionRaw.noCountry?.percentage ?? 0),
+              },
+            }
+          : null,
+      );
 
       setStats({
         total: statsResponse.data?.total ?? 0,
@@ -594,6 +802,65 @@ const expiringTimeline = useMemo(() => {
       expiringSoon: expiringSoonPermis.length,
     }));
   }, [expiringSoonPermis.length]);
+
+  useEffect(() => {
+    if (!apiURL || !isAuthReady) {
+      setEncaissementsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchEncaissements = async () => {
+      setEncaissementsLoading(true);
+      try {
+        const response = await axios.get(`${apiURL}/api/dashboard/encaissements`, {
+          params: { period: encaissementsPeriod },
+          withCredentials: true,
+        });
+
+        if (cancelled) return;
+        const payload = response.data ?? null;
+        setEncaissementsData(
+          payload && typeof payload === 'object'
+            ? {
+                period: (payload.period ?? encaissementsPeriod) as EncaissementPeriod,
+                totalAmount: Number(payload.totalAmount ?? 0),
+                totalTransactions: Number(payload.totalTransactions ?? 0),
+                categories: Array.isArray(payload.categories)
+                  ? payload.categories
+                  : [],
+                month: {
+                  current: Number(payload.month?.current ?? 0),
+                  previous: Number(payload.month?.previous ?? 0),
+                  variation: Number(payload.month?.variation ?? 0),
+                },
+                year: {
+                  current: Number(payload.year?.current ?? 0),
+                  previous: Number(payload.year?.previous ?? 0),
+                  variation: Number(payload.year?.variation ?? 0),
+                },
+              }
+            : null,
+        );
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to fetch encaissements overview:', error);
+          setEncaissementsData(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setEncaissementsLoading(false);
+        }
+      }
+    };
+
+    fetchEncaissements();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [apiURL, isAuthReady, encaissementsPeriod]);
 
   // Fetch permis list
   const fetchPermisList = useCallback(async (page: number = 1) => {
@@ -1314,6 +1581,10 @@ const expiringTimeline = useMemo(() => {
                 {/* Dashboard Header */}
                 <div className={styles.header}>
                   <div className={styles.headerTitle}>
+                    <span className={styles.heroBadge}>
+                      <FiShield />
+                      Administration minière
+                    </span>
                     <h1>Dashboard des permis</h1>
                     <p>
                       Pilotage centralise des titres miniers, activites et echeances
@@ -1335,6 +1606,18 @@ const expiringTimeline = useMemo(() => {
                       Actualiser
                     </button>
                     
+                  </div>
+                  <div className={styles.headerVisual} aria-hidden="true">
+                    <div className={styles.headerVisualGlow} />
+                    <div className={styles.headerVisualCard}>
+                      <FiFileText className={styles.headerVisualCardIcon} />
+                      <span className={styles.headerVisualLine} />
+                      <span className={`${styles.headerVisualLine} ${styles.headerVisualLineMid}`} />
+                      <span className={`${styles.headerVisualLine} ${styles.headerVisualLineLow}`} />
+                    </div>
+                    <div className={styles.headerVisualShield}>
+                      <FiShield className={styles.headerVisualShieldIcon} />
+                    </div>
                   </div>
                 </div>
 
@@ -1410,128 +1693,246 @@ const expiringTimeline = useMemo(() => {
                   </div>
                 </div>
 
-                                                {/* Charts Grid */}
-                <div className={styles.chartsGrid}>
-                  <div className={styles.chartCard}>
-                    <div className={styles.chartHeader}>
-                      <h4 className={styles.chartTitle}>Evolution des demandes & permis</h4>
-                      <div className={styles.chartTrend}>
-                        <FiTrendingUp />
-                        <span>
-                          {evolutionTrend
-                            ? `Permis ${evolutionTrend.permisDelta >= 0 ? '+' : ''}${evolutionTrend.permisDelta} â€¢ Demandes ${evolutionTrend.demandesDelta >= 0 ? '+' : ''}${evolutionTrend.demandesDelta} vs. derniere annee`
-                            : 'Donnees annuelles en cours de consolidation'}
+                <section className={styles.activitySection}>
+                  <div className={styles.activityShell}>
+                    <div className={styles.activityCard}>
+                      <div className={styles.activityCardHeader}>
+                        <div>
+                          <h4 className={styles.activityTitle}>Activity Statistics</h4>
+                          <p className={styles.activitySubtitle}>
+                            Vue opérationnelle des demandes et des permis sur la période sélectionnée.
+                          </p>
+                        </div>
+                        <div className={styles.activityHeaderActions}>
+                          <select
+                            className={styles.activitySelect}
+                            value={activityView}
+                            onChange={(event) => setActivityView(event.target.value as ActivityView)}
+                            aria-label="Afficher par période"
+                          >
+                            <option value="month">Show by month</option>
+                            <option value="year">Show by year</option>
+                            <option value="day">Show by day</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className={styles.activityLegend}>
+                        <span
+                          className={`${styles.activityLegendPill} ${styles.activityLegendDeposees}`}
+                          onMouseEnter={() => setActiveActivitySeries('deposees')}
+                          onMouseLeave={() => setActiveActivitySeries(null)}
+                          style={{
+                            opacity: getActivitySeriesOpacity('deposees'),
+                            transform: activeActivitySeries === 'deposees' ? 'translateY(-1px) scale(1.02)' : 'none',
+                          }}
+                        >
+                          Demandes déposées
+                        </span>
+                        <span
+                          className={`${styles.activityLegendPill} ${styles.activityLegendTraitees}`}
+                          onMouseEnter={() => setActiveActivitySeries('traitees')}
+                          onMouseLeave={() => setActiveActivitySeries(null)}
+                          style={{
+                            opacity: getActivitySeriesOpacity('traitees'),
+                            transform: activeActivitySeries === 'traitees' ? 'translateY(-1px) scale(1.02)' : 'none',
+                          }}
+                        >
+                          Demandes traitées
+                        </span>
+                        <span
+                          className={`${styles.activityLegendPill} ${styles.activityLegendEnCours}`}
+                          onMouseEnter={() => setActiveActivitySeries('enCours')}
+                          onMouseLeave={() => setActiveActivitySeries(null)}
+                          style={{
+                            opacity: getActivitySeriesOpacity('enCours'),
+                            transform: activeActivitySeries === 'enCours' ? 'translateY(-1px) scale(1.02)' : 'none',
+                          }}
+                        >
+                          Demandes en cours
                         </span>
                       </div>
-                    </div>
-                    <div className={styles.chartSeriesLegend}>
-                      <span className={`${styles.seriesPill} ${styles.seriesPermis}`}>Permis</span>
-                      <span className={`${styles.seriesPill} ${styles.seriesDemandes}`}>Demandes</span>
-                    </div>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <AreaChart data={evolutionData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                        <defs>
-                          <linearGradient id="permitsAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#a84775" stopOpacity={0.32} />
-                            <stop offset="100%" stopColor="#a84775" stopOpacity={0.04} />
-                          </linearGradient>
-                          <linearGradient id="demandesAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#0ea5e9" stopOpacity={0.3} />
-                            <stop offset="100%" stopColor="#0ea5e9" stopOpacity={0.03} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5d9e2" />
-                        <XAxis dataKey="year" tick={{ fill: '#64748b' }} axisLine={{ stroke: '#cbd5e1' }} />
-                        <YAxis tick={{ fill: '#64748b' }} axisLine={{ stroke: '#cbd5e1' }} tickFormatter={(value) => value.toLocaleString()} />
-                        <Tooltip
-                          formatter={(value, name) => [
-                            Number(value || 0).toLocaleString('fr-FR'),
-                            name === 'permis' ? 'Permis' : 'Demandes',
-                          ]}
-                          labelFormatter={(label) => `Annee: ${label}`}
-                          contentStyle={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="permis"
-                          name="permis"
-                          stroke="#a84775"
-                          fill="url(#permitsAreaGradient)"
-                          strokeWidth={2.6}
-                          dot={{ r: 4, fill: '#a84775', stroke: '#fff', strokeWidth: 1.5 }}
-                          activeDot={{ r: 6, fill: '#a84775', stroke: '#fff', strokeWidth: 2 }}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="demandes"
-                          name="demandes"
-                          stroke="#0ea5e9"
-                          fill="url(#demandesAreaGradient)"
-                          strokeWidth={2.6}
-                          dot={{ r: 4, fill: '#0ea5e9', stroke: '#fff', strokeWidth: 1.5 }}
-                          activeDot={{ r: 6, fill: '#0ea5e9', stroke: '#fff', strokeWidth: 2 }}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
 
-                  <div className={styles.chartCard}>
-                    <div className={styles.chartHeader}>
-                      <h4 className={styles.chartTitle}>Repartition par type</h4>
-                      <span className={styles.chartMeta}>{totalTypeCount.toLocaleString()} permis</span>
-                    </div>
-                    <div className={styles.typeDistribution}>
-                      <div className={styles.typeChart}>
-                        <ResponsiveContainer width="100%" height={240}>
-                          <PieChart>
-                            <Pie
-                              data={displayTypeData}
-                              dataKey="value"
-                              nameKey="name"
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={52}
-                              outerRadius={76}
-                              paddingAngle={2}
-                              label={false}
-                              labelLine={false}
-                            >
-                              {displayTypeData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                              ))}
-                            </Pie>
+                      <div className={styles.activityChartWrap}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ComposedChart data={activityChartData} margin={{ top: 5, right: 18, bottom: 5, left: 0 }}>
+                            <defs>
+                              <linearGradient id="activityDemandesGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#a78bfa" stopOpacity={0.92} />
+                                <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.72} />
+                              </linearGradient>
+                              <linearGradient id="activityTraiteesGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.95} />
+                                <stop offset="100%" stopColor="#fbbf24" stopOpacity={0.72} />
+                              </linearGradient>
+                              <linearGradient id="activityEnCoursGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#bfc8d6" stopOpacity={0.56} />
+                                <stop offset="48%" stopColor="#cbd5e1" stopOpacity={0.26} />
+                                <stop offset="100%" stopColor="#e2e8f0" stopOpacity={0.03} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#edf2f7" vertical={false} />
+                            <XAxis dataKey="label" tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={false} />
+                            <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} tickLine={false} allowDecimals={false} />
                             <Tooltip
-                              formatter={(value, name, props) => [
-                                value.toLocaleString(),
-                                name,
-                                `${((props.payload.percent || 0) * 100).toFixed(1)}%`,
+                              formatter={(value, name) => [
+                                Number(value || 0).toLocaleString('fr-FR'),
+                                name === 'deposees'
+                                  ? 'Demandes déposées'
+                                  : name === 'traitees'
+                                    ? 'Demandes traitées'
+                                    : 'Demandes en cours',
                               ]}
-                              contentStyle={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}
+                              labelFormatter={(label) => `${label}`}
+                              contentStyle={{
+                                background: '#ffffff',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '12px',
+                                boxShadow: '0 14px 30px rgba(15, 23, 42, 0.12)',
+                              }}
                             />
-                          </PieChart>
+                            <Bar
+                              dataKey="deposees"
+                              name="deposees"
+                              fill="url(#activityDemandesGradient)"
+                              radius={[8, 8, 0, 0]}
+                              barSize={16}
+                              opacity={getActivitySeriesOpacity('deposees')}
+                              fillOpacity={getActivitySeriesOpacity('deposees')}
+                              onMouseEnter={() => setActiveActivitySeries('deposees')}
+                              onMouseLeave={() => setActiveActivitySeries(null)}
+                              style={{
+                                transition: 'opacity 240ms ease, fill-opacity 240ms ease',
+                              }}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="traitees"
+                              name="traitees"
+                              stroke="#f59e0b"
+                              strokeWidth={getActivitySeriesStrokeWidth('traitees', 4)}
+                              strokeOpacity={getActivitySeriesOpacity('traitees')}
+                              dot={false}
+                              activeDot={{ r: 6, strokeWidth: 0 }}
+                              onMouseEnter={() => setActiveActivitySeries('traitees')}
+                              onMouseLeave={() => setActiveActivitySeries(null)}
+                              style={{
+                                transition: 'opacity 240ms ease, stroke-width 240ms ease, stroke-opacity 240ms ease',
+                              }}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="enCours"
+                              name="enCours"
+                              stroke="#b0bac9"
+                              strokeWidth={getActivitySeriesStrokeWidth('enCours', 3)}
+                              fill="url(#activityEnCoursGradient)"
+                              fillOpacity={
+                                activeActivitySeries
+                                  ? activeActivitySeries === 'enCours'
+                                    ? 0.46
+                                    : 0.12
+                                  : 0.34
+                              }
+                              strokeOpacity={getActivitySeriesOpacity('enCours')}
+                              dot={false}
+                              activeDot={{ r: 5, strokeWidth: 0 }}
+                              connectNulls
+                              baseValue={0}
+                              onMouseEnter={() => setActiveActivitySeries('enCours')}
+                              onMouseLeave={() => setActiveActivitySeries(null)}
+                              style={{
+                                transition: 'opacity 240ms ease, fill-opacity 240ms ease, stroke-width 240ms ease, stroke-opacity 240ms ease',
+                              }}
+                            />
+                          </ComposedChart>
                         </ResponsiveContainer>
                       </div>
-                      <div className={styles.typeLegend}>
-                        {displayTypeData.length === 0 && <span className={styles.muted}>Aucune donnee</span>}
-                        {displayTypeData.map((entry) => {
-                          const percent = totalTypeCount ? (entry.value / totalTypeCount) * 100 : 0;
-                          return (
-                            <div key={entry.name} className={styles.typeLegendItem}>
-                              <span className={styles.typeSwatch} style={{ backgroundColor: entry.color }} />
-                              <div className={styles.typeLegendText}>
-                                <span className={styles.typeLegendName}>{entry.name}</span>
-                                <span className={styles.typeLegendMeta}>
-                                  {entry.value.toLocaleString()} Â· {percent.toFixed(1)}%
-                                </span>
-                              </div>
+                    </div>
+                    <div className={styles.activitySide}>
+                      <div className={styles.activityPerformanceCard}>
+                        <div className={styles.activityPerformanceHeader}>
+                          <h5>Performance des demandes</h5>
+                          <button
+                            type="button"
+                            className={styles.activityPerformanceMenu}
+                            aria-label="Options performance des demandes"
+                          >
+                            <FiMoreHorizontal />
+                          </button>
+                        </div>
+
+                        <div className={styles.activityPerformanceGaugeWrap}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RadialBarChart
+                              data={[{ name: 'progress', value: demandesPerformanceStats.progressRate }]}
+                              startAngle={180}
+                              endAngle={0}
+                              innerRadius="72%"
+                              outerRadius="98%"
+                              barSize={16}
+                            >
+                              <defs>
+                                <linearGradient id="activityPerformanceGauge" x1="0" y1="0" x2="1" y2="0">
+                                  <stop offset="0%" stopColor="#8b5cf6" />
+                                  <stop offset="55%" stopColor="#a78bfa" />
+                                  <stop offset="100%" stopColor="#c084fc" />
+                                </linearGradient>
+                              </defs>
+                              <PolarAngleAxis type="number" domain={[0, 100]} tick={false} axisLine={false} />
+                              <RadialBar
+                                dataKey="value"
+                                cornerRadius={999}
+                                background
+                                fill="url(#activityPerformanceGauge)"
+                              />
+                            </RadialBarChart>
+                          </ResponsiveContainer>
+                          <div className={styles.activityPerformanceGaugeValue}>
+                            {demandesPerformanceStats.progressRate}%
+                          </div>
+                          <div className={styles.activityPerformanceGaugeLabel}>Taux de traitement</div>
+                        </div>
+
+                        <div className={styles.activityPerformanceStats}>
+                          <div className={styles.activityPerformanceStat}>
+                            <div className={styles.activityPerformanceStatIconWrap}>
+                              <FiCheckCircle />
                             </div>
-                          );
-                        })}
+                            <div className={styles.activityPerformanceStatContent}>
+                              <span className={styles.activityPerformanceStatTitle}>Demandes traitées</span>
+                              <strong>{demandesPerformanceStats.processed.toLocaleString('fr-FR')}</strong>
+                            </div>
+                          </div>
+
+                          <div className={styles.activityPerformanceStat}>
+                            <div className={styles.activityPerformanceStatIconWrap}>
+                              <FiClock />
+                            </div>
+                            <div className={styles.activityPerformanceStatContent}>
+                              <span className={styles.activityPerformanceStatTitle}>Demandes en cours</span>
+                              <strong>{demandesPerformanceStats.inProgress.toLocaleString('fr-FR')}</strong>
+                            </div>
+                          </div>
+
+                          <div className={styles.activityPerformanceStat}>
+                            <div className={styles.activityPerformanceStatIconWrap}>
+                              <FiTrendingUp />
+                            </div>
+                            <div className={styles.activityPerformanceStatContent}>
+                              <span className={styles.activityPerformanceStatTitle}>Délai moyen de traitement</span>
+                              <strong>
+                                {demandesPerformanceStats.avgTreatmentDays === null
+                                  ? 'N/A'
+                                  : `${demandesPerformanceStats.avgTreatmentDays.toLocaleString('fr-FR')} j`}
+                              </strong>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-
-                </div>
+                </section>
 
                 <div className={styles.enrichedGrid}>
                   <div className={styles.enrichedCard}>
@@ -1693,6 +2094,20 @@ const expiringTimeline = useMemo(() => {
                 </div>
 
                 <div className={styles.recentActivitiesSection}>
+                  <div className={styles.dashboardInsightsGrid}>
+                    <EncaissementsCard
+                      data={encaissementsData}
+                      loading={encaissementsLoading}
+                      period={encaissementsPeriod}
+                      onPeriodChange={setEncaissementsPeriod}
+                    />
+
+                    <InvestorDistributionCard
+                      data={investorDistributionData}
+                      loading={loading}
+                    />
+                  </div>
+
                   <RecentActivities 
                     activities={recentActivities} 
                     loading={loadingActivities}
@@ -1723,5 +2138,3 @@ const expiringTimeline = useMemo(() => {
     </div>
   );
 }
-
-

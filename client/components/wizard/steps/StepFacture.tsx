@@ -1,7 +1,7 @@
 import { FileText, Download, ArrowRight, ArrowLeft, Info, CheckCircle, CreditCard } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import styles from "./StepFacture.module.css";
-import { DemandeFormData } from "@/pages/investor/NouvelleDemande";
+import type { DemandeFormData } from "@/components/wizard/demande-form-types";
 
 interface StepFactureProps {
   data: any;

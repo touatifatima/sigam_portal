@@ -192,6 +192,7 @@ export class AuthController {
       nom?: string;
       email?: string;
       telephone?: string | null;
+      currentPassword?: string;
       password?: string;
       confirmPassword?: string;
     },
@@ -199,6 +200,15 @@ export class AuthController {
   ) {
     const token = req.cookies?.auth_token;
     return this.authService.requestProfileUpdate(token, body);
+  }
+
+  @Post('profile-update/validate-current-password')
+  async validateCurrentPassword(
+    @Body() body: { currentPassword: string },
+    @Req() req: Request,
+  ) {
+    const token = req.cookies?.auth_token;
+    return this.authService.validateCurrentPassword(token, body);
   }
 
   @Get('profile-update/request')

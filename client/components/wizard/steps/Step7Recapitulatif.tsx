@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Building2, FileText, MapPin, Users, Upload, CreditCard, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { DemandeFormData } from "@/pages/investisseur/nv_demande";
+import type { DemandeFormData } from "@/components/wizard/demande-form-types";
 
 interface Step7RecapitulatifProps {
   data: DemandeFormData;
@@ -13,6 +13,7 @@ interface Step7RecapitulatifProps {
 
 export const Step7Recapitulatif = ({ data }: Step7RecapitulatifProps) => {
   const [certifie, setCertifie] = useState(false);
+  const secondarySubstances = data.localisationSubstances?.substancesSecondaires ?? [];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -125,11 +126,11 @@ export const Step7Recapitulatif = ({ data }: Step7RecapitulatifProps) => {
                 <p className="text-sm text-muted-foreground">Substance principale</p>
                 <Badge variant="default" className="mt-1">{data.localisationSubstances.substancePrincipale}</Badge>
               </div>
-              {data.localisationSubstances.substancesSecondaires?.length > 0 && (
+              {secondarySubstances.length > 0 && (
                 <div>
                   <p className="text-sm text-muted-foreground">Substances secondaires</p>
                   <div className="flex gap-2 flex-wrap mt-1">
-                    {data.localisationSubstances.substancesSecondaires.map((s: string) => (
+                    {secondarySubstances.map((s: string) => (
                       <Badge key={s} variant="secondary">{s}</Badge>
                     ))}
                   </div>

@@ -5,7 +5,7 @@ import { useRouter } from 'next/router';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { FieldHelp } from '@/components/ui/field-help';
-import { BadgeCheck, CalendarDays, Clock3, FileText, Repeat, Ruler } from 'lucide-react';
+import { ArrowLeft, BadgeCheck, CalendarDays, ChevronRight, Clock3, FileText, Repeat, Ruler } from 'lucide-react';
 
 import styles from './page1_typepermis.module.css';
 import Navbar from '../../../navbar/Navbar';
@@ -427,14 +427,33 @@ export default function DemandeStart() {
             <div className={styles.entryModalOverlay}>
               <div className={styles.entryModalCard} role="dialog" aria-modal="true" aria-labelledby="entry-choice-title">
                 <div className={styles.entryModalHeader}>
-                  <span className={styles.entryModalBadge}>Nouvelle demande</span>
+                  <span className={styles.entryModalBadge}>
+                    <BadgeCheck className={styles.entryModalBadgeIcon} />
+                    Nouvelle demande
+                  </span>
+                  <div className={styles.entryModalIllustration} aria-hidden="true">
+                    <div className={styles.entryModalIllustrationBack} />
+                    <div className={styles.entryModalIllustrationDocument}>
+                      <FileText className={styles.entryModalIllustrationDocIcon} />
+                      <span className={`${styles.entryModalIllustrationLine} ${styles.entryModalLineOne}`} />
+                      <span className={`${styles.entryModalIllustrationLine} ${styles.entryModalLineTwo}`} />
+                      <span className={`${styles.entryModalIllustrationLine} ${styles.entryModalLineThree}`} />
+                    </div>
+                    <div className={styles.entryModalIllustrationShield}>
+                      <BadgeCheck className={styles.entryModalIllustrationShieldIcon} />
+                    </div>
+                  </div>
                 </div>
-                <h2 id="entry-choice-title" className={styles.entryModalTitle}>
-                  Que souhaitez-vous faire ?
-                </h2>
-                <p className={styles.entryModalText}>
-                  Choisissez le parcours le plus adapte a votre besoin. Vous pouvez revenir a tout moment.
-                </p>
+                <div className={styles.entryModalHero}>
+                  <div className={styles.entryModalHeroCopy}>
+                    <h2 id="entry-choice-title" className={styles.entryModalTitle}>
+                      Quelle démarche souhaitez-vous effectuer ?
+                    </h2>
+                    <p className={styles.entryModalText}>
+                      Choisissez le parcours correspondant à votre besoin.
+                    </p>
+                  </div>
+                </div>
 
                 <div className={styles.entryModalActions}>
                   <button
@@ -442,8 +461,38 @@ export default function DemandeStart() {
                     className={`${styles.entryActionButton} ${styles.entryActionPrimary}`}
                     onClick={() => router.push('/investisseur/nouvelle-demande-posterieure')}
                   >
-                    <span className={styles.entryActionLabel}>Faire une demande pour un permis existant</span>
-                    <span className={styles.entryActionHint}>Renouvellement, Cession, Transfert, etc.</span>
+                    <span className={styles.entryActionIconWrap}>
+                      <Repeat className={styles.entryActionIcon} />
+                    </span>
+                    <span className={styles.entryActionBody}>
+                      <span className={styles.entryActionLabel}>Gérer un permis existant</span>
+                      <span className={styles.entryActionHint}>Poursuivez la gestion de votre permis actuel</span>
+                      <span className={styles.entryActionFeatures}>
+                        <span className={styles.entryActionFeature}>
+                          <BadgeCheck className={styles.entryActionFeatureIcon} />
+                          Renouvellement
+                        </span>
+                        <span className={styles.entryActionFeature}>
+                          <BadgeCheck className={styles.entryActionFeatureIcon} />
+                          Modification
+                        </span>
+                        <span className={styles.entryActionFeature}>
+                          <BadgeCheck className={styles.entryActionFeatureIcon} />
+                          Extension
+                        </span>
+                        <span className={styles.entryActionFeature}>
+                          <BadgeCheck className={styles.entryActionFeatureIcon} />
+                          Autres opérations
+                        </span>
+                        <span className={styles.entryActionFeature}>
+                          <BadgeCheck className={styles.entryActionFeatureIcon} />
+                          Cession / Transfert
+                        </span>
+                      </span>
+                    </span>
+                    <span className={styles.entryActionChevron}>
+                      <ChevronRight className={styles.entryChevronIcon} />
+                    </span>
                   </button>
 
                   <button
@@ -451,8 +500,26 @@ export default function DemandeStart() {
                     className={`${styles.entryActionButton} ${styles.entryActionSecondary}`}
                     onClick={() => setEntryChoiceModalOpen(false)}
                   >
-                    <span className={styles.entryActionLabel}>Faire une nouvelle demande initiale</span>
-                    <span className={styles.entryActionHint}>Continuer le parcours normal de création.</span>
+                    <span className={styles.entryActionIconWrap}>
+                      <FileText className={styles.entryActionIcon} />
+                    </span>
+                    <span className={styles.entryActionBody}>
+                      <span className={styles.entryActionLabel}>Créer un nouveau permis</span>
+                      <span className={styles.entryActionHint}>Déposez une nouvelle demande</span>
+                      <span className={styles.entryActionFeatures}>
+                        <span className={styles.entryActionFeature}>
+                          <BadgeCheck className={styles.entryActionFeatureIcon} />
+                          Première demande
+                        </span>
+                        <span className={styles.entryActionFeature}>
+                          <BadgeCheck className={styles.entryActionFeatureIcon} />
+                          Nouveau titre minier
+                        </span>
+                      </span>
+                    </span>
+                    <span className={styles.entryActionChevron}>
+                      <ChevronRight className={styles.entryChevronIcon} />
+                    </span>
                   </button>
                 </div>
 
@@ -462,7 +529,10 @@ export default function DemandeStart() {
                     className={styles.entryDashboardButton}
                     onClick={() => router.push(dashboardPath)}
                   >
-                    Annuler et retour au Dashboard
+                    <span className={styles.entryDashboardButtonIconWrap}>
+                      <ArrowLeft className={styles.entryDashboardButtonIcon} />
+                    </span>
+                    <span>Retour au Dashboard</span>
                   </button>
                 </div>
               </div>

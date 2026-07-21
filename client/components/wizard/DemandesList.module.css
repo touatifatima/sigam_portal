@@ -360,6 +360,12 @@
   font-size: 0.93rem;
   font-weight: 700;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease;
 }
 
 .searchInput {
@@ -377,8 +383,20 @@
 .dateInput:focus,
 .dateInput:focus-visible {
   border-color: rgba(126, 52, 88, 0.45) !important;
-  box-shadow: 0 0 0 4px rgba(126, 52, 88, 0.12) !important;
+  box-shadow:
+    0 0 0 4px rgba(126, 52, 88, 0.12),
+    0 12px 24px rgba(126, 52, 88, 0.08) !important;
   outline: none !important;
+}
+
+.selectTrigger:hover,
+.selectTrigger:focus-visible,
+.selectTrigger[data-state="open"] {
+  border-color: rgba(126, 52, 88, 0.55) !important;
+  box-shadow:
+    0 0 0 4px rgba(126, 52, 88, 0.12),
+    0 12px 24px rgba(126, 52, 88, 0.08) !important;
+  transform: translateY(-1px);
 }
 
 .searchBtn {
@@ -406,12 +424,24 @@
   color: #6f6073;
 }
 
+.selectTrigger svg {
+  color: #7f2044;
+  opacity: 1;
+  transition: transform 0.18s ease;
+}
+
+.selectTrigger[data-state="open"] svg {
+  transform: rotate(180deg);
+}
+
 .selectContent {
   border-radius: 18px;
   border: 1px solid rgba(141, 73, 105, 0.16);
-  background: rgba(255, 255, 255, 0.99);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(252, 250, 252, 0.98)),
+    rgba(255, 255, 255, 0.99);
   box-shadow: 0 24px 36px rgba(44, 20, 34, 0.12);
-  padding: 0.4rem;
+  padding: 0.5rem;
   min-width: clamp(280px, 28vw, 420px);
   max-width: min(420px, calc(100vw - 1rem));
 }
@@ -429,10 +459,20 @@
   font-size: 0.9rem;
   font-weight: 700;
   color: var(--text-main);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.selectItem:hover,
+.selectItem:focus-visible {
+  transform: translateX(2px);
 }
 
 .selectItem[data-highlighted] {
-  background: #f8eef3;
+  background: linear-gradient(135deg, rgba(126, 52, 88, 0.1), rgba(126, 52, 88, 0.06));
   color: var(--navy);
 }
 

@@ -5,8 +5,10 @@ import {
   AlertCircle,
   ArrowRight,
   Bell,
+  BadgeCheck,
   Building2,
   CheckCircle2,
+  CalendarDays,
   ChevronDown,
   Clock3,
   CreditCard,
@@ -15,9 +17,13 @@ import {
   Headphones,
   HelpCircle,
   Home,
+  Flag,
+  Hash,
+  Info,
   Map,
   Loader2,
   Plus,
+  RefreshCcw,
   Search,
   ShieldCheck,
   User,
@@ -46,10 +52,23 @@ import {
   stopOnboardingForever,
 } from "@/src/onboarding/storage";
 
-type StatState = {
+type DashboardOverviewStats = {
   demandesEnCours: number;
   permisActifs: number;
+  enInstruction: number;
+  demandesApprouvees: number;
+  totalPayeeYear: number;
+  previousYearTotalPayee: number;
+  referenceYear: number;
 };
+
+type StatCardKey =
+  | "demandesEnCours"
+  | "permisActifs"
+  | "enInstruction"
+  | "demandesApprouvees"
+  | "paiementsEnAttente"
+  | "totalPayeeYear";
 
 type NavItem = {
   label: string;
@@ -64,6 +83,7 @@ type HeroFeature = {
 };
 
 type StatCard = {
+  key: StatCardKey;
   label: string;
   value: string;
   hint: string;
@@ -153,13 +173,17 @@ type TrackerDetailResponse = {
 
 type TrackerResult = {
   reference: string;
+  internalReference: string;
   title: string;
   status: string;
+  statusLabel: string;
   statusTone: "blue" | "gold" | "green" | "red" | "violet";
   lastUpdated: string;
+  submittedAt: string;
   estimatedRemaining: string;
   responsibleService: string;
   nextAction: string;
+  priority: string;
   steps: TrackerStep[];
 };
 
@@ -273,7 +297,7 @@ const HERO_FEATURES: HeroFeature[] = [
 
 const PROCESS_STEPS: ProcessStep[] = [
   { label: "Soumise", date: "12/05/2025", state: "done", icon: CheckCircle2 },
-  { label: "Refusée", date: "13/05/2025", state: "done", icon: CheckCircle2 },
+  { label: "Reçue", date: "13/05/2025", state: "done", icon: CheckCircle2 },
   {
     label: "En instruction",
     date: "16/05/2025",
@@ -293,7 +317,7 @@ const PROCESS_STEPS: ProcessStep[] = [
     icon: CheckCircle2,
   },
   {
-    label: "DÃ©livrÃ©e",
+    label: "Délivrée",
     date: "En attente",
     state: "pending",
     icon: CheckCircle2,
@@ -319,6 +343,33 @@ const formatAmountDzd = (value?: number | null) => {
     .replace(/\u202f/g, " ");
 
   return `${formatted} DZD`;
+};
+
+const formatCount = (value?: number | null) => {
+  const count = Number(value ?? 0);
+  const formatted = new Intl.NumberFormat("fr-FR", {
+    maximumFractionDigits: 0,
+  })
+    .format(Number.isFinite(count) ? Math.max(0, count) : 0)
+    .replace(/\u202f/g, " ");
+
+  return formatted;
+};
+
+const formatYearComparison = (
+  currentValue?: number | null,
+  previousValue?: number | null,
+  referenceYear?: number,
+) => {
+  const current = Number(currentValue ?? 0);
+  const previous = Number(previousValue ?? 0);
+  if (!Number.isFinite(current) || !Number.isFinite(previous) || previous <= 0) {
+    return referenceYear ? `Cumul ${referenceYear}` : "Cumul annuel";
+  }
+
+  const delta = Math.round(((current - previous) / previous) * 100);
+  const yearLabel = referenceYear ? String(referenceYear - 1) : "N-1";
+  return `${delta >= 0 ? "+" : ""}${delta}% vs ${yearLabel}`;
 };
 
 const formatPaymentDate = (value?: string | null) => {
@@ -389,16 +440,16 @@ const normalizePaymentStatus = (value: unknown): DashboardPaymentStatus => {
 };
 
 const formatRelativeDateLabel = (value?: string | null) => {
-  if (!value) return "Aucune mise Ã  jour";
+  if (!value) return "Aucune mise à jour";
   const ts = new Date(value).getTime();
-  if (!Number.isFinite(ts)) return "Aucune mise Ã  jour";
+  if (!Number.isFinite(ts)) return "Aucune mise à jour";
 
   const diffMs = Date.now() - ts;
   const minute = 60 * 1000;
   const hour = 60 * minute;
   const day = 24 * hour;
 
-  if (diffMs < minute) return "Ã€ l'instant";
+  if (diffMs < minute) return "À l'instant";
   if (diffMs < hour) return `Il y a ${Math.floor(diffMs / minute)} min`;
   if (diffMs < day) return `Il y a ${Math.floor(diffMs / hour)} h`;
   if (diffMs < 7 * day) return `Il y a ${Math.floor(diffMs / day)} j`;
@@ -408,6 +459,82 @@ const formatRelativeDateLabel = (value?: string | null) => {
     month: "2-digit",
     year: "numeric",
   });
+};
+
+const formatDateTimeLabel = (value?: string | null) => {
+  if (!value) return "--";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--";
+
+  return date.toLocaleString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const normalizeTrackerStatus = (value?: string | null) =>
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\s_-]+/g, "")
+    .trim()
+    .toUpperCase();
+
+const formatTrackerStatusLabel = (value?: string | null) => {
+  const normalized = normalizeTrackerStatus(value);
+  if (!normalized) return "En attente";
+  if (
+    normalized.includes("ACCEP") ||
+    normalized.includes("APPROUV") ||
+    normalized.includes("VALID")
+  ) {
+    return "Acceptée";
+  }
+  if (normalized.includes("COMPLEMENT")) {
+    return "Complément requis";
+  }
+  if (
+    normalized.includes("COURS") ||
+    normalized.includes("INSTR") ||
+    normalized.includes("ANALYS")
+  ) {
+    return "En cours";
+  }
+  if (normalized.includes("ATTENTE")) {
+    return "En attente";
+  }
+  if (normalized.includes("REJET") || normalized.includes("REFUS")) {
+    return "Refusée";
+  }
+  if (normalized.includes("DELIV") || normalized.includes("LIVR")) {
+    return "Délivrée";
+  }
+  if (normalized.includes("PAY")) {
+    return "Paiement";
+  }
+  if (normalized.includes("SOU") || normalized.includes("DEPOT")) {
+    return "Soumise";
+  }
+  return String(value || "En attente");
+};
+
+const formatTrackerPriority = (statusTone: TrackerResult["statusTone"]) => {
+  switch (statusTone) {
+    case "red":
+      return "Urgente";
+    case "gold":
+      return "Normale";
+    case "green":
+      return "Faible";
+    case "violet":
+      return "Standard";
+    case "blue":
+    default:
+      return "Normale";
+  }
 };
 
 const toTimestamp = (value?: string | null) => {
@@ -580,7 +707,7 @@ const buildTrackerSteps = (
 
   return [
     "Soumise",
-    "Refusée",
+    "Reçue",
     "En instruction",
     "Validation",
     "Paiement",
@@ -615,6 +742,7 @@ const buildTrackerResult = (
     item.typeProcedure?.libelle ||
     item.typePermis?.lib_type ||
     "Demande minière";
+  const submittedAt = formatDateLabel(detail?.date_demande ?? item.date_demande);
 
   const timestamps = [
     toTimestamp(detail?.date_demande ?? item.date_demande),
@@ -636,7 +764,7 @@ const buildTrackerResult = (
   const latestTimestamp =
     timestamps.length > 0 ? Math.max(...timestamps) : null;
   const lastUpdated = latestTimestamp
-    ? new Date(latestTimestamp).toLocaleDateString("fr-FR")
+    ? formatDateTimeLabel(new Date(latestTimestamp).toISOString())
     : "En attente";
 
   const deadlineInfo = computeBusinessDeadline(item);
@@ -665,28 +793,40 @@ const buildTrackerResult = (
     "Délivrance du dossier en cours.",
   ];
 
-  const statusTone: TrackerResult["statusTone"] = /REJET/i.test(status)
-    ? "red"
-    : /PAI|PAY/i.test(status)
-      ? "gold"
-      : /DELIV|LIVR/i.test(status)
-        ? "green"
-        : /VALID|ACCEP|APPROUV/i.test(status)
+  const normalizedStatus = normalizeTrackerStatus(status);
+  const statusTone: TrackerResult["statusTone"] =
+    normalizedStatus.includes("REJET") || normalizedStatus.includes("REFUS")
+      ? "red"
+      : normalizedStatus.includes("PAI") || normalizedStatus.includes("PAY")
+        ? "gold"
+        : normalizedStatus.includes("DELIV") ||
+            normalizedStatus.includes("LIVR") ||
+            normalizedStatus.includes("VALID") ||
+            normalizedStatus.includes("ACCEP") ||
+            normalizedStatus.includes("APPROUV")
           ? "green"
-          : /INSTR|ANALYS|COURS/i.test(status)
+          : normalizedStatus.includes("INSTR") ||
+              normalizedStatus.includes("ANALYS") ||
+              normalizedStatus.includes("COURS")
             ? "gold"
             : "blue";
+  const statusLabel = formatTrackerStatusLabel(status);
+  const priority = formatTrackerPriority(statusTone);
 
   return {
     reference,
+    internalReference: reference,
     title,
     status,
+    statusLabel,
     statusTone,
     lastUpdated,
+    submittedAt,
     estimatedRemaining,
     responsibleService,
     nextAction:
       nextActionByStage[Math.min(stage, nextActionByStage.length - 1)],
+    priority,
     steps: buildTrackerSteps(item, detail),
   };
 };
@@ -790,44 +930,50 @@ const QUICK_LINKS: QuickLink[] = [
 
 const HERO_STATS: StatCard[] = [
   {
+    key: "demandesEnCours",
     label: "Demandes en cours",
-    value: "17",
-    hint: "+18% ce mois",
+    value: "",
+    hint: "",
     icon: FileText,
     tone: "blue",
   },
   {
+    key: "permisActifs",
     label: "Permis actifs",
-    value: "08",
-    hint: "+1 ce mois",
+    value: "",
+    hint: "",
     icon: ShieldCheck,
     tone: "gold",
   },
   {
+    key: "enInstruction",
     label: "En instruction",
-    value: "06",
-    hint: "-2 ce mois",
+    value: "",
+    hint: "",
     icon: Map,
     tone: "violet",
   },
   {
+    key: "demandesApprouvees",
     label: "Demandes approuvées",
-    value: "24",
-    hint: "+5 ce mois",
+    value: "",
+    hint: "",
     icon: CheckCircle2,
     tone: "green",
   },
   {
+    key: "paiementsEnAttente",
     label: "Paiements en attente",
-    value: "2",
-    hint: "125 000 DZD",
+    value: "",
+    hint: "",
     icon: WalletCards,
     tone: "red",
   },
   {
-    label: "Total payée (2025)",
-    value: "3 250 000 DZD",
-    hint: "+22% vs 2024",
+    key: "totalPayeeYear",
+    label: "Total payée",
+    value: "",
+    hint: "",
     icon: CreditCard,
     tone: "blue",
   },
@@ -868,10 +1014,11 @@ export default function Dashboard() {
   const isAuthReady = useAuthReady();
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
   const [demandes, setDemandes] = useState<TrackerRequestItem[]>([]);
-  const [stats, setStats] = useState<StatState>({
-    demandesEnCours: 0,
-    permisActifs: 0,
-  });
+  const [overviewStats, setOverviewStats] =
+    useState<DashboardOverviewStats | null>(null);
+  const [overviewStatsError, setOverviewStatsError] = useState<string | null>(
+    null,
+  );
   const [recentRequests, setRecentRequests] = useState<RecentRequestCard[]>([]);
   const [recentRequestsLoading, setRecentRequestsLoading] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -914,13 +1061,9 @@ export default function Dashboard() {
 
         if (!isActive) return;
         setDemandes(userDemandes);
-        setStats({
-          demandesEnCours: userDemandes.length,
-          permisActifs: 0,
-        });
       } catch {
         if (!isActive) return;
-        setStats((prev) => ({ ...prev }));
+        setDemandes([]);
       }
     };
 
@@ -929,7 +1072,58 @@ export default function Dashboard() {
     return () => {
       isActive = false;
     };
-  }, [apiURL, auth?.role]);
+  }, [apiURL, auth?.role, isAuthReady]);
+
+  useEffect(() => {
+    let isActive = true;
+    if (!isAuthReady) return () => undefined;
+    if (!apiURL) return () => undefined;
+    if (isCadastreRole(auth?.role)) return () => undefined;
+
+    const loadOverviewStats = async () => {
+      setOverviewStatsError(null);
+      setOverviewStats(null);
+      try {
+        const response = await axios.get(`${apiURL}/api/dashboard/stats`, {
+          withCredentials: true,
+        });
+        const payload = (response.data?.data ?? response.data) as
+          | Partial<DashboardOverviewStats>
+          | undefined;
+        if (!isActive) return;
+
+        const referenceYear = Number(
+          payload?.referenceYear ?? new Date().getFullYear(),
+        );
+        setOverviewStats({
+          demandesEnCours: Number(payload?.demandesEnCours ?? 0),
+          permisActifs: Number(payload?.permisActifs ?? 0),
+          enInstruction: Number(payload?.enInstruction ?? 0),
+          demandesApprouvees: Number(payload?.demandesApprouvees ?? 0),
+          totalPayeeYear: Number(payload?.totalPayeeYear ?? 0),
+          previousYearTotalPayee: Number(
+            payload?.previousYearTotalPayee ?? 0,
+          ),
+          referenceYear: Number.isFinite(referenceYear)
+            ? referenceYear
+            : new Date().getFullYear(),
+        });
+      } catch (error) {
+        if (!isActive) return;
+        console.error("Failed to load dashboard overview stats", error);
+        setOverviewStats(null);
+        setOverviewStatsError(
+          "Impossible de charger les statistiques du tableau de bord",
+        );
+      }
+    };
+
+    void loadOverviewStats();
+
+    return () => {
+      isActive = false;
+    };
+  }, [apiURL, auth?.role, isAuthReady]);
 
   const loadPayments = useCallback(async () => {
     if (!apiURL) {
@@ -1103,6 +1297,124 @@ export default function Dashboard() {
   const latestPayments = paymentsData?.latestPayments ?? [];
   const hasPayments = latestPayments.length > 0;
   const hasPendingPayments = paymentSummary.pendingCount > 0;
+  const overviewYear = overviewStats?.referenceYear ?? new Date().getFullYear();
+  const overviewStatsLoading = overviewStats === null && !overviewStatsError;
+  const overviewStatCards = useMemo(
+    () =>
+      HERO_STATS.map((item) => {
+        const sharedEmptyHint = overviewStatsError
+          ? "Données indisponibles"
+          : overviewStatsLoading
+            ? "Chargement..."
+            : "Aucune donnée";
+        const fallbackValue = overviewStatsError
+          ? "—"
+          : overviewStatsLoading
+            ? "…"
+            : null;
+
+        switch (item.key) {
+          case "demandesEnCours":
+            return {
+              ...item,
+              value: fallbackValue ?? formatCount(overviewStats?.demandesEnCours),
+              hint: overviewStatsError
+                ? "Données indisponibles"
+                : overviewStatsLoading
+                  ? "Chargement..."
+                  : (overviewStats?.demandesEnCours ?? 0) > 0
+                    ? "Demandes actives"
+                    : "Aucune demande active",
+            };
+          case "permisActifs":
+            return {
+              ...item,
+              value: fallbackValue ?? formatCount(overviewStats?.permisActifs),
+              hint: overviewStatsError
+                ? "Données indisponibles"
+                : overviewStatsLoading
+                  ? "Chargement..."
+                  : (overviewStats?.permisActifs ?? 0) > 0
+                    ? "Liés à votre compte"
+                    : "Aucun permis actif",
+            };
+          case "enInstruction":
+            return {
+              ...item,
+              value: fallbackValue ?? formatCount(overviewStats?.enInstruction),
+              hint: overviewStatsError
+                ? "Données indisponibles"
+                : overviewStatsLoading
+                  ? "Chargement..."
+                  : (overviewStats?.enInstruction ?? 0) > 0
+                    ? "Procédures en cours"
+                    : "Aucune procédure active",
+            };
+          case "demandesApprouvees":
+            return {
+              ...item,
+              value:
+                fallbackValue ?? formatCount(overviewStats?.demandesApprouvees),
+              hint: overviewStatsError
+                ? "Données indisponibles"
+                : overviewStatsLoading
+                  ? "Chargement..."
+                  : (overviewStats?.demandesApprouvees ?? 0) > 0
+                    ? "Demandes validées"
+                    : "Aucune demande approuvée",
+            };
+          case "paiementsEnAttente":
+            return {
+              ...item,
+              value:
+                paymentsError
+                  ? "—"
+                  : paymentsLoading
+                    ? "…"
+                    : formatCount(paymentSummary.pendingCount),
+              hint: paymentsError
+                ? "Données indisponibles"
+                : paymentsLoading
+                  ? "Chargement..."
+                  : paymentSummary.totalDue > 0
+                    ? formatAmountDzd(paymentSummary.totalDue)
+                    : "Aucun paiement dû",
+            };
+          case "totalPayeeYear":
+            return {
+              ...item,
+              label: `Total payée (${overviewYear})`,
+              value:
+                fallbackValue ?? formatAmountDzd(overviewStats?.totalPayeeYear),
+              hint: overviewStatsError
+                ? "Données indisponibles"
+                : overviewStatsLoading
+                  ? "Chargement..."
+                  : formatYearComparison(
+                      overviewStats?.totalPayeeYear,
+                      overviewStats?.previousYearTotalPayee,
+                      overviewStats?.referenceYear ?? overviewYear,
+                    ),
+            };
+          default:
+            return {
+              ...item,
+              value: "—",
+              hint: sharedEmptyHint,
+            };
+        }
+      }),
+    [
+      overviewStats,
+      overviewStatsError,
+      overviewStatsLoading,
+      overviewYear,
+      paymentSummary.pendingCount,
+      paymentSummary.totalDue,
+      paymentsError,
+      paymentsLoading,
+    ],
+  );
 
   const handleCloseOnboarding = () => {
     setShowOnboarding(false);
@@ -1217,6 +1529,74 @@ export default function Dashboard() {
       setTrackLoading(false);
     }
   }, [apiURL, auth?.id, demandes, trackReference]);
+
+  const trackerSteps = trackedRequest?.steps ?? PROCESS_STEPS;
+  const trackerActiveIndex = trackerSteps.findIndex(
+    (step) => step.state === "active",
+  );
+  const trackerProgress =
+    trackerActiveIndex < 0
+      ? 0
+      : Math.min(
+          100,
+          Math.max(
+            12,
+            Math.round(((trackerActiveIndex + 1) / trackerSteps.length) * 100),
+          ),
+        );
+
+  const trackerMetrics = trackedRequest
+    ? [
+        {
+          label: "Statut actuel",
+          icon: BadgeCheck,
+          value: trackedRequest.statusLabel,
+          variant: "badge" as const,
+        },
+        {
+          label: "Date de mise à jour",
+          icon: CalendarDays,
+          value: trackedRequest.lastUpdated,
+          variant: "text" as const,
+        },
+        {
+          label: "Temps restant estimé",
+          icon: Clock3,
+          value: trackedRequest.estimatedRemaining,
+          variant: "text" as const,
+        },
+        {
+          label: "Service responsable",
+          icon: Building2,
+          value: trackedRequest.responsibleService,
+          variant: "text" as const,
+        },
+        {
+          label: "Date de soumission",
+          icon: FileText,
+          value: trackedRequest.submittedAt,
+          variant: "text" as const,
+        },
+        {
+          label: "Dernière action",
+          icon: RefreshCcw,
+          value: trackedRequest.nextAction,
+          variant: "text" as const,
+        },
+        {
+          label: "Priorité",
+          icon: Flag,
+          value: trackedRequest.priority,
+          variant: "badge" as const,
+        },
+        {
+          label: "Référence interne",
+          icon: Hash,
+          value: trackedRequest.internalReference,
+          variant: "text" as const,
+        },
+      ]
+    : [];
 
   if (!isAuthReady) {
     return (
@@ -1405,17 +1785,35 @@ export default function Dashboard() {
 
               <div className={styles.heroPanelStats}>
                 <div className={styles.heroPanelStat}>
-                  <strong>{stats.demandesEnCours || 17}</strong>
+                  <strong>
+                    {overviewStatsError
+                      ? "—"
+                      : overviewStatsLoading
+                        ? "…"
+                        : formatCount(overviewStats?.demandesEnCours)}
+                  </strong>
                   <span>Demandes</span>
                 </div>
                 <div className={styles.heroPanelStatDivider} />
                 <div className={styles.heroPanelStat}>
-                  <strong>08</strong>
+                  <strong>
+                    {overviewStatsError
+                      ? "—"
+                      : overviewStatsLoading
+                        ? "…"
+                        : formatCount(overviewStats?.permisActifs)}
+                  </strong>
                   <span>Permis actifs</span>
                 </div>
                 <div className={styles.heroPanelStatDivider} />
                 <div className={styles.heroPanelStat}>
-                  <strong>24</strong>
+                  <strong>
+                    {overviewStatsError
+                      ? "—"
+                      : overviewStatsLoading
+                        ? "…"
+                        : formatCount(overviewStats?.demandesApprouvees)}
+                  </strong>
                   <span>Approuvées</span>
                 </div>
               </div>
@@ -1459,11 +1857,11 @@ export default function Dashboard() {
           className={styles.statsGrid}
           data-onboarding-id="dashboard-status"
         >
-          {HERO_STATS.map((item, index) => {
+          {overviewStatCards.map((item, index) => {
             const Icon = item.icon;
             return (
               <article
-                key={item.label}
+                key={item.key}
                 className={styles.statCard}
                 style={{ animationDelay: `${index * 0.05}s` }}
               >
@@ -1488,7 +1886,7 @@ export default function Dashboard() {
             data-onboarding-id="dashboard-card-demandes"
           >
             <div className={styles.cardHeader}>
-              <h2>Mes demandes rÃ©centes</h2>
+              <h2>Mes demandes récentes</h2>
               <button
                 type="button"
                 className={styles.cardLinkButton}
@@ -1502,7 +1900,7 @@ export default function Dashboard() {
               {recentRequestsLoading && recentRequests.length === 0 ? (
                 <div className={styles.requestEmptyState}>
                   <div className={styles.requestEmptyPulse} />
-                  <p>Chargement des derniÃ¨res demandes...</p>
+                  <p>Chargement des dernières demandes...</p>
                 </div>
               ) : recentRequests.length > 0 ? (
                 recentRequests.map((request) => (
@@ -1520,7 +1918,7 @@ export default function Dashboard() {
                       <div className={styles.requestTopLine}>
                         <div>
                           <h3>{request.title}</h3>
-                          <p>RÃ©f : {request.reference}</p>
+                          <p>Réf : {request.reference}</p>
                         </div>
                         <span
                           className={`${styles.requestStatus} ${styles[`requestStatus_${request.tone}`]}`}
@@ -1541,7 +1939,7 @@ export default function Dashboard() {
 
                       <div className={styles.requestFoot}>
                         <span className={styles.requestFootHint}>
-                          Mis Ã  jour : {request.updated}
+                          Mis à jour : {request.updated}
                         </span>
                       </div>
                     </div>
@@ -1550,7 +1948,7 @@ export default function Dashboard() {
               ) : (
                 <div className={styles.requestEmptyState}>
                   <FileText size={18} />
-                  <p>Aucune demande rÃ©cente trouvÃ©e.</p>
+                  <p>Aucune demande récente trouvée.</p>
                 </div>
               )}
             </div>
@@ -1562,7 +1960,7 @@ export default function Dashboard() {
             </div>
 
             <p className={styles.sectionLead}>
-              Entrez le numÃ©ro de rÃ©fÃ©rence pour suivre l&apos;avancement
+              Entrez le numéro de référence pour suivre l&apos;avancement
             </p>
 
             <div className={styles.trackRow}>
@@ -1607,70 +2005,117 @@ export default function Dashboard() {
               <div
                 className={`${styles.trackResult} ${styles[`trackTone_${trackedRequest.statusTone}`]}`}
               >
-                <div className={styles.trackResultHeader}>
-                  <div className={styles.trackResultTitleBlock}>
-                    <p className={styles.trackResultEyebrow}>
-                      Suivi instantanÃ©
-                    </p>
-                    <h3>{trackedRequest.title}</h3>
+                <div className={styles.trackResultTop}>
+                  <div className={styles.trackResultIdentity}>
+                    <div className={styles.trackResultIcon}>
+                      <FileText size={28} />
+                    </div>
+                    <div className={styles.trackResultCopy}>
+                      <p className={styles.trackResultEyebrow}>Demande</p>
+                      <h3>{trackedRequest.reference}</h3>
+                      <p className={styles.trackResultSubline}>
+                        {trackedRequest.title}
+                      </p>
+                      <span className={styles.trackStatusBadge}>
+                        {trackedRequest.statusLabel}
+                      </span>
+                    </div>
                   </div>
-                  <span className={styles.trackResultBadge}>
-                    {trackedRequest.reference}
-                  </span>
+
+                  <div className={styles.trackResultUpdateCard}>
+                    <CalendarDays size={18} />
+                    <div>
+                      <span>Dernière mise à jour</span>
+                      <strong>{trackedRequest.lastUpdated}</strong>
+                    </div>
+                  </div>
                 </div>
 
                 <div className={styles.trackResultGrid}>
-                  <div className={styles.trackResultItem}>
-                    <span>Statut actuel</span>
-                    <strong>{trackedRequest.status}</strong>
-                  </div>
-                  <div className={styles.trackResultItem}>
-                    <span>DerniÃ¨re mise Ã  jour</span>
-                    <strong>{trackedRequest.lastUpdated}</strong>
-                  </div>
-                  <div className={styles.trackResultItem}>
-                    <span>Temps restant estimÃ©</span>
-                    <strong>{trackedRequest.estimatedRemaining}</strong>
-                  </div>
-                  <div className={styles.trackResultItem}>
-                    <span>Service responsable</span>
-                    <strong>{trackedRequest.responsibleService}</strong>
-                  </div>
+                  {trackerMetrics.map((metric) => {
+                    const Icon = metric.icon;
+
+                    return (
+                      <article key={metric.label} className={styles.trackMetric}>
+                        <div className={styles.trackMetricHeader}>
+                          <span className={styles.trackMetricIcon}>
+                            <Icon size={14} />
+                          </span>
+                          <span className={styles.trackMetricLabel}>
+                            {metric.label}
+                          </span>
+                        </div>
+                        <div className={styles.trackMetricValue}>
+                          {metric.variant === "badge" ? (
+                            <span className={styles.trackMetricValueBadge}>
+                              {metric.value}
+                            </span>
+                          ) : (
+                            <strong>{metric.value}</strong>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
                 </div>
 
-                <p className={styles.trackResultAction}>
-                  {trackedRequest.nextAction}
-                </p>
+                <div className={styles.trackDescription}>
+                  <div className={styles.trackDescriptionHeader}>
+                    <Info size={14} />
+                    <span>Description</span>
+                  </div>
+                  <p>{trackedRequest.nextAction}</p>
+                </div>
+
+                <div className={styles.trackTimelineCard}>
+                  <div className={styles.trackTimelineHeader}>
+                    <h3>Étapes du processus</h3>
+                    <span>{trackedRequest.statusLabel}</span>
+                  </div>
+                  <div className={styles.trackTimelineViewport}>
+                    <div
+                      className={styles.trackTimeline}
+                    >
+                      <span className={styles.trackTimelineRail} />
+                      <span
+                        className={styles.trackTimelineProgress}
+                        style={{ width: `${Math.min(90, trackerProgress * 0.9)}%` }}
+                      />
+                      {trackerSteps.map((step) => {
+                        const Icon = step.icon;
+                        const stepStateLabel =
+                          step.state === "done"
+                            ? "Terminé"
+                            : step.state === "active"
+                              ? "En cours"
+                              : "À venir";
+
+                        return (
+                          <article key={step.label} className={styles.trackStep}>
+                            <div
+                              className={`${styles.trackStepNode} ${
+                                step.state === "done"
+                                  ? styles.trackStepDone
+                                  : step.state === "active"
+                                    ? styles.trackStepActive
+                                    : styles.trackStepPending
+                              }`}
+                            >
+                              <Icon size={16} />
+                            </div>
+                            <div className={styles.trackStepBody}>
+                              <strong>{step.label}</strong>
+                              <span>{step.date}</span>
+                              <em>{stepStateLabel}</em>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
-
-            <div className={styles.stepsBlock}>
-              <p className={styles.stepsTitle}>Ã‰tapes du processus</p>
-              <div
-                key={trackedRequest?.reference ?? "default"}
-                className={`${styles.stepsGrid} ${trackedRequest ? styles.stepsGridAnimated : ""}`}
-              >
-                {(trackedRequest?.steps ?? PROCESS_STEPS).map((step) => {
-                  const Icon = step.icon;
-                  const stepClass =
-                    step.state === "done"
-                      ? styles.stepDone
-                      : step.state === "active"
-                        ? styles.stepActive
-                        : styles.stepPending;
-
-                  return (
-                    <div key={step.label} className={styles.stepItem}>
-                      <div className={`${styles.stepDot} ${stepClass}`}>
-                        <Icon size={14} />
-                      </div>
-                      <strong>{step.label}</strong>
-                      <span>{step.date}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
           </section>
         </section>
 
@@ -1905,7 +2350,7 @@ export default function Dashboard() {
               </div>
               <div className={styles.supportCopyText}>
                 <h2>Besoin d&apos;aide ?</h2>
-                <p>Notre Ã©quipe est Ã  votre disposition</p>
+                <p>Notre équipe est à votre disposition</p>
               </div>
             </div>
 

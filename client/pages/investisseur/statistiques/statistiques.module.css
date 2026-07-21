@@ -142,11 +142,33 @@
 .select {
   min-width: 128px;
   border: 1px solid #d9c7d1;
-  background: #ffffff;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 249, 252, 0.94)),
+    #ffffff;
   color: #422635;
   border-radius: 10px;
   padding: 9px 12px;
   font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease,
+    background 0.18s ease;
+}
+
+.select:hover {
+  border-color: rgba(122, 28, 53, 0.26);
+  box-shadow: 0 10px 20px rgba(90, 36, 58, 0.1);
+  transform: translateY(-1px);
+}
+
+.select:focus {
+  outline: none;
+  border-color: rgba(122, 28, 53, 0.34);
+  box-shadow:
+    0 0 0 4px rgba(122, 28, 53, 0.1),
+    0 10px 20px rgba(90, 36, 58, 0.1);
 }
 
 .exportButton {

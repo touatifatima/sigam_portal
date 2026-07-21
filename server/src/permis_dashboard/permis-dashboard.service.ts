@@ -8,9 +8,81 @@ type DashboardPaymentStatus =
   | 'expired'
   | 'cancelled';
 
+type EncaissementPeriod = 'month' | 'quarter' | 'year';
+type EncaissementScope = 'global' | 'user';
+
 @Injectable()
 export class PermisDashboardService {
+  private readonly countryGeoCache = new Map<
+    string,
+    { lat: number; lng: number } | null
+  >();
+
   constructor(private prisma: PrismaService) {}
+
+  private normalizeText(value: string | null | undefined): string {
+    return String(value ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/gi, '')
+      .trim()
+      .toLowerCase();
+  }
+
+  private isInvestorRoleName(value: string | null | undefined): boolean {
+    const normalized = this.normalizeText(value);
+    if (!normalized) return false;
+    if (normalized.includes('invest')) return true;
+    return ['user', 'utilisateur'].includes(normalized);
+  }
+
+  private async resolveCountryCoordinates(
+    country: string,
+  ): Promise<{ lat: number; lng: number } | null> {
+    const normalized = this.normalizeText(country);
+    if (!normalized) return null;
+
+    const cached = this.countryGeoCache.get(normalized);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(country)}`,
+        {
+          headers: {
+            'User-Agent': 'sigam-vite-dashboard/1.0',
+            'Accept-Language': 'fr',
+          },
+        },
+      );
+
+      if (!response.ok) {
+        this.countryGeoCache.set(normalized, null);
+        return null;
+      }
+
+      const payload = (await response.json()) as Array<{
+        lat?: string;
+        lon?: string;
+      }>;
+      const first = payload[0];
+      const lat = Number(first?.lat);
+      const lng = Number(first?.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        this.countryGeoCache.set(normalized, null);
+        return null;
+      }
+
+      const coordinates = { lat, lng };
+      this.countryGeoCache.set(normalized, coordinates);
+      return coordinates;
+    } catch {
+      this.countryGeoCache.set(normalized, null);
+      return null;
+    }
+  }
 
   private normalizePaymentStatus(
     value: string | null | undefined,
@@ -23,8 +95,16 @@ export class PermisDashboardService {
       .toLowerCase();
 
     if (!normalized) return 'pending';
-    if (normalized.includes('paid') || normalized.includes('paye'))
+    if (
+      normalized.includes('paid') ||
+      normalized.includes('paye') ||
+      normalized.includes('payee') ||
+      normalized.includes('confirm') ||
+      normalized.includes('valide') ||
+      normalized.includes('valid')
+    ) {
       return 'paid';
+    }
     if (normalized.includes('fail') || normalized.includes('echou'))
       return 'failed';
     if (normalized.includes('expir')) return 'expired';
@@ -39,6 +119,79 @@ export class PermisDashboardService {
     }
 
     return 'pending';
+  }
+
+  private isCollectedPayment(paymentStatus: string | null | undefined): boolean {
+    return this.normalizePaymentStatus(paymentStatus) === 'paid';
+  }
+
+  private getEncaissementPeriodStart(period: EncaissementPeriod, now: Date): Date {
+    if (period === 'month') {
+      return new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+
+    if (period === 'quarter') {
+      const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
+      return new Date(now.getFullYear(), quarterStartMonth, 1);
+    }
+
+    return new Date(now.getFullYear(), 0, 1);
+  }
+
+  private shiftDateClamped(date: Date, monthsOffset: number): Date {
+    const year = date.getFullYear();
+    const month = date.getMonth() + monthsOffset;
+    const day = date.getDate();
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const seconds = date.getSeconds();
+    const milliseconds = date.getMilliseconds();
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const safeDay = Math.min(day, lastDay);
+
+    return new Date(year, month, safeDay, hours, minutes, seconds, milliseconds);
+  }
+
+  private getEncaissementCategory(libelle: string | null | undefined): {
+    key: 'deposit' | 'instruction' | 'royalties' | 'taxes';
+    label: string;
+    color: string;
+  } {
+    const normalized = this.normalizeText(libelle);
+    if (
+      normalized.includes('produitattribution') ||
+      normalized.includes('fraisdedossier') ||
+      normalized.includes('depot') ||
+      normalized.includes('dossier')
+    ) {
+      return {
+        key: 'deposit',
+        label: 'Frais de dépôt',
+        color: '#3b82f6',
+      };
+    }
+
+    if (normalized.includes('droitdetablissement') || normalized.includes('instruction')) {
+      return {
+        key: 'instruction',
+        label: 'Frais d\'instruction',
+        color: '#8b5cf6',
+      };
+    }
+
+    if (normalized.includes('redevance')) {
+      return {
+        key: 'royalties',
+        label: 'Redevances',
+        color: '#14b8a6',
+      };
+    }
+
+    return {
+      key: 'taxes',
+      label: 'Taxes et autres paiements',
+      color: '#f59e0b',
+    };
   }
 
   async getDashboardStats() {
@@ -123,6 +276,197 @@ export class PermisDashboardService {
     };
   }
 
+  async getInvestorRepartition() {
+    const users = await this.prisma.utilisateurPortail.findMany({
+      where: {
+        deletedAt: null,
+      },
+      select: {
+        role: {
+          select: {
+            name: true,
+          },
+        },
+        detenteur: {
+          select: {
+            id_detenteur: true,
+            pays: {
+              select: {
+                id_pays: true,
+                nom_pays: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const investorUsers = users.filter((user) =>
+      this.isInvestorRoleName(user.role?.name),
+    );
+
+    const grouped = new Map<string, { country: string; count: number }>();
+    let noCountryCount = 0;
+
+    investorUsers.forEach((user) => {
+      const country = String(user.detenteur?.pays?.nom_pays ?? '').trim();
+      if (!country) {
+        noCountryCount += 1;
+        return;
+      }
+
+      const key = this.normalizeText(country);
+      const current = grouped.get(key);
+      if (current) {
+        current.count += 1;
+      } else {
+        grouped.set(key, { country, count: 1 });
+      }
+    });
+
+    const totalInvestors = investorUsers.length;
+    const countries = await Promise.all(
+      Array.from(grouped.values()).map(async (entry) => {
+        const coordinates = await this.resolveCountryCoordinates(entry.country);
+        return {
+          country: entry.country,
+          count: entry.count,
+          percentage: totalInvestors
+            ? Number(((entry.count / totalInvestors) * 100).toFixed(1))
+            : 0,
+          latitude: coordinates?.lat ?? null,
+          longitude: coordinates?.lng ?? null,
+        };
+      }),
+    );
+
+    countries.sort((a, b) => b.count - a.count || a.country.localeCompare(b.country));
+
+    return {
+      totalInvestors,
+      countries,
+      noCountry: {
+        count: noCountryCount,
+        percentage: totalInvestors
+          ? Number(((noCountryCount / totalInvestors) * 100).toFixed(1))
+          : 0,
+      },
+    };
+  }
+
+  async getUserDashboardStats(params: {
+    userId: number;
+    detenteurId?: number | null;
+  }) {
+    const safeUserId = Number(params.userId);
+    const safeDetenteurId = Number(params.detenteurId ?? 0);
+
+    if (!Number.isFinite(safeUserId) || safeUserId <= 0) {
+      return {
+        demandesEnCours: 0,
+        permisActifs: 0,
+        enInstruction: 0,
+        demandesApprouvees: 0,
+        totalPayeeYear: 0,
+        previousYearTotalPayee: 0,
+        referenceYear: new Date().getFullYear(),
+      };
+    }
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const nextYearStart = new Date(currentYear + 1, 0, 1);
+    const previousYearStart = new Date(currentYear - 1, 0, 1);
+
+    const [demandesEnCours, enInstruction, demandesApprouvees, permisActifs, payments] =
+      await Promise.all([
+        this.prisma.demandePortail.count({
+          where: {
+            utilisateurId: safeUserId,
+            statut_demande: {
+              in: ['EN_COURS', 'EN_ATTENTE', 'EN_COMPLEMENT'],
+            },
+          },
+        }),
+        this.prisma.demandePortail.count({
+          where: {
+            utilisateurId: safeUserId,
+            procedure: {
+              statut_proc: 'EN_COURS',
+            },
+          },
+        }),
+        this.prisma.demandePortail.count({
+          where: {
+            utilisateurId: safeUserId,
+            statut_demande: {
+              in: ['ACCEPTEE', 'APPROUVEE', 'APPROUVE', 'VALIDEE'],
+            },
+          },
+        }),
+        safeDetenteurId > 0
+          ? this.prisma.permisPortail.count({
+              where: {
+                id_detenteur: safeDetenteurId,
+                OR: [
+                  { statut: { lib_statut: 'En vigueur' } },
+                  { date_expiration: { gt: now } },
+                  { date_expiration: null },
+                ],
+              },
+            })
+          : Promise.resolve(0),
+        this.prisma.paiement.findMany({
+          where: {
+            idUtilisateur: safeUserId,
+            date_paiement: {
+              gte: previousYearStart,
+              lt: nextYearStart,
+            },
+          },
+          select: {
+            montant_paye: true,
+            etat_paiement: true,
+            date_paiement: true,
+          },
+          orderBy: { date_paiement: 'desc' },
+        }),
+      ]);
+
+    const paymentTotals = payments.reduce(
+      (acc, payment) => {
+        if (this.normalizePaymentStatus(payment.etat_paiement) !== 'paid') {
+          return acc;
+        }
+
+        const amount = Number(payment.montant_paye || 0);
+        const paymentYear = payment.date_paiement.getFullYear();
+
+        if (paymentYear === currentYear) {
+          acc.totalPayeeYear += amount;
+        } else if (paymentYear === currentYear - 1) {
+          acc.previousYearTotalPayee += amount;
+        }
+
+        return acc;
+      },
+      {
+        totalPayeeYear: 0,
+        previousYearTotalPayee: 0,
+      },
+    );
+
+    return {
+      demandesEnCours,
+      permisActifs,
+      enInstruction,
+      demandesApprouvees,
+      totalPayeeYear: paymentTotals.totalPayeeYear,
+      previousYearTotalPayee: paymentTotals.previousYearTotalPayee,
+      referenceYear: currentYear,
+    };
+  }
+
   async getDashboardPayments(userId: number) {
     const safeUserId = Number(userId);
     if (!Number.isFinite(safeUserId) || safeUserId <= 0) {
@@ -199,6 +543,158 @@ export class PermisDashboardService {
           receiptUrl: payment.justificatif_url || null,
         };
       }),
+    };
+  }
+
+  async getEncaissementsOverview(params: {
+    period?: string;
+    scope?: EncaissementScope;
+    userId?: number | null;
+  } = {}) {
+    const period =
+      params.period === 'month' || params.period === 'quarter' || params.period === 'year'
+        ? params.period
+        : 'year';
+    const scope = params.scope === 'user' ? 'user' : 'global';
+    const safeUserId = Number(params.userId ?? 0);
+    const now = new Date();
+    const previousYearStart = new Date(now.getFullYear() - 1, 0, 1);
+
+    const baseWhere =
+      scope === 'user' && Number.isFinite(safeUserId) && safeUserId > 0
+        ? {
+            idUtilisateur: safeUserId,
+            date_paiement: {
+              gte: previousYearStart,
+              lte: now,
+            },
+          }
+        : {
+            date_paiement: {
+              gte: previousYearStart,
+              lte: now,
+            },
+          };
+
+    const payments = await this.prisma.paiement.findMany({
+      where: baseWhere,
+      include: {
+        obligation: {
+          include: {
+            typePaiement: true,
+          },
+        },
+      },
+      orderBy: { date_paiement: 'desc' },
+    });
+
+    const collectedPayments = payments.filter((payment) =>
+      this.isCollectedPayment(payment.etat_paiement),
+    );
+
+    const periodStart = this.getEncaissementPeriodStart(period, now);
+    const periodPayments = collectedPayments.filter((payment) => {
+      const paymentDate = new Date(payment.date_paiement);
+      return paymentDate >= periodStart && paymentDate <= now;
+    });
+
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const prevMonthStartDate = this.shiftDateClamped(monthStart, -1);
+    const prevMonthStart = new Date(
+      prevMonthStartDate.getFullYear(),
+      prevMonthStartDate.getMonth(),
+      1,
+    );
+    const prevMonthEnd = this.shiftDateClamped(now, -1);
+
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+    const prevYearStart = new Date(now.getFullYear() - 1, 0, 1);
+    const prevYearEnd = this.shiftDateClamped(now, -12);
+
+    const sumPayments = (items: typeof collectedPayments) =>
+      items.reduce((sum, payment) => sum + Number(payment.montant_paye || 0), 0);
+
+    const currentMonthPayments = collectedPayments.filter((payment) => {
+      const paymentDate = new Date(payment.date_paiement);
+      return paymentDate >= monthStart && paymentDate <= now;
+    });
+
+    const previousMonthPayments = collectedPayments.filter((payment) => {
+      const paymentDate = new Date(payment.date_paiement);
+      return paymentDate >= prevMonthStart && paymentDate <= prevMonthEnd;
+    });
+
+    const currentYearPayments = collectedPayments.filter((payment) => {
+      const paymentDate = new Date(payment.date_paiement);
+      return paymentDate >= yearStart && paymentDate <= now;
+    });
+
+    const previousYearPayments = collectedPayments.filter((payment) => {
+      const paymentDate = new Date(payment.date_paiement);
+      return paymentDate >= prevYearStart && paymentDate <= prevYearEnd;
+    });
+
+    const currentMonthAmount = sumPayments(currentMonthPayments);
+    const previousMonthAmount = sumPayments(previousMonthPayments);
+    const currentYearAmount = sumPayments(currentYearPayments);
+    const previousYearAmount = sumPayments(previousYearPayments);
+
+    const computeVariation = (current: number, previous: number) => {
+      if (previous <= 0) {
+        return current > 0 ? 100 : 0;
+      }
+      return Number((((current - previous) / previous) * 100).toFixed(1));
+    };
+
+    const categoryMap: Record<
+      'deposit' | 'instruction' | 'royalties' | 'taxes',
+      { label: string; color: string; amount: number; count: number }
+    > = {
+      deposit: { label: 'Frais de dépôt', color: '#3b82f6', amount: 0, count: 0 },
+      instruction: { label: "Frais d'instruction", color: '#8b5cf6', amount: 0, count: 0 },
+      royalties: { label: 'Redevances', color: '#14b8a6', amount: 0, count: 0 },
+      taxes: { label: 'Taxes et autres paiements', color: '#f59e0b', amount: 0, count: 0 },
+    };
+
+    periodPayments.forEach((payment) => {
+      const category = this.getEncaissementCategory(payment.obligation?.typePaiement?.libelle);
+      const amount = Number(payment.montant_paye || 0);
+      categoryMap[category.key].amount += amount;
+      categoryMap[category.key].count += 1;
+    });
+
+    const totalAmount = periodPayments.reduce(
+      (sum, payment) => sum + Number(payment.montant_paye || 0),
+      0,
+    );
+
+    const categories = Object.entries(categoryMap)
+      .map(([key, entry]) => ({
+        key,
+        label: entry.label,
+        amount: Number(entry.amount.toFixed(2)),
+        count: entry.count,
+        percentage: totalAmount > 0 ? Number(((entry.amount / totalAmount) * 100).toFixed(1)) : 0,
+        color: entry.color,
+      }))
+      .filter((entry) => entry.amount > 0 || totalAmount === 0)
+      .sort((a, b) => b.amount - a.amount);
+
+    return {
+      period,
+      totalAmount,
+      totalTransactions: periodPayments.length,
+      categories,
+      month: {
+        current: currentMonthAmount,
+        previous: previousMonthAmount,
+        variation: computeVariation(currentMonthAmount, previousMonthAmount),
+      },
+      year: {
+        current: currentYearAmount,
+        previous: previousYearAmount,
+        variation: computeVariation(currentYearAmount, previousYearAmount),
+      },
     };
   }
 

@@ -351,8 +351,31 @@
   border: 1px solid #e2e8f4;
   border-radius: 10px;
   padding: 10px 12px;
-  background: #fff;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 249, 252, 0.94)),
+    #fff;
   color: #1f2a44;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease,
+    background 0.18s ease;
+}
+
+.select:hover {
+  border-color: rgba(127, 32, 68, 0.26);
+  box-shadow: 0 10px 20px rgba(36, 11, 23, 0.08);
+  transform: translateY(-1px);
+}
+
+.select:focus,
+.select:focus-visible {
+  outline: none;
+  border-color: rgba(127, 32, 68, 0.34);
+  box-shadow:
+    0 0 0 4px rgba(127, 32, 68, 0.1),
+    0 10px 20px rgba(36, 11, 23, 0.08);
 }
 
 .searchBlock {

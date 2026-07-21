@@ -964,6 +964,7 @@ export class AuthService {
       nom?: string;
       email?: string;
       telephone?: string | null;
+      currentPassword?: string;
       password?: string;
       confirmPassword?: string;
     },
@@ -996,6 +997,34 @@ export class AuthService {
         'Un code OTP a ete envoye a votre adresse email actuelle pour confirmer les modifications.',
       expiresAt,
       resendAvailableAt: new Date(Date.now() + 60 * 1000),
+    };
+  }
+
+  async validateCurrentPassword(
+    token: string,
+    body: { currentPassword?: string },
+  ) {
+    const { user } = await this.getAuthenticatedUserSession(token);
+    const currentPassword = String(body?.currentPassword || '').trim();
+
+    if (!currentPassword) {
+      throw new BadRequestException('Veuillez saisir votre mot de passe actuel.');
+    }
+
+    if (!user.password) {
+      throw new BadRequestException(
+        'Le mot de passe actuel est introuvable. Veuillez contacter le support.',
+      );
+    }
+
+    const isValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isValid) {
+      throw new BadRequestException('Le mot de passe actuel est incorrect.');
+    }
+
+    return {
+      valid: true,
+      message: 'Mot de passe actuel correct.',
     };
   }
 
@@ -1278,6 +1307,7 @@ export class AuthService {
       nom?: string;
       email?: string;
       telephone?: string | null;
+      currentPassword?: string;
       password?: string;
       confirmPassword?: string;
     },
@@ -1286,6 +1316,7 @@ export class AuthService {
     const nextNom = (body.nom || '').trim();
     const nextEmail = this.normalizeEmail(body.email || '');
     const nextTelephone = this.normalizePhone(body.telephone);
+    const currentPassword = String(body.currentPassword || '');
     const password = body.password || '';
     const confirmPassword = body.confirmPassword || '';
 
@@ -1336,8 +1367,36 @@ export class AuthService {
       }
     }
 
+    const passwordChangeRequested = Boolean(password || confirmPassword);
+
     let passwordHash: string | null = null;
-    if (password || confirmPassword) {
+    if (passwordChangeRequested) {
+      if (!currentPassword) {
+        throw new BadRequestException(
+          'Veuillez saisir votre mot de passe actuel pour modifier votre mot de passe.',
+        );
+      }
+
+      if (!user.password) {
+        throw new BadRequestException(
+          'Le mot de passe actuel est introuvable. Veuillez contacter le support.',
+        );
+      }
+
+      const currentPasswordMatches = await bcrypt.compare(
+        currentPassword,
+        user.password,
+      );
+      if (!currentPasswordMatches) {
+        throw new BadRequestException('Le mot de passe actuel est incorrect.');
+      }
+
+      if (!password || !confirmPassword) {
+        throw new BadRequestException(
+          'Veuillez saisir et confirmer le nouveau mot de passe.',
+        );
+      }
+
       if (password !== confirmPassword) {
         throw new BadRequestException(
           'La confirmation du mot de passe ne correspond pas.',

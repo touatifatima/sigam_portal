@@ -163,6 +163,20 @@ export default function Sidebar({ currentView, navigateTo }: SidebarProps) {
           {isCollapsed ? <FiChevronRight /> : <FiChevronLeft />}
         </button>
 
+        <div className={styles.sidebarBrand}>
+          <div className={styles.brandMark} aria-hidden="true">
+            <FiShield />
+          </div>
+          {!isCollapsed && (
+            <div className={styles.brandCopy}>
+              <span className={styles.brandName}>Guichet Unique Minier</span>
+              <span className={styles.brandSub}>Admin workspace</span>
+            </div>
+          )}
+        </div>
+
+        {!isCollapsed && <div className={styles.sidebarLabel}>Navigation</div>}
+
         <nav className={styles.sidebarNav}>
           <ul className={styles.navMenu}>
             {menuItems.map((item) =>

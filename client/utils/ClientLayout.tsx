@@ -2,6 +2,7 @@
 import { useSessionLoader } from '../src/hooks/useSessionLoader';
 import { useAuthStore } from '../src/store/useAuthStore';
 import { useLocation } from 'react-router-dom';
+import BackToTopButton from '../components/BackToTopButton';
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   useSessionLoader();
@@ -101,6 +102,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       }}
     >
       {children}
+      <BackToTopButton />
     </div>
   );
 }

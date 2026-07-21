@@ -3,6 +3,7 @@ import {
   Get,
   HttpException,
   HttpStatus,
+  Query,
   Req,
 } from '@nestjs/common';
 import { PermisDashboardService } from './permis-dashboard.service';
@@ -36,8 +37,33 @@ export class PermisDashboardController {
     status: 200,
     description: 'Dashboard statistics retrieved successfully',
   })
-  async getStats() {
-    return this.dashboardService.getDashboardStats();
+  async getStats(@Req() req: Request) {
+    const token = this.extractAuthToken(req);
+    if (!token) {
+      throw new HttpException('Non authentifie', HttpStatus.UNAUTHORIZED);
+    }
+
+    const session = await this.sessionService.validateSession(token);
+    const userId = session?.user?.id ?? session?.userId;
+    if (!userId) {
+      throw new HttpException('Session invalide', HttpStatus.UNAUTHORIZED);
+    }
+
+    const sessionUser = session?.user;
+    const roleName = String(sessionUser?.role?.name ?? '').toLowerCase();
+    if (
+      roleName.includes('admin') ||
+      roleName.includes('administrateur') ||
+      roleName.includes('cadastre') ||
+      roleName.includes('operateur')
+    ) {
+      return this.dashboardService.getDashboardStats();
+    }
+
+    return this.dashboardService.getUserDashboardStats({
+      userId: Number(userId),
+      detenteurId: sessionUser?.detenteurId ?? null,
+    });
   }
 
   @Get('payments')
@@ -61,6 +87,68 @@ export class PermisDashboardController {
     }
 
     return this.dashboardService.getDashboardPayments(Number(userId));
+  }
+
+  @Get('investor-repartition')
+  @ApiOperation({
+    summary: 'Get investor repartition by country',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Investor repartition retrieved successfully',
+  })
+  async getInvestorRepartition(@Req() req: Request) {
+    const token = this.extractAuthToken(req);
+    if (!token) {
+      throw new HttpException('Non authentifie', HttpStatus.UNAUTHORIZED);
+    }
+
+    const session = await this.sessionService.validateSession(token);
+    if (!session?.user && !session?.userId) {
+      throw new HttpException('Session invalide', HttpStatus.UNAUTHORIZED);
+    }
+
+    return this.dashboardService.getInvestorRepartition();
+  }
+
+  @Get('encaissements')
+  @ApiOperation({
+    summary: 'Get encaissements repartition and trends',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Encaissements overview retrieved successfully',
+  })
+  async getEncaissements(
+    @Req() req: Request,
+    @Query('period') period?: string,
+  ) {
+    const token = this.extractAuthToken(req);
+    if (!token) {
+      throw new HttpException('Non authentifie', HttpStatus.UNAUTHORIZED);
+    }
+
+    const session = await this.sessionService.validateSession(token);
+    const userId = session?.user?.id ?? session?.userId;
+    if (!userId) {
+      throw new HttpException('Session invalide', HttpStatus.UNAUTHORIZED);
+    }
+
+    const sessionUser = session?.user;
+    const roleName = String(sessionUser?.role?.name ?? '').toLowerCase();
+    const scope =
+      roleName.includes('admin') ||
+      roleName.includes('administrateur') ||
+      roleName.includes('cadastre') ||
+      roleName.includes('operateur')
+        ? 'global'
+        : 'user';
+
+    return this.dashboardService.getEncaissementsOverview({
+      period,
+      scope,
+      userId: Number(userId),
+    });
   }
 
   @Get('evolution')

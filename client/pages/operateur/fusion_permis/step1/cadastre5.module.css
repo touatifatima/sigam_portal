@@ -1243,15 +1243,22 @@
   background: #ffffff;
   font-size: 0.92rem;
   color: #2b2730;
-  transition: all 0.2s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease;
 }
 
 .systemTrigger svg {
   width: 16px;
   height: 16px;
   color: #7f2044;
-  opacity: 0.9;
-  transition: transform 0.2s ease;
+  opacity: 1;
+  transition: transform 0.18s ease;
 }
 
 .systemTrigger[data-state='open'] svg {
@@ -1262,7 +1269,14 @@
 .systemTrigger:focus-visible,
 .systemTrigger[data-state='open'] {
   border-color: rgba(155, 44, 88, 0.65);
-  box-shadow: 0 0 0 3px rgba(155, 44, 88, 0.18);
+  box-shadow:
+    0 0 0 4px rgba(155, 44, 88, 0.16),
+    0 14px 28px rgba(155, 44, 88, 0.08);
+  transform: translateY(-1px);
+}
+
+.systemTrigger[data-state='open'] svg {
+  transform: rotate(180deg);
 }
 
 .pointsList {
@@ -1321,15 +1335,22 @@
   background: #ffffff;
   font-size: 0.92rem;
   color: #2b2730;
-  transition: all 0.2s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease;
 }
 
 .zoneSelect svg {
   width: 16px;
   height: 16px;
   color: #7f2044;
-  opacity: 0.9;
-  transition: transform 0.2s ease;
+  opacity: 1;
+  transition: transform 0.18s ease;
 }
 
 .zoneSelect[data-state='open'] svg {
@@ -1340,7 +1361,14 @@
 .zoneSelect:focus-visible,
 .zoneSelect[data-state='open'] {
   border-color: rgba(155, 44, 88, 0.65);
-  box-shadow: 0 0 0 3px rgba(155, 44, 88, 0.18);
+  box-shadow:
+    0 0 0 4px rgba(155, 44, 88, 0.16),
+    0 14px 28px rgba(155, 44, 88, 0.08);
+  transform: translateY(-1px);
+}
+
+.zoneSelect[data-state='open'] svg {
+  transform: rotate(180deg);
 }
 
 .systemTrigger [data-placeholder],
@@ -1349,11 +1377,15 @@
 }
 
 .selectContent {
-  background: #ffffff;
-  border: 1px solid rgba(155, 44, 88, 0.2);
-  border-radius: 12px;
-  box-shadow: 0 18px 40px rgba(44, 32, 42, 0.18);
-  padding: 6px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(252, 250, 252, 0.98)),
+    #ffffff;
+  border: 1px solid rgba(155, 44, 88, 0.18);
+  border-radius: 16px;
+  box-shadow:
+    0 24px 50px rgba(44, 32, 42, 0.16),
+    0 2px 8px rgba(44, 32, 42, 0.04);
+  padding: 10px;
   animation: selectIn 0.2s ease-out;
   max-height: 260px;
   overflow-y: auto;
@@ -1375,20 +1407,29 @@
 }
 
 .selectItem {
-  border-radius: 8px;
-  padding: 8px 12px 8px 32px;
+  border-radius: 12px;
+  padding: 12px 14px 12px 36px;
   font-size: 0.92rem;
   color: #2b2730;
-  transition: background 0.15s ease, color 0.15s ease;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.selectItem:hover,
+.selectItem:focus-visible {
+  transform: translateX(2px);
 }
 
 .selectItem[data-highlighted] {
-  background: #f5e5ed;
+  background: linear-gradient(135deg, rgba(155, 44, 88, 0.1), rgba(155, 44, 88, 0.06));
   color: #7f2044;
 }
 
 .selectItem[data-state='checked'] {
-  background: rgba(155, 44, 88, 0.14);
+  background: linear-gradient(135deg, rgba(155, 44, 88, 0.15), rgba(155, 44, 88, 0.09));
   color: #7f2044;
   font-weight: 600;
 }

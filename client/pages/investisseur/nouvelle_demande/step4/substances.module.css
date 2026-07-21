@@ -770,25 +770,41 @@
   background-image: none;
   appearance: none;
   color: #2b2730;
-  transition: all 0.2s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease;
 }
 
 .form-select:hover {
-  border-color: rgba(155, 44, 88, 0.45);
+  border-color: rgba(155, 44, 88, 0.55);
+  box-shadow: 0 10px 22px rgba(155, 44, 88, 0.08);
+  transform: translateY(-1px);
 }
 
 .form-select:focus,
 .form-select:focus-visible,
 .form-select[data-state='open'] {
   border-color: rgba(155, 44, 88, 0.65);
-  box-shadow: 0 0 0 3px rgba(155, 44, 88, 0.18);
+  box-shadow:
+    0 0 0 4px rgba(155, 44, 88, 0.16),
+    0 14px 28px rgba(155, 44, 88, 0.08);
 }
 
 .form-select svg {
   width: 16px;
   height: 16px;
   color: #7f2044;
-  opacity: 0.9;
+  opacity: 1;
+  transition: transform 0.18s ease;
+}
+
+.form-select[data-state='open'] svg {
+  transform: rotate(180deg);
 }
 
 .form-select [data-placeholder] {
@@ -800,11 +816,15 @@
 }
 
 .selectContent {
-  border-radius: 12px;
-  border: 1px solid rgba(155, 44, 88, 0.2);
-  background: #fff;
-  box-shadow: 0 18px 40px rgba(44, 32, 42, 0.18);
-  padding: 6px;
+  border-radius: 16px;
+  border: 1px solid rgba(155, 44, 88, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(252, 250, 252, 0.98)),
+    #fff;
+  box-shadow:
+    0 24px 50px rgba(44, 32, 42, 0.16),
+    0 2px 8px rgba(44, 32, 42, 0.04);
+  padding: 10px;
   max-height: 260px;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -825,20 +845,29 @@
 }
 
 .selectItem {
-  border-radius: 8px;
-  padding: 8px 12px 8px 32px;
+  border-radius: 12px;
+  padding: 12px 14px 12px 36px;
   color: #2b2730;
   font-size: 0.875rem;
-  transition: background 0.15s ease, color 0.15s ease;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.selectItem:hover,
+.selectItem:focus-visible {
+  transform: translateX(2px);
 }
 
 .selectItem[data-highlighted] {
-  background: #f5e5ed;
+  background: linear-gradient(135deg, rgba(155, 44, 88, 0.1), rgba(155, 44, 88, 0.06));
   color: #7f2044;
 }
 
 .selectItem[data-state='checked'] {
-  background: rgba(155, 44, 88, 0.14);
+  background: linear-gradient(135deg, rgba(155, 44, 88, 0.15), rgba(155, 44, 88, 0.09));
   color: #7f2044;
   font-weight: 600;
 }
