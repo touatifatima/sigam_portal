@@ -129,6 +129,7 @@ type VerificationNoticeData = {
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL ?? '';
 const DRAFT_KEY = 'interactive_demande_draft_v1';
+const DATEPICKER_PORTAL_ID = 'interactive-verification-datepicker-portal';
 const ALLOWED_PERMIS_CODES = new Set(['APM', 'TEM', 'TEC', 'AAM', 'AAC', 'TXM', 'TXC', 'AXW', 'AXH', 'ARO']);
 
 type SearchLayerKey = 'perimetresSig' | 'titres';
@@ -1869,6 +1870,9 @@ export default function InteractiveDemandePage() {
                       timeIntervals={5}
                       timeCaption="Heure"
                       dateFormat="dd/MM/yyyy HH:mm"
+                      portalId={DATEPICKER_PORTAL_ID}
+                      popperClassName={styles.datepickerPopper}
+                      calendarClassName={styles.datepickerCalendar}
                       className={styles.select}
                     />
                   </div>

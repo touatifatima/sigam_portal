@@ -82,6 +82,7 @@ import { Expert } from './notifications/expertminier';
 import { PhasesEtapesConfigModule } from './configurations/phases-etapes/phases-etapes.module';
 import { StaticPagesModule } from './static-pages/static-pages.module';
 import { NavbarLinksModule } from './navbar-links/navbar-links.module';
+import { CadastreDocumentModule } from './demandes/cadastre_document/cadastre-document.module';
 
 
 
@@ -107,7 +108,7 @@ import { NavbarLinksModule } from './navbar-links/navbar-links.module';
     InteractionWaliModule,CapacitesModule,SubstancesModule,DocumentsModule,DemandeSummaryControllerModule,SubstancesconfModule,
     StatutsJuridiquesconfconfModule,WilayasconfModule,DairasconfModule,CommunesconfModule,AntennesconfModule,DetenteurMorale_confModule,
     TypePermis_confModule,StatutPermis_confModule,Permis_confModule,Antenne_confModule,DemandesDashboardModule,TransfertModule,GisModule,VerificationGeoModule,
-    NotificationsModule,ArticleSetsModule,InscriptionProvisoireModule,PhasesEtapesConfigModule,ChatModule,FactureModule,CessionModule,ProcedureDeclarationsModule,ActualitesModule,StaticPagesModule,NavbarLinksModule],
+    NotificationsModule,ArticleSetsModule,InscriptionProvisoireModule,PhasesEtapesConfigModule,ChatModule,FactureModule,CessionModule,ProcedureDeclarationsModule,ActualitesModule,StaticPagesModule,NavbarLinksModule,CadastreDocumentModule],
   controllers: [DemandesController],
   providers: [DemandeService,
     //{

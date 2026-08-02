@@ -433,6 +433,24 @@
   width: 100%;
 }
 
+.datepickerWrapper {
+  position: relative;
+  z-index: 30;
+  overflow: visible;
+}
+
+.datepickerWrapper :global(.react-datepicker__input-container) {
+  width: 100%;
+}
+
+.datepickerPopper {
+  z-index: 9999 !important;
+}
+
+.datepickerCalendar {
+  z-index: 9999;
+}
+
 .secondaryBtn {
   display: inline-flex;
   align-items: center;

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";  // da
 import { useLocation, useNavigate } from "react-router-dom"; //user cadastre dashboard 
 import {
   ArrowRight,
+  FileText,
   Map,
   ShieldCheck,
   Waypoints,
@@ -226,6 +227,14 @@ export default function CadastreDashboardPage() {
                   onClick={() => navigate(publicMapTool.route)}
                 >
                   {publicMapTool.cta}
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.heroButton} ${styles.heroButtonSecondary}`}
+                  onClick={() => navigate("/cadastre/demandedocumentcadastrale/")}
+                >
+                  Nouvelle demande de document cadastral
+                  <FileText size={18} />
                 </button>
               </div>
 

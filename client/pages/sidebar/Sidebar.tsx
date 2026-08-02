@@ -79,7 +79,6 @@ export default function Sidebar({ currentView, navigateTo }: SidebarProps) {
 
   const menuItems: MenuItem[] = [
     { id: 'dashboard', icon: <FiActivity />, label: 'Tableau de bord', permission: 'dashboard' },
-    { id: 'nouvelle-demande', icon: <FiFileText />, label: 'Nouvelle demande', permission: 'create_demande' },
     { id: 'gestion-permis', icon: <FiLayers />, label: 'Gestion des permis', permission: 'manage_permits' },
     { id: 'instruction-cadastrale', icon: <FiMap />, label: 'Instruction cadastrale', permission: 'view_cadastre' },
     { id: 'demande-interactive', icon: <FiFileText />, label: 'Verification prealable', permission: 'create_demande' },

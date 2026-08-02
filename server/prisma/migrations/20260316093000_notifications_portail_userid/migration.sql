@@ -4,15 +4,8 @@
 
 DO $$
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM information_schema.columns
-    WHERE table_name = 'notifications_portail'
-      AND column_name = 'userId'
-  ) THEN
-    ALTER TABLE "notifications_portail"
-      ADD COLUMN "userId" INTEGER;
-  END IF;
+  ALTER TABLE "notifications_portail"
+    ADD COLUMN IF NOT EXISTS "userId" INTEGER;
 END $$;
 
 DO $$
@@ -32,12 +25,13 @@ END $$;
 
 DO $$
 BEGIN
-  IF NOT EXISTS (
+  IF EXISTS (
     SELECT 1
     FROM information_schema.columns
-    WHERE table_name = 'notifications_portail'
+    WHERE table_schema = current_schema()
+      AND table_name = 'notifications_portail'
       AND column_name = 'userId'
-      AND is_nullable = 'NO'
+      AND is_nullable = 'YES'
   ) AND NOT EXISTS (
     SELECT 1
     FROM "notifications_portail"
