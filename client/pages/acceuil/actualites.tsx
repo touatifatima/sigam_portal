@@ -9,7 +9,6 @@ import {
   X,
 } from "lucide-react";
 import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
 import {
   getDefaultActualites,
   type ActualiteCategory,
@@ -351,7 +350,6 @@ export default function ActualitesPage() {
         ) : null}
       </main>
 
-      <Footer />
     </div>
   );
 }

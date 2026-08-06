@@ -25,6 +25,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { BrandLoader } from "@/components/loading/BrandLoader";
 
 type Document = {
   id_doc: number;
@@ -760,16 +761,7 @@ export default function Step5_Documents() {
 
   // Show loading state until all required data is available
   if (!isPageReady) {
-    return (
-      <div className="loading-container">
-        <div className="spinner"></div>
-        <p>{loadingState}</p>
-        {!idProc && <p>En attente de l'ID de procédure...</p>}
-        {idProc && !procedureData && <p>Chargement des données de procédure...</p>}
-        {procedureData && !idDemande && <p>Chargement des données de demande...</p>}
-        {idDemande && documents.length === 0 && <p>Chargement des documents...</p>}
-      </div>
-    );
+    return <BrandLoader fullScreen label={loadingState || "Chargement des documents..."} />;
   }
 
   return (

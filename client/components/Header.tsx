@@ -1,8 +1,9 @@
 ﻿import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Globe } from "lucide-react";
+import gunamLogo from "@/src/assets/gunam-login.png";
+import anamLogo from "@/src/assets/test.png";
 import styles from "./Header.module.css";
-const logo = "/anamlogo.png";
 
 export const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -21,7 +22,8 @@ export const Header = () => {
     { label: "Accueil", href: "/" },
     { label: "Services", href: "#services" },
     { label: "Carte Minière", href: "/carte/carte_public" },
-    { label: "Actualites", href: "/acceuil/actualites" },
+    { label: "Tarifs & Abonnements", href: "/abonnements" },
+    { label: "Actualités", href: "/acceuil/actualites" },
     { label: "Contact", href: "/acceuil/contact" },
   ];
 
@@ -54,17 +56,25 @@ export const Header = () => {
             <span className={styles.flagDivider} />
           </div>
           <img
-            src={logo}
-            alt="ANAM Logo"
+            src={gunamLogo}
+            alt="GUNAM"
             className={styles.logoImage}
             width={120}
             height={120}
             decoding="async"
             fetchPriority="high"
           />
+          <span className={styles.brandDivider} aria-hidden="true" />
+          <img
+            src={anamLogo}
+            alt="ANAM"
+            className={styles.anamLogoImage}
+            decoding="async"
+            fetchPriority="high"
+          />
           <div className={styles.logoText}>
             <span className={styles.logoTitle}>GUNAM</span>
-            <span className={styles.logoSubtitle}>Guichet Unique des Mines</span>
+            <span className={styles.logoSubtitle}>Guichet unique national des activités minières</span>
           </div>
         </a>
 

@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { OnboardingTour, type OnboardingStep } from "@/components/onboarding/OnboardingTour";
+import { BrandLoader } from "@/components/loading/BrandLoader";
 import {
   getHasSeenOnboarding,
   getOnboardingActive,
@@ -474,7 +475,8 @@ export default function Step5_Documents() {
           ordre: pp.ordre,
         }))
     : [];
-  const phases: Phase[] = stepperPhases.length > 0 ? stepperPhases : fallbackPhases;
+  const phases: Phase[] =
+    stepperPhases.length >= fallbackPhases.length ? stepperPhases : fallbackPhases;
 
   // Resolve the backend etape id for this page using page_route
   const etapeIdForThisPage = useMemo(() => {
@@ -1024,16 +1026,7 @@ export default function Step5_Documents() {
 
   // Show loading state until all required data is available
   if (!isPageReady) {
-    return (
-      <div className="loading-container">
-        <div className="spinner"></div>
-        <p>{loadingState}</p>
-        {!idProc && <p>En attente de l'ID de procÃ©dure...</p>}
-        {idProc && !procedureData && <p>Chargement des donnÃ©es de procÃ©dure...</p>}
-        {procedureData && !idDemande && <p>Chargement des donnÃ©es de demande...</p>}
-        {idDemande && documents.length === 0 && <p>Chargement des documents...</p>}
-      </div>
-    );
+    return <BrandLoader fullScreen label={loadingState || "Chargement des documents..."} />;
   }
 
   return (

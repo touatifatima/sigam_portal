@@ -9,7 +9,6 @@ import { useSearchParams } from "@/src/hooks/useSearchParams";
 import styles from  "./aviswali6.module.css";
 import Navbar from "../../../navbar/Navbar";
 import Sidebar from "../../../sidebar/Sidebar";
-import { BsFilePerson } from "react-icons/bs";
 import { useViewNavigator } from "../../../../src/hooks/useViewNavigator";
 import ProgressStepper from "../../../../components/ProgressStepper";
 import { STEP_LABELS } from "../../../../src/constants/steps";
@@ -104,7 +103,7 @@ export default function AvisWaliStep() {
   const [demandeSummary, setDemandeSummary] = useState<DemandeSummary | null>(null);
   const [activatedSteps, setActivatedSteps] = useState<Set<number>>(new Set());
   const [isPageReady, setIsPageReady] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState('Chargement des paramétres...');
+  const [loadingMessage, setLoadingMessage] = useState('Chargement des paramètres...');
 
   const fetchProcedureData = useCallback(async () => {
     if (!idProc) return;
@@ -472,12 +471,12 @@ projectFields.forEach(({ label, value }) => {
 
   const handleNext = async () => {
     if (!idProc) {
-      setError("ID proc?dure manquant");
+      setError("ID procédure manquant");
       return;
     }
 
     if (isReadOnly) {
-      setEtapeMessage("Proc?dure d?j? termin?e.");
+      setEtapeMessage("Procédure déjà terminée.");
       return;
     }
 
@@ -492,11 +491,11 @@ projectFields.forEach(({ label, value }) => {
       }
 
       await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`);
-      setEtapeMessage("?tape 6 enregistr?e avec succ?s !");
+      setEtapeMessage("Étape 6 enregistrée avec succès !");
       router.push(`/investisseur/nouvelle_demande/step7/page7?id=${idProc}`);
     } catch (err) {
       console.error(err);
-      setEtapeMessage("Erreur lors de l'enregistrement de l'?tape.");
+      setEtapeMessage("Erreur lors de l'enregistrement de l'étape.");
     } finally {
       setSavingEtape(false);
     }
@@ -611,10 +610,13 @@ const latestEnvoi = interactions
       <div className={styles.appContent}>
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles.mainContent}>
+          <div className={styles.pageShell}>
           <div className={styles.breadcrumb}>
-            <span>POM</span>
+            <span>GUNAM</span>
             <FiChevronRight className={styles.breadcrumbArrow} />
-            <span>Avis du Wali</span>
+            <span>Nouvelle demande</span>
+            <FiChevronRight className={styles.breadcrumbArrow} />
+            <span>Avis du wali</span>
           </div>
           <div className={styles.contentWrapper}>
              {procedureData && (
@@ -627,29 +629,30 @@ const latestEnvoi = interactions
             />
           )}
             <div className={styles.pageHeader}>
-            <div className={styles.headerLeft}>
-              <h1 className={styles.pageTitle}>
-                <BsFilePerson className={styles.titleIcon} />
-                Avis du Wali - étape 6
-              </h1>
-              {codeDemande && (
-                <div className={styles.demandeInfo}>
-                  <span className={styles.infoBadge}>Demande: {codeDemande}</span>
-                  {idDemande && <span className={styles.infoBadge}>ID: {idDemande}</span>}
-                </div>
-              )}
+              <div className={styles.headerLeft}>
+                <span className={styles.pageEyebrow}>Étape 6</span>
+                <h1 className={styles.pageTitle}>Avis du wali</h1>
+                <p className={styles.pageSubtitle}>
+                  Gérez l'envoi au wali, renseignez la réponse reçue et consultez l'historique des interactions.
+                </p>
+              </div>
+              <div className={styles.headerActions}>
+                <button 
+                  onClick={refreshData}
+                  className={styles.refreshButton}
+                  disabled={isRefreshing}
+                >
+                  <FiRefreshCw className={isRefreshing ? styles.spinning : ''} />
+                  Actualiser
+                </button>
+              </div>
             </div>
-            <div className={styles.headerActions}>
-              <button 
-                onClick={refreshData}
-                className={styles.refreshButton}
-                disabled={isRefreshing}
-              >
-                <FiRefreshCw className={isRefreshing ? styles.spinning : ''} />
-                Actualiser
-              </button>
-            </div>
-          </div>
+            {codeDemande && (
+              <div className={styles.demandeInfo}>
+                <span className={styles.infoBadge}>Demande: {codeDemande}</span>
+                {idDemande && <span className={styles.infoBadge}>ID: {idDemande}</span>}
+              </div>
+            )}
             {/* Status Messages */}
             {isLoading && !idProcedure && (
               <div className={styles.loadingState}>
@@ -680,7 +683,7 @@ const latestEnvoi = interactions
 
             {/* Rejection Section */}
             <div className={styles.rejectSection}>
-              <h3 className={styles.sectionTitle}>Rejet de la Demande</h3>
+              <h3 className={styles.sectionTitle}>Rejet de la demande</h3>
               <div className={styles.rejectForm}>
                 <input
                   disabled={isReadOnly}
@@ -707,8 +710,8 @@ const latestEnvoi = interactions
                 <div className={styles.actionSection}>
                   <div className={styles.actionGrid}>
                     <div className={styles.actionCard}>
-                      <h4>Envoi au Wali</h4>
-                      <p>Marquer la demande comme envoyée au Wali</p>
+                      <h4>Envoi au wali</h4>
+                      <p>Marquer la demande comme envoyée au wali</p>
                       <button 
                         onClick={() => setShowEnvoiModal(true)} 
                         className={styles.primaryButton}
@@ -720,8 +723,8 @@ const latestEnvoi = interactions
                     </div>
 
                     <div className={styles.actionCard}>
-                      <h4>Génération de Lettre</h4>
-                      <p>Générer la lettre officielle pour le Wali</p>
+                      <h4>Génération de lettre</h4>
+                      <p>Générer la lettre officielle pour le wali</p>
                       <button 
                         onClick={handleGenerateLetter} 
                         className={styles.secondaryButton}
@@ -848,7 +851,7 @@ const latestEnvoi = interactions
                       <label>Contenu ou remarques</label>
                       <textarea
                         disabled={isReadOnly}
-                        placeholder="Saisissez les détails de la réponse du Wali..."
+                        placeholder="Saisissez les détails de la réponse du wali..."
                         value={form.contenu}
                         onChange={(e) => setForm({ ...form, contenu: e.target.value })}
                         rows={5}
@@ -1030,6 +1033,7 @@ const latestEnvoi = interactions
                 </div>
               </div>
             )}
+          </div>
           </div>
         </main>
       </div>

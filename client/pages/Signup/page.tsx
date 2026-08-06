@@ -3,10 +3,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import axios from 'axios';
-import Image from 'next/image';
 import Link from 'next/link';
 import { executeRecaptcha, preloadRecaptcha } from '../../src/utils/recaptcha';
-const logo = '/anamlogo.png';
+import gunamLogo from '../../src/assets/gunam-login.png';
+import institutionalMark from '../../src/assets/test.png';
 import styles from './register.module.css';
 
 const getPasswordChecks = (password: string) => ({
@@ -86,6 +86,7 @@ export default function Register() {
   const [showOtpSentModal, setShowOtpSentModal] = useState(false);
   const [otpTargetEmail, setOtpTargetEmail] = useState('');
   const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rightPanelRef = useRef<HTMLDivElement>(null);
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
   const router = useRouter();
   const passwordChecks = getPasswordChecks(form.password);
@@ -244,33 +245,80 @@ export default function Register() {
     void router.push(`/Signup/verify_email?email=${encodeURIComponent(otpTargetEmail)}`);
   };
 
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const panel = rightPanelRef.current;
+    if (!panel) return;
+
+    const rect = panel.getBoundingClientRect();
+    panel.style.setProperty('--cursor-x', `${event.clientX - rect.left}px`);
+    panel.style.setProperty('--cursor-y', `${event.clientY - rect.top}px`);
+    panel.style.setProperty('--cursor-opacity', '1');
+  };
+
+  const handlePointerLeave = () => {
+    rightPanelRef.current?.style.setProperty('--cursor-opacity', '0');
+  };
+
   return (
     <div className={styles.container}>
-      <Link href="/" className={styles.homeButton} aria-label="Retour a l'accueil">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M19 12H5" />
-          <path d="M12 19l-7-7 7-7" />
-        </svg>
-        <span>Accueil</span>
-      </Link>
-      {/* SECTION GAUCHE */}
       <div className={styles.leftSection}>
-        <div className={styles.logoContainer}>
-          <Image src={logo} alt="ANAM Logo" className={styles.logo} width={256} height={256} />
+        <Link href="/" className={styles.homeButton} aria-label="Retour a l'accueil">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M19 12H5" />
+            <path d="M12 19l-7-7 7-7" />
+          </svg>
+          <span>Accueil</span>
+        </Link>
+
+        <div className={styles.badgeMark} aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <path d="M12 2l3 7h7l-5.5 4.5L18.5 21 12 16.5 5.5 21l2-7.5L2 9h7z" />
+          </svg>
         </div>
-        <h1 className={styles.title}>
-          AGENCE NATIONALE DES <br />
-          ACTIVITEES MINIAIRES
-        </h1>
-        <p className={styles.subtitle}>Rejoignez la plateforme GUNAM</p>
+        <div className={styles.sweep} aria-hidden="true" />
+        <div className={styles.dust} aria-hidden="true">
+          {Array.from({ length: 12 }).map((_, index) => (
+            <span key={index} />
+          ))}
+        </div>
+
+        <div className={styles.leftContent}>
+          <div className={styles.brandCopy}>
+            <div className={styles.institutionalMark}>
+              <img src={institutionalMark} alt="" aria-hidden="true" />
+            </div>
+            <span className={styles.eyebrow}>Guichet unique national des activites minieres</span>
+            <h1 className={styles.title}>Agence Nationale des Activites Minieres</h1>
+            <p className={styles.subtitle}>
+              Plateforme officielle de gestion, de suivi et d&apos;instruction des titres et activites minieres.
+            </p>
+            <div className={styles.trustRow} aria-label="Indicateurs de la plateforme">
+              <span><strong>58</strong><small>Wilayas</small></span>
+              <span><strong>100%</strong><small>Dematerialise</small></span>
+              <span><strong>24/7</strong><small>Acces</small></span>
+            </div>
+          </div>
+        </div>
+        <div className={styles.goldSeam} aria-hidden="true" />
       </div>
 
-      {/* SECTION DROITE */}
-      <div className={styles.rightSection}>
+      <div
+        ref={rightPanelRef}
+        className={styles.rightSection}
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
+      >
+        <div className={styles.cursorSpotlight} aria-hidden="true" />
+        <div className={styles.cursorRing} aria-hidden="true" />
         <div className={styles.formCard}>
+          <div className={styles.formLogo} aria-label="GUNAM">
+            <img src={gunamLogo} alt="GUNAM" />
+          </div>
+          <div className={styles.formMark} aria-hidden="true" />
           <div className={styles.formHeader}>
+            <span className={styles.formEyebrow}>Espace securise</span>
             <h2>Créer un compte</h2>
-            <p>Remplissez le formulaire pour vous inscrire</p>
+            <p>Ouvrez votre espace personnel GUNAM.</p>
           </div>
 
           {formError && (

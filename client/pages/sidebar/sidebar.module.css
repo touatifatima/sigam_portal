@@ -478,3 +478,416 @@
     backdrop-filter: blur(1px);
   }
 }
+
+/* GUNAM sidebar refresh */
+.sidebar {
+  width: 15.5rem;
+  top: 0;
+  min-height: 100dvh;
+  height: auto;
+  align-self: stretch;
+  overflow: visible;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(226, 184, 74, 0.34), transparent 12rem),
+    radial-gradient(circle at 110% 16%, rgba(255, 255, 255, 0.9), transparent 13rem),
+    linear-gradient(180deg, #e2b84a 0%, #f4ddb0 36%, #ffffff 100%);
+  color: #172033;
+  border-right: 1px solid rgba(214, 165, 58, 0.32);
+  box-shadow: 18px 0 46px rgba(111, 78, 8, 0.18);
+}
+
+.sidebar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 30px 30px;
+  opacity: 1;
+}
+
+.sidebar > * {
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar.collapsed {
+  width: 4.6rem;
+}
+
+.sidebarToggle {
+  right: -1.05rem;
+  top: 1rem;
+  width: 2.15rem;
+  height: 2.15rem;
+  border: 1px solid rgba(214, 165, 58, 0.34);
+  background: #ffffff;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.22);
+}
+
+.sidebarToggle svg {
+  color: #b8860f;
+}
+
+.sidebarToggle:hover {
+  border-color: rgba(214, 165, 58, 0.45);
+  background: #fff8e8;
+}
+
+.sidebarNav {
+  flex: 1 1 auto;
+  padding: 1.1rem 0.65rem 0.75rem;
+}
+
+.navItem {
+  margin: 0.18rem 0;
+}
+
+.navLink {
+  min-height: 3rem;
+  padding: 0.78rem 0.82rem;
+  gap: 0.78rem;
+  border: 1px solid transparent;
+  border-left: 0;
+  border-radius: 16px;
+  color: #445166;
+  background: transparent;
+  font-weight: 800;
+}
+
+.navLink:hover {
+  color: #111827;
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(214, 165, 58, 0.42);
+  box-shadow: 0 10px 22px rgba(91, 61, 4, 0.10);
+}
+
+.navLink.active {
+  color: #111827;
+  border-left: 0;
+  border-color: rgba(214, 165, 58, 0.72);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(255, 246, 224, 0.94));
+  box-shadow: inset 5px 0 0 #c9971a, 0 16px 30px rgba(91, 61, 4, 0.12);
+}
+
+.navIcon {
+  width: 1.25rem;
+  margin-right: 0;
+  color: #b8860f;
+}
+
+.navLabel {
+  color: inherit;
+  font-size: 0.92rem;
+  font-weight: 850;
+}
+
+.navArrow {
+  color: #98a2b3;
+}
+
+.subMenu {
+  margin: 0.35rem 0.35rem 0.45rem 0.8rem;
+  padding-left: 0;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(214, 165, 58, 0.18);
+  border-radius: 14px;
+}
+
+.subMenu.visible {
+  padding: 0.35rem;
+}
+
+.subLink {
+  min-height: 2.45rem;
+  padding: 0.56rem 0.65rem;
+  border-radius: 11px;
+  color: #5c687a;
+  font-weight: 750;
+}
+
+.subLink:hover,
+.subLink.active {
+  color: #111827;
+  background: #fff7e6;
+}
+
+.subIcon {
+  color: #c9971a;
+}
+
+.sidebarFooter {
+  margin-top: 0;
+  padding: 0.9rem 0.75rem 1rem;
+  border-top: 1px solid rgba(214, 165, 58, 0.26);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 247, 230, 0.86));
+}
+
+.userProfile {
+  margin-bottom: 0.75rem;
+  padding: 0.68rem;
+  border: 1px solid rgba(214, 165, 58, 0.26);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.avatar {
+  width: 2.35rem;
+  height: 2.35rem;
+  margin-right: 0.72rem;
+  background: linear-gradient(135deg, #f3c855, #d39a17);
+  color: #ffffff;
+  box-shadow: 0 10px 18px rgba(184, 134, 15, 0.18);
+}
+
+.userRole {
+  color: #111827;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.userStatus {
+  color: #0f8a4b;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.logoutBtn {
+  min-height: 2.65rem;
+  padding: 0.68rem 0.8rem;
+  border: 1px solid rgba(214, 165, 58, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #334155;
+  font-weight: 850;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.055);
+}
+
+.logoutBtn:hover {
+  color: #7a5205;
+  border-color: rgba(214, 165, 58, 0.46);
+  background: #fff7e6;
+  box-shadow: 0 14px 28px rgba(91, 61, 4, 0.12);
+}
+
+.sidebar.collapsed .sidebarFooter {
+  padding: 0.8rem 0.48rem;
+}
+
+.sidebar.collapsed .navLink {
+  justify-content: center;
+  padding: 0.76rem;
+}
+
+.sidebar.collapsed .logoutBtn {
+  border-radius: 16px;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    top: 68px;
+    height: calc(100dvh - 68px);
+    min-height: calc(100dvh - 68px);
+    width: 16rem;
+  }
+}
+
+/* GUNAM sidebar final refinement */
+.sidebar {
+  width: 15.75rem;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 255, 255, 0.96), transparent 10rem),
+    linear-gradient(180deg, #fff9ec 0%, #f4dfb7 44%, #ffffff 100%);
+  border-right: 1px solid rgba(214, 165, 58, 0.34);
+  box-shadow: 14px 0 34px rgba(15, 23, 42, 0.08);
+}
+
+.sidebar::before {
+  background-image:
+    linear-gradient(rgba(201, 151, 26, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201, 151, 26, 0.045) 1px, transparent 1px);
+  background-size: 28px 28px;
+  opacity: 0.8;
+}
+
+.sidebarNav {
+  padding: 1.22rem 0.75rem 0.75rem;
+}
+
+.navMenu {
+  display: grid;
+  gap: 0.32rem;
+}
+
+.navItem {
+  margin: 0;
+}
+
+.navLink {
+  min-height: 3.05rem;
+  padding: 0.72rem 0.82rem;
+  gap: 0.78rem;
+  color: #475569;
+  border: 1px solid transparent;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.34);
+  box-shadow: none;
+}
+
+.navLink:hover {
+  color: #111827;
+  background: rgba(255, 255, 255, 0.86);
+  border-color: rgba(214, 165, 58, 0.28);
+  box-shadow: 0 10px 22px rgba(114, 74, 6, 0.09);
+}
+
+.navLink.active {
+  color: #111827;
+  background: #ffffff;
+  border-color: rgba(214, 165, 58, 0.62);
+  box-shadow:
+    inset 4px 0 0 #d6a53a,
+    0 12px 26px rgba(114, 74, 6, 0.12);
+}
+
+.navIcon {
+  width: 1.35rem;
+  height: 1.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #c9971a;
+}
+
+.navIcon svg {
+  width: 1.18rem;
+  height: 1.18rem;
+  stroke-width: 2.35;
+}
+
+.navLabel {
+  font-size: 0.88rem;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.navArrow {
+  margin-left: auto;
+  color: #9aa6b7;
+  opacity: 1;
+  transform: none;
+}
+
+.subMenu {
+  margin: 0.38rem 0 0.44rem 1.15rem;
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84);
+}
+
+.subMenu.visible {
+  padding: 0.38rem;
+}
+
+.subLink {
+  min-height: 2.34rem;
+  padding: 0.52rem 0.62rem;
+  color: #53647a;
+  border-radius: 11px;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.subLink:hover,
+.subLink.active {
+  color: #111827;
+  background: #fff8e8;
+}
+
+.subIcon {
+  color: #c9971a;
+  opacity: 1;
+}
+
+.sidebarFooter {
+  padding: 0.82rem 0.72rem 0.95rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.82));
+  border-top: 1px solid rgba(214, 165, 58, 0.22);
+}
+
+.userProfile {
+  margin-bottom: 0.66rem;
+  padding: 0.62rem;
+  border-radius: 15px;
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.045);
+}
+
+.avatar {
+  width: 2.22rem;
+  height: 2.22rem;
+  margin-right: 0.66rem;
+  background: linear-gradient(135deg, #e7bd47, #c9971a);
+  font-size: 0.8rem;
+  font-weight: 950;
+}
+
+.userRole {
+  color: #111827;
+  font-size: 0.82rem;
+  font-weight: 950;
+}
+
+.userStatus {
+  color: #0f8a4b;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.logoutBtn {
+  min-height: 2.55rem;
+  color: #6b4a07;
+  background: #fff8e8;
+  border: 1px solid rgba(214, 165, 58, 0.36);
+  border-radius: 14px;
+  font-size: 0.84rem;
+  font-weight: 900;
+  box-shadow: none;
+}
+
+.logoutBtn:hover {
+  color: #ffffff;
+  background: linear-gradient(135deg, #d6a53a, #b8860f);
+  border-color: transparent;
+  box-shadow: 0 12px 24px rgba(184, 134, 15, 0.2);
+}
+
+.logoutBtn svg {
+  color: currentColor;
+}
+
+.sidebarToggle {
+  top: 1.05rem;
+  background: #ffffff;
+  border-color: rgba(214, 165, 58, 0.36);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.16);
+}
+
+.sidebarToggle:hover {
+  background: #fff8e8;
+}
+
+.sidebarToggle svg {
+  color: #c9971a;
+}
+
+.sidebar.collapsed {
+  width: 4.7rem;
+}

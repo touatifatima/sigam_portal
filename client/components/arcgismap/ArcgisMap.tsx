@@ -1719,6 +1719,21 @@ export interface ArcGISMapRef {
     setActiveMeasureTool('none');
   };
 
+  const applySigamLayerVisibility = useCallback((layerKey: string, isActive: boolean) => {
+    const layers = enterpriseLayersRef.current || [];
+    layers.forEach((layer: any) => {
+      if (layer?.__sigamKey !== layerKey) return;
+      const defaultOpacity =
+        typeof layer.__defaultOpacity === 'number'
+          ? layer.__defaultOpacity
+          : (typeof layer.opacity === 'number' ? layer.opacity : 1);
+      layer.opacity = isActive ? defaultOpacity : 0;
+      if (typeof layer.visible === 'boolean') {
+        layer.visible = isActive;
+      }
+    });
+  }, []);
+
   const startMeasurement = (widget: DistanceMeasurement2D | AreaMeasurement2D | null) => {
     if (!widget) return;
     const vm = (widget as any)?.viewModel;
@@ -2644,18 +2659,9 @@ export interface ArcGISMapRef {
       const key = layer?.__sigamKey as string | undefined;
       if (!key || !(key in activeLayers)) return;
 
-      const defaultOpacity =
-        typeof layer.__defaultOpacity === 'number'
-          ? layer.__defaultOpacity
-          : (typeof layer.opacity === 'number' ? layer.opacity : 1);
-
-      const isActive = !!activeLayers[key];
-      layer.opacity = isActive ? defaultOpacity : 0;
-      if (typeof layer.visible === 'boolean') {
-        layer.visible = isActive;
-      }
+      applySigamLayerVisibility(key, !!activeLayers[key]);
     });
-  }, [activeLayers, enterpriseLayers]);
+  }, [activeLayers, enterpriseLayers, applySigamLayerVisibility]);
 
   useEffect(() => {
     const perimetresLayer = perimetresSigLayerRef.current;
@@ -3537,10 +3543,14 @@ export interface ArcGISMapRef {
 
   // Layer toggle handler
   const toggleLayer = (layerName: string) => {
-    setActiveLayers(prev => ({
-      ...prev,
-      [layerName]: !prev[layerName]
-    }));
+    setActiveLayers(prev => {
+      const nextValue = !prev[layerName];
+      applySigamLayerVisibility(layerName, nextValue);
+      return {
+        ...prev,
+        [layerName]: nextValue
+      };
+    });
   };
 
   const toggleTitreType = useCallback((code: string) => {

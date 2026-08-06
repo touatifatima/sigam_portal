@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRightLeft,
+  Bell,
   ChevronRight,
   Edit3,
   FileCheck,
@@ -22,9 +23,6 @@ import {
   Search,
   Trash2,
 } from 'lucide-react';
-import Navbar from '../navbar/Navbar';
-import Sidebar from '../sidebar/Sidebar';
-import { useViewNavigator } from '../../src/hooks/useViewNavigator';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import styles from './nouvelle-demande-posterieure.module.css';
 
@@ -150,7 +148,7 @@ const actionsRapides: ActionRapide[] = [
     id: 'option',
     label: 'Option-2025',
     icon: ChevronRight,
-    description: 'Demander une option sur le perimetre',
+    description: 'Demander une option sur le périmètre',
     available: true,
   },
   {
@@ -185,7 +183,7 @@ const actionsRapides: ActionRapide[] = [
     id: 'division',
     label: 'Division',
     icon: Scissors,
-    description: 'Diviser le perimetre en plusieurs permis',
+    description: 'Diviser le périmètre en plusieurs permis',
     available: true,
   },
   {
@@ -218,16 +216,15 @@ const actionsRapides: ActionRapide[] = [
   },
   {
     id: 'regularisation',
-    label: 'Regularisation',
+    label: 'Régularisation',
     icon: FileCheck,
-    description: 'Regulariser une situation',
+    description: 'Régulariser une situation',
     available: true,
   },
 ];
 
 export default function NouvelleDemandePosterieurPage() {
   const navigate = useNavigate();
-  const { currentView, navigateTo } = useViewNavigator('nouvelle-demande');
   const { auth } = useAuthStore();
   const apiBase = process.env.NEXT_PUBLIC_API_URL ?? '';
 
@@ -302,7 +299,7 @@ export default function NouvelleDemandePosterieurPage() {
           if (!Number.isFinite(tpId) || uniqueMap.has(tpId)) return;
           uniqueMap.set(tpId, {
             id: tpId,
-            libelle: String(tp?.libelle || tp?.code || 'Type de procedure'),
+            libelle: String(tp?.libelle || tp?.code || 'Type de procédure'),
             code: tp?.code ?? null,
             description: tp?.description ?? null,
           });
@@ -498,7 +495,7 @@ export default function NouvelleDemandePosterieurPage() {
       return;
     }
     if (!Number.isFinite(selectedPermitId)) {
-      toast.error('Permis invalide pour demarrer la procedure.');
+      toast.error('Permis invalide pour démarrer la procédure.');
       return;
     }
 
@@ -529,14 +526,14 @@ export default function NouvelleDemandePosterieurPage() {
 
       const newProcId = res?.data?.new_proc_id;
       if (!newProcId) {
-        toast.error('Impossible de demarrer la procedure.');
+        toast.error('Impossible de démarrer la procédure.');
         return;
       }
 
       navigate(`${nextPath}${newProcId}&permisId=${selectedPermitId}`);
     } catch (err: any) {
       console.error('Erreur demarrage procedure', err);
-      const msg = err?.response?.data?.message || 'Erreur lors du demarrage de la procedure.';
+      const msg = err?.response?.data?.message || 'Erreur lors du démarrage de la procédure.';
       toast.error(msg);
     } finally {
       setActionLoading(false);
@@ -699,7 +696,7 @@ export default function NouvelleDemandePosterieurPage() {
       return;
     }
     if (!fusionEligibility?.ok) {
-      toast.warning('Fusion non eligible. Verifiez la frontiere commune.');
+      toast.warning('Fusion non éligible. Vérifiez la frontière commune.');
       return;
     }
 
@@ -731,7 +728,7 @@ export default function NouvelleDemandePosterieurPage() {
         `/operateur/fusion_permis/step1/page1?id=${newProcId}&permisA=${selectedPermitId}&permisB=${selectedFusionPermisId}&principal=${principal}`,
       );
     } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Impossible de demarrer la procedure de fusion.';
+      const msg = err?.response?.data?.message || 'Impossible de démarrer la procédure de fusion.';
       toast.error(String(msg));
     } finally {
       setFusionSubmitting(false);
@@ -778,6 +775,11 @@ export default function NouvelleDemandePosterieurPage() {
   }, [fusionModalOpen, selectedFusionPermisId]);
 
   const busy = verifyStatus === 'checking' || actionLoading || fusionSubmitting;
+  const canVerify = qrInput.trim().length > 0 && permitCodeInput.trim().length > 0 && !busy;
+  const userDisplayName =
+    auth?.username || [auth?.Prenom, auth?.nom].filter(Boolean).join(' ') || 'Utilisateur';
+  const userEmail = auth?.email || 'Compte investisseur';
+  const userInitial = (userDisplayName || userEmail || 'U').trim().charAt(0).toUpperCase();
   const statusLabel =
     verifyStatus === 'checking'
       ? 'Recherche...'
@@ -799,9 +801,30 @@ export default function NouvelleDemandePosterieurPage() {
 
   return (
     <div className={styles.appContainer}>
-      <Navbar />
+      <header className={styles.topbar}>
+        <button
+          type="button"
+          className={styles.brand}
+          aria-label="Retour au tableau de bord investisseur"
+          onClick={() => navigate('/investisseur/InvestorDashboard')}
+        >
+          <img src="/Logo.png?v=7" alt="" className={styles.brandLogo} />
+        </button>
+        <div className={styles.topRight}>
+          <div className={styles.bellBox} aria-hidden="true">
+            <Bell />
+            <span className={styles.bellDot}>4</span>
+          </div>
+          <div className={styles.userBox}>
+            <div className={styles.avatar}>{userInitial}</div>
+            <div>
+              <div className={styles.userName}>{userDisplayName}</div>
+              <div className={styles.userEmail}>{userEmail}</div>
+            </div>
+          </div>
+        </div>
+      </header>
       <div className={styles.appContent}>
-        <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles.mainContent}>
           <div className={styles.wrapper}>
             <div className={styles.topActions}>
@@ -811,20 +834,20 @@ export default function NouvelleDemandePosterieurPage() {
                 onClick={() => navigate('/investisseur/InvestorDashboard')}
               >
                 <ArrowLeft className={styles.backIcon} />
-                Retour Dashboard
+                Retour au tableau de bord
               </button>
             </div>
             <div className={styles.headerRow}>
-              <h1 className={styles.title}>Nouvelle Demande Posterieure</h1>
+              <h1 className={styles.title}>Vérifier un permis</h1>
             </div>
             <p className={styles.subtitle}>
-              Saisissez le code QR du permis, puis lancez l&apos;action rapide correspondante.
+              Saisissez le code QR et le code permis pour charger les actions rapides disponibles.
             </p>
 
             <section className={styles.card}>
               <div className={styles.cardHeader}>
                 <div>
-                  <h2 className={styles.cardTitle}>Entrer ou verifier un permis</h2>
+                  <h2 className={styles.cardTitle}>Entrer ou vérifier un permis</h2>
                   <p className={styles.cardText}>
                     Saisissez le code QR et le code permis pour charger les actions rapides disponibles.
                   </p>
@@ -839,58 +862,90 @@ export default function NouvelleDemandePosterieurPage() {
               </div>
 
               <div className={styles.grid}>
-                <div className={styles.inputWrap}>
-                  <QrCode className={styles.inputIcon} />
-                  <input
-                    className={styles.input}
-                    value={qrInput}
-                    onChange={(event) => setQrInput(event.target.value)}
-                    placeholder="Code QR (obligatoire)"
-                    disabled={busy}
-                  />
+                <div className={styles.fieldGroup}>
+                  <label className={styles.fieldLabel} htmlFor="posterior-qr-code">
+                    Code QR <span>*</span>
+                  </label>
+                  <div className={`${styles.inputWrap} ${styles.qrInputWrap}`}>
+                    <span className={styles.scanLine} aria-hidden="true" />
+                    <QrCode className={styles.inputIcon} />
+                    <input
+                      id="posterior-qr-code"
+                      className={styles.input}
+                      value={qrInput}
+                      onChange={(event) => setQrInput(event.target.value)}
+                      placeholder="18D69-46D88-29CF6-C3004-7F"
+                      disabled={busy}
+                    />
+                  </div>
                 </div>
-                <div className={styles.inputWrap}>
-                  <Hash className={styles.inputIcon} />
-                  <input
-                    className={styles.input}
-                    value={permitCodeInput}
-                    onChange={(event) => setPermitCodeInput(event.target.value)}
-                    placeholder="Code permis (obligatoire)"
-                    disabled={busy}
-                  />
+                <div className={styles.fieldGroup}>
+                  <label className={styles.fieldLabel} htmlFor="posterior-permit-code">
+                    Code permis <span>*</span>
+                  </label>
+                  <div className={styles.inputWrap}>
+                    <Hash className={styles.inputIcon} />
+                    <input
+                      id="posterior-permit-code"
+                      className={styles.input}
+                      value={permitCodeInput}
+                      onChange={(event) => setPermitCodeInput(event.target.value)}
+                      placeholder="1"
+                      disabled={busy}
+                    />
+                  </div>
                 </div>
                 <button
                   type="button"
                   className={styles.verifyButton}
                   onClick={handleVerifyPermit}
-                  disabled={busy}
+                  disabled={!canVerify}
                 >
                   {verifyStatus === 'checking' ? (
                     <Loader2 className={styles.spin} />
                   ) : (
                     <Search className={styles.searchIcon} />
                   )}
-                  {verifyStatus === 'checking' ? 'Verification...' : 'Verifier'}
+                  {verifyStatus === 'checking' ? 'Vérification...' : 'Vérifier'}
                 </button>
+
+                {message && (
+                  <p
+                    className={`${styles.message} ${
+                      verifyStatus === 'valid'
+                        ? styles.info
+                        : isMismatchWarning
+                          ? styles.warning
+                          : verifyStatus === 'error' || verifyStatus === 'not_found'
+                          ? styles.error
+                          : ''
+                    }`}
+                  >
+                    {(verifyStatus === 'error' || verifyStatus === 'not_found' || isMismatchWarning) && (
+                      <AlertTriangle className={styles.messageIcon} />
+                    )}
+                    {message}
+                  </p>
+                )}
               </div>
 
-              {message && (
-                <p
-                  className={`${styles.message} ${
-                    verifyStatus === 'valid'
-                      ? styles.info
-                      : isMismatchWarning
-                        ? styles.warning
-                        : verifyStatus === 'error' || verifyStatus === 'not_found'
-                        ? styles.error
-                        : ''
-                  }`}
-                >
-                  {(verifyStatus === 'error' || verifyStatus === 'not_found' || isMismatchWarning) && (
-                    <AlertTriangle className={styles.messageIcon} />
-                  )}
-                  {message}
-                </p>
+              {!permit && (
+                <aside className={styles.emptyState}>
+                  <div className={styles.emptyIcon}>
+                    <QrCode />
+                  </div>
+                  <div>
+                    <h3>Vérification rapide du permis</h3>
+                    <p>
+                      Renseignez les deux codes pour afficher les informations du permis et les actions disponibles.
+                    </p>
+                  </div>
+                  <div className={styles.emptySteps}>
+                    <span>1. Scanner ou saisir le code QR</span>
+                    <span>2. Ajouter le code permis</span>
+                    <span>3. Lancer la verification</span>
+                  </div>
+                </aside>
               )}
 
               {permit && (
@@ -973,7 +1028,7 @@ export default function NouvelleDemandePosterieurPage() {
                   <MapIcon className={styles.actionIcon} />
                 </div>
                 <div className={styles.modalOptionBody}>
-                  <h4>Extension du perimetre</h4>
+                  <h4>Extension du périmètre</h4>
                   <p>Augmenter la surface du permis.</p>
                 </div>
                 <ChevronRight className={styles.modalOptionArrow} />
@@ -1056,7 +1111,7 @@ export default function NouvelleDemandePosterieurPage() {
 
             <div className={styles.fusionEligibilityBox}>
               {fusionChecking ? (
-                <div className={styles.fusionState}>Verification frontiere commune...</div>
+                <div className={styles.fusionState}>Vérification de la frontière commune...</div>
               ) : fusionEligibility ? (
                 <>
                   <div

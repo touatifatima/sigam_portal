@@ -7,8 +7,8 @@
   border-radius: 12px;
   color: #2a1e2b;
   text-align: left;
-  --anam-primary: #8b3a62;
-  --anam-primary-dark: #6f2e4f;
+  --anam-primary: #d29a0e;
+  --anam-primary-dark: #a66f00;
   --anam-border: #eadce8;
   --anam-text: #3f2345;
   --anam-muted: #6f5b73;
@@ -123,7 +123,7 @@
 .input:focus,
 .textarea:focus {
   border-color: var(--anam-primary);
-  box-shadow: 0 0 0 3px rgba(139, 58, 98, 0.14);
+  box-shadow: 0 0 0 3px rgba(210, 154, 14, 0.18);
   outline: none;
 }
 
@@ -172,7 +172,7 @@
 
 .primaryBtn {
   border: none;
-  background: linear-gradient(135deg, #8b3a62 0%, #6f2e4f 100%);
+  background: linear-gradient(135deg, #d29a0e 0%, #a66f00 100%);
   color: #fff;
 }
 
@@ -313,7 +313,7 @@
 
 .iconBtn:hover:not(:disabled) {
   border-color: #bf8faa;
-  color: #8b3a62;
+  color: #d29a0e;
   transform: translateY(-1px);
 }
 

@@ -842,3 +842,315 @@
     max-width: none;
   }
 }
+
+/* GUNAM coherent theme */
+.mainContent {
+  --interactive-bordeaux: #c9971a;
+  --interactive-bordeaux-strong: #9a6a04;
+  --interactive-teal: #3267e3;
+  --interactive-ink: #111827;
+  --interactive-muted: #64748b;
+  --interactive-surface: #ffffff;
+  --interactive-surface-strong: #ffffff;
+  --interactive-border: rgba(226, 232, 240, 0.95);
+  --interactive-shadow: 0 16px 34px rgba(15, 23, 42, 0.075);
+
+  padding: 1.35rem 1.65rem 1.45rem;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(214, 165, 58, 0.12), transparent 22rem),
+    linear-gradient(180deg, #f7f9fc 0%, #eef3f8 100%) !important;
+}
+
+.mainContent::before {
+  display: none;
+}
+
+.mainContent::after {
+  background:
+    linear-gradient(rgba(201, 151, 26, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201, 151, 26, 0.03) 1px, transparent 1px);
+  background-size: 38px 38px;
+  opacity: 0.55;
+}
+
+.breadcrumb {
+  width: fit-content;
+  margin-bottom: 0.9rem;
+  padding: 0.46rem 0.78rem;
+  color: #53647a;
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 999px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.045);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.breadcrumbArrow {
+  color: #c9971a;
+}
+
+.headerRow {
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 1.05rem 1.18rem;
+  background:
+    linear-gradient(90deg, #fff8e8 0%, #ffffff 48%, #ffffff 100%);
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-left: 4px solid #d6a53a;
+  border-radius: 18px;
+  box-shadow: var(--interactive-shadow);
+}
+
+.headerText {
+  min-width: 280px;
+}
+
+.backButton {
+  margin-bottom: 0.72rem;
+  padding: 0.58rem 0.9rem;
+  color: #6b4a07;
+  background: #ffffff;
+  border-color: rgba(214, 165, 58, 0.34);
+  border-radius: 999px;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.055);
+  font-weight: 900;
+}
+
+.backButton:hover {
+  color: #111827;
+  border-color: rgba(214, 165, 58, 0.56);
+  box-shadow: 0 12px 24px rgba(114, 74, 6, 0.12);
+}
+
+.title {
+  font-size: clamp(1.55rem, 1.25rem + 0.8vw, 2rem);
+  font-weight: 950;
+  line-height: 1.08;
+  letter-spacing: 0;
+  color: #111827;
+}
+
+.subtitle {
+  max-width: 780px;
+  margin-top: 0.48rem;
+  color: #64748b;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.headerSearch {
+  justify-content: flex-end;
+  margin-top: 0.2rem;
+}
+
+.headerSearchSelect,
+.headerSearchInput,
+.resetBtn {
+  min-height: 2.55rem;
+  color: #111827;
+  background: #ffffff;
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  border-radius: 14px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.045);
+  font-weight: 750;
+}
+
+.headerSearchInput {
+  min-width: min(360px, 100%);
+}
+
+.headerSearchSelect:focus,
+.headerSearchInput:focus,
+.resetBtn:focus,
+.select:focus,
+.searchInput:focus {
+  outline: none;
+  border-color: rgba(201, 151, 26, 0.68);
+  box-shadow: 0 0 0 4px rgba(201, 151, 26, 0.12), 0 8px 18px rgba(15, 23, 42, 0.045);
+}
+
+.headerSearchButton {
+  min-height: 2.55rem;
+  padding: 0.68rem 1.05rem;
+  color: #111827;
+  background: linear-gradient(135deg, #efc75a, #c9971a);
+  border-radius: 14px;
+  box-shadow: 0 12px 24px rgba(201, 151, 26, 0.22);
+  font-weight: 950;
+}
+
+.resetBtn {
+  margin-top: 0.2rem;
+  color: #334155;
+}
+
+.contentGrid {
+  grid-template-columns: minmax(330px, 390px) minmax(0, 1fr);
+  gap: 1.15rem;
+}
+
+.leftPanel {
+  gap: 0.9rem;
+  padding-right: 0.35rem;
+}
+
+.leftPanel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.leftPanel::-webkit-scrollbar-track {
+  background: #edf2f7;
+  border-radius: 999px;
+}
+
+.leftPanel::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #e2b84a, #c9971a);
+  border-radius: 999px;
+}
+
+.card,
+.mapPanel {
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 18px;
+  box-shadow: var(--interactive-shadow);
+  backdrop-filter: none;
+}
+
+.card {
+  overflow: hidden;
+}
+
+.cardHeader {
+  padding: 0.95rem 1.1rem;
+  color: #111827;
+  background:
+    linear-gradient(90deg, #fff8e8 0%, #ffffff 62%);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.95);
+}
+
+.cardHeader h3 {
+  margin: 0;
+  font-size: 0.96rem;
+  font-weight: 950;
+  letter-spacing: 0;
+}
+
+.cardBody {
+  padding: 1rem 1.1rem 1.1rem;
+  gap: 0.75rem;
+}
+
+.label {
+  color: #334155;
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.required {
+  color: #e54861;
+}
+
+.select,
+.searchInput,
+.coordControls select,
+.coordTable input {
+  width: 100%;
+  min-height: 2.75rem;
+  color: #111827;
+  background: #ffffff;
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  font-weight: 750;
+}
+
+.infoBox {
+  background: #f8fafc;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 14px;
+}
+
+.infoRow {
+  min-height: 1.55rem;
+  color: #53647a;
+  font-weight: 750;
+}
+
+.infoRow strong {
+  color: #111827;
+  font-weight: 950;
+}
+
+.primaryBtn,
+.startBtn {
+  min-height: 2.7rem;
+  color: #111827;
+  background: linear-gradient(135deg, #efc75a, #c9971a);
+  border: 1px solid rgba(184, 134, 15, 0.18);
+  border-radius: 14px;
+  box-shadow: 0 12px 24px rgba(201, 151, 26, 0.22);
+  font-weight: 950;
+}
+
+.primaryBtn:hover:not(:disabled),
+.startBtn:hover:not(:disabled) {
+  filter: none;
+  transform: translateY(-1px);
+  box-shadow: 0 16px 28px rgba(201, 151, 26, 0.28);
+}
+
+.secondaryBtn {
+  min-height: 2.6rem;
+  justify-content: center;
+  color: #334155;
+  background: #ffffff;
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  border-radius: 14px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.045);
+  font-weight: 900;
+}
+
+.secondaryBtn:hover:not(:disabled) {
+  color: #6b4a07;
+  border-color: rgba(201, 151, 26, 0.38);
+  background: #fff8e8;
+}
+
+.statusBadge {
+  color: #0f8a4b;
+  background: #e9f8ef;
+  border-color: rgba(15, 138, 75, 0.18);
+  font-weight: 900;
+}
+
+.warningBadge {
+  color: #9a6a04;
+  background: #fff8e8;
+  border-color: rgba(201, 151, 26, 0.24);
+  font-weight: 900;
+}
+
+.mapPanel {
+  min-height: 620px;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.mapPanel > * {
+  min-height: 0;
+}
+
+.verificationNotice,
+.modalContent {
+  border-color: rgba(226, 232, 240, 0.95);
+  box-shadow: var(--interactive-shadow);
+}
+
+@media (max-width: 1300px) {
+  .contentGrid {
+    grid-template-columns: 360px minmax(0, 1fr);
+  }
+}

@@ -82,9 +82,9 @@ export default function Sidebar({ currentView, navigateTo }: SidebarProps) {
     { id: 'nouvelle-demande', icon: <FiFileText />, label: 'Nouvelle demande', permission: 'create_demande' },
     { id: 'gestion-permis', icon: <FiLayers />, label: 'Gestion des permis', permission: 'manage_permits' },
     { id: 'instruction-cadastrale', icon: <FiMap />, label: 'Instruction cadastrale', permission: 'view_cadastre' },
-    { id: 'demande-interactive', icon: <FiFileText />, label: 'Verification prealable', permission: 'create_demande' },
-    { id: 'generateur-permis', icon: <FiBriefcase />, label: 'Generateur permis', permission: 'generate_permits' },
-    { id: 'parametres', icon: <FiSettings />, label: 'Parametres', permission: 'manage_settings' },
+    { id: 'demande-interactive', icon: <FiFileText />, label: 'Vérification préalable', permission: 'create_demande' },
+    { id: 'generateur-permis', icon: <FiBriefcase />, label: 'Générateur permis', permission: 'generate_permits' },
+    { id: 'parametres', icon: <FiSettings />, label: 'Paramètres', permission: 'manage_settings' },
     {
       id: 'Admin-Panel',
       icon: <FiLock />,
@@ -93,11 +93,11 @@ export default function Sidebar({ currentView, navigateTo }: SidebarProps) {
       subItems: [
         { id: 'manage_demandes', icon: <FiClipboard />, label: 'Gestion Demandes', permission: 'Admin-Panel' },
         { id: 'manage_notifications', icon: <FiBell />, label: 'Gestion Notifications', permission: 'Admin-Panel' },
-        { id: 'manage_actualites', icon: <FiFileText />, label: 'Gestion Actualites', permission: 'Admin-Panel' },
+        { id: 'manage_actualites', icon: <FiFileText />, label: 'Gestion Actualités', permission: 'Admin-Panel' },
         { id: 'manage_static_pages', icon: <FiFileText />, label: 'Pages Statiques', permission: 'Admin-Panel' },
         { id: 'manage_navbar', icon: <FiMenu />, label: 'Configuration Navbar', permission: 'Admin-Panel' },
         { id: 'manage_identifications', icon: <FiShield />, label: 'Identifications Entreprises', permission: 'Admin-Panel' },
-        { id: 'manage_declarations', icon: <FiFileText />, label: 'Declarations', permission: 'Admin-Panel' },
+        { id: 'manage_declarations', icon: <FiFileText />, label: 'Déclarations', permission: 'Admin-Panel' },
         { id: 'Configurations', icon: <FiSettings />, label: 'Configurations', permission: 'Admin-Panel' },
         { id: 'manage_users', icon: <FiUsers />, label: 'Manage Users', permission: 'manage_users' },
         { id: 'manage_documents', icon: <FiFile />, label: 'Manage Documents', permission: 'manage_documents' },
@@ -111,9 +111,9 @@ export default function Sidebar({ currentView, navigateTo }: SidebarProps) {
       permission: 'dashboard',
       subItems: [
         { id: 'convertisseur', icon: <FiMap />, label: 'Convertisseur', permission: 'dashboard' },
-        { id: 'operateur_scan_qr', icon: <FiCamera />, label: 'Acces QR Operateur', permission: 'scan-qr' },
-        { id: 'procedures', icon: <FiClipboard />, label: 'Procedures', permission: 'view_procedures' },
-        { id: 'Permis', icon: <FiFileText />, label: 'Permis lists', permission: 'dashboard' },
+        { id: 'operateur_scan_qr', icon: <FiCamera />, label: 'Accès QR opérateur', permission: 'scan-qr' },
+        { id: 'procedures', icon: <FiClipboard />, label: 'Procédures', permission: 'view_procedures' },
+        { id: 'Permis', icon: <FiFileText />, label: 'Liste des permis', permission: 'dashboard' },
       ],
     },
   ];
@@ -246,10 +246,10 @@ export default function Sidebar({ currentView, navigateTo }: SidebarProps) {
               setIsMobileOpen(false);
               await logout();
             }}
-            title={isCollapsed ? 'Deconnexion' : undefined}
+            title={isCollapsed ? 'Déconnexion' : undefined}
           >
             <FiLogOut />
-            {!isCollapsed && <span>Deconnexion</span>}
+            {!isCollapsed && <span>Déconnexion</span>}
           </button>
         </div>
       </aside>

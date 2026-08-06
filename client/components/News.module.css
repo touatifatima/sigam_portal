@@ -19,7 +19,7 @@
 }
 
 .label {
-  color: #b14680;
+  color: #b8860f;
   font-weight: 700;
   font-size: 0.9rem;
   text-transform: uppercase;
@@ -78,7 +78,7 @@
 }
 
 .article:hover {
-  border-color: rgba(177, 70, 128, 0.25);
+  border-color: rgba(214, 162, 28, 0.34);
   box-shadow: 0 26px 70px -30px rgba(15, 23, 42, 0.28);
   transform: translateY(-4px);
 }
@@ -112,11 +112,11 @@
   left: 1rem;
   padding: 0.35rem 0.85rem;
   border-radius: 9999px;
-  background-color: #b14680;
-  color: #ffffff;
+  background-color: #e8b83e;
+  color: #14181f;
   font-size: 0.78rem;
   font-weight: 700;
-  box-shadow: 0 10px 20px -12px rgba(177, 70, 128, 0.9);
+  box-shadow: 0 10px 20px -12px rgba(199, 146, 18, 0.65);
 }
 
 .content {
@@ -150,7 +150,7 @@
 }
 
 .article:hover .articleTitle {
-  color: #b14680;
+  color: #9a6b04;
 }
 
 .articleDescription {
@@ -167,7 +167,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  color: #b14680;
+  color: #9a6b04;
   font-weight: 700;
   font-size: 0.92rem;
 }

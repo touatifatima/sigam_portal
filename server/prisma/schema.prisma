@@ -36,6 +36,7 @@ model UtilisateurPortail {
   profileUpdateOtpHash           String?                 @db.VarChar(255)
   profileUpdateOtpExpiresAt      DateTime?
   profileUpdateOtpRequestedAt    DateTime?
+  demandesDocumentsCadastraux    DemandeDocumentCadastral[]
   auditLogs                      AuditLogPortail[]
   conversationsInitiees          Conversation[]          @relation("ConversationUser1")
   conversationsRecues            Conversation[]          @relation("ConversationUser2")
@@ -925,6 +926,7 @@ model PermisPortail {
   date_heure_systeme     DateTime?
   qr_inserer_par         String?
   code_wilaya            String?
+  demandesDocumentsCadastraux DemandeDocumentCadastral[]
   antenne                Antenne?                @relation(fields: [id_antenne], references: [id_antenne])
   detenteur              DetenteurMoralePortail? @relation(fields: [id_detenteur], references: [id_detenteur])
   operator               UtilisateurPortail?     @relation("PermisOperator", fields: [operatorId], references: [id])
@@ -1735,6 +1737,167 @@ model ProcedureDeclaration {
   @@index([typeProcedureId, ordre])
   @@map("procedure_declarations")
 }
+
+// cadastre request workflow
+enum CanalVerificationCadastre {
+  EMAIL
+  TELEPHONE
+}
+
+enum TypePieceCadastre {
+  SCAN_TITRE
+  SCAN_CARTE_IDENTITE
+}
+
+enum TypeDocumentCadastral {
+  EXTRAIT_CERTIFIE_CONFORME
+  PLAN_CADASTRAL_OFFICIEL
+}
+
+enum StatutDemandeDocument {
+  ENREGISTREE
+  VERIFIEE
+  GENEREE
+  DELIVREE
+}
+
+enum ActionDocumentCadastral {
+  DEMANDE_ENREGISTREE
+  DEMANDE_VERIFIEE
+  DOCUMENT_GENERE
+  DOCUMENT_DELIVRE
+}
+
+model PieceJointeDemandeDocumentCadastral {
+  id                  Int                     @id @default(autoincrement())
+  demandeId           Int
+
+  typePiece           TypePieceCadastre
+  fichierUrl          String                  @db.Text
+  nomFichierOriginal  String?                 @db.VarChar(255)
+  mimeType            String?                 @db.VarChar(100)
+  tailleOctets        Int?
+
+  createdAt           DateTime                @default(now())
+
+  demande             DemandeDocumentCadastral @relation(fields: [demandeId], references: [id], onDelete: Restrict)
+
+  @@index([demandeId])
+  @@index([typePiece])
+  @@map("pieces_jointes_demandes_documents_cadastraux")
+}
+
+model DemandeDocumentCadastral {
+  id                Int                     @id @default(autoincrement())
+  referenceDemande  String                  @unique @db.VarChar(100)
+
+  utilisateurId     Int
+  permisId           Int
+
+  typeDocument       TypeDocumentCadastral
+  statut             StatutDemandeDocument  @default(ENREGISTREE)
+
+  numeroRc          String?                 @db.VarChar(100)
+  titulaire         String?                 @db.VarChar(255)
+  qrCodeTitre       String?                 @db.VarChar(255)
+  codePermis        String?                 @db.VarChar(100)
+  typePermis        String?                 @db.VarChar(255)
+
+  nin               String?                 @db.VarChar(50)
+  nom               String?                 @db.VarChar(255)
+  prenom            String?                 @db.VarChar(255)
+  emailContact      String?                 @db.VarChar(255)
+  telephoneContact  String?                 @db.VarChar(20)
+
+  canalVerification CanalVerificationCadastre?
+  otpHash           String?                 @db.VarChar(255)
+  otpRequestedAt    DateTime?
+  otpExpiresAt      DateTime?
+  otpVerifiedAt     DateTime?
+  dateSoumission    DateTime?
+
+  objetDemande       String                  @db.Text
+  qualiteDemandeur   String                  @db.VarChar(255)
+  baseCommunication  String                  @db.Text
+
+  preuvePaiementUrl  String?                 @db.Text
+
+  dateDemande        DateTime                @default(now())
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  utilisateur        UtilisateurPortail       @relation(fields: [utilisateurId], references: [id],onDelete: Restrict)
+  permis             PermisPortail            @relation(fields: [permisId],references: [id],onDelete: Restrict)
+  piecesJointes      PieceJointeDemandeDocumentCadastral[]
+
+  documentsGeneres   DocumentCadastralGenere[]
+  historique         HistoriqueDemandeDocument[]
+
+  @@index([utilisateurId])
+  @@index([permisId])
+  @@index([statut])
+  @@index([emailContact])
+  @@index([telephoneContact])
+  @@index([nin])
+  @@index([dateSoumission(sort: Desc)])
+  @@index([dateDemande(sort: Desc)])
+  @@map("demandes_documents_cadastraux")
+}
+
+model DocumentCadastralGenere {
+  id                       Int                      @id @default(autoincrement())
+  demandeId                Int
+
+  referenceDocument        String                   @unique @db.VarChar(150)
+  referencesActesInclus    Json?
+  typeDocument             TypeDocumentCadastral
+
+  fichierUrl               String                   @db.Text
+
+  dateGeneration           DateTime                 @default(now())
+  dateDelivrance           DateTime?
+
+  agentEmetteur            String?                  @db.VarChar(255)
+  donneesProtegeesMasquees Boolean                  @default(false)
+
+  createdAt                DateTime                 @default(now())
+
+  demande                  DemandeDocumentCadastral @relation(fields: [demandeId], references: [id], onDelete: Restrict )
+
+  @@index([demandeId])
+  @@index([dateGeneration(sort: Desc)])
+  @@index([dateDelivrance(sort: Desc)])
+  @@map("documents_cadastraux_generes")
+}
+
+model HistoriqueDemandeDocument {
+  id                       Int                      @id @default(autoincrement())
+  demandeId                Int
+
+  action                   ActionDocumentCadastral
+  dateAction               DateTime                 @default(now())
+
+  agentEmetteur            String?                  @db.VarChar(255)
+  detailsCommunication     String?                  @db.Text
+  preuveCommunicationUrl   String?                  @db.Text
+
+  createdAt                DateTime                 @default(now())
+
+  demande                  DemandeDocumentCadastral @relation( fields: [demandeId],references: [id],onDelete: Restrict)
+
+  @@index([demandeId])
+  @@index([dateAction(sort: Desc)])
+  @@index([action])
+  @@map("historique_demandes_documents")
+}
+
+
+///
+
+
+
+
+
 
 enum EnumStatutSeance {
   programmee

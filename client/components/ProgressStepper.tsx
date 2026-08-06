@@ -494,7 +494,6 @@ const ProgressStepper: React.FC<Props> = ({
     );
   }
 
-
   return (
     <div className={styles.progressContainer}>
       {/* Horizontal Phases */}

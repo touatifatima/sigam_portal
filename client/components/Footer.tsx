@@ -1,22 +1,20 @@
 import Link from "next/link";
-import { MapPin, Phone, Mail } from "lucide-react";
+import { ArrowUpRight, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
 import styles from "./Footer.module.css";
-import { ScrollReveal } from "./ScrollReveal";
 
-const logo = "/anamlogo.png";
+const logo = "/Logo.png?v=7";
 
 export const Footer = () => {
   const currentYear = new Date().getFullYear();
 
   const links = {
-    services: [
-      { label: "Depot de demandes", href: "/auth/login" },
-      { label: "Carte miniere", href: "/auth/login" },
-      { label: "Suivi des procedures", href: "/auth/login" },
-      { label: "Base de donnees", href: "/auth/login" },
+    platform: [
+      { label: "Tableau de bord", href: "/investisseur/InvestorDashboard" },
+      { label: "Nouvelle demande", href: "/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis" },
+      { label: "Demande posterieure", href: "/investisseur/nouvelle-demande-posterieure" },
+      { label: "Carte publique", href: "/carte/carte_public" },
     ],
     resources: [
-      { label: "Guide d'utilisation", href: "/auth/login" },
       { label: "FAQ", href: "/acceuil/faq" },
       { label: "Actualites", href: "/acceuil/actualites" },
       { label: "Documentation", href: "/acceuil/documentation" },
@@ -30,119 +28,99 @@ export const Footer = () => {
 
   return (
     <footer id="contact" className={styles.footer}>
-      <div className={styles.gradient} />
-
-      <div className={`container ${styles.main}`}>
-        <div className={styles.grid}>
-          <ScrollReveal delay={0}>
-            <div className={styles.brand}>
-              <a href="/acceuil/Home" className={styles.brandLink}>
-                <img
-                  src={logo}
-                  alt="ANAM Logo"
-                  className={styles.brandLogo}
-                  width={120}
-                  height={120}
-                  loading="lazy"
-                  decoding="async"
-                />
-                <div>
-                  <span className={styles.brandTitle}>POM</span>
-                  <p className={styles.brandSubtitle}>Portail Minier National</p>
-                </div>
-              </a>
-              <p className={styles.brandDescription}>
-                Plateforme nationale de gestion des activites minieres. Simplifiez vos
-                demarches et investissez dans le secteur minier algerien.
-              </p>
-
-              <div className={styles.contactInfo}>
-                <div className={styles.contactLine}>
-                  <MapPin className={styles.contactIcon} />
-                  <span>Alger, Algerie</span>
-                </div>
-                <a href="tel:+21323488125" className={styles.contactLine}>
-                  <Phone className={styles.contactIcon} />
-                  <span>+213 (0)23 48 81 25</span>
-                </a>
-                <a href="mailto:anam@anam.gov.dz" className={styles.contactLine}>
-                  <Mail className={styles.contactIcon} />
-                  <span>anam@anam.gov.dz</span>
-                </a>
-              </div>
+      <div className={styles.surface}>
+        <div className={styles.main}>
+          <div className={styles.brandPanel}>
+            <div className={styles.brandMark} aria-label="GUNAM">
+              <img
+                src={logo}
+                alt="GUNAM"
+                className={styles.brandLogo}
+                width={210}
+                height={92}
+                loading="lazy"
+                decoding="async"
+              />
             </div>
-          </ScrollReveal>
+            <p className={styles.brandDescription}>
+              Portail numerique de gestion des demarches minieres, du suivi des
+              demandes et de la consultation des titres.
+            </p>
+            <div className={styles.trustBadge}>
+              <ShieldCheck aria-hidden="true" />
+              <span>Plateforme securisee</span>
+            </div>
+          </div>
 
-          <ScrollReveal delay={100}>
+          <nav className={styles.linksGrid} aria-label="Liens du pied de page">
             <div className={styles.linksSection}>
-              <h4 className={styles.linksSectionTitle}>Services</h4>
+              <h4 className={styles.linksSectionTitle}>Plateforme</h4>
               <ul className={styles.linksList}>
-                {links.services.map((link) => (
+                {links.platform.map((link) => (
                   <li key={link.label} className={styles.linkItem}>
-                    <a href={link.href}>{link.label}</a>
+                    <Link href={link.href}>
+                      <span>{link.label}</span>
+                      <ArrowUpRight aria-hidden="true" />
+                    </Link>
                   </li>
                 ))}
               </ul>
             </div>
-          </ScrollReveal>
 
-          <ScrollReveal delay={200}>
             <div className={styles.linksSection}>
               <h4 className={styles.linksSectionTitle}>Ressources</h4>
               <ul className={styles.linksList}>
                 {links.resources.map((link) => (
                   <li key={link.label} className={styles.linkItem}>
-                    {link.href === "/acceuil/actualites" ? (
-                      <Link
-                        href={link.href}
-                        onClick={() => {
-                          window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-                        }}
-                      >
-                        {link.label}
-                      </Link>
-                    ) : (
-                      <a href={link.href}>{link.label}</a>
-                    )}
+                    <Link href={link.href}>
+                      <span>{link.label}</span>
+                      <ArrowUpRight aria-hidden="true" />
+                    </Link>
                   </li>
                 ))}
               </ul>
             </div>
-          </ScrollReveal>
 
-          <ScrollReveal delay={300}>
             <div className={styles.linksSection}>
               <h4 className={styles.linksSectionTitle}>Juridique</h4>
               <ul className={styles.linksList}>
                 {links.legal.map((link) => (
                   <li key={link.label} className={styles.linkItem}>
-                    <a href={link.href}>{link.label}</a>
+                    <Link href={link.href}>
+                      <span>{link.label}</span>
+                      <ArrowUpRight aria-hidden="true" />
+                    </Link>
                   </li>
                 ))}
               </ul>
             </div>
-          </ScrollReveal>
+          </nav>
+
+          <div className={styles.contactCard}>
+            <h4 className={styles.linksSectionTitle}>Contact</h4>
+            <div className={styles.contactInfo}>
+              <div className={styles.contactLine}>
+                <MapPin className={styles.contactIcon} />
+                <span>Seghir Gacem, 42 Chemin Mohamed Gacem, El Mouradia</span>
+              </div>
+              <a href="tel:+21321699932" className={styles.contactLine}>
+                <Phone className={styles.contactIcon} />
+                <span>+213 (0)21 69 99 32</span>
+              </a>
+              <a href="mailto:anam@anam.gov.dz" className={styles.contactLine}>
+                <Mail className={styles.contactIcon} />
+                <span>anam@anam.gov.dz</span>
+              </a>
+            </div>
+          </div>
         </div>
       </div>
 
       <div className={styles.bottomBar}>
-        <div className={`container ${styles.bottomContent}`}>
-          <ScrollReveal delay={250}>
-            <p className={styles.copyright}>
-              (c) {currentYear} ANAM - Agence Nationale des Activites Minieres. Tous droits
-              reserves.
-            </p>
-          </ScrollReveal>
-          <ScrollReveal delay={300}>
-            <div className={styles.languages}>
-              <a href="/auth/login" className={styles.languageLink}>
-                Francais
-              </a>
-              <a href="/auth/login" className={styles.languageLink}>
-                Arabe
-              </a>
-            </div>
-          </ScrollReveal>
+        <div className={styles.bottomContent}>
+          <p className={styles.copyright}>
+            (c) {currentYear} GUNAM. Tous droits reserves.
+          </p>
         </div>
       </div>
     </footer>

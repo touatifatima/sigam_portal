@@ -70,11 +70,11 @@
 }
 
 .tab:hover {
-  color: #8b3a62;
+  color: #d29a0e;
 }
 
 .tab.active {
-  color: #8b3a62;
+  color: #d29a0e;
   font-weight: 600;
 }
 
@@ -85,7 +85,7 @@
   left: 0;
   right: 0;
   height: 2px;
-  background-color: #8b3a62;
+  background-color: #d29a0e;
 }
 
 .actions {
@@ -99,7 +99,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background-color: #8b3a62;
+  background-color: #d29a0e;
   color: white;
   border: none;
   border-radius: 6px;
@@ -109,7 +109,7 @@
 }
 
 .addButton:hover {
-  background-color: #8b3a68;
+  background-color: #c99008;
 }
 
 .content {
@@ -375,13 +375,13 @@
 }
 
 .saveButton {
-  background-color: #8b3a62;
+  background-color: #d29a0e;
   color: white;
   border: none;
 }
 
 .saveButton:hover {
-  background-color: #8b3a68;
+  background-color: #c99008;
 }
 
 /* Responsive styles */

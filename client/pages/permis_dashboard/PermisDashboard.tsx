@@ -39,7 +39,7 @@ import {
   Radar,
   PolarGrid,
   PolarAngleAxis,
-  PolarRadiusAxis
+  PolarRadiusAxis,
 } from 'recharts';
 import Navbar from '../../pages/navbar/Navbar';
 import Sidebar from '../../pages/sidebar/Sidebar';
@@ -197,6 +197,63 @@ export default function PermisDashboard() {
     () => displayTypeData.reduce((sum, entry) => sum + entry.value, 0),
     [displayTypeData],
   );
+  const [hoveredTypeSegment, setHoveredTypeSegment] = useState<string | null>(null);
+  const typeDonutSegments = useMemo(() => {
+    const activeTypes = displayTypeData
+      .filter((entry) => entry.value > 0)
+      .sort((a, b) => b.value - a.value);
+
+    const baseSegments = activeTypes.length ? activeTypes : displayTypeData.slice(0, 5);
+    const visible = baseSegments.slice(0, 4);
+    const rest = baseSegments.slice(4);
+    const compactSegments = rest.length
+      ? [
+          ...visible,
+          {
+            name: 'Autres',
+            value: rest.reduce((sum, entry) => sum + entry.value, 0),
+            color: '#b9a7df',
+          },
+        ]
+      : visible;
+
+    const total = compactSegments.reduce((sum, entry) => sum + entry.value, 0) || 1;
+    const palette = ['#ead28a', '#bcd2f3', '#a9dfc5', '#f4b8c5', '#cbb7ee'];
+    let cumulative = 0;
+    const radius = 76;
+    const labelRadius = 73;
+    const center = 100;
+    const circumference = 2 * Math.PI * radius;
+
+    return compactSegments.map((entry, index) => {
+      const percent = entry.value / total;
+      const start = cumulative;
+      cumulative += percent;
+      const mid = start + percent / 2;
+      const angle = mid * 360 - 90;
+      const radians = (angle * Math.PI) / 180;
+      return {
+        ...entry,
+        color: palette[index % palette.length],
+        percent,
+        dash: Math.max(0.001, percent * circumference),
+        gap: circumference,
+        offset: -start * circumference,
+        labelX: center + Math.cos(radians) * labelRadius,
+        labelY: center + Math.sin(radians) * labelRadius,
+        shortName:
+          entry.name.toLowerCase().includes('exploit')
+            ? 'Exploitation'
+            : entry.name.toLowerCase().includes('prospect')
+              ? 'Prospection'
+              : entry.name.toLowerCase().includes('recher')
+                ? 'Recherche'
+                : entry.name.toLowerCase().includes('explor')
+                  ? 'Exploration'
+                  : entry.name,
+      };
+    });
+  }, [displayTypeData]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState<boolean>(false);
@@ -351,7 +408,7 @@ const topAntenneStats = useMemo(
 const regionChartData = useMemo(() => {
   const source = selectedRegionMode === 'wilaya' ? topWilayaStats : topAntenneStats;
   return source.map((item) => ({
-    label: item.label?.length > 18 ? `${item.label.slice(0, 17)}?` : item.label,
+    label: item.label?.length > 24 ? `${item.label.slice(0, 23)}…` : item.label,
     value: item.value,
   }));
 }, [selectedRegionMode, topWilayaStats, topAntenneStats]);
@@ -581,7 +638,7 @@ const expiringTimeline = useMemo(() => {
       setStatusData(statusResponse.data);
     } catch (err) {
       console.error('Failed to fetch dashboard data:', err);
-      setError('Echec du chargement des donnees du tableau de bord');
+      setError('Échec du chargement des données du tableau de bord');
     } finally {
       setLoading(false);
     }
@@ -678,7 +735,7 @@ const expiringTimeline = useMemo(() => {
       setModalOpen(true);
     } catch (err) {
       console.error('Failed to fetch detailed data:', err);
-      setError('?chec du chargement des donnÃ©es d?taill?es');
+      setError('Échec du chargement des données détaillées');
     } finally {
       setLoading(false);
     }
@@ -743,7 +800,7 @@ const expiringTimeline = useMemo(() => {
     try {
       await axios.delete(`${apiURL}/Permisdashboard/${permisId}`);
       setPermisList(prev => prev.filter(p => p.id !== permisId));
-      alert('Permis supprim? avec succÃ¨s');
+      alert('Permis supprimé avec succès');
     } catch (error) {
       console.error('Error deleting permis:', error);
       alert('Erreur lors de la suppression du permis');
@@ -886,7 +943,7 @@ const expiringTimeline = useMemo(() => {
       
     } catch (error) {
       console.error('Export error:', error);
-      alert('Erreur lors de l\'exportation des donnÃ©es');
+      alert('Erreur lors de l\'exportation des données');
     } finally {
       setExporting(false);
     }
@@ -966,7 +1023,7 @@ const expiringTimeline = useMemo(() => {
             >
               <option value="all">Tous les statuts</option>
               <option value="active">En vigueur</option>
-              <option value="expired">ExpirÃ©s</option>
+              <option value="expired">Expirés</option>
             </select>
             
             <select 
@@ -987,7 +1044,7 @@ const expiringTimeline = useMemo(() => {
               className={styles.advancedFilterButton}
               onClick={() => setAdvancedFilters(!advancedFilters)}
             >
-              <FiFilter /> Filtres avancÃ©s
+              <FiFilter /> Filtres avancés
             </button>
           </div>
           
@@ -1276,10 +1333,20 @@ const expiringTimeline = useMemo(() => {
   // Loading state
   if (loading && !modalOpen) {
     return (
-      <div className={styles.dashboardContainer}>
-        <div className={styles.loading}>
-          <FiRefreshCw className={styles.spinner} size={24} />
-          <span>Chargement des donnÃ©es...</span>
+      <div className={styles['app-container']}>
+        <Navbar />
+        <div className={styles['app-content']}>
+          <Sidebar currentView={currentView} navigateTo={navigateTo} />
+          <main className={styles['main-content']}>
+            <div className={styles.container}>
+              <div className={`${styles.dashboardContainer} ${styles.dashboardLoadingShell}`}>
+                <div className={styles.loading}>
+                  <FiRefreshCw className={styles.spinner} size={24} />
+                  <span>Chargement des données...</span>
+                </div>
+              </div>
+            </div>
+          </main>
         </div>
       </div>
     );
@@ -1288,16 +1355,26 @@ const expiringTimeline = useMemo(() => {
   // Error state
   if (error && !modalOpen) {
     return (
-      <div className={styles.dashboardContainer}>
-        <div className={styles.error}>
-          <FiAlertTriangle size={32} />
-          <p>{error}</p>
-          <button 
-            onClick={fetchDashboardData}
-            className={styles.retryButton}
-          >
-            R?essayer
-          </button>
+      <div className={styles['app-container']}>
+        <Navbar />
+        <div className={styles['app-content']}>
+          <Sidebar currentView={currentView} navigateTo={navigateTo} />
+          <main className={styles['main-content']}>
+            <div className={styles.container}>
+              <div className={`${styles.dashboardContainer} ${styles.dashboardLoadingShell}`}>
+                <div className={styles.error}>
+                  <FiAlertTriangle size={32} />
+                  <p>{error}</p>
+                  <button 
+                    onClick={fetchDashboardData}
+                    className={styles.retryButton}
+                  >
+                    Réessayer
+                  </button>
+                </div>
+              </div>
+            </div>
+          </main>
         </div>
       </div>
     );
@@ -1314,15 +1391,15 @@ const expiringTimeline = useMemo(() => {
                 {/* Dashboard Header */}
                 <div className={styles.header}>
                   <div className={styles.headerTitle}>
-                    <h1>Dashboard des permis</h1>
+                    <h1>Dashboard Permis</h1>
                     <p>
-                      Pilotage centralise des titres miniers, activites et echeances
-                      pour {auth?.username || 'Utilisateur'}
+                      Suivi global des permis miniers, demandes en cours et indicateurs clés
+                      d'activité.
                     </p>
                   </div>
                   <div className={styles.headerActions}>
                     <div className={styles.timestamp}>
-                      Derniere mise a jour: {format(now, 'dd MMMM yyyy HH:mm', { locale: fr })}
+                      Dernière mise à jour : {format(now, 'dd MMMM yyyy HH:mm', { locale: fr })}
                     </div>
                     <button 
                       onClick={() => {
@@ -1346,10 +1423,14 @@ const expiringTimeline = useMemo(() => {
                     aria-disabled={isCardsDisabled}
                   >
                     <FiFileText className={styles.cardIcon} />
+                    <span className={styles.cardDelta}>+ 8%</span>
                     <div className={styles.cardContent}>
                       <h4>Total des permis</h4>
                       <p>{stats.total.toLocaleString()}</p>
                     </div>
+                    <svg className={styles.cardSparkline} viewBox="0 0 140 36" aria-hidden="true">
+                      <polyline points="2,28 24,26 46,22 68,23 90,16 112,18 138,12" />
+                    </svg>
                   </div>
 
                   <div 
@@ -1358,6 +1439,7 @@ const expiringTimeline = useMemo(() => {
                     aria-disabled={isCardsDisabled}
                   >
                     <FiActivity className={styles.cardIcon} />
+                    <span className={styles.cardDelta}>+ 3%</span>
                     <div className={styles.cardContent}>
                       <h4>Permis En vigueur</h4>
                       <p>{stats.actifs.toLocaleString()}</p>
@@ -1365,6 +1447,9 @@ const expiringTimeline = useMemo(() => {
                         {stats.total > 0 ? `${Math.round((stats.actifs / stats.total) * 100)}% du total` : 'N/A'}
                       </div>
                     </div>
+                    <svg className={styles.cardSparkline} viewBox="0 0 140 36" aria-hidden="true">
+                      <polyline points="2,27 26,25 50,27 74,21 98,22 122,16 138,18" />
+                    </svg>
                   </div>
 
                   <div 
@@ -1373,10 +1458,14 @@ const expiringTimeline = useMemo(() => {
                     aria-disabled={isCardsDisabled}
                   >
                     <FiUsers className={styles.cardIcon} />
+                    <span className={styles.cardDelta}>0%</span>
                     <div className={styles.cardContent}>
                       <h4>Demandes en cours</h4>
                       <p>{stats.enCours.toLocaleString()}</p>
                     </div>
+                    <svg className={styles.cardSparkline} viewBox="0 0 140 36" aria-hidden="true">
+                      <polyline points="2,22 26,20 50,24 74,21 98,23 122,19 138,21" />
+                    </svg>
                   </div>
 
                   <div 
@@ -1385,13 +1474,17 @@ const expiringTimeline = useMemo(() => {
                     aria-disabled={isCardsDisabled}
                   >
                     <FiCalendar className={styles.cardIcon} />
+                    <span className={styles.cardDelta}>+ 12%</span>
                     <div className={styles.cardContent}>
-                      <h4>Permis expirÃ©s</h4>
+                      <h4>Permis expirés</h4>
                       <p>{stats.expires.toLocaleString()}</p>
                       <div className={styles.cardPercentage}>
                         {stats.actifs > 0 ? `${Math.round((stats.expires / stats.actifs) * 100)}% des En vigueur` : 'N/A'}
                       </div>
                     </div>
+                    <svg className={styles.cardSparkline} viewBox="0 0 140 36" aria-hidden="true">
+                      <polyline points="2,16 26,18 50,15 74,20 98,18 122,24 138,26" />
+                    </svg>
                   </div>
                   
                   <div 
@@ -1400,13 +1493,17 @@ const expiringTimeline = useMemo(() => {
                     aria-disabled={isCardsDisabled}
                   >
                     <FiAlertTriangle className={styles.cardIcon} />
+                    <span className={styles.cardDelta}>+ 5</span>
                     <div className={styles.cardContent}>
-                      <h4>Expirent bientÃ´t</h4>
+                      <h4>Expirent bientôt</h4>
                       <p>{expiringSoonPermis.length.toLocaleString()}</p>
                       <div className={styles.cardWarning}>
                         Dans les 6 mois
                       </div>
                     </div>
+                    <svg className={styles.cardSparkline} viewBox="0 0 140 36" aria-hidden="true">
+                      <polyline points="2,25 26,23 50,25 74,20 98,22 122,15 138,17" />
+                    </svg>
                   </div>
                 </div>
 
@@ -1414,13 +1511,13 @@ const expiringTimeline = useMemo(() => {
                 <div className={styles.chartsGrid}>
                   <div className={styles.chartCard}>
                     <div className={styles.chartHeader}>
-                      <h4 className={styles.chartTitle}>Evolution des demandes & permis</h4>
+                      <h4 className={styles.chartTitle}>Évolution des demandes & permis</h4>
                       <div className={styles.chartTrend}>
                         <FiTrendingUp />
                         <span>
                           {evolutionTrend
-                            ? `Permis ${evolutionTrend.permisDelta >= 0 ? '+' : ''}${evolutionTrend.permisDelta} â€¢ Demandes ${evolutionTrend.demandesDelta >= 0 ? '+' : ''}${evolutionTrend.demandesDelta} vs. derniere annee`
-                            : 'Donnees annuelles en cours de consolidation'}
+                            ? `Permis ${evolutionTrend.permisDelta >= 0 ? '+' : ''}${evolutionTrend.permisDelta} • Demandes ${evolutionTrend.demandesDelta >= 0 ? '+' : ''}${evolutionTrend.demandesDelta} vs. dernière année`
+                            : 'Données annuelles en cours de consolidation'}
                         </span>
                       </div>
                     </div>
@@ -1432,15 +1529,15 @@ const expiringTimeline = useMemo(() => {
                       <AreaChart data={evolutionData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                         <defs>
                           <linearGradient id="permitsAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#a84775" stopOpacity={0.32} />
-                            <stop offset="100%" stopColor="#a84775" stopOpacity={0.04} />
+                            <stop offset="0%" stopColor="#d29a0e" stopOpacity={0.34} />
+                            <stop offset="100%" stopColor="#d29a0e" stopOpacity={0.05} />
                           </linearGradient>
                           <linearGradient id="demandesAreaGradient" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stopColor="#0ea5e9" stopOpacity={0.3} />
                             <stop offset="100%" stopColor="#0ea5e9" stopOpacity={0.03} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5d9e2" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5eaf1" />
                         <XAxis dataKey="year" tick={{ fill: '#64748b' }} axisLine={{ stroke: '#cbd5e1' }} />
                         <YAxis tick={{ fill: '#64748b' }} axisLine={{ stroke: '#cbd5e1' }} tickFormatter={(value) => value.toLocaleString()} />
                         <Tooltip
@@ -1448,18 +1545,18 @@ const expiringTimeline = useMemo(() => {
                             Number(value || 0).toLocaleString('fr-FR'),
                             name === 'permis' ? 'Permis' : 'Demandes',
                           ]}
-                          labelFormatter={(label) => `Annee: ${label}`}
+                          labelFormatter={(label) => `Année : ${label}`}
                           contentStyle={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}
                         />
                         <Area
                           type="monotone"
                           dataKey="permis"
                           name="permis"
-                          stroke="#a84775"
+                          stroke="#d29a0e"
                           fill="url(#permitsAreaGradient)"
                           strokeWidth={2.6}
-                          dot={{ r: 4, fill: '#a84775', stroke: '#fff', strokeWidth: 1.5 }}
-                          activeDot={{ r: 6, fill: '#a84775', stroke: '#fff', strokeWidth: 2 }}
+                          dot={{ r: 4, fill: '#d29a0e', stroke: '#fff', strokeWidth: 1.5 }}
+                          activeDot={{ r: 6, fill: '#d29a0e', stroke: '#fff', strokeWidth: 2 }}
                         />
                         <Area
                           type="monotone"
@@ -1477,42 +1574,68 @@ const expiringTimeline = useMemo(() => {
 
                   <div className={styles.chartCard}>
                     <div className={styles.chartHeader}>
-                      <h4 className={styles.chartTitle}>Repartition par type</h4>
+                      <h4 className={styles.chartTitle}>Répartition par type</h4>
                       <span className={styles.chartMeta}>{totalTypeCount.toLocaleString()} permis</span>
                     </div>
                     <div className={styles.typeDistribution}>
                       <div className={styles.typeChart}>
-                        <ResponsiveContainer width="100%" height={240}>
-                          <PieChart>
-                            <Pie
-                              data={displayTypeData}
-                              dataKey="value"
-                              nameKey="name"
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={52}
-                              outerRadius={76}
-                              paddingAngle={2}
-                              label={false}
-                              labelLine={false}
-                            >
-                              {displayTypeData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                              ))}
-                            </Pie>
-                            <Tooltip
-                              formatter={(value, name, props) => [
-                                value.toLocaleString(),
-                                name,
-                                `${((props.payload.percent || 0) * 100).toFixed(1)}%`,
-                              ]}
-                              contentStyle={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
+                        <div className={styles.segmentDonut} role="img" aria-label="Répartition des permis par type">
+                          <svg className={styles.segmentDonutSvg} viewBox="0 0 200 200">
+                            <circle className={styles.segmentTrack} cx="100" cy="100" r="76" />
+                            {typeDonutSegments.map((entry) => (
+                              <circle
+                                key={entry.name}
+                                className={styles.segmentArc}
+                                cx="100"
+                                cy="100"
+                                r="76"
+                                stroke={entry.color}
+                                strokeDasharray={`${entry.dash} ${entry.gap}`}
+                                strokeDashoffset={entry.offset}
+                                onMouseEnter={() => setHoveredTypeSegment(entry.name)}
+                                onMouseLeave={() => setHoveredTypeSegment(null)}
+                                onFocus={() => setHoveredTypeSegment(entry.name)}
+                                onBlur={() => setHoveredTypeSegment(null)}
+                                tabIndex={0}
+                              />
+                            ))}
+                            <circle className={styles.segmentHole} cx="100" cy="100" r="32" />
+                            {typeDonutSegments.map((entry) => (
+                              <g key={`${entry.name}-label`} className={styles.segmentLabel}>
+                                <text x={entry.labelX} y={entry.labelY - 7} textAnchor="middle">
+                                  {entry.shortName}
+                                </text>
+                                <text x={entry.labelX} y={entry.labelY + 13} textAnchor="middle" className={styles.segmentPercent}>
+                                  {Math.round(entry.percent * 100)}%
+                                </text>
+                              </g>
+                            ))}
+                          </svg>
+                          <div className={styles.segmentCenter}>
+                            <strong>{totalTypeCount.toLocaleString()}</strong>
+                            <span>PERMIS</span>
+                          </div>
+                          {hoveredTypeSegment && (() => {
+                            const segment = typeDonutSegments.find((entry) => entry.name === hoveredTypeSegment);
+                            if (!segment) return null;
+                            return (
+                              <div
+                                className={styles.segmentTooltip}
+                                style={{
+                                  left: `${segment.labelX / 2}%`,
+                                  top: `${segment.labelY / 2}%`,
+                                }}
+                              >
+                                <strong>{segment.name}</strong>
+                                <span>{segment.value.toLocaleString()} permis</span>
+                                <em>{(segment.percent * 100).toFixed(1)}%</em>
+                              </div>
+                            );
+                          })()}
+                        </div>
                       </div>
                       <div className={styles.typeLegend}>
-                        {displayTypeData.length === 0 && <span className={styles.muted}>Aucune donnee</span>}
+                        {displayTypeData.length === 0 && <span className={styles.muted}>Aucune donnée</span>}
                         {displayTypeData.map((entry) => {
                           const percent = totalTypeCount ? (entry.value / totalTypeCount) * 100 : 0;
                           return (
@@ -1521,7 +1644,7 @@ const expiringTimeline = useMemo(() => {
                               <div className={styles.typeLegendText}>
                                 <span className={styles.typeLegendName}>{entry.name}</span>
                                 <span className={styles.typeLegendMeta}>
-                                  {entry.value.toLocaleString()} Â· {percent.toFixed(1)}%
+                                  {entry.value.toLocaleString()} · {percent.toFixed(1)}%
                                 </span>
                               </div>
                             </div>
@@ -1588,7 +1711,7 @@ const expiringTimeline = useMemo(() => {
 
                 <div className={styles.chartsGrid}>
                   <div className={styles.chartCard}>
-                    <h4 className={styles.chartTitle}>Repartition par statut</h4>
+                    <h4 className={styles.chartTitle}>Répartition par statut</h4>
                     <ResponsiveContainer width="100%" height={300}>
                       <BarChart data={statusData}>
                         <defs>
@@ -1638,32 +1761,49 @@ const expiringTimeline = useMemo(() => {
                         </button>
                       </div>
                     </div>
-                    <ResponsiveContainer width="100%" height={320}>
-                      <RadarChart data={regionChartData} outerRadius="80%">
-                        <PolarGrid stroke="#e2e8f0" />
-                        <PolarAngleAxis dataKey="label" tick={{ fill: '#475569', fontSize: 12 }} />
-                        <PolarRadiusAxis tick={{ fill: '#94a3b8' }} />
-                        <Radar
-                          name="Permis"
-                          dataKey="value"
-                          stroke="#3b82f6"
-                          fill={selectedRegionMode === 'wilaya' ? '#22c55e' : '#6366f1'}
-                          fillOpacity={0.6}
-                        />
-                        <Tooltip
-                          formatter={(value, name, props) => [
-                            Number(value).toLocaleString(),
-                            props?.payload?.label || name,
-                          ]}
-                          contentStyle={{
-                            background: '#ffffff',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '8px',
-                            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                          }}
-                        />
-                      </RadarChart>
-                    </ResponsiveContainer>
+                    <div className={styles.regionChartWrap}>
+                      {regionChartData.length === 0 ? (
+                        <div className={styles.regionEmpty}>Aucune donnée disponible</div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height={300}>
+                          <RadarChart data={regionChartData} outerRadius="72%" margin={{ top: 16, right: 28, bottom: 18, left: 28 }}>
+                            <PolarGrid stroke="#dfe7f1" strokeDasharray="3 3" />
+                            <PolarAngleAxis
+                              dataKey="label"
+                              tick={{ fill: '#263548', fontSize: 12, fontWeight: 800 }}
+                            />
+                            <PolarRadiusAxis
+                              angle={90}
+                              tick={{ fill: '#8a97aa', fontSize: 10 }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <Radar
+                              name="Permis"
+                              dataKey="value"
+                              stroke={selectedRegionMode === 'wilaya' ? '#d29a0e' : '#2563eb'}
+                              fill={selectedRegionMode === 'wilaya' ? '#efbd3f' : '#2563eb'}
+                              fillOpacity={0.22}
+                              strokeWidth={2.8}
+                              dot={{ r: 4, fill: selectedRegionMode === 'wilaya' ? '#d29a0e' : '#2563eb', stroke: '#ffffff', strokeWidth: 2 }}
+                            />
+                            <Tooltip
+                              formatter={(value, name, props) => [
+                                Number(value).toLocaleString(),
+                                props?.payload?.label || name,
+                              ]}
+                              contentStyle={{
+                                background: '#ffffff',
+                                border: '1px solid #dfe7f1',
+                                borderRadius: '12px',
+                                boxShadow: '0 14px 30px rgba(15, 23, 42, 0.12)',
+                                fontWeight: 800,
+                              }}
+                            />
+                          </RadarChart>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
                   </div>
 
                   {/* <div className={styles.chartCard}>

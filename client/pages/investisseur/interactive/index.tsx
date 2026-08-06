@@ -156,9 +156,9 @@ const INTERACTIVE_ONBOARDING_STEPS: OnboardingStep[] = [
   {
     id: 'interactive-header',
     target: '[data-onboarding-id="interactive-header"]',
-    title: 'Verification prealable',
+    title: 'Vérification préalable',
     description:
-      'Cette page vous permet de valider votre perimetre avant la demande officielle pour eviter les rejets et gagner du temps.',
+      'Cette page vous permet de valider votre périmètre avant la demande officielle pour éviter les rejets et gagner du temps.',
     placement: 'bottom',
   },
   {
@@ -174,15 +174,15 @@ const INTERACTIVE_ONBOARDING_STEPS: OnboardingStep[] = [
     target: '[data-onboarding-id="interactive-type-card"]',
     title: 'Choix du type de permis',
     description:
-      'Selectionnez le type de titre pour charger les contraintes associees (superficie, regime, regles de controle).',
+      'Sélectionnez le type de titre pour charger les contraintes associées (superficie, régime, règles de contrôle).',
     placement: 'right',
   },
   {
     id: 'interactive-perimeter-card',
     target: '[data-onboarding-id="interactive-perimeter-card"]',
-    title: 'Saisie du perimetre',
+    title: 'Saisie du périmètre',
     description:
-      'Ajoutez les coordonnees, validez le perimetre puis exportez vos donnees si besoin (CSV/KML).',
+      'Ajoutez les coordonnées, validez le périmètre puis exportez vos données si besoin (CSV/KML).',
     placement: 'right',
   },
   {
@@ -190,7 +190,7 @@ const INTERACTIVE_ONBOARDING_STEPS: OnboardingStep[] = [
     target: '[data-onboarding-id="interactive-overlap-card"]',
     title: 'Controle des chevauchements',
     description:
-      'Lancez la verification pour detecter les empietements et corriger avant de continuer vers la creation de demande.',
+      'Lancez la vérification pour détecter les empiétements et corriger avant de continuer vers la création de demande.',
     placement: 'right',
   },
   {
@@ -198,7 +198,7 @@ const INTERACTIVE_ONBOARDING_STEPS: OnboardingStep[] = [
     target: '[data-onboarding-id="interactive-map"]',
     title: 'Carte ArcGIS prioritaire',
     description:
-      'La carte affiche votre polygon, les couches actives et les conflits detectes pour un diagnostic visuel immediat.',
+      'La carte affiche votre polygone, les couches actives et les conflits détectés pour un diagnostic visuel immédiat.',
     placement: 'left',
   },
 ];
@@ -578,9 +578,9 @@ export default function InteractiveDemandePage() {
         .map(getOverlapDetailsLine);
       return {
         variant: 'blocking',
-        title: 'Conflit bloquant detecte',
+        title: 'Conflit bloquant détecté',
         message:
-          "Votre perimetre projete intersecte une zone d'exclusion ou un titre minier existant.\nIl est impossible de deposer une demande dans cette zone. Veuillez modifier votre perimetre pour eviter ce conflit.",
+          "Votre périmètre projeté intersecte une zone d'exclusion ou un titre minier existant.\nIl est impossible de déposer une demande dans cette zone. Veuillez modifier votre périmètre pour éviter ce conflit.",
         details,
       };
     }
@@ -594,17 +594,17 @@ export default function InteractiveDemandePage() {
         .map(getOverlapDetailsLine);
       return {
         variant: 'warning',
-        title: 'Attention : chevauchement detecte',
+        title: 'Attention : chevauchement détecté',
         message:
-          `Votre perimetre projete croise ${demandCount} demande(s) en cours et ${provisoireCount} inscription(s) provisoire(s)${otherSuffix}.\nCela n'empeche pas de deposer votre demande, mais l'administration examinera ces chevauchements lors de l'instruction.\nVous pouvez ajuster vos coordonnees ou continuer votre projet.`,
+          `Votre périmètre projeté croise ${demandCount} demande(s) en cours et ${provisoireCount} inscription(s) provisoire(s)${otherSuffix}.\nCela n'empêche pas de déposer votre demande, mais l'administration examinera ces chevauchements lors de l'instruction.\nVous pouvez ajuster vos coordonnées ou continuer votre projet.`,
         details,
       };
     }
     return {
       variant: 'success',
-      title: 'Verification reussie',
+      title: 'Vérification réussie',
       message:
-        "Aucun chevauchement detecte avec les demandes en cours, inscriptions provisoires, exclusions ou titres existants.\nVotre perimetre semble libre pour le moment. Vous pouvez passer a la creation de votre demande reelle.",
+        "Aucun chevauchement détecté avec les demandes en cours, inscriptions provisoires, exclusions ou titres existants.\nVotre périmètre semble libre pour le moment. Vous pouvez passer à la création de votre demande réelle.",
       details: [],
     };
   }, [blockingOverlapDetected, hasOverlapCheck, overlapBuckets, overlapTitles.length]);
@@ -770,7 +770,7 @@ export default function InteractiveDemandePage() {
       }
     } catch (err) {
       console.error('Failed to load permit details', err);
-      toast.error('Impossible de charger les details du type de permis.');
+      toast.error('Impossible de charger les détails du type de permis.');
     } finally {
       setDetailsLoading(false);
     }
@@ -874,14 +874,14 @@ export default function InteractiveDemandePage() {
         const derivedZone = deriveUtmZoneFromLon(rawCoords[0]?.[0], draftZone);
         zone = coerceUtmZone(latest.zone, derivedZone);
         coords = convertWgs84ToUtm(rawCoords, zone);
-        toast.info(`Coordonnees WGS84 detectees, conversion en UTM zone ${zone}.`);
+        toast.info(`Coordonnées WGS84 détectées, conversion en UTM zone ${zone}.`);
       }
       const hemisphere: 'N' = 'N';
       setCoordSource('prior');
       fillDraftFromCoords(coords, zone, hemisphere);
     } catch (err) {
-      console.error('Erreur chargement coordonnees', err);
-      toast.error('Impossible de charger les coordonnees du permis selectionne.');
+      console.error('Erreur chargement coordonnées', err);
+      toast.error('Impossible de charger les coordonnées du permis sélectionné.');
     }
   };
 
@@ -960,7 +960,7 @@ export default function InteractiveDemandePage() {
       setDraftZone(zone);
       setDraftHemisphere('N');
       setDraftPoints(parsed.map((p) => ({ id: p.id, x: String(p.x), y: String(p.y) })));
-      toast.info(`Coordonnees WGS84 detectees, conversion en UTM zone ${zone}.`);
+      toast.info(`Coordonnées WGS84 détectées, conversion en UTM zone ${zone}.`);
     }
     const mapPts: MapPoint[] = parsed.map((p, index) => ({
       id: index + 1,
@@ -1065,7 +1065,7 @@ export default function InteractiveDemandePage() {
   const checkOverlaps = async () => {
     if (isCheckingOverlaps) return;
     if (!mapPoints.length) {
-      toast.warning('Veuillez valider un perimetre avant la verification.');
+      toast.warning('Veuillez valider un périmètre avant la vérification.');
       return;
     }
     setShowPerimeterPreview(true);
@@ -1127,7 +1127,7 @@ export default function InteractiveDemandePage() {
       setShowAllOverlaps(false);
       setNoticeDismissed(false);
       if (!unique.length) {
-        toast.success('Aucun chevauchement detecte - votre perimetre semble libre.');
+        toast.success('Aucun chevauchement détecté - votre périmètre semble libre.');
       }
     } catch (err) {
       console.error('Overlap check failed', err);
@@ -1284,7 +1284,7 @@ export default function InteractiveDemandePage() {
 
   const exportCsv = () => {
     if (!mapPoints.length) {
-      toast.warning('Aucun perimetre a exporter.');
+      toast.warning('Aucun périmètre à exporter.');
       return;
     }
     const headers = ['id', 'x', 'y', 'z', 'system', 'zone', 'hemisphere'];
@@ -1316,7 +1316,7 @@ export default function InteractiveDemandePage() {
 
   const exportKml = () => {
     if (!mapPoints.length) {
-      toast.warning('Aucun perimetre a exporter.');
+      toast.warning('Aucun périmètre à exporter.');
       return;
     }
     const zone = mapPoints[0]?.zone ?? draftZone;
@@ -1648,7 +1648,7 @@ export default function InteractiveDemandePage() {
           <div className={styles.breadcrumb}>
             <span>POM</span>
             <FiChevronRight className={styles.breadcrumbArrow} />
-            <span>Verification prealable</span>
+            <span>Vérification préalable</span>
           </div>
 
           <div className={styles.headerRow} data-onboarding-id="interactive-header">
@@ -1662,9 +1662,9 @@ export default function InteractiveDemandePage() {
                 <FiArrowLeft />
                 <span>Retour au tableau de bord</span>
               </button>
-              <h1 className={styles.title}>Verification prealable interactive</h1>
+              <h1 className={styles.title}>Vérification préalable interactive</h1>
               <p className={styles.subtitle}>
-                Projetez vos coordonnees pour verifier les chevauchements avant de lancer la demande reelle.
+                Projetez vos coordonnées pour vérifier les chevauchements avant de lancer la demande réelle.
               </p>
             </div>
             {isAdmin && (
@@ -1724,9 +1724,9 @@ export default function InteractiveDemandePage() {
               type="button"
               className={styles.resetBtn}
               onClick={resetDraftState}
-              title="Reinitialiser la saisie"
+              title="Réinitialiser la saisie"
             >
-              Reinitialiser
+              Réinitialiser
             </button>
           </div>
 
@@ -1779,7 +1779,7 @@ export default function InteractiveDemandePage() {
                           router.push('/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis')
                         }
                       >
-                        Creer ma demande
+                        Créer ma demande
                       </button>
                     </>
                   ) : (
@@ -1790,8 +1790,8 @@ export default function InteractiveDemandePage() {
                         onClick={() => openManualEntry(false)}
                       >
                         {verificationNotice.variant === 'blocking'
-                          ? 'Modifier mon perimetre'
-                          : 'Ajuster mon perimetre'}
+                          ? 'Modifier mon périmètre'
+                          : 'Ajuster mon périmètre'}
                       </button>
                       <button
                         type="button"
@@ -1823,7 +1823,7 @@ export default function InteractiveDemandePage() {
                 </div>
                 <div className={styles.cardBody}>
                   <label className={styles.label}>
-                    Categorie de permis <span className={styles.required}>*</span>
+                    Catégorie de permis <span className={styles.required}>*</span>
                   </label>
                   <select
                     className={styles.select}
@@ -1831,7 +1831,7 @@ export default function InteractiveDemandePage() {
                     onChange={(e) => handlePermisChange(e.target.value)}
                     disabled={optionsLoading}
                   >
-                    <option value="">-- Selectionnez --</option>
+                    <option value="">-- Sélectionnez --</option>
                     {permisOptions.map((permis) => (
                       <option key={permis.id} value={permis.id}>
                         {permis.lib_type} ({permis.code_type}) - {permis.regime}
@@ -1839,7 +1839,7 @@ export default function InteractiveDemandePage() {
                     ))}
                   </select>
 
-                  {detailsLoading && <div className={styles.loadingHint}>Chargement des details...</div>}
+                  {detailsLoading && <div className={styles.loadingHint}>Chargement des détails...</div>}
                   {effectivePermis && !detailsLoading && (
                     <div className={styles.infoBox}>
                       <div className={styles.infoRow}>
@@ -1850,13 +1850,13 @@ export default function InteractiveDemandePage() {
                       </div>
                       <div className={styles.infoRow}>
                         <span>Superficie max:</span>{' '}
-                        <strong>{effectivePermis.superficie_max ?? 'Non specifie'} ha</strong>
+                        <strong>{effectivePermis.superficie_max ?? 'Non spécifiée'} ha</strong>
                       </div>
                     </div>
                   )}
 
                   <label className={styles.label}>
-                    Date et heure de verification <span className={styles.required}>*</span>
+                    Date et heure de vérification <span className={styles.required}>*</span>
                   </label>
                   <div className={styles.datepickerWrapper}>
                     <DatePicker
@@ -1877,14 +1877,14 @@ export default function InteractiveDemandePage() {
 
               <div className={styles.card} data-onboarding-id="interactive-perimeter-card">
                 <div className={styles.cardHeader}>
-                  <h3>2. Perimetre</h3>
+                  <h3>2. Périmètre</h3>
                 </div>
                 <div className={styles.cardBody}>
                   <div className={styles.infoRow}>
                     <span>Fuseau UTM:</span> <strong>{draftZone}</strong>
                   </div>
                   <div className={styles.infoRow}>
-                    <span>Hemisphere:</span> <strong>{draftHemisphere}</strong>
+                    <span>Hémisphère:</span> <strong>{draftHemisphere}</strong>
                   </div>
                   <div className={styles.infoRow}>
                     <span>Points:</span> <strong>{mapPoints.length || 0}</strong>
@@ -1900,7 +1900,7 @@ export default function InteractiveDemandePage() {
                     }}
                     disabled={!effectivePermis}
                   >
-                    <FiMapPin /> Saisir les coordonnees
+                    <FiMapPin /> Saisir les coordonnées
                   </button>
                   <button
                     type="button"
@@ -1920,7 +1920,7 @@ export default function InteractiveDemandePage() {
                   </button>
                   {hasValidatedPerimeter && (
                     <div className={styles.statusBadge}>
-                      <FiCheckCircle /> Perimetre valide
+                      <FiCheckCircle /> Périmètre valide
                     </div>
                   )}
                 </div>
@@ -1939,10 +1939,10 @@ export default function InteractiveDemandePage() {
                   >
                     {isCheckingOverlaps ? (
                       <>
-                        <FiLoader className={styles.spinIcon} /> Verification...
+                        <FiLoader className={styles.spinIcon} /> Vérification...
                       </>
                     ) : (
-                      'Verifier les chevauchements'
+                      'Vérifier les chevauchements'
                     )}
                   </button>
                   <button
@@ -1963,12 +1963,12 @@ export default function InteractiveDemandePage() {
                   </button>
                   {hasOverlapCheck && !overlapDetected && (
                     <div className={styles.statusBadge}>
-                      <FiCheckCircle /> Aucun empietement detecte
+                      <FiCheckCircle /> Aucun empiétement détecté
                     </div>
                   )}
                   {overlapDetected && (
                     <div className={styles.warningBadge}>
-                      <FiAlertTriangle /> Empietements detectes ({overlapTitles.length})
+                      <FiAlertTriangle /> Empiétements détectés ({overlapTitles.length})
                     </div>
                   )}
                   {overlapTitles.length > 0 && (
@@ -2014,7 +2014,7 @@ export default function InteractiveDemandePage() {
                           className={styles.overlapToggleBtn}
                           onClick={() => setShowAllOverlaps(false)}
                         >
-                          Reduire la liste
+                          Réduire la liste
                         </button>
                       )}
                     </div>
@@ -2071,7 +2071,7 @@ export default function InteractiveDemandePage() {
                           className={`${styles.choiceBtn} ${temFromApm === 'no' ? styles.choiceActive : ''}`}
                           onClick={() => setTemFromApm('no')}
                         >
-                          Non, saisir un nouveau perimetre
+                          Non, saisir un nouveau périmètre
                         </button>
                       </div>
                       {temFromApm === 'yes' && (
@@ -2104,7 +2104,7 @@ export default function InteractiveDemandePage() {
 
                   {!priorLoading && !priorError && isTX && (
                     <>
-                      <p>Selectionnez le titre TEM/TEC de reference.</p>
+                      <p>Sélectionnez le titre TEM/TEC de référence.</p>
                       <input
                         className={styles.searchInput}
                         placeholder="Rechercher TEM/TEC..."
@@ -2139,7 +2139,7 @@ export default function InteractiveDemandePage() {
                         openManualEntry(true);
                       }}
                     >
-                      Saisir de nouvelles coordonnees
+                      Saisir de nouvelles coordonnées
                     </button>
                   )}
                   {isTEM && temFromApm === 'yes' && (
@@ -2152,7 +2152,7 @@ export default function InteractiveDemandePage() {
                           openManualEntry(true);
                         }}
                       >
-                        Saisir de nouvelles coordonnees
+                        Saisir de nouvelles coordonnées
                       </button>
                       <button
                         type="button"
@@ -2163,7 +2163,7 @@ export default function InteractiveDemandePage() {
                           setPriorModalOpen(false);
                         }}
                       >
-                        Utiliser les coordonnees APM
+                        Utiliser les coordonnées APM
                       </button>
                     </>
                   )}
@@ -2177,7 +2177,7 @@ export default function InteractiveDemandePage() {
                           openManualEntry(true);
                         }}
                       >
-                        Saisir de nouvelles coordonnees
+                        Saisir de nouvelles coordonnées
                       </button>
                       <button
                         type="button"
@@ -2188,7 +2188,7 @@ export default function InteractiveDemandePage() {
                           setPriorModalOpen(false);
                         }}
                       >
-                        Utiliser les coordonnees du titre
+                        Utiliser les coordonnées du titre
                       </button>
                     </>
                   )}
@@ -2201,7 +2201,7 @@ export default function InteractiveDemandePage() {
             <div className={styles.modalOverlay}>
               <div className={styles.modalContent}>
                 <div className={styles.modalHeader}>
-                  <h3>Saisie des coordonnees (UTM)</h3>
+                  <h3>Saisie des coordonnées (UTM)</h3>
                   <button className={styles.modalClose} onClick={() => setCoordModalOpen(false)}>
                     x
                   </button>
@@ -2217,14 +2217,14 @@ export default function InteractiveDemandePage() {
                         </option>
                       ))}
                     </select>
-                    <label>Hemisphere</label>
+                    <label>Hémisphère</label>
                     <select value={draftHemisphere} onChange={(e) => setDraftHemisphere(e.target.value as 'N')}>
                       <option value="N">Nord (N)</option>
                     </select>
                   </div>
 
                   <div className={styles.coordTableHeader}>
-                    <span>Points du perimetre</span>
+                    <span>Points du périmètre</span>
                     <div className={styles.coordActions}>
                       <button className={styles.coordAddBtn} type="button" onClick={addDraftPoint}>
                         <FiPlus /> Ajouter
@@ -2316,7 +2316,7 @@ export default function InteractiveDemandePage() {
                 </div>
                 <div className={styles.modalFooter}>
                   <button className={styles.primaryBtn} onClick={handleValidatePerimeter}>
-                    Valider le perimetre
+                    Valider le périmètre
                   </button>
                 </div>
               </div>

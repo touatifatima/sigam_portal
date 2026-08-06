@@ -15,6 +15,865 @@
   --transition: all 0.2s ease;
 }
 
+/* Compact redesign override */
+.appContainer {
+  --bg: #eef1f5;
+  --card: #ffffff;
+  --text-main: #18202f;
+  --text-muted: #667085;
+  --accent: #334155;
+  --accent-strong: #0f172a;
+  --accent-soft: #f1f5f9;
+  --success: #0f766e;
+  --border: #d8e0ea;
+  --shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  --radius-lg: 10px;
+  --radius-md: 8px;
+  --radius-sm: 7px;
+  min-height: 100vh;
+  background: #eef1f5;
+  color: #18202f;
+  font-size: 13px;
+}
+
+.appContent {
+  gap: 0;
+}
+
+.mainContent {
+  max-width: 1120px;
+  padding: 18px 24px 32px;
+}
+
+.topActions {
+  margin-bottom: 8px;
+}
+
+.backDashboardButton {
+  min-height: 32px;
+  border-radius: 7px;
+  padding: 0 11px;
+  font-size: 12px;
+  background: transparent;
+}
+
+.headerRow {
+  margin-bottom: 8px;
+}
+
+.pageTitle {
+  font-size: 24px;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.mainContent [data-onboarding-id="start-progress"] {
+  transform: scale(0.9);
+  transform-origin: left top;
+  width: 111.111%;
+  margin-bottom: -12px;
+}
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+
+.stepCard {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.stepCard > .errorBox,
+.stepCard > .buttonGroup {
+  grid-column: 1 / -1;
+}
+
+.select {
+  height: 42px;
+  border-radius: 7px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.selectContent {
+  border-radius: 8px;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.14);
+}
+
+.selectItem {
+  border-radius: 6px;
+  padding: 8px 12px 8px 30px;
+  font-size: 13px;
+}
+
+.selectItem[data-highlighted] {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.selectItem[data-state="checked"] {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.loadingHint {
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+.buttonGroup {
+  margin-top: 0;
+}
+
+.nextButton {
+  min-height: 42px;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  background: #0f172a;
+}
+
+.nextButton:hover:not(:disabled) {
+  background: #1e293b;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.18);
+}
+
+.entryModalOverlay {
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.34);
+  backdrop-filter: blur(2px);
+}
+
+.entryModalCard {
+  width: min(560px, calc(100vw - 36px));
+  border-radius: 10px;
+  border: 1px solid #d8e0ea;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.2);
+  padding: 20px;
+}
+
+.entryModalCard::before {
+  height: 3px;
+  background: #0f172a;
+}
+
+.entryModalHeader {
+  margin-bottom: 8px;
+}
+
+.entryModalBadge {
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  border-color: #d8e0ea;
+  color: #334155;
+  font-size: 10px;
+}
+
+.entryModalTitle {
+  font-size: 20px;
+  letter-spacing: 0;
+}
+
+.entryModalText {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.entryModalActions {
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.entryActionButton {
+  min-height: 118px;
+  border-radius: 9px;
+  padding: 14px;
+  justify-content: space-between;
+}
+
+.entryActionPrimary {
+  background: #0f172a;
+  border-color: #0f172a;
+  box-shadow: none;
+}
+
+.entryActionPrimary:hover {
+  background: #1e293b;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.22);
+}
+
+.entryActionSecondary {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.entryActionSecondary:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08);
+}
+
+.entryActionLabel {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.entryActionHint {
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.entryModalFooter {
+  margin-top: 12px;
+}
+
+.entryDashboardButton {
+  font-size: 12px;
+  border-radius: 7px;
+}
+
+.permisDetails {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  margin-top: 0;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: none;
+  border-color: #d8e0ea;
+}
+
+.permisDetails::before {
+  height: 0;
+}
+
+.permisDetailsHeader {
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  padding: 14px;
+  background: #f8fafc;
+}
+
+.permisDetailsHeaderIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: #0f172a;
+  box-shadow: none;
+}
+
+.permisDetailsHeaderText h4 {
+  font-size: 14px;
+  color: #111827;
+}
+
+.permisDetailsHeaderText p {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.permisDetailsBadge {
+  grid-column: 1 / -1;
+  justify-self: start;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 11px;
+  box-shadow: none;
+}
+
+.permisDetailsBody {
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px;
+}
+
+.permisHeroText {
+  padding: 0;
+}
+
+.permisHeroKicker {
+  margin-bottom: 6px;
+  color: #64748b;
+  font-size: 10px;
+}
+
+.permisHeroText h5 {
+  color: #111827;
+  font-size: 20px;
+}
+
+.permisHeroDescription {
+  margin-top: 8px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.permisHeroPill {
+  margin-top: 12px;
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.permisHeroPillLabel {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.permisHeroPillValue {
+  font-size: 12px;
+  color: #0f766e;
+}
+
+.permisStats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.statCard {
+  min-height: 104px;
+  border-radius: 9px;
+  padding: 12px;
+  gap: 9px;
+  box-shadow: none;
+}
+
+.statIconWrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+}
+
+.statLabel {
+  font-size: 12px;
+}
+
+.statValue {
+  font-size: 24px;
+}
+
+.statUnit {
+  font-size: 12px;
+}
+
+.statNote {
+  font-size: 11px;
+}
+
+.permisAside {
+  border-radius: 9px;
+  padding: 12px;
+}
+
+.permisAsideTitle {
+  font-size: 13px;
+}
+
+.permisAsideText,
+.permisAsideLink {
+  font-size: 12px;
+}
+
+.permisDetailsFooter {
+  padding: 0 14px 14px;
+}
+
+.permisImportant {
+  border-radius: 9px;
+  padding: 10px 12px;
+  font-size: 12px;
+}
+
+.permisImportantDot {
+  width: 22px;
+  height: 22px;
+}
+
+.permisImportantLink {
+  font-size: 12px;
+  color: #334155;
+}
+
+@media (max-width: 1100px) {
+  .mainContent {
+    padding: 16px 18px 28px;
+  }
+
+  .stepCard {
+    grid-template-columns: 1fr;
+  }
+
+  .permisDetails {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .mainContent {
+    padding: 14px 12px 28px;
+  }
+
+  .mainContent [data-onboarding-id="start-progress"] {
+    transform: none;
+    width: 100%;
+    margin-bottom: 0;
+  }
+
+  .entryModalActions {
+    grid-template-columns: 1fr;
+  }
+
+  .entryActionButton {
+    min-height: 92px;
+  }
+
+  .permisDetailsBody {
+    grid-template-columns: 1fr;
+  }
+
+  .permisStats {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Modal redesign v5 moderne */
+.entryModalOverlay {
+  padding: 32px 16px;
+  background:
+    radial-gradient(1100px 500px at 15% -10%, rgba(227, 221, 255, 0.58) 0%, transparent 55%),
+    radial-gradient(900px 500px at 100% 110%, rgba(219, 232, 255, 0.5) 0%, transparent 55%),
+    rgba(242, 241, 248, 0.82);
+  backdrop-filter: blur(1.5px);
+  -webkit-backdrop-filter: blur(1.5px);
+}
+
+.entryModalCard {
+  width: min(700px, calc(100vw - 32px));
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 30px 70px -30px rgba(30, 20, 80, 0.35);
+  padding: 40px 40px 28px;
+}
+
+.entryModalCard::before {
+  display: none;
+}
+
+.entryModalHeader {
+  margin-bottom: 18px;
+}
+
+.entryModalBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #5b3df0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.entryModalBadge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c5cff, #4f8bff);
+}
+
+.entryModalTitle {
+  margin: 0 0 8px;
+  color: #0f1222;
+  font-size: 27px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.entryModalText {
+  max-width: 50ch;
+  margin: 0 0 28px;
+  color: #767b8c;
+  font-size: 14.5px;
+  line-height: 1.55;
+}
+
+.entryModalActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 0 0 24px;
+}
+
+.entryActionButton {
+  position: relative;
+  min-height: 190px;
+  display: block;
+  overflow: hidden;
+  padding: 22px 20px 20px;
+  border: 1px solid #eaebf2;
+  border-radius: 20px;
+  background: #ffffff;
+  color: #0f1222;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease;
+}
+
+.entryActionButton::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  padding: 1px;
+  background: linear-gradient(135deg, #7c5cff, #4f8bff);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  pointer-events: none;
+}
+
+.entryActionButton:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px -18px rgba(90, 60, 230, 0.35);
+}
+
+.entryActionButton:hover::before {
+  opacity: 1;
+}
+
+.entryActionButton:focus-visible {
+  outline: 2px solid #7c5cff;
+  outline-offset: 2px;
+}
+
+.entryActionPrimary {
+  background: linear-gradient(160deg, #f4f1ff 0%, #ffffff 55%);
+  border-color: #eaebf2;
+  box-shadow: none;
+  color: #0f1222;
+}
+
+.entryActionPrimary:hover {
+  background: linear-gradient(160deg, #efe9ff 0%, #ffffff 55%);
+  box-shadow: 0 18px 40px -18px rgba(90, 60, 230, 0.35);
+}
+
+.entryActionSecondary {
+  background: linear-gradient(160deg, #eef5ff 0%, #ffffff 55%);
+  border-color: #eaebf2;
+}
+
+.entryActionSecondary:hover {
+  background: linear-gradient(160deg, #e6f1ff 0%, #ffffff 55%);
+  border-color: #eaebf2;
+  box-shadow: 0 18px 40px -18px rgba(90, 60, 230, 0.35);
+}
+
+.entryActionArrow {
+  position: absolute;
+  top: 20px;
+  right: 18px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f5f4fb;
+  color: #767b8c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.entryActionButton:hover .entryActionArrow {
+  background: linear-gradient(135deg, #7c5cff, #4f8bff);
+  color: #ffffff;
+  transform: rotate(45deg);
+}
+
+.entryActionIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.entryActionIconViolet {
+  background: linear-gradient(135deg, #e8defe, #d8c8ff);
+  color: #6d3df5;
+}
+
+.entryActionIconBlue {
+  background: linear-gradient(135deg, #dceafe, #c6ddff);
+  color: #2e6ef0;
+}
+
+.entryActionLabel {
+  display: block;
+  margin-bottom: 8px;
+  color: #0f1222;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.entryActionHint {
+  display: block;
+  margin-bottom: 16px;
+  color: #767b8c;
+  font-size: 13px;
+  line-height: 1.5;
+  opacity: 1;
+}
+
+.entryActionPill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f1edff;
+  color: #5b3df0;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.entryModalFooter {
+  display: flex;
+  justify-content: center;
+  margin-top: 0;
+  padding-top: 14px;
+  border-top: 1px solid #eaebf2;
+}
+
+.entryDashboardButton {
+  padding: 10px 6px;
+  border: 0;
+  background: transparent;
+  color: #767b8c;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.entryDashboardButton:hover {
+  background: transparent;
+  color: #e0554a;
+}
+
+@media (max-width: 600px) {
+  .entryModalCard {
+    border-radius: 22px;
+    padding: 30px 24px 20px;
+  }
+
+  .entryModalActions {
+    grid-template-columns: 1fr;
+  }
+
+  .entryActionButton {
+    min-height: 164px;
+  }
+}
+
+/* Exact modal reference override */
+.entryModalOverlay {
+  place-items: center;
+  padding: 32px 16px;
+  background:
+    radial-gradient(1100px 500px at 15% -10%, #e3ddff 0%, transparent 55%),
+    radial-gradient(900px 500px at 100% 110%, #dbe8ff 0%, transparent 55%),
+    #f2f1f8;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.entryModalCard {
+  width: 700px;
+  max-width: calc(100vw - 112px);
+  min-height: 493px;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 30px 70px -30px rgba(30, 20, 80, 0.35);
+  padding: 48px 40px 28px;
+}
+
+.entryModalHeader {
+  margin-bottom: 18px;
+}
+
+.entryModalBadge {
+  color: #5b3df0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.entryModalBadge::before {
+  width: 6px;
+  height: 6px;
+  background: linear-gradient(135deg, #7c5cff, #4f8bff);
+}
+
+.entryModalTitle {
+  margin: 0 0 10px;
+  color: #0f1222;
+  font-size: 27px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.entryModalText {
+  max-width: 50ch;
+  margin: 0 0 28px;
+  color: #767b8c;
+  font-size: 14.5px;
+  line-height: 1.55;
+}
+
+.entryModalActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 0 0 24px;
+}
+
+.entryActionButton {
+  min-height: 190px;
+  border-radius: 20px;
+  border: 1px solid #eaebf2;
+  padding: 22px 20px 20px;
+}
+
+.entryActionPrimary {
+  background: linear-gradient(160deg, #f4f1ff 0%, #ffffff 55%);
+}
+
+.entryActionPrimary:hover {
+  background: linear-gradient(160deg, #efe9ff 0%, #ffffff 55%);
+}
+
+.entryActionSecondary {
+  background: linear-gradient(160deg, #eef5ff 0%, #ffffff 55%);
+}
+
+.entryActionSecondary:hover {
+  background: linear-gradient(160deg, #e6f1ff 0%, #ffffff 55%);
+}
+
+.entryActionArrow {
+  top: 20px;
+  right: 18px;
+  width: 28px;
+  height: 28px;
+  background: #f5f4fb;
+  color: #767b8c;
+}
+
+.entryActionIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  margin-bottom: 18px;
+}
+
+.entryActionIconViolet {
+  background: linear-gradient(135deg, #e8defe, #d8c8ff);
+  color: #6d3df5;
+}
+
+.entryActionIconBlue {
+  background: linear-gradient(135deg, #dceafe, #c6ddff);
+  color: #2e6ef0;
+}
+
+.entryActionLabel {
+  margin-bottom: 8px;
+  color: #0f1222;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.entryActionHint {
+  margin-bottom: 16px;
+  color: #767b8c;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.entryActionPill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f1edff;
+  color: #5b3df0;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.entryModalFooter {
+  margin-top: 0;
+  padding-top: 14px;
+  border-top: 1px solid #eaebf2;
+}
+
+.entryDashboardButton {
+  color: #767b8c;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.entryDashboardButton:hover {
+  color: #e0554a;
+}
+
+@media (max-width: 760px) {
+  .entryModalCard {
+    width: 100%;
+    max-width: calc(100vw - 32px);
+    min-height: auto;
+    padding: 30px 24px 20px;
+    border-radius: 22px;
+  }
+
+  .entryModalActions {
+    grid-template-columns: 1fr;
+  }
+}
+
 .appContainer {
   min-height: 100vh;
   background: var(--bg);
@@ -1022,5 +1881,274 @@
 
   .permisImportant {
     padding: 12px 14px;
+  }
+}
+
+/* Final modal reference lock: keep this block last so the old page styles cannot override it. */
+.entryModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: grid;
+  place-items: center;
+  padding: 32px 16px;
+  background:
+    radial-gradient(1100px 500px at 15% -10%, #e3ddff 0%, transparent 55%),
+    radial-gradient(900px 500px at 100% 110%, #dbe8ff 0%, transparent 55%),
+    #f2f1f8;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.entryModalCard {
+  width: 100%;
+  max-width: 700px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 30px 70px -30px rgba(30, 20, 80, 0.35);
+  padding: 40px 40px 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+.entryModalCard::before {
+  display: none;
+}
+
+.entryModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 18px;
+}
+
+.entryModalBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #5b3df0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.entryModalBadge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c5cff, #4f8bff);
+}
+
+.entryModalTitle {
+  margin: 0 0 8px;
+  color: #0f1222;
+  font-size: 27px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.entryModalText {
+  max-width: 50ch;
+  margin: 0 0 28px;
+  color: #767b8c;
+  font-size: 14.5px;
+  line-height: 1.55;
+}
+
+.entryModalActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 0 0 24px;
+}
+
+.entryActionButton {
+  position: relative;
+  width: 100%;
+  min-height: 190px;
+  display: block;
+  overflow: hidden;
+  padding: 22px 20px 20px;
+  border: 1px solid #eaebf2;
+  border-radius: 20px;
+  color: #0f1222;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease;
+}
+
+.entryActionButton::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  padding: 1px;
+  background: linear-gradient(135deg, #7c5cff, #4f8bff);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+
+.entryActionButton:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px -18px rgba(90, 60, 230, 0.35);
+}
+
+.entryActionButton:hover::before {
+  opacity: 1;
+}
+
+.entryActionButton:focus-visible {
+  outline: 2px solid #7c5cff;
+  outline-offset: 2px;
+}
+
+.entryActionPrimary {
+  background: linear-gradient(160deg, #f4f1ff 0%, #ffffff 55%);
+  border-color: #eaebf2;
+  box-shadow: none;
+}
+
+.entryActionPrimary:hover {
+  background: linear-gradient(160deg, #efe9ff 0%, #ffffff 55%);
+}
+
+.entryActionSecondary {
+  background: linear-gradient(160deg, #eef5ff 0%, #ffffff 55%);
+  border-color: #eaebf2;
+}
+
+.entryActionSecondary:hover {
+  background: linear-gradient(160deg, #e6f1ff 0%, #ffffff 55%);
+  border-color: #eaebf2;
+}
+
+.entryActionArrow {
+  position: absolute;
+  top: 20px;
+  right: 18px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f5f4fb;
+  color: #767b8c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.entryActionButton:hover .entryActionArrow {
+  background: linear-gradient(135deg, #7c5cff, #4f8bff);
+  color: #ffffff;
+  transform: rotate(45deg);
+}
+
+.entryActionIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.entryActionIconViolet {
+  background: linear-gradient(135deg, #e8defe, #d8c8ff);
+  color: #6d3df5;
+}
+
+.entryActionIconBlue {
+  background: linear-gradient(135deg, #dceafe, #c6ddff);
+  color: #2e6ef0;
+}
+
+.entryActionLabel {
+  display: block;
+  margin-bottom: 8px;
+  color: #0f1222;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.entryActionHint {
+  display: block;
+  margin-bottom: 16px;
+  color: #767b8c;
+  font-size: 13px;
+  line-height: 1.5;
+  opacity: 1;
+}
+
+.entryActionPill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f1edff;
+  color: #5b3df0;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.entryModalFooter {
+  display: flex;
+  justify-content: center;
+  margin-top: 0;
+  padding-top: 14px;
+  border-top: 1px solid #eaebf2;
+}
+
+.entryDashboardButton {
+  padding: 10px 6px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #767b8c;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.entryDashboardButton:hover {
+  background: transparent;
+  color: #e0554a;
+}
+
+@media (max-width: 600px) {
+  .entryModalCard {
+    padding: 30px 24px 20px;
+    border-radius: 22px;
+  }
+
+  .entryModalActions {
+    grid-template-columns: 1fr;
+  }
+
+  .entryActionButton {
+    min-height: 164px;
   }
 }

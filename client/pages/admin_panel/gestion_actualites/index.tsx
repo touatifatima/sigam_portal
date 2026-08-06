@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Navbar from "@/pages/navbar/Navbar";
 import Sidebar from "@/pages/sidebar/Sidebar";
+import { BrandLoader } from "@/components/loading/BrandLoader";
 import { useViewNavigator } from "@/src/hooks/useViewNavigator";
 import { useAuthStore } from "@/src/store/useAuthStore";
 import { isAdminRole } from "@/src/utils/roleNavigation";
@@ -375,11 +376,7 @@ export default function GestionActualitesPage() {
   };
 
   if (!isAuthLoaded) {
-    return (
-      <div className={styles.loadingState}>
-        <p>Chargement...</p>
-      </div>
-    );
+    return <BrandLoader fullScreen label="Chargement des actualites..." />;
   }
 
   if (!isAdmin) {

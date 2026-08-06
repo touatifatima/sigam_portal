@@ -2,9 +2,10 @@
 'use client';
 
 import styles from './RecentActivities.module.css';
-import { FiClock, FiFileText, FiActivity, FiTrendingUp, FiAlertTriangle, FiCheckCircle, FiRefreshCw } from 'react-icons/fi';
+import { FiClock, FiFileText, FiActivity, FiTrendingUp, FiAlertTriangle, FiRefreshCw } from 'react-icons/fi';
 import { format, differenceInDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
+
 export interface RecentActivity {
   id: number;
   type: 'permis' | 'demande' | 'modification' | 'expiration' | 'renouvellement';
@@ -36,18 +37,18 @@ export default function RecentActivities({ activities, loading = false, onRefres
 
   const getStatusColor = (status?: string) => {
     switch (status) {
-      case 'success': return '#10b981';
-      case 'warning': return '#f59e0b';
-      case 'error': return '#ef4444';
-      case 'info': return '#3b82f6';
-      default: return '#6b7280';
+      case 'success': return '#0f9f5d';
+      case 'warning': return '#c9971a';
+      case 'error': return '#e54861';
+      case 'info': return '#3267e3';
+      default: return '#c9971a';
     }
   };
 
   const formatTimeAgo = (date: Date) => {
     const now = new Date();
     const diffInDays = differenceInDays(now, date);
-    
+
     if (diffInDays === 0) return "Aujourd'hui";
     if (diffInDays === 1) return 'Hier';
     if (diffInDays < 7) return `Il y a ${diffInDays} jours`;
@@ -59,7 +60,7 @@ export default function RecentActivities({ activities, loading = false, onRefres
     return (
       <div className={styles.recentActivities}>
         <div className={styles.header}>
-          <h3>Activités Récentes</h3>
+          <h3>Activités récentes</h3>
           <div className={styles.loadingSpinner}>
             <FiRefreshCw className={styles.spinner} />
           </div>
@@ -76,7 +77,7 @@ export default function RecentActivities({ activities, loading = false, onRefres
   return (
     <div className={styles.recentActivities}>
       <div className={styles.header}>
-        <h3>Activités Récentes</h3>
+        <h3>Activités récentes</h3>
         <div className={styles.headerActions}>
           <span className={styles.badge}>{activities.length}</span>
           {onRefresh && (
@@ -86,7 +87,7 @@ export default function RecentActivities({ activities, loading = false, onRefres
           )}
         </div>
       </div>
-      
+
       <div className={styles.activitiesList}>
         {activities.map((activity, index) => (
           <div
@@ -96,15 +97,15 @@ export default function RecentActivities({ activities, loading = false, onRefres
             <div className={styles.activityIcon} style={{ color: getStatusColor(activity.status) }}>
               {getActivityIcon(activity.type)}
             </div>
-            
+
             <div className={styles.activityContent}>
               <div className={styles.activityHeader}>
                 <h4 className={styles.activityTitle}>{activity.title}</h4>
                 <span className={styles.activityTime}>{formatTimeAgo(activity.timestamp)}</span>
               </div>
-              
+
               <p className={styles.activityDescription}>{activity.description}</p>
-              
+
               {activity.code && (
                 <div className={styles.activityMeta}>
                   <span className={styles.activityCode}>{activity.code}</span>
@@ -114,12 +115,12 @@ export default function RecentActivities({ activities, loading = false, onRefres
                 </div>
               )}
             </div>
-            
+
             {index < activities.length - 1 && <div className={styles.activityDivider} />}
           </div>
         ))}
       </div>
-      
+
       {activities.length === 0 && !loading && (
         <div className={styles.emptyState}>
           <FiClock size={48} className={styles.emptyIcon} />

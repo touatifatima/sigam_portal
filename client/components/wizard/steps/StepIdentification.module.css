@@ -803,3 +803,180 @@ input[type='date'].input::-webkit-calendar-picker-indicator:hover {
     text-align: center;
   }
 }
+
+/* Modern GUNAM identification form overrides */
+.container {
+  gap: 1rem;
+}
+
+.card {
+  border: 1px solid #e6eaf1;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(20, 24, 31, 0.06), 0 2px 6px rgba(20, 24, 31, 0.04);
+}
+
+.card:hover {
+  transform: none;
+  box-shadow: 0 14px 32px rgba(20, 24, 31, 0.08);
+}
+
+.cardHeader {
+  padding: 1.25rem 1.35rem 1rem;
+  border-bottom: 1px solid #eef0f4;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(226, 179, 84, .12), transparent 34%),
+    linear-gradient(180deg, #ffffff 0%, #fffaf0 100%);
+}
+
+.cardTitle {
+  color: #14181f;
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+
+.cardIcon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 11px;
+  padding: 0.45rem;
+  color: #b8860f;
+  background: #fbf3e2;
+}
+
+.cardDescription {
+  color: #667085;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.cardContent {
+  padding: 1.35rem;
+}
+
+.formGrid {
+  gap: 1rem;
+}
+
+.fieldHelpWrap,
+.actionnairesIcon {
+  color: #b8860f;
+}
+
+.fieldHelpBubble {
+  background: rgba(20, 24, 31, 0.96);
+  box-shadow: 0 18px 40px rgba(20, 24, 31, 0.2);
+}
+
+.fieldHelpBubble::before {
+  background: rgba(20, 24, 31, 0.96);
+}
+
+.label {
+  color: #344054;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.input,
+.select {
+  min-height: 48px;
+  border: 1px solid #e6eaf1;
+  border-radius: 14px;
+  background: #fbfcfe;
+  color: #14181f;
+  font-size: 0.9rem;
+  font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8);
+}
+
+.input::placeholder {
+  color: #98a2b3;
+}
+
+.input:hover:not(:focus),
+.select:hover {
+  border-color: rgba(226, 179, 84, .52);
+  background: #ffffff;
+}
+
+.input:focus,
+.select:focus,
+.select:focus-visible,
+.select[data-state="open"] {
+  border-color: #e2b354;
+  box-shadow: 0 0 0 4px rgba(226, 179, 84, .16);
+  background: #ffffff;
+}
+
+.input:disabled,
+.select:disabled {
+  background: #f2f4f7;
+  color: #98a2b3;
+}
+
+.requiredMissingBadge {
+  border-color: rgba(226, 179, 84, .42);
+  background: #fbf3e2;
+  color: #9a6a08;
+}
+
+.requiredMissingText {
+  color: #667085;
+  font-weight: 700;
+}
+
+.portefeuilleToggle,
+.portefeuilleFieldCard,
+.actionnaireCard {
+  border-color: #e6eaf1;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+  box-shadow: 0 1px 2px rgba(20, 24, 31, .04);
+}
+
+.portefeuilleToggle:hover,
+.actionnaireCard:hover {
+  border-color: rgba(226, 179, 84, .46);
+  background: #ffffff;
+}
+
+.portefeuilleToggleTitle,
+.portefeuilleFieldTitle,
+.actionnairesTitle,
+.actionnaireNumber {
+  color: #14181f;
+  font-weight: 900;
+}
+
+.portefeuilleToggleHint,
+.portefeuilleFieldHint {
+  color: #667085;
+}
+
+.btnAddActionnaire {
+  border-radius: 999px;
+  background: #14181f;
+  box-shadow: 0 8px 18px rgba(20, 24, 31, .16);
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.btnAddActionnaire:hover {
+  box-shadow: 0 12px 24px rgba(20, 24, 31, .2);
+}
+
+.actionnaireNumber::before {
+  background: #e2b354;
+}
+
+.btnRemoveActionnaire {
+  border-color: rgba(239, 68, 68, .18);
+  background: #fff7f7;
+}
+
+.participationAlert {
+  border-radius: 16px;
+  border: 1px solid #e6eaf1;
+}
