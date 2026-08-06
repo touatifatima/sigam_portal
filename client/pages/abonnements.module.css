@@ -1,0 +1,38 @@
+.page {
+  min-height: 100vh;
+}
+
+.hero {
+  padding: 9.5rem 1.5rem 4rem;
+  text-align: center;
+  background:
+    radial-gradient(120% 160% at 14% 0%, rgba(177, 70, 128, 0.28), transparent 55%),
+    radial-gradient(100% 140% at 88% 10%, rgba(15, 34, 49, 0.32), transparent 55%),
+    linear-gradient(180deg, #15101a 0%, #211523 55%, #2a1826 100%);
+}
+
+.heroLabel {
+  display: inline-block;
+  color: #e79ac0;
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  margin-bottom: 1rem;
+}
+
+.heroTitle {
+  margin: 0 0 0.9rem;
+  font-size: clamp(1.9rem, 1.4rem + 2vw, 2.9rem);
+  font-weight: 800;
+  line-height: 1.15;
+  color: #ffffff;
+}
+
+.heroSubtitle {
+  margin: 0 auto;
+  max-width: 42rem;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 1.02rem;
+  line-height: 1.7;
+}

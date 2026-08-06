@@ -1,5 +1,5 @@
 'use client';
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { memo, useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { FiPlus, FiTrash2, FiCheckCircle, FiAlertTriangle, FiMapPin, FiEdit2, FiRefreshCw, FiChevronLeft, FiDownload, FiUpload, FiChevronRight, FiLayers, FiArrowUp, FiArrowDown } from 'react-icons/fi';
 import * as turf from '@turf/turf';
 import styles from './cadastre5.module.css';
@@ -38,7 +38,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-const ArcGISMap = dynamic(() => import('@/components/arcgismap/ArcgisMap'), { ssr: false });
+const ArcGISMap = memo(dynamic(() => import('@/components/arcgismap/ArcgisMap'), { ssr: false }));
 
 const CADASTRE_ONBOARDING_STEPS: OnboardingStep[] = [
   {
@@ -250,6 +250,26 @@ export default function CadastrePage() {
 	  const [existingPolygons, setExistingPolygons] = useState<ExistingPolygon[]>([]);
   const [showFuseaux, setShowFuseaux] = useState(false);
   const [showLegend, setShowLegend] = useState(true);
+  const [isMapReadyToMount, setIsMapReadyToMount] = useState(false);
+  const [mapPoints, setMapPoints] = useState<Point[]>([]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const idle = (window as any).requestIdleCallback;
+    if (typeof idle === 'function') {
+      const id = idle(() => setIsMapReadyToMount(true), { timeout: 900 });
+      return () => (window as any).cancelIdleCallback?.(id);
+    }
+    const timer = window.setTimeout(() => setIsMapReadyToMount(true), 350);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setMapPoints(points);
+    }, 220);
+    return () => window.clearTimeout(timer);
+  }, [points]);
 
   useEffect(() => {
     let attempts = 0;
@@ -879,7 +899,8 @@ export default function CadastrePage() {
   const fallbackPhases: Phase[] = procedureData?.ProcedurePhase
     ? procedureData.ProcedurePhase.slice().sort((a: ProcedurePhase, b: ProcedurePhase) => a.ordre - b.ordre).map((pp: ProcedurePhase) => ({ ...pp.phase, ordre: pp.ordre }))
     : [];
-  const phases: Phase[] = stepperPhases.length > 0 ? stepperPhases : fallbackPhases;
+  const phases: Phase[] =
+    stepperPhases.length >= fallbackPhases.length ? stepperPhases : fallbackPhases;
 
   const etapeIdForThisPage = useMemo(() => {
     if (etapeIdForRoute) return etapeIdForRoute;
@@ -1667,10 +1688,16 @@ const handleMapClick = useCallback((x: number, y: number) => {
   const perimeterReady = points.length >= 3 && allFilled && hasUniqueCoords && isPolygonValid;
   const pointsStatusLabel =
     points.length < 3
-      ? `${points.length} points saisis � Polygone incomplet`
+      ? `${points.length} points saisis`
       : hasValidatedPerimeter
-        ? `${points.length} points saisis � Périmètre validé`
-        : `${points.length} points saisis � Validation requise`;
+        ? `${points.length} points saisis`
+        : `${points.length} points saisis`;
+  const pointsStatusState =
+    points.length < 3
+      ? 'Polygone incomplet'
+      : hasValidatedPerimeter
+        ? 'Périmètre validé'
+        : 'Validation requise';
   const shouldDisableNext =
     isLoading || savingEtape || !perimeterReady || hasBlockingOverlap;
 
@@ -1707,10 +1734,13 @@ const handleMapClick = useCallback((x: number, y: number) => {
         <div className={styles['app-content']}>
           <Sidebar currentView={currentView} navigateTo={navigateTo} />
           <main className={styles['main-content']}>
+            <div className={styles['page-shell']}>
             <div className={styles['breadcrumb']}>
               <span>GUNAM</span>
               <FiChevronRight className={styles['breadcrumb-arrow']} />
-              <span>Cadastre</span>
+              <span>Nouvelle demande</span>
+              <FiChevronRight className={styles['breadcrumb-arrow']} />
+              <span>{'P\u00e9rim\u00e8tre cadastral'}</span>
             </div>
             <div className={styles['content-wrapper']}>
               {procedureData && (
@@ -1726,14 +1756,11 @@ const handleMapClick = useCallback((x: number, y: number) => {
 
               <div className={styles.cadastreHeader}>
                 <div className={styles.cadastreTitle}>
-                  <span className={styles.cadastreTitleIcon}>
-                    <FiMapPin />
-                  </span>
                   <div>
-                    <h1>Saisissez votre périmètre</h1>
+                    <span className={styles.pageEyebrow}>{'\u00c9tape 5'}</span>
+                    <h1>{'P\u00e9rim\u00e8tre cadastral'}</h1>
                     <p>
-                      Ajoutez les coordonnées des sommets de votre zone minière. Le polygone et les vérifications
-                      s&apos;affichent en temps réel.
+                      {'Contr\u00f4lez les coordonn\u00e9es du p\u00e9rim\u00e8tre, visualisez la zone sur la carte et v\u00e9rifiez les chevauchements avant de continuer.'}
                     </p>
                   </div>
                 </div>
@@ -1742,14 +1769,17 @@ const handleMapClick = useCallback((x: number, y: number) => {
               <div className={styles.cadastreGrid}>
                 <aside className={styles.pointsPanel} data-onboarding-id="cadastre-points-panel">
                   <div className={styles.pointsHeader}>
+                    <div className={styles.sectionIcon}>
+                      <FiMapPin />
+                    </div>
                     <div>
-                      <h3>Coordonnées des sommets</h3>
-                      <p>Système UTM Nord Sahara à Minimum 3 points</p>
+                      <h3>{'Coordonn\u00e9es des sommets'}</h3>
+                      <p>{'Syst\u00e8me UTM Nord Sahara - minimum 3 points'}</p>
                     </div>
                   </div>
 
                   <div className={styles.systemSelect}>
-                    <label>Système</label>
+                    <label>{'Syst\u00e8me'}</label>
                     <Select value={coordinateSystem} onValueChange={(value) => handleCoordinateSystemChange(value as CoordinateSystem)}>
                       <SelectTrigger className={styles.systemTrigger}>
                         <SelectValue placeholder="Nord Sahara UTM" />
@@ -1763,36 +1793,25 @@ const handleMapClick = useCallback((x: number, y: number) => {
                   <div className={styles.pointsList}>
                     {points.map((point, index) => (
                       <div className={styles.pointRow} key={point.id}>
-                        <div className={styles.pointBadge}>{String.fromCharCode(65 + index)}</div>
-                        <Input
-                          type="number"
-                          placeholder="X (E)"
-                          value={Number.isFinite(point.x) ? String(point.x) : ''}
-                          onChange={(e) => handleChange(point.id, 'x', e.target.value)}
-                          disabled={false}
-                        />
-                        <Input
-                          type="number"
-                          placeholder="Y (N)"
-                          value={Number.isFinite(point.y) ? String(point.y) : ''}
-                          onChange={(e) => handleChange(point.id, 'y', e.target.value)}
-                          disabled={false}
-                        />
-                        <Select
-                          value={String(Number.isFinite(point.zone ?? utmZone) ? point.zone ?? utmZone : utmZone)}
-                          onValueChange={(value) => handleChange(point.id, 'zone', value)}
-                        >
-                          <SelectTrigger className={styles.zoneSelect}>
-                            <SelectValue placeholder="Fuseau" />
-                          </SelectTrigger>
-                          <SelectContent className={styles.selectContent}>
-                            {[29, 30, 31, 32].map((zone) => (
-                              <SelectItem className={styles.selectItem} key={zone} value={String(zone)}>
-                                F{zone}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className={styles.pointBadge}>{index + 1}</div>
+                        <div className={styles.pointCoords}>
+                          <span>X</span>
+                          <Input
+                            type="number"
+                            placeholder="512430"
+                            value={Number.isFinite(point.x) ? String(point.x) : ''}
+                            onChange={(e) => handleChange(point.id, 'x', e.target.value)}
+                            disabled={false}
+                          />
+                          <span>Y</span>
+                          <Input
+                            type="number"
+                            placeholder="3402118"
+                            value={Number.isFinite(point.y) ? String(point.y) : ''}
+                            onChange={(e) => handleChange(point.id, 'y', e.target.value)}
+                            disabled={false}
+                          />
+                        </div>
                         <button
                           type="button"
                           className={styles.pointDelete}
@@ -1806,67 +1825,84 @@ const handleMapClick = useCallback((x: number, y: number) => {
                     ))}
                   </div>
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={styles.addPointBtn}
-                    onClick={() => addPoint()}
-                    disabled={false}
-                  >
-                    <FiPlus />
-                    Ajouter un point
-                  </Button>
+                  <div className={styles.panelActions}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={styles.addPointBtn}
+                      onClick={() => addPoint()}
+                      disabled={false}
+                    >
+                      <FiPlus />
+                      Ajouter un point
+                    </Button>
 
-                  <input
-                    ref={excelInputRef}
-                    type="file"
-                    accept=".xlsx,.xls"
-                    onChange={handleExcelFile}
-                    className={styles.hiddenInput}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={styles.importExcelBtn}
-                    onClick={handleExcelPick}
-                  >
-                    <FiUpload />
-                    Importer fichier Excel
-                  </Button>
-                  <button
-                    type="button"
-                    className={styles.templateLink}
-                    onClick={handleDownloadTemplate}
-                  >
-                    Télécharger un modèle Excel
-                  </button>
+                    <input
+                      ref={excelInputRef}
+                      type="file"
+                      accept=".xlsx,.xls"
+                      onChange={handleExcelFile}
+                      className={styles.hiddenInput}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={styles.importExcelBtn}
+                      onClick={handleExcelPick}
+                    >
+                      <FiUpload />
+                      Importer Excel
+                    </Button>
+                    <button
+                      type="button"
+                      className={styles.templateLink}
+                      onClick={handleDownloadTemplate}
+                    >
+                      <FiDownload />
+                      {'Mod\u00e8le Excel'}
+                    </button>
+                  </div>
 
                   <div className={styles.areaCard} data-onboarding-id="cadastre-overlap-check">
-                    <span>Superficie calculée</span>
+                    <span>{'Superficie calcul\u00e9e'}</span>
                     <strong>{Number.isFinite(superficie) ? superficie.toFixed(2) : '0.00'} ha</strong>
                   </div>
 
+                  <span
+                    className={`${styles.pointsStatus} ${
+                      points.length < 3
+                        ? styles.pointsStatusWarning
+                        : hasValidatedPerimeter
+                          ? styles.pointsStatusSuccess
+                          : styles.pointsStatusPending
+                    }`}
+                  >
+                    <FiMapPin />
+                    <strong>{pointsStatusLabel}</strong>
+                    <em>{pointsStatusState}</em>
+                  </span>
+
                                     {!perimeterReady && (
                     <Alert className={styles.helperAlert}>
-                      <AlertTitle>En attente de verification</AlertTitle>
+                      <AlertTitle>{'En attente de v\u00e9rification'}</AlertTitle>
                       <AlertDescription>
-                        Ajoutez au moins 3 points pour former un polygone et lancer la verification automatique.
+                        { 'Ajoutez au moins 3 points pour former un polygone et lancer la v\u00e9rification automatique.' }
                       </AlertDescription>
                     </Alert>
                   )}
 
                   {perimeterReady && isCheckingOverlaps && (
                     <Alert className={styles.helperAlert}>
-                      <AlertTitle>Verification en cours</AlertTitle>
+                      <AlertTitle>{'V\u00e9rification en cours'}</AlertTitle>
                       <AlertDescription>
-                        Analyse automatique du perimetre en cours...
+                        { 'Analyse automatique du p\u00e9rim\u00e8tre en cours...' }
                       </AlertDescription>
                     </Alert>
                   )}
 
                   {perimeterReady && !isCheckingOverlaps && hasBlockingOverlap && (
                     <Alert variant="destructive" className={styles.helperAlert}>
-                      <AlertTitle>Desole, chevauchement detecte</AlertTitle>
+                      <AlertTitle>{'D\u00e9sol\u00e9, chevauchement d\u00e9tect\u00e9'}</AlertTitle>
                       <AlertDescription>
                         Impossible de faire cette demande car il y a un chevauchement avec un titre existant ou une zone
                         interdite.
@@ -1885,17 +1921,18 @@ const handleMapClick = useCallback((x: number, y: number) => {
                     <Alert className={styles.warningAlert}>
                       <AlertTitle>Attention</AlertTitle>
                       <AlertDescription>
-                        Chevauchement avec des demandes existantes : {overlapPermits.join(', ')}. Vous pouvez continuer,
-                        une decision de priorite sera prise plus tard.
+                        {'Chevauchement avec des demandes existantes : '}
+                        {overlapPermits.join(', ')}
+                        {'. Vous pouvez continuer, une d\u00e9cision de priorit\u00e9 sera prise plus tard.'}
                       </AlertDescription>
                     </Alert>
                   )}
 
                   {perimeterReady && !isCheckingOverlaps && overlapChecked && !hasBlockingOverlap && !hasWarningOverlap && (
                     <Alert className={styles.successAlert}>
-                      <AlertTitle>Aucun chevauchement detecte</AlertTitle>
+                      <AlertTitle>{'Aucun chevauchement d\u00e9tect\u00e9'}</AlertTitle>
                       <AlertDescription>
-                        Votre perimetre est libre. Vous pouvez continuer.
+                        { 'Votre p\u00e9rim\u00e8tre est libre. Vous pouvez continuer.' }
                       </AlertDescription>
                     </Alert>
                   )}
@@ -1904,41 +1941,52 @@ const handleMapClick = useCallback((x: number, y: number) => {
 
                 <section className={styles.mapPanel} data-onboarding-id="cadastre-map">
                   <div className={styles.mapHeader}>
-                    <h3>Visualisation du périmètre</h3>
-                  </div>
-
-                  <div className={styles.mapCanvas}>
-
+                    <div className={styles.mapHeaderTitle}>
+                      <div className={styles.sectionIcon}>
+                        <FiLayers />
+                      </div>
+                      <h3>{'Visualisation du p\u00e9rim\u00e8tre'}</h3>
+                    </div>
                     <button
                       type="button"
                       className={styles.legendToggle}
                       onClick={() => setShowLegend((prev) => !prev)}
                     >
-                      {showLegend ? 'Masquer légende' : 'Afficher la légende'}
+                      {showLegend ? 'Masquer la l\u00e9gende' : 'Afficher la l\u00e9gende'}
                     </button>
-                    <ArcGISMap
-                      key={`map-${coordSource}`}
-                      ref={mapRef}
-                      points={points}
-                      superficie={superficie}
-                      isDrawing={false}
-                      onMapClick={handleMapClick}
-                      onTitreSelected={handleTitreSelected}
-                      showFuseaux={showFuseaux}
-                      existingPolygons={existingPolygons}
-                      selectedExistingProcId={selectedHistoryProcId}
-                      coordinateSystem={coordinateSystem}
-                      utmZone={utmZone}
-                      utmHemisphere={utmHemisphere}
-                      overlapTitles={miningTitleOverlaps}
-                      enableSelectionTools
-                    />
+                  </div>
+
+                  <div className={styles.mapCanvas}>
+                    {isMapReadyToMount ? (
+                      <ArcGISMap
+                        key={`map-${coordSource}`}
+                        ref={mapRef}
+                        points={mapPoints}
+                        superficie={superficie}
+                        isDrawing={false}
+                        onMapClick={handleMapClick}
+                        onTitreSelected={handleTitreSelected}
+                        showFuseaux={showFuseaux}
+                        existingPolygons={existingPolygons}
+                        selectedExistingProcId={selectedHistoryProcId}
+                        coordinateSystem={coordinateSystem}
+                        utmZone={utmZone}
+                        utmHemisphere={utmHemisphere}
+                        overlapTitles={miningTitleOverlaps}
+                        enableSelectionTools
+                      />
+                    ) : (
+                      <div className={styles.mapLoadingShell}>
+                        <FiLayers />
+                        <strong>Chargement de la carte</strong>
+                      </div>
+                    )}
                     {showLegend && (
                       <div className={styles.mapLegend}>
-                        <h4>Légende</h4>
+                        <h4>{'L\u00e9gende'}</h4>
                         <ul>
                           <li>
-                            <span className={styles.legendSwatchPrimary}></span> Votre périmètre
+                            <span className={styles.legendSwatchPrimary}></span> {'Votre p\u00e9rim\u00e8tre'}
                           </li>
                           <li>
                             <span className={styles.legendSwatchTitles}></span> Titres existants
@@ -1957,7 +2005,6 @@ const handleMapClick = useCallback((x: number, y: number) => {
               </div>
 
               <div className={styles.bottomBar}>
-                <span className={styles.pointsStatus}>{pointsStatusLabel}</span>
                 <div className={styles['navigation-buttons']}>
                   <button
                     className={`${styles['btn']} ${styles['btn-outline']}`}
@@ -1965,7 +2012,7 @@ const handleMapClick = useCallback((x: number, y: number) => {
                     disabled={isLoading}
                   >
                     <FiChevronLeft className={styles['btn-icon']} />
-                    Précédent
+                    {'Pr\u00e9c\u00e9dent'}
                   </button>
                   <button
                     className={`${styles['btn']} ${styles['btn-primary']}`}
@@ -1981,6 +2028,7 @@ const handleMapClick = useCallback((x: number, y: number) => {
 
               {success && <div className={`${styles['etapeMessage']} ${styles['success']}`}>{success}</div>}
               {error && <div className={`${styles['etapeMessage']} ${styles['error']}`}>{error}</div>}
+            </div>
             </div>
           </main>
           <OnboardingTour
@@ -2147,7 +2195,7 @@ const handleMapClick = useCallback((x: number, y: number) => {
                       <ArcGISMap
                         key={`map-${coordSource}`}
                         ref={mapRef}
-                        points={points}
+                        points={mapPoints}
                         superficie={superficie}
                         isDrawing={isDrawing}
                         onMapClick={handleMapClick}
@@ -2765,7 +2813,7 @@ const handleMapClick = useCallback((x: number, y: number) => {
                   <div className={`${styles['navigation-buttons']} ${styles['top-buttons']}`}>
                     <button className={`${styles['btn']} ${styles['btn-outline']}`} onClick={handleBack}>
                       <FiChevronLeft className={styles['btn-icon']} />
-                      Précédent
+                    {'Pr\u00e9c\u00e9dent'}
                     </button>
                     <button
                       className={`${styles['btn']} ${styles['btn-primary']}`}
@@ -2876,7 +2924,7 @@ const handleMapClick = useCallback((x: number, y: number) => {
               <div className={styles['mapFullscreenBody']}>
                 <ArcGISMap
                   ref={isMapFullscreen ? mapRef : null}
-                  points={points}
+                  points={mapPoints}
                   superficie={superficie}
                   isDrawing={false}
                   overlapTitles={miningTitleOverlaps}

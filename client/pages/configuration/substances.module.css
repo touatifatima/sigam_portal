@@ -23,7 +23,7 @@
   color: #1e293b;
   font-size: 1.5rem;
   font-weight: 600;
-   background: linear-gradient(135deg, #8b3a62, #a84968);
+   background: linear-gradient(135deg, #d29a0e, #efbd3f);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -47,8 +47,8 @@
 
 .searchBar input:focus {
   outline: none;
-  border-color: #8b3a62;
-  box-shadow: 0 0 0 3px rgba(139, 58, 98, 0.2);
+  border-color: #d29a0e;
+  box-shadow: 0 0 0 3px rgba(210, 154, 14, 0.22);
 }
 
 .searchIcon {
@@ -80,12 +80,12 @@
 }
 
 .tab:hover {
-  color: #8b3a62;
+  color: #d29a0e;
   background-color: #f8fafc;
 }
 
 .tab.active {
-  color: #8b3a62;
+  color: #d29a0e;
   font-weight: 600;
 }
 
@@ -96,7 +96,7 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, #8b3a62 0%, #a84968 100%);
+  background: linear-gradient(90deg, #d29a0e 0%, #efbd3f 100%);
   border-radius: 2px 2px 0 0;
 }
 
@@ -114,19 +114,19 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.25rem;
-  background: linear-gradient(135deg, #8b3a62 0%, #a84968 100%);
+  background: linear-gradient(135deg, #d29a0e 0%, #efbd3f 100%);
   color: white;
   border: none;
   border-radius: 8px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 4px rgba(139, 58, 98, 0.2);
+  box-shadow: 0 2px 4px rgba(210, 154, 14, 0.22);
 }
 
 .addButton:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(139, 58, 98, 0.3);
+  box-shadow: 0 4px 8px rgba(210, 154, 14, 0.3);
 }
 
 .content {
@@ -135,8 +135,8 @@
   overflow-y: auto;
   background-color: #f8fafc;
   background-image: 
-    radial-gradient(at top right, rgba(139, 58, 98, 0.03) 0%, transparent 50%),
-    radial-gradient(at bottom left, rgba(139, 58, 98, 0.03) 0%, transparent 50%);
+    radial-gradient(at top right, rgba(210, 154, 14, 0.05) 0%, transparent 50%),
+    radial-gradient(at bottom left, rgba(210, 154, 14, 0.05) 0%, transparent 50%);
 }
 
 .tableContainer {
@@ -433,7 +433,7 @@
 }
 
 .saveButton {
- background: linear-gradient(135deg, #8b3a62, #a84968);
+ background: linear-gradient(135deg, #d29a0e, #efbd3f);
   color: white;
   border: none;
   box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);

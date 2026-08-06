@@ -11,21 +11,25 @@ import {
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
+  Camera,
   CheckCircle2,
+  ChevronDown,
   Download,
+  Eye,
   FileText,
-  LayoutDashboard,
+  ImagePlus,
   Mail,
   MapPinned,
   Phone,
-  QrCode,
   ScanLine,
   ShieldCheck,
   Sparkles,
+  Trash2,
   Upload,
-  type LucideIcon,
+  X,
 } from "lucide-react";
 import { InvestorLayout } from "@/components/investor/InvestorLayout";
+import ProgressStepper from "@/components/ProgressStepper";
 import { useAuthReady } from "@/src/hooks/useAuthReady";
 import { useAuthStore } from "@/src/store/useAuthStore";
 import {
@@ -35,11 +39,24 @@ import {
 import { toast } from "react-toastify";
 import styles from "./DemandeDocumentCadastrale.module.css";
 
-const apiURL = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
+const apiURL = (
+  process.env.NEXT_PUBLIC_API_URL ||
+  (import.meta as any)?.env?.VITE_API_URL ||
+  "http://localhost:3016"
+).replace(/\/+$/, "");
 const buildApiUrl = (path: string) => `${apiURL}${path}`;
 
-type VerificationMode = string;
+type VerificationMode = "phone" | "email";
 type StepNumber = 1 | 2 | 3;
+type DocumentId = "extrait" | "plan";
+type TitleVerificationState = "idle" | "checking" | "valid" | "invalid";
+type ContactVerificationState = "idle" | "checking" | "valid" | "invalid";
+type PreviewModalState = {
+  url: string;
+  title: string;
+  fileName: string;
+  mimeType: string;
+} | null;
 
 type RequestForm = {
   qrCode: string;
@@ -66,9 +83,6 @@ type CadastreRequestResponse = {
     statut?: string;
     otpVerifiedAt?: string | null;
     piecesJointes?: Array<{ typePiece: string; fichierUrl: string }>;
-    accuseReceptionPdfUrl?: string | null;
-    accuseReceptionPdfFilename?: string | null;
-    accuseReceptionGeneratedAt?: string | null;
   };
 };
 
@@ -81,114 +95,176 @@ type UploadResponse = {
   };
 };
 
-type WorkflowDocumentReference = {
-  id: number;
-  code: string;
-  label: string;
-  subtitle?: string | null;
-  description?: string | null;
-  iconKey?: string | null;
-  accentKey?: string | null;
-  isDefault?: boolean;
-  sortOrder?: number;
-};
-
-type WorkflowVerificationReference = {
-  id: number;
-  code: string;
-  label: string;
-  description?: string | null;
-  iconKey?: string | null;
-  isDefault?: boolean;
-  sortOrder?: number;
-};
-
-type WorkflowReferencePayload = {
-  documents: WorkflowDocumentReference[];
-  verificationChannels: WorkflowVerificationReference[];
-};
-
-type ContactValidationResponse = {
-  valid: boolean;
-  message: string;
-  qualiteDemandeur: string;
-  canalVerification: "EMAIL" | "TELEPHONE";
-  expectedContact: string | null;
-  actualContact: string;
-  targetLabel: string;
-  permisId: number | null;
-  permisCode: string | null;
-};
-
 type DocumentOption = {
-  code: string;
+  id: DocumentId;
   title: string;
   subtitle: string;
   description: string;
   tags: string[];
-  icon: LucideIcon;
+  icon: typeof FileText;
   accent: "green" | "teal";
-  isDefault: boolean;
 };
 
-type VerificationOption = {
-  code: string;
-  label: string;
-  description: string;
-  icon: LucideIcon;
-  isDefault: boolean;
-  iconKey?: string | null;
-};
+const DOCUMENT_OPTIONS: DocumentOption[] = [
+  {
+    id: "extrait",
+    title: "Extrait cadastral officiel",
+    subtitle: "Document d'identification juridique du titre",
+    description:
+      "Fiche officielle avec les informations du titre, du titulaire et des elements necessaires au suivi cadastral.",
+    tags: ["PDF", "A4", "QR de verification"],
+    icon: FileText,
+    accent: "green",
+  },
+  {
+    id: "plan",
+    title: "Plan cadastral officiel",
+    subtitle: "Representation cartographique du perimetre",
+    description:
+      "Plan de reference avec les limites, sommets, points de controle et la lecture cartographique du titre.",
+    tags: ["PDF", "A4 paysage", "Coordonnees"],
+    icon: MapPinned,
+    accent: "teal",
+  },
+];
 
-type TypePermisOption = {
-  id: number;
-  code_type?: string | null;
-  lib_type?: string | null;
-};
+const TYPE_PERMIS_OPTIONS = [
+  "Permis de prospection",
+  "Permis d'exploration",
+  "Permis d'exploitation",
+  "Permis de recherche carriere",
+  "Permis d'exploitation carriere",
+  "Autorisation artisanale carriere",
+  "Permis de ramassage",
+  "Permis de transport",
+  "Permis d'Exploitation Carriere PXC",
+  "Autorisation de prospection de mines - APM",
+  "Titre d'exploration de mines - TEM",
+  "Titre d'exploration de carrieres - TEC",
+  "Autorisation d'exploitation artisanale de mines - AAM",
+  "Autorisation d'exploitation artisanale de carrieres - AAC",
+  "Titre d'exploitation de mines - TXM",
+  "Permis d'exploitation de petite ou moyenne exploitation miniere PM",
+  "Titre d'exploitation de carrieres - TXC",
+];
 
-const DOCUMENT_TAGS_BY_CODE: Record<string, string[]> = {
-  EXTRAIT_CERTIFIE_CONFORME: ["PDF", "A4", "QR de verification"],
-  PLAN_CADASTRAL_OFFICIEL: ["PDF", "A4 paysage", "Coordonnees"],
-};
+const QUALITE_DEMANDEUR_OPTIONS = [
+  "Titulaire du titre minier",
+  "Representant legal",
+  "Mandataire",
+  "Administration / organisme public",
+];
 
-const DOCUMENT_ICON_BY_KEY: Record<string, LucideIcon> = {
-  "file-text": FileText,
-  filetext: FileText,
-  extrait: FileText,
-  "map-pinned": MapPinned,
-  mappinned: MapPinned,
-  plan: MapPinned,
-};
-
-const DOCUMENT_ACCENT_BY_KEY: Record<string, "green" | "teal"> = {
-  green: "green",
-  teal: "teal",
-};
-
-const VERIFICATION_ICON_BY_KEY: Record<string, LucideIcon> = {
-  phone: Phone,
-  mobile: Phone,
-  tel: Phone,
-  email: Mail,
-  mail: Mail,
-};
+const OBJET_DEMANDE_OPTIONS = [
+  "Constitution de dossier administratif",
+  "Transaction ou cession de droits miniers",
+  "Contentieux ou procedure judiciaire",
+  "Financement / garantie bancaire",
+  "Controle et suivi reglementaire",
+];
 
 const DEFAULT_FORM: RequestForm = {
-  qrCode: "",
-  codePermis: "",
-  titulaire: "",
-  numeroRc: "",
-  typePermis: "",
-  nin: "",
-  nom: "",
-  prenom: "",
-  numeroPiece: "",
-  emailContact: "",
-  telephoneContact: "",
-  qualiteDemandeur: "",
-  objetDemande: "",
-  baseCommunication: "",
+  qrCode: "QR-PEM48-2026-0317",
+  codePermis: "PEM/48/2026/0317",
+  titulaire: "SARL AURIFERE DU SUD MINES",
+  numeroRc: "16/00-1234567 B 24",
+  typePermis: "Permis d'exploitation",
+  nin: "118420056398",
+  nom: "Kerrouche",
+  prenom: "Boualem",
+  numeroPiece: "118420056398",
+  emailContact: "b.kerrouche@cadastre-demo.dz",
+  telephoneContact: "+213 555 12 34 89",
+  qualiteDemandeur: "Representant legal",
+  objetDemande: "Constitution de dossier administratif",
+  baseCommunication:
+    "Demande introduite dans le cadre de la verification et de la constitution du dossier cadastral.",
 };
+
+function StyledSelect({
+  value,
+  options,
+  onChange,
+  disabled = false,
+  placeholder = "Selectionner",
+}: {
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div
+      ref={rootRef}
+      className={[
+        styles.customSelect,
+        open ? styles.customSelectOpen : "",
+        disabled ? styles.customSelectDisabled : "",
+      ].join(" ")}
+    >
+      <button
+        type="button"
+        className={styles.customSelectButton}
+        onClick={() => !disabled && setOpen((current) => !current)}
+        disabled={disabled}
+        aria-expanded={open}
+      >
+        <span>{value || placeholder}</span>
+        <ChevronDown size={18} className={styles.customSelectChevron} />
+      </button>
+
+      {open ? (
+        <div className={styles.customSelectMenu}>
+          {options.map((option) => {
+            const active = option === value;
+            return (
+              <button
+                key={option}
+                type="button"
+                className={[
+                  styles.customSelectOption,
+                  active ? styles.customSelectOptionActive : "",
+                ].join(" ")}
+                onClick={() => {
+                  onChange(option);
+                  setOpen(false);
+                }}
+              >
+                <span>{option}</span>
+                {active ? <CheckCircle2 size={16} /> : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 const OTP_LENGTH = 6;
 
@@ -198,7 +274,7 @@ export default function DemandeDocumentCadastralePage() {
   const isAuthReady = useAuthReady();
 
   const [currentStep, setCurrentStep] = useState<StepNumber>(1);
-  const [verificationMode, setVerificationMode] = useState<VerificationMode>("");
+  const [verificationMode, setVerificationMode] = useState<VerificationMode>("phone");
   const [form, setForm] = useState<RequestForm>(DEFAULT_FORM);
   const [requestId, setRequestId] = useState<number | null>(null);
   const [requestReference, setRequestReference] = useState<string>("CDC-EN-ATTENTE");
@@ -208,84 +284,38 @@ export default function DemandeDocumentCadastralePage() {
   const [identityFile, setIdentityFile] = useState<File | null>(null);
   const [qrFileName, setQrFileName] = useState<string>("Aucun fichier");
   const [identityFileName, setIdentityFileName] = useState<string>("Aucun fichier");
+  const [qrPreviewUrl, setQrPreviewUrl] = useState<string | null>(null);
+  const [identityPreviewUrl, setIdentityPreviewUrl] = useState<string | null>(null);
+  const [previewModal, setPreviewModal] = useState<PreviewModalState>(null);
+  const [qrScanChoiceOpen, setQrScanChoiceOpen] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
   const [networkError, setNetworkError] = useState<string | null>(null);
+  const [titleVerification, setTitleVerification] = useState<TitleVerificationState>("idle");
+  const [titleVerificationMessage, setTitleVerificationMessage] = useState<string>(
+    "Verifiez que le QR, le code permis et le type correspondent au meme titre.",
+  );
+  const [contactVerification, setContactVerification] = useState<ContactVerificationState>("idle");
+  const [contactVerificationMessage, setContactVerificationMessage] = useState<string>(
+    "Verifiez que le contact correspond au detenteur moral du permis.",
+  );
   const [step1Busy, setStep1Busy] = useState(false);
   const [step2Busy, setStep2Busy] = useState(false);
   const [step3Busy, setStep3Busy] = useState(false);
   const [attachmentsUploaded, setAttachmentsUploaded] = useState(false);
   const [generatedRequestMessage, setGeneratedRequestMessage] = useState<string | null>(null);
   const [otpDigits, setOtpDigits] = useState<string[]>(Array.from({ length: OTP_LENGTH }, () => ""));
-  const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
-  const [typePermisOptions, setTypePermisOptions] = useState<TypePermisOption[]>([]);
-  const [typePermisLoading, setTypePermisLoading] = useState(false);
-  const [typePermisError, setTypePermisError] = useState<string | null>(null);
-  const [documentOptions, setDocumentOptions] = useState<WorkflowDocumentReference[]>([]);
-  const [verificationOptions, setVerificationOptions] = useState<WorkflowVerificationReference[]>([]);
-  const [workflowOptionsLoading, setWorkflowOptionsLoading] = useState(false);
-  const [workflowOptionsError, setWorkflowOptionsError] = useState<string | null>(null);
-  const [contactValidation, setContactValidation] = useState<ContactValidationResponse | null>(null);
-  const [contactValidationLoading, setContactValidationLoading] = useState(false);
+  const [selectedDocs, setSelectedDocs] = useState<DocumentId[]>(["extrait", "plan"]);
   const [generationKey, setGenerationKey] = useState(0);
   const [generationProgress, setGenerationProgress] = useState(15);
   const [processingReady, setProcessingReady] = useState(false);
   const [processingStep, setProcessingStep] = useState<1 | 2 | 3 | 4>(1);
 
   const qrInputRef = useRef<HTMLInputElement | null>(null);
+  const qrCameraInputRef = useRef<HTMLInputElement | null>(null);
   const identityInputRef = useRef<HTMLInputElement | null>(null);
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
-  const contactValidationToastRef = useRef<string>("");
-
-  const resolveDocumentIcon = (option: WorkflowDocumentReference) => {
-    const key = String(option.iconKey || option.code || "").toLowerCase();
-    return DOCUMENT_ICON_BY_KEY[key] || (key.includes("plan") ? MapPinned : FileText);
-  };
-
-  const resolveDocumentAccent = (option: WorkflowDocumentReference) => {
-    const key = String(option.accentKey || "").toLowerCase();
-    if (DOCUMENT_ACCENT_BY_KEY[key]) {
-      return DOCUMENT_ACCENT_BY_KEY[key];
-    }
-    return option.code === "PLAN_CADASTRAL_OFFICIEL" ? "teal" : "green";
-  };
-
-  const resolveDocumentTags = (option: WorkflowDocumentReference) => {
-    return DOCUMENT_TAGS_BY_CODE[option.code] || ["PDF", "Document officiel"];
-  };
-
-  const resolveVerificationIcon = (option: WorkflowVerificationReference | VerificationOption) => {
-    const key = String(option.iconKey || option.code || "").toLowerCase();
-    return VERIFICATION_ICON_BY_KEY[key] || (option.code === "TELEPHONE" ? Phone : Mail);
-  };
-
-  const workflowDocumentOptions = useMemo<DocumentOption[]>(
-    () =>
-      documentOptions.map((option) => ({
-        code: option.code,
-        title: option.label,
-        subtitle: option.subtitle || "",
-        description: option.description || "",
-        tags: resolveDocumentTags(option),
-        icon: resolveDocumentIcon(option),
-        accent: resolveDocumentAccent(option),
-        isDefault: Boolean(option.isDefault),
-      })),
-    [documentOptions],
-  );
-
-  const workflowVerificationOptions = useMemo<VerificationOption[]>(
-    () =>
-      verificationOptions.map((option) => ({
-        code: option.code,
-        label: option.label,
-        description: option.description || "",
-        icon: resolveVerificationIcon(option),
-        isDefault: Boolean(option.isDefault),
-      })),
-    [verificationOptions],
-  );
 
   useEffect(() => {
     if (!isAuthReady) return;
@@ -300,302 +330,46 @@ export default function DemandeDocumentCadastralePage() {
     }
   }, [auth?.email, auth?.id, auth?.role, auth?.username, isAuthReady, navigate]);
 
-  useEffect(() => {
-    if (!isAuthReady || !isCadastreRole(auth?.role)) return;
-
-    let active = true;
-
-    const loadTypePermis = async () => {
-      setTypePermisLoading(true);
-      setTypePermisError(null);
-
-      const sources = ["/type-permis", "/type-permis_conf"];
-      let lastError: unknown = null;
-      let loadedOptions: TypePermisOption[] = [];
-
-      for (const source of sources) {
-        try {
-          const response = await axios.get<TypePermisOption[]>(buildApiUrl(source), {
-            withCredentials: true,
-          });
-          loadedOptions = Array.isArray(response.data) ? response.data : [];
-          if (loadedOptions.length > 0) {
-            break;
-          }
-        } catch (error) {
-          lastError = error;
-        }
-      }
-
-      if (!active) return;
-
-      setTypePermisOptions(loadedOptions);
-      if (loadedOptions.length === 0) {
-        setTypePermisError(
-          axios.isAxiosError(lastError)
-            ? (lastError.response?.data?.message as string) ||
-                lastError.response?.data?.error ||
-                lastError.message
-            : "Aucun type de permis disponible.",
-        );
-      }
-
-      if (active) {
-        setTypePermisLoading(false);
-      }
-    };
-
-    void loadTypePermis();
-
-    return () => {
-      active = false;
-    };
-  }, [auth?.role, isAuthReady]);
-
-  useEffect(() => {
-    if (!isAuthReady || !isCadastreRole(auth?.role)) return;
-
-    let active = true;
-
-    const loadWorkflowReferences = async () => {
-      setWorkflowOptionsLoading(true);
-      setWorkflowOptionsError(null);
-
-      try {
-        const response = await axios.get<WorkflowReferencePayload>(
-          buildApiUrl("/api/cadastre/demandes-documents-cadastraux/references"),
-          { withCredentials: true },
-        );
-        const payload = response.data || { documents: [], verificationChannels: [] };
-        const docs = Array.isArray(payload.documents) ? payload.documents : [];
-        const channels = Array.isArray(payload.verificationChannels)
-          ? payload.verificationChannels
-          : [];
-
-        if (!active) return;
-
-        setDocumentOptions(docs);
-        setVerificationOptions(channels);
-
-        setSelectedDocs((current) => {
-          const validCurrent = current.filter((code) =>
-            docs.some((document) => document.code === code),
-          );
-          return validCurrent;
-        });
-
-        setVerificationMode((current) => {
-          return channels.some((channel) => channel.code === current) ? current : "";
-        });
-      } catch (error) {
-        if (!active) return;
-        const message = axios.isAxiosError(error)
-          ? (error.response?.data?.message as string) ||
-            error.response?.data?.error ||
-            error.message
-          : error instanceof Error
-            ? error.message
-            : "Impossible de charger les options du workflow cadastral.";
-        setWorkflowOptionsError(message);
-      } finally {
-        if (active) {
-          setWorkflowOptionsLoading(false);
-        }
-      }
-    };
-
-    void loadWorkflowReferences();
-
-    return () => {
-      active = false;
-    };
-  }, [auth?.role, isAuthReady]);
-
   const displayName = useMemo(
     () => auth?.username || auth?.email || "Utilisateur cadastre",
     [auth?.email, auth?.username],
   );
 
   const selectedDocuments = useMemo(
-    () => workflowDocumentOptions.filter((doc) => selectedDocs.includes(doc.code)),
-    [selectedDocs, workflowDocumentOptions],
+    () => DOCUMENT_OPTIONS.filter((doc) => selectedDocs.includes(doc.id)),
+    [selectedDocs],
   );
+
+  useEffect(() => {
+    return () => {
+      if (qrPreviewUrl) URL.revokeObjectURL(qrPreviewUrl);
+    };
+  }, [qrPreviewUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (identityPreviewUrl) URL.revokeObjectURL(identityPreviewUrl);
+    };
+  }, [identityPreviewUrl]);
 
   const otpComplete = otpDigits.every((digit) => digit.trim().length === 1);
   const otpCode = otpDigits.join("");
   const primaryDocumentType = useMemo(
     () =>
-      selectedDocuments.find((doc) => doc.isDefault)?.code ||
-      selectedDocuments[0]?.code ||
-      workflowDocumentOptions.find((doc) => doc.isDefault)?.code ||
-      workflowDocumentOptions[0]?.code ||
-      "",
-    [selectedDocuments, workflowDocumentOptions],
+      selectedDocs.includes("plan")
+        ? "PLAN_CADASTRAL_OFFICIEL"
+        : "EXTRAIT_CERTIFIE_CONFORME",
+    [selectedDocs],
   );
   const selectedDocumentsLabel = useMemo(
     () =>
       selectedDocuments.length > 0
         ? selectedDocuments.map((doc) => doc.title).join(" + ")
-        : "Aucun document selectionne",
+        : "Extrait cadastral officiel",
     [selectedDocuments],
   );
-  const selectedVerificationOption = useMemo(
-    () => workflowVerificationOptions.find((option) => option.code === verificationMode) || null,
-    [verificationMode, workflowVerificationOptions],
-  );
-  const selectedVerificationLabel = selectedVerificationOption?.label || "Canal OTP";
-  const selectedContactValue = useMemo(() => {
-    if (verificationMode === "TELEPHONE") {
-      return form.telephoneContact.trim();
-    }
-    if (verificationMode === "EMAIL") {
-      return form.emailContact.trim();
-    }
-    return "";
-  }, [form.emailContact, form.telephoneContact, verificationMode]);
-  const selectedDemandeurTargetLabel = useMemo(() => {
-    const quality = form.qualiteDemandeur.toLowerCase();
-    if (quality.includes("representant")) {
-      return "representant legal";
-    }
-    if (quality.includes("actionnaire")) {
-      return "actionnaire";
-    }
-    if (quality.includes("titulaire")) {
-      return "titulaire";
-    }
-    return "demandeur";
-  }, [form.qualiteDemandeur]);
-  const contactFieldLabel = useMemo(() => {
-    if (verificationMode === "TELEPHONE") {
-      return `Telephone du ${selectedDemandeurTargetLabel}`;
-    }
-    if (verificationMode === "EMAIL") {
-      return `Email du ${selectedDemandeurTargetLabel}`;
-    }
-    return "Selectionnez un canal OTP";
-  }, [selectedDemandeurTargetLabel, verificationMode]);
-  const contactValidationReady =
-    !requestId &&
-    form.qualiteDemandeur.trim().length > 0 &&
-    verificationMode.trim().length > 0 &&
-    selectedContactValue.length > 0 &&
-    form.qrCode.trim().length > 0 &&
-    form.codePermis.trim().length > 0 &&
-    form.typePermis.trim().length > 0;
-  const workflowReady =
-    !workflowOptionsLoading &&
-    !workflowOptionsError &&
-    documentOptions.length > 0 &&
-    verificationOptions.length > 0;
-  const receiptDownloadUrl = requestId
-    ? buildApiUrl(`/api/cadastre/demandes-documents-cadastraux/${requestId}/accuse-reception`)
-    : "";
-  const canContinueStep1 =
-    requestId !== null &&
-    otpSent &&
-    otpComplete &&
-    scanQrDone &&
-    scanIdentityDone &&
-    form.typePermis.trim().length > 0 &&
-    workflowReady &&
-    verificationMode.trim().length > 0;
+  const canContinueStep1 = requestId !== null && otpSent && otpComplete && scanQrDone && scanIdentityDone;
   const canContinueStep2 = selectedDocuments.length > 0;
-
-  useEffect(() => {
-    if (requestId) {
-      setContactValidation(null);
-      setContactValidationLoading(false);
-      contactValidationToastRef.current = "";
-      return;
-    }
-
-    if (!contactValidationReady) {
-      setContactValidation(null);
-      setContactValidationLoading(false);
-      contactValidationToastRef.current = "";
-      return;
-    }
-
-    let active = true;
-    const timer = window.setTimeout(async () => {
-      setContactValidationLoading(true);
-      try {
-        const response = await axios.post<ContactValidationResponse>(
-          buildApiUrl("/api/cadastre/demandes-documents-cadastraux/verification-contact"),
-          {
-            qrCodeTitre: form.qrCode.trim(),
-            codePermis: form.codePermis.trim(),
-            typePermis: form.typePermis.trim(),
-            qualiteDemandeur: form.qualiteDemandeur.trim(),
-            canalVerification: verificationMode === "TELEPHONE" ? "TELEPHONE" : "EMAIL",
-            emailContact: form.emailContact.trim(),
-            telephoneContact: form.telephoneContact.trim(),
-          },
-          { withCredentials: true },
-        );
-
-        if (!active) return;
-
-        const validation = response.data;
-        setContactValidation(validation);
-
-        if (!validation.valid) {
-          if (contactValidationToastRef.current !== validation.message) {
-            contactValidationToastRef.current = validation.message;
-            toast.error(validation.message);
-          }
-        } else {
-          contactValidationToastRef.current = "";
-        }
-      } catch (error) {
-        if (!active) return;
-        const message = axios.isAxiosError(error)
-          ? (error.response?.data?.message as string) ||
-            error.response?.data?.error ||
-            error.message
-          : error instanceof Error
-            ? error.message
-            : "Impossible de verifier le contact du demandeur.";
-        setContactValidation({
-          valid: false,
-          message,
-          qualiteDemandeur: form.qualiteDemandeur.trim(),
-          canalVerification: verificationMode === "TELEPHONE" ? "TELEPHONE" : "EMAIL",
-          expectedContact: null,
-          actualContact: selectedContactValue,
-          targetLabel: form.qualiteDemandeur.toLowerCase().includes("representant")
-            ? "representant legal"
-            : "titulaire",
-          permisId: null,
-          permisCode: null,
-        });
-        if (contactValidationToastRef.current !== message) {
-          contactValidationToastRef.current = message;
-          toast.error(message);
-        }
-      } finally {
-        if (active) {
-          setContactValidationLoading(false);
-        }
-      }
-    }, 350);
-
-    return () => {
-      active = false;
-      window.clearTimeout(timer);
-    };
-  }, [
-    contactValidationReady,
-    form.codePermis,
-    form.emailContact,
-    form.qualiteDemandeur,
-    form.qrCode,
-    form.telephoneContact,
-    requestId,
-    selectedContactValue,
-    verificationMode,
-  ]);
 
   useEffect(() => {
     if (currentStep !== 3) return;
@@ -638,12 +412,63 @@ export default function DemandeDocumentCadastralePage() {
     };
   }, [currentStep, generationKey]);
 
+  const resetTitleVerification = () => {
+    setTitleVerification("idle");
+    setTitleVerificationMessage(
+      "Verifiez que le QR, le code permis et le type correspondent au meme titre.",
+    );
+  };
+
+  const resetContactVerification = () => {
+    setContactVerification("idle");
+    setContactVerificationMessage(
+      "Verifiez que le contact correspond au detenteur moral du permis.",
+    );
+  };
+
   const updateForm = (field: keyof RequestForm, value: string) => {
+    if (["qrCode", "codePermis", "typePermis"].includes(field)) {
+      resetTitleVerification();
+      resetContactVerification();
+    }
+    if (["emailContact", "telephoneContact"].includes(field)) {
+      resetContactVerification();
+    }
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleScanBoxClick = (ref: RefObject<HTMLInputElement | null>) => {
     ref.current?.click();
+  };
+
+  const openQrScanChoice = () => {
+    if (step1Busy) return;
+    setQrScanChoiceOpen(true);
+  };
+
+  const chooseQrCamera = () => {
+    setQrScanChoiceOpen(false);
+    window.setTimeout(() => qrCameraInputRef.current?.click(), 0);
+  };
+
+  const chooseQrFile = () => {
+    setQrScanChoiceOpen(false);
+    window.setTimeout(() => qrInputRef.current?.click(), 0);
+  };
+
+  const openPreview = (
+    url: string | null,
+    fileName: string,
+    mimeType: string | undefined,
+    title: string,
+  ) => {
+    if (!url) return;
+    setPreviewModal({
+      url,
+      title,
+      fileName,
+      mimeType: mimeType || "",
+    });
   };
 
   const handleFilePick = (
@@ -654,18 +479,60 @@ export default function DemandeDocumentCadastralePage() {
     if (!file) return;
 
     if (kind === "qr") {
+      if (qrPreviewUrl) URL.revokeObjectURL(qrPreviewUrl);
+      setQrScanChoiceOpen(false);
       setQrFile(file);
       setQrFileName(file.name);
+      setQrPreviewUrl(URL.createObjectURL(file));
       setScanQrDone(true);
+      setForm((prev) => ({
+        ...prev,
+        qrCode: prev.qrCode || "QR-PEM48-2026-0317",
+        codePermis: prev.codePermis || "PEM/48/2026/0317",
+        titulaire: prev.titulaire || "SARL AURIFERE DU SUD MINES",
+        numeroRc: prev.numeroRc || "16/00-1234567 B 24",
+      }));
     }
 
     if (kind === "identity") {
+      if (identityPreviewUrl) URL.revokeObjectURL(identityPreviewUrl);
       setIdentityFile(file);
       setIdentityFileName(file.name);
+      setIdentityPreviewUrl(URL.createObjectURL(file));
       setScanIdentityDone(true);
+      setForm((prev) => ({
+        ...prev,
+        nin: prev.nin || "118420056398",
+        nom: prev.nom || "Kerrouche",
+        prenom: prev.prenom || "Boualem",
+      }));
     }
 
     event.target.value = "";
+  };
+
+  const clearScan = (kind: "qr" | "identity") => {
+    if (kind === "qr") {
+      if (qrPreviewUrl) URL.revokeObjectURL(qrPreviewUrl);
+      setPreviewModal((current) => (current?.url === qrPreviewUrl ? null : current));
+      setQrFile(null);
+      setQrFileName("Aucun fichier");
+      setQrPreviewUrl(null);
+      setScanQrDone(false);
+      if (qrInputRef.current) qrInputRef.current.value = "";
+      if (qrCameraInputRef.current) qrCameraInputRef.current.value = "";
+    } else {
+      if (identityPreviewUrl) URL.revokeObjectURL(identityPreviewUrl);
+      setPreviewModal((current) => (current?.url === identityPreviewUrl ? null : current));
+      setIdentityFile(null);
+      setIdentityFileName("Aucun fichier");
+      setIdentityPreviewUrl(null);
+      setScanIdentityDone(false);
+      if (identityInputRef.current) identityInputRef.current.value = "";
+    }
+
+    setAttachmentsUploaded(false);
+    setOtpError(null);
   };
 
   const handleOtpChange = (index: number, value: string) => {
@@ -710,12 +577,6 @@ export default function DemandeDocumentCadastralePage() {
     if (!scanQrDone || !scanIdentityDone || !qrFile || !identityFile) {
       throw new Error("Veuillez d'abord fournir le scan du titre et la carte d'identite.");
     }
-    if (!workflowReady || !verificationMode.trim()) {
-      throw new Error("Les options du workflow cadastral ne sont pas encore chargees.");
-    }
-    if (!form.typePermis.trim()) {
-      throw new Error("Veuillez selectionner un type de permis.");
-    }
 
     const payload = {
       typeDocument: primaryDocumentType,
@@ -752,6 +613,90 @@ export default function DemandeDocumentCadastralePage() {
     return demande;
   };
 
+  const verifyTitleInformation = async () => {
+    setTitleVerification("checking");
+    setTitleVerificationMessage("Verification du QR, du code permis et du type...");
+
+    const payload = {
+      qrCodeTitre: form.qrCode.trim(),
+      codePermis: form.codePermis.trim(),
+      typePermis: form.typePermis.trim(),
+    };
+
+    try {
+      const response = await axios.post<{ valid?: boolean; message?: string }>(
+        buildApiUrl("/api/cadastre/demandes-documents-cadastraux/verify-title"),
+        payload,
+        { withCredentials: true },
+      );
+
+      setTitleVerification("valid");
+      setTitleVerificationMessage(
+        response.data?.message || "QR code, code permis et type de permis valides.",
+      );
+      return true;
+    } catch (error) {
+      const rawMessage =
+        axios.isAxiosError(error)
+          ? (error.response?.data?.message as string) || error.message
+          : error instanceof Error
+            ? error.message
+            : "";
+      const message = rawMessage.includes("Cannot POST")
+        ? "La route de verification n'est pas chargee cote serveur. Redemarrez le backend puis relancez le test."
+        : rawMessage || "Le QR, le code permis ou le type ne correspondent pas.";
+
+      setTitleVerification("invalid");
+      setTitleVerificationMessage(message);
+      throw error;
+    }
+  };
+
+  const verifyContactInformation = async () => {
+    setContactVerification("checking");
+    setContactVerificationMessage(
+      verificationMode === "phone"
+        ? "Verification du numero avec le detenteur moral..."
+        : "Verification de l'email avec le detenteur moral...",
+    );
+
+    const payload = {
+      qrCodeTitre: form.qrCode.trim(),
+      codePermis: form.codePermis.trim(),
+      canalVerification: verificationMode === "phone" ? "TELEPHONE" : "EMAIL",
+      emailContact: form.emailContact.trim(),
+      telephoneContact: form.telephoneContact.trim(),
+    };
+
+    try {
+      const response = await axios.post<{ valid?: boolean; message?: string }>(
+        buildApiUrl("/api/cadastre/demandes-documents-cadastraux/verify-contact"),
+        payload,
+        { withCredentials: true },
+      );
+
+      setContactVerification("valid");
+      setContactVerificationMessage(
+        response.data?.message || "Contact conforme au detenteur moral.",
+      );
+      return true;
+    } catch (error) {
+      const rawMessage =
+        axios.isAxiosError(error)
+          ? (error.response?.data?.message as string) || error.message
+          : error instanceof Error
+            ? error.message
+            : "";
+      const message = rawMessage.includes("Cannot POST")
+        ? "La route de verification du contact n'est pas chargee cote serveur. Redemarrez le backend puis relancez le test."
+        : rawMessage || "Le contact saisi ne correspond pas au detenteur moral.";
+
+      setContactVerification("invalid");
+      setContactVerificationMessage(message);
+      throw error;
+    }
+  };
+
   const resendOtp = async () => {
     if (!requestId) {
       throw new Error("Aucune demande n'a encore ete creee.");
@@ -769,6 +714,8 @@ export default function DemandeDocumentCadastralePage() {
     setNetworkError(null);
     setOtpError(null);
     try {
+      await verifyTitleInformation();
+
       if (!requestId) {
         await createCadastreRequest();
       } else {
@@ -849,9 +796,9 @@ export default function DemandeDocumentCadastralePage() {
     }
   };
 
-  const toggleDocument = (code: string) => {
+  const toggleDocument = (id: DocumentId) => {
     setSelectedDocs((prev) =>
-      prev.includes(code) ? prev.filter((value) => value !== code) : [...prev, code],
+      prev.includes(id) ? prev.filter((value) => value !== id) : [...prev, id],
     );
   };
 
@@ -915,7 +862,7 @@ export default function DemandeDocumentCadastralePage() {
 
   const handleResetWorkflow = () => {
     setCurrentStep(1);
-    setVerificationMode("");
+    setVerificationMode("phone");
     setForm(DEFAULT_FORM);
     setRequestId(null);
     setRequestReference("CDC-EN-ATTENTE");
@@ -935,7 +882,7 @@ export default function DemandeDocumentCadastralePage() {
     setAttachmentsUploaded(false);
     setGeneratedRequestMessage(null);
     setOtpDigits(Array.from({ length: OTP_LENGTH }, () => ""));
-    setSelectedDocs([]);
+    setSelectedDocs(["extrait", "plan"]);
     setGenerationProgress(15);
     setProcessingReady(false);
     setProcessingStep(1);
@@ -956,92 +903,51 @@ export default function DemandeDocumentCadastralePage() {
     {
       number: 1 as const,
       title: "Identification du demandeur",
-      subtitle: "Verification d'identite",
+      subtitle: "Vérification d'identité",
     },
     {
       number: 2 as const,
-      title: "Selection des documents",
+      title: "Sélection des documents",
       subtitle: "Extrait et/ou plan cadastral",
     },
     {
       number: 3 as const,
-      title: "Telechargement",
-      subtitle: "Documents generes",
+      title: "Téléchargement",
+      subtitle: "Documents générés",
     },
   ];
+
+  const downloads = selectedDocuments.length > 0 ? selectedDocuments : DOCUMENT_OPTIONS;
 
   return (
     <InvestorLayout>
       <main className={styles.page}>
-        <section className={styles.hero}>
-          <div className={styles.breadcrumb}>Documents cadastraux / <b>Nouvelle demande</b></div>
-          <h1 className={styles.pageTitle}>Demande de documents cadastraux</h1>
-          <p className={styles.pageLead}>
-            Generez et telechargez l&apos;extrait cadastral et le plan cadastral officiels
-            d&apos;un titre minier.
-          </p>
+        <div className={styles.breadcrumb}>
+          <span>GUNAM</span>
+          <ArrowRight size={14} />
+          <span>Cadastre</span>
+          <ArrowRight size={14} />
+          <b>Demande de documents</b>
+        </div>
 
-          <div className={styles.heroActions}>
-            <button
-              type="button"
-              className={styles.secondaryButton}
-              onClick={() => navigate(getDefaultDashboardPath(auth?.role), { replace: true })}
-            >
-              <LayoutDashboard size={18} />
-              Retour au dashboard
-            </button>
-          </div>
+        <div className={styles.workflowContainer}>
+          <ProgressStepper steps={steps.map((step) => step.title)} currentStep={currentStep} />
 
-          <div className={styles.heroBar}>
-            <div className={styles.heroBadge}>
-              <ShieldCheck size={18} />
-              <span>Role cadastre</span>
-            </div>
-            <div className={styles.heroBadge}>
-              <Sparkles size={18} />
-              <span>Workflow premium</span>
-            </div>
-            <div className={styles.heroBadge}>
-              <QrCode size={18} />
-              <span>OCR et OTP</span>
-            </div>
-          </div>
-        </section>
+          <section className={styles.hero}>
+            <span className={styles.pageEyebrow}>Étape {currentStep}</span>
+            <h1 className={styles.pageTitle}>Demande de documents cadastraux</h1>
+            <p className={styles.pageLead}>
+              Générez et téléchargez l&apos;extrait cadastral et le plan cadastral officiels
+              d&apos;un titre minier.
+            </p>
+          </section>
 
-        <section className={styles.stepper} aria-label="Progression de la demande">
-          {steps.map((step, index) => {
-            const isCurrent = currentStep === step.number;
-            const isDone = currentStep > step.number;
-            return (
-              <div key={step.number} className={styles.stepGroup}>
-                <div
-                  className={[
-                    styles.step,
-                    isCurrent ? styles.stepCurrent : "",
-                    isDone ? styles.stepDone : "",
-                  ].join(" ")}
-                >
-                  <div className={styles.stepCircle}>{step.number}</div>
-                  <div className={styles.stepText}>
-                    <div className={styles.stepTitle}>{step.title}</div>
-                    <div className={styles.stepSubtitle}>{step.subtitle}</div>
-                  </div>
-                </div>
-                {index < steps.length - 1 ? (
-                  <div className={[styles.stepConnector, isDone ? styles.stepConnectorDone : ""].join(" ")} />
-                ) : null}
-              </div>
-            );
-          })}
-        </section>
-
-        <section className={currentStep === 1 ? styles.panelActive : styles.panelHidden}>
-          <div className={styles.card}>
+          <section className={currentStep === 1 ? styles.panelActive : styles.panelHidden}>
+          <div className={`${styles.card} ${styles.titleMinerCard}`}>
             <div className={styles.cardHeader}>
-              <h2 className={styles.cardTitle}>1. Scannez le QR code du permis</h2>
+              <h2 className={styles.cardTitle}>1. Informations du titre minier</h2>
               <p className={styles.cardDesc}>
-                Utilisez la camera de votre appareil pour scanner le QR code figurant sur la
-                decision d&apos;octroi du titre minier.
+                Scannez le QR code du permis, puis verifiez les informations du titre avant de continuer.
               </p>
             </div>
 
@@ -1073,7 +979,7 @@ export default function DemandeDocumentCadastralePage() {
                 </div>
                 <div className={styles.summaryStats}>
                   <div>
-                    <strong>{selectedVerificationLabel}</strong>
+                    <strong>{verificationMode === "phone" ? "Telephone" : "Email"}</strong>
                     <span>canal OTP</span>
                   </div>
                   <div>
@@ -1084,171 +990,233 @@ export default function DemandeDocumentCadastralePage() {
               </div>
             ) : null}
 
-            <button
-              type="button"
-              className={styles.scanBox}
-              onClick={() => handleScanBoxClick(qrInputRef)}
-            >
-              <div className={styles.scanFrame}>
-                <span className={`${styles.corner} ${styles.cornerTL}`} />
-                <span className={`${styles.corner} ${styles.cornerTR}`} />
-                <span className={`${styles.corner} ${styles.cornerBL}`} />
-                <span className={`${styles.corner} ${styles.cornerBR}`} />
-                <ScanLine size={30} className={styles.scanIcon} />
-              </div>
-              <div className={styles.scanLabel}>Cliquez pour activer la camera</div>
-              <div className={styles.scanSub}>
-                ou <u>importer une photo du QR code</u>
-              </div>
-              <input
-                ref={qrInputRef}
-                type="file"
-                accept="image/*,.pdf"
-                className={styles.hiddenInput}
-                onChange={(event) => handleFilePick(event, "qr")}
-              />
-            </button>
+            <div className={styles.titleMinerLayout}>
+              <div className={styles.titleMinerForm}>
+                <div className={styles.fieldGrid}>
+                  <label className={styles.field}>
+                    <span className={styles.fieldLabel}>Code QR</span>
+                    <input
+                      className={styles.fieldInput}
+                      value={form.qrCode}
+                      onChange={(event) => updateForm("qrCode", event.target.value)}
+                    />
+                  </label>
 
-            <div className={[styles.scanResult, scanQrDone ? styles.scanResultVisible : ""].join(" ")}>
-              <div className={styles.scanResultIcon}>
-                <CheckCircle2 size={18} />
-              </div>
-              <div>
-                <div className={styles.scanResultTitle}>QR code du permis reconnu</div>
-                <div className={styles.scanResultText}>
-                  Fichier: {qrFileName}. Titre associe: {form.codePermis} - {form.titulaire}
+                  <label className={styles.field}>
+                    <span className={styles.fieldLabel}>Code de permis</span>
+                    <input
+                      className={styles.fieldInput}
+                      value={form.codePermis}
+                      onChange={(event) => updateForm("codePermis", event.target.value)}
+                    />
+                  </label>
+
+                  <label className={styles.field}>
+                    <span className={styles.fieldLabel}>Titulaire</span>
+                    <input
+                      className={styles.fieldInput}
+                      value={form.titulaire}
+                      onChange={(event) => updateForm("titulaire", event.target.value)}
+                    />
+                  </label>
+
+                  <label className={styles.field}>
+                    <span className={styles.fieldLabel}>Numero de registre de commerce</span>
+                    <input
+                      className={styles.fieldInput}
+                      value={form.numeroRc}
+                      onChange={(event) => updateForm("numeroRc", event.target.value)}
+                    />
+                  </label>
+
+                  <label className={styles.field}>
+                    <span className={styles.fieldLabel}>Type de permis</span>
+                    <StyledSelect
+                      value={form.typePermis}
+                      options={TYPE_PERMIS_OPTIONS}
+                      placeholder="Selectionner un type de permis"
+                      onChange={(value) => updateForm("typePermis", value)}
+                    />
+                  </label>
                 </div>
-              </div>
-            </div>
-          </div>
 
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <h2 className={styles.cardTitle}>2. Informations du titre minier</h2>
-              <p className={styles.cardDesc}>
-                Renseignez ou verifiez les informations du titre minier avant de continuer.
-              </p>
-            </div>
-
-            <div className={styles.fieldGrid}>
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>Code QR</span>
-                <input
-                  className={styles.fieldInput}
-                  value={form.qrCode}
-                  onChange={(event) => updateForm("qrCode", event.target.value)}
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>Code de permis</span>
-                <input
-                  className={styles.fieldInput}
-                  value={form.codePermis}
-                  onChange={(event) => updateForm("codePermis", event.target.value)}
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>Titulaire</span>
-                <input
-                  className={styles.fieldInput}
-                  value={form.titulaire}
-                  onChange={(event) => updateForm("titulaire", event.target.value)}
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>Numero de registre de commerce</span>
-                <input
-                  className={styles.fieldInput}
-                  value={form.numeroRc}
-                  onChange={(event) => updateForm("numeroRc", event.target.value)}
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>Type de permis</span>
-                <select
-                  className={styles.fieldSelect}
-                  value={form.typePermis}
-                  onChange={(event) => updateForm("typePermis", event.target.value)}
-                  disabled={typePermisLoading}
+                <div
+                  className={[
+                    styles.titleCheck,
+                    titleVerification === "valid" ? styles.titleCheckValid : "",
+                    titleVerification === "invalid" ? styles.titleCheckInvalid : "",
+                  ].join(" ")}
                 >
-                  <option value="">
-                    {typePermisLoading ? "Chargement des types..." : "Selectionnez un type de permis"}
-                  </option>
-                  {typePermisOptions.map((option) => (
-                    <option
-                      key={option.id}
-                      value={option.lib_type || option.code_type || String(option.id)}
-                    >
-                      {option.code_type && option.lib_type
-                        ? `${option.code_type} - ${option.lib_type}`
-                        : option.lib_type || option.code_type || `Type ${option.id}`}
-                    </option>
-                  ))}
-                </select>
-                {typePermisError ? <div className={styles.fieldHint}>{typePermisError}</div> : null}
-              </label>
-            </div>
-          </div>
-
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <h2 className={styles.cardTitle}>3. Scannez votre carte d'identite</h2>
-              <p className={styles.cardDesc}>
-                Presentez le recto de la carte d'identite nationale du representant legal ou de la personne mandatee.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              className={styles.scanBox}
-              onClick={() => handleScanBoxClick(identityInputRef)}
-            >
-              <div className={`${styles.scanFrame} ${styles.scanFrameWide}`}>
-                <span className={`${styles.corner} ${styles.cornerTL}`} />
-                <span className={`${styles.corner} ${styles.cornerTR}`} />
-                <span className={`${styles.corner} ${styles.cornerBL}`} />
-                <span className={`${styles.corner} ${styles.cornerBR}`} />
-                <Upload size={30} className={styles.scanIcon} />
-              </div>
-              <div className={styles.scanLabel}>Cliquez pour activer la camera</div>
-              <div className={styles.scanSub}>
-                ou <u>importer une photo de la carte</u>
-              </div>
-              <input
-                ref={identityInputRef}
-                type="file"
-                accept="image/*,.pdf"
-                className={styles.hiddenInput}
-                onChange={(event) => handleFilePick(event, "identity")}
-              />
-            </button>
-
-            <div className={[styles.scanResult, scanIdentityDone ? styles.scanResultVisible : ""].join(" ")}>
-              <div className={styles.scanResultIcon}>
-                <CheckCircle2 size={18} />
-              </div>
-              <div>
-                <div className={styles.scanResultTitle}>Carte d'identite reconnue</div>
-                <div className={styles.scanResultText}>
-                  Fichier: {identityFileName}. Representant associe: {form.prenom} {form.nom} - NIN {form.nin}
+                  <div className={styles.titleCheckIcon}>
+                    {titleVerification === "valid" ? <CheckCircle2 size={18} /> : <ShieldCheck size={18} />}
+                  </div>
+                  <div>
+                    <div className={styles.titleCheckTitle}>
+                      {titleVerification === "checking"
+                        ? "Verification en cours"
+                        : titleVerification === "valid"
+                          ? "Titre verifie"
+                          : titleVerification === "invalid"
+                            ? "Correspondance invalide"
+                            : "Verification du titre"}
+                    </div>
+                    <div className={styles.titleCheckText}>{titleVerificationMessage}</div>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.titleCheckButton}
+                    onClick={verifyTitleInformation}
+                    disabled={step1Busy || titleVerification === "checking"}
+                  >
+                    {titleVerification === "checking" ? "Verification..." : "Tester"}
+                  </button>
                 </div>
               </div>
+
+              <aside className={styles.titleMinerScan}>
+                <button
+                  type="button"
+                  className={`${styles.scanBox} ${styles.titleMinerScanBox}`}
+                  onClick={openQrScanChoice}
+                >
+                  <div className={styles.scanFrame}>
+                    <span className={`${styles.corner} ${styles.cornerTL}`} />
+                    <span className={`${styles.corner} ${styles.cornerTR}`} />
+                    <span className={`${styles.corner} ${styles.cornerBL}`} />
+                    <span className={`${styles.corner} ${styles.cornerBR}`} />
+                    <span className={styles.scanLine} aria-hidden="true" />
+                    <ScanLine size={30} className={styles.scanIcon} />
+                  </div>
+                  <div className={styles.scanLabel}>Scanner un code permis</div>
+                  <div className={styles.scanSub}>
+                    Choisir la camera ou <u>importer une photo du QR code</u>
+                  </div>
+                </button>
+
+                <input
+                  ref={qrCameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className={styles.hiddenInput}
+                  onChange={(event) => handleFilePick(event, "qr")}
+                />
+                <input
+                  ref={qrInputRef}
+                  type="file"
+                  accept="image/*,.pdf"
+                  className={styles.hiddenInput}
+                  onChange={(event) => handleFilePick(event, "qr")}
+                />
+
+                <div className={[styles.scanResult, scanQrDone ? styles.scanResultVisible : ""].join(" ")}>
+                  <div className={styles.scanResultIcon}>
+                    <CheckCircle2 size={18} />
+                  </div>
+                  <div>
+                    <div className={styles.scanResultTitle}>QR code du permis reconnu</div>
+                    <div className={styles.scanResultText}>
+                      Fichier: {qrFileName}. Titre associe: {form.codePermis} - {form.titulaire}
+                    </div>
+                  </div>
+                </div>
+
+                {scanQrDone ? (
+                  <div className={styles.scanPreviewCard}>
+                    <div className={styles.previewMedia}>
+                      {qrPreviewUrl && qrFile?.type.startsWith("image/") ? (
+                        <img src={qrPreviewUrl} alt="Apercu du QR code scanne" className={styles.previewImage} />
+                      ) : (
+                        <div className={styles.previewFileFallback}>
+                          <FileText size={24} />
+                          <span>Fichier joint</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className={styles.previewDetails}>
+                      <div className={styles.previewTitle}>Apercu du scan QR</div>
+                      <div className={styles.previewMeta}>{qrFileName}</div>
+                      <div className={styles.previewHint}>Supprimez ce fichier pour rescanner un autre QR code.</div>
+                    </div>
+                    <div className={styles.previewActions}>
+                      <button
+                        type="button"
+                        className={styles.previewViewButton}
+                        onClick={() =>
+                          openPreview(qrPreviewUrl, qrFileName, qrFile?.type, "Apercu du scan QR")
+                        }
+                      >
+                        <Eye size={16} />
+                        Voir
+                      </button>
+                      <button type="button" className={styles.previewDeleteButton} onClick={() => clearScan("qr")}>
+                        <Trash2 size={16} />
+                        Supprimer
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </aside>
             </div>
+
+            {qrScanChoiceOpen ? (
+              <div
+                className={styles.scanChoiceOverlay}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="qr-scan-choice-title"
+                onClick={() => setQrScanChoiceOpen(false)}
+              >
+                <div className={styles.scanChoiceModal} onClick={(event) => event.stopPropagation()}>
+                  <button
+                    type="button"
+                    className={styles.scanChoiceClose}
+                    onClick={() => setQrScanChoiceOpen(false)}
+                    aria-label="Fermer"
+                  >
+                    <X size={18} />
+                  </button>
+                  <div className={styles.scanChoiceHeader}>
+                    <span className={styles.scanChoiceIcon}>
+                      <ScanLine size={22} />
+                    </span>
+                    <div>
+                      <h3 id="qr-scan-choice-title">Scanner le code permis</h3>
+                      <p>Choisissez la methode de lecture du QR code.</p>
+                    </div>
+                  </div>
+                  <div className={styles.scanChoiceGrid}>
+                    <button type="button" className={styles.scanChoiceCard} onClick={chooseQrCamera}>
+                      <span className={styles.scanChoiceCardIcon}>
+                        <Camera size={22} />
+                      </span>
+                      <strong>Activer la camera</strong>
+                      <small>Scanner directement avec l'appareil.</small>
+                    </button>
+                    <button type="button" className={styles.scanChoiceCard} onClick={chooseQrFile}>
+                      <span className={styles.scanChoiceCardIcon}>
+                        <ImagePlus size={22} />
+                      </span>
+                      <strong>Importer un fichier</strong>
+                      <small>Photo, capture ou fichier PDF du QR code.</small>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
 
-          <div className={styles.card}>
+          <div className={`${styles.card} ${styles.identityCard}`}>
             <div className={styles.cardHeader}>
-              <h2 className={styles.cardTitle}>4. Identite du detenteur</h2>
+              <h2 className={styles.cardTitle}>2. Identite du detenteur</h2>
               <p className={styles.cardDesc}>
-                Renseignez l'identite du detenteur a partir de la carte scannee ou de la saisie manuelle.
+                Scannez la carte d'identite, puis verifiez les informations du representant avant de continuer.
               </p>
             </div>
 
-            <div className={styles.fieldGrid}>
+            <div className={styles.identityLayout}>
+              <div className={styles.identityForm}>
+                <div className={styles.fieldGrid}>
               <label className={styles.field}>
                 <span className={styles.fieldLabel}>Nom</span>
                 <input
@@ -1287,129 +1255,94 @@ export default function DemandeDocumentCadastralePage() {
               </label>
             </div>
 
-            <div className={styles.sectionDivider}>Coordonnees pour OTP</div>
-            {workflowOptionsLoading ? (
-              <div className={styles.workflowState}>Chargement des canaux OTP depuis la base...</div>
-            ) : workflowOptionsError ? (
-              <div className={`${styles.workflowState} ${styles.workflowStateError}`}>{workflowOptionsError}</div>
-            ) : (
+            <div className={styles.otpPanel}>
+              <div className={styles.sectionDivider}>Coordonnees pour OTP</div>
               <div className={styles.verificationSwitch}>
-                {workflowVerificationOptions.map((option) => {
-                  const Icon = option.icon;
-                  const selected = verificationMode === option.code;
-                  return (
-                    <button
-                      key={option.code}
-                      type="button"
-                      className={[
-                        styles.switchButton,
-                        selected ? styles.switchButtonActive : "",
-                      ].join(" ")}
-                      onClick={() => setVerificationMode(option.code)}
-                    >
-                      <Icon size={16} />
-                      {option.label}
-                    </button>
-                  );
-                })}
+                <button
+                  type="button"
+                  className={[
+                    styles.switchButton,
+                    verificationMode === "phone" ? styles.switchButtonActive : "",
+                  ].join(" ")}
+                  onClick={() => {
+                    setVerificationMode("phone");
+                    resetContactVerification();
+                  }}
+                >
+                  <Phone size={16} />
+                  Numero de telephone
+                </button>
+                <button
+                  type="button"
+                  className={[
+                    styles.switchButton,
+                    verificationMode === "email" ? styles.switchButtonActive : "",
+                  ].join(" ")}
+                  onClick={() => {
+                    setVerificationMode("email");
+                    resetContactVerification();
+                  }}
+                >
+                  <Mail size={16} />
+                  Adresse email
+                </button>
               </div>
-            )}
 
-            <div className={styles.fieldGrid}>
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>{contactFieldLabel}</span>
+              <div className={styles.fieldGrid}>
+              <label className={`${styles.field} ${styles.fieldFull}`}>
+                <span className={styles.fieldLabel}>
+                  {verificationMode === "phone" ? "Telephone du representant" : "Email du representant"}
+                </span>
                 <div className={styles.inlineRow}>
                   <input
                     className={styles.fieldInput}
-                    value={
-                      verificationMode === "TELEPHONE"
-                        ? form.telephoneContact
-                        : verificationMode === "EMAIL"
-                          ? form.emailContact
-                          : ""
-                    }
+                    value={verificationMode === "phone" ? form.telephoneContact : form.emailContact}
                     disabled={step1Busy}
                     onChange={(event) =>
-                      verificationMode === "TELEPHONE"
+                      verificationMode === "phone"
                         ? updateForm("telephoneContact", event.target.value)
-                        : verificationMode === "EMAIL"
-                          ? updateForm("emailContact", event.target.value)
-                          : undefined
-                    }
-                    placeholder={
-                      verificationMode
-                        ? ""
-                        : "Choisissez le canal OTP au-dessus avant de saisir le contact."
+                        : updateForm("emailContact", event.target.value)
                     }
                   />
                   <button
                     type="button"
                     className={styles.secondaryButton}
-                  onClick={handleSendOtp}
-                  disabled={
-                    step1Busy ||
-                    !workflowReady ||
-                    (!requestId &&
-                      (!form.typePermis.trim() ||
-                        !verificationMode.trim() ||
-                        !form.qualiteDemandeur.trim() ||
-                        !selectedContactValue.length ||
-                        !form.qrCode.trim() ||
-                        !form.codePermis.trim() ||
-                        contactValidationLoading ||
-                        contactValidation?.valid !== true))
-                  }
-                >
-                  {requestId ? "Renvoyer le code" : "Envoyer le code"}
-                </button>
-              </div>
-                  {contactValidationLoading ? (
-                  <span className={styles.fieldHint}>Verification du contact en cours...</span>
-                ) : contactValidation ? (
-                  <span className={contactValidation.valid ? styles.fieldHint : styles.errorText}>
-                    {contactValidation.message}
-                  </span>
-                ) : (
-                  <span className={styles.fieldHint}>
-                    Veuillez saisir le code QR, le code permis et le type de permis avant d&apos;envoyer le code OTP.
-                  </span>
-                )}
+                    onClick={verifyContactInformation}
+                    disabled={step1Busy || contactVerification === "checking"}
+                  >
+                    {contactVerification === "checking" ? "Verification..." : "Verifier contact"}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={handleSendOtp}
+                    disabled={step1Busy}
+                  >
+                    {requestId ? "Renvoyer le code" : "Envoyer le code"}
+                  </button>
+                </div>
                 <span className={styles.fieldHint}>
-                  {verificationMode
-                    ? "Le code de verification sera envoye au canal selectionne."
-                    : "Aucun canal n'est selectionne pour le moment."}
+                  Le code de verification sera envoye au canal selectionne.
                 </span>
               </label>
 
-              <label className={styles.field}>
+              <label className={`${styles.field} ${styles.fieldFull}`}>
                 <span className={styles.fieldLabel}>Qualite du demandeur</span>
-                <select
-                  className={styles.fieldSelect}
+                <StyledSelect
                   value={form.qualiteDemandeur}
                   disabled={step1Busy}
-                  onChange={(event) => updateForm("qualiteDemandeur", event.target.value)}
-                >
-                  <option value="">Selectionnez la qualite du demandeur</option>
-                  <option>Titulaire du titre minier</option>
-                  <option>Representant legal</option>
-                  <option>Actionnaire</option>
-                </select>
+                  options={QUALITE_DEMANDEUR_OPTIONS}
+                  onChange={(value) => updateForm("qualiteDemandeur", value)}
+                />
               </label>
               <label className={`${styles.field} ${styles.fieldFull}`}>
                 <span className={styles.fieldLabel}>Objet de la demande</span>
-                <select
-                  className={styles.fieldSelect}
+                <StyledSelect
                   value={form.objetDemande}
                   disabled={step1Busy}
-                  onChange={(event) => updateForm("objetDemande", event.target.value)}
-                >
-                  <option value="">Selectionnez l'objet de la demande</option>
-                  <option>Constitution de dossier administratif</option>
-                  <option>Transaction ou cession de droits miniers</option>
-                  <option>Contentieux ou procedure judiciaire</option>
-                  <option>Financement / garantie bancaire</option>
-                  <option>Controle et suivi reglementaire</option>
-                </select>
+                  options={OBJET_DEMANDE_OPTIONS}
+                  onChange={(value) => updateForm("objetDemande", value)}
+                />
               </label>
               <label className={`${styles.field} ${styles.fieldFull}`}>
                 <span className={styles.fieldLabel}>Base de communication ou interet legitime</span>
@@ -1418,9 +1351,40 @@ export default function DemandeDocumentCadastralePage() {
                   value={form.baseCommunication}
                   disabled={step1Busy}
                   onChange={(event) => updateForm("baseCommunication", event.target.value)}
-                  placeholder="Precisez le fondement legal ou l'interet legitime justifiant la communication."
+                  placeholder="Precisez le fondement legal ou l'interet legitime justifiant la communication des documents cadastraux."
                 />
               </label>
+              </div>
+            </div>
+
+            <div
+              className={[
+                styles.titleCheck,
+                contactVerification === "valid" ? styles.titleCheckValid : "",
+                contactVerification === "invalid" ? styles.titleCheckInvalid : "",
+              ].join(" ")}
+            >
+              <div className={styles.titleCheckIcon}>
+                {contactVerification === "valid" ? (
+                  <CheckCircle2 size={18} />
+                ) : (
+                  <ShieldCheck size={18} />
+                )}
+              </div>
+              <div>
+                <div className={styles.titleCheckTitle}>
+                  Verification separee du contact detenteur
+                </div>
+                <div className={styles.titleCheckText}>{contactVerificationMessage}</div>
+              </div>
+              <button
+                type="button"
+                className={styles.titleCheckButton}
+                onClick={verifyContactInformation}
+                disabled={step1Busy || contactVerification === "checking"}
+              >
+                {contactVerification === "checking" ? "Verification..." : "Tester le contact"}
+              </button>
             </div>
 
             {otpSent ? (
@@ -1444,11 +1408,132 @@ export default function DemandeDocumentCadastralePage() {
                 </div>
                 {otpError ? <div className={styles.errorText}>{otpError}</div> : null}
                 <div className={styles.fieldHint}>
-                  Code envoye au {verificationMode === "TELEPHONE" ? form.telephoneContact : form.emailContact}.
+                  Code envoye au {verificationMode === "phone" ? form.telephoneContact : form.emailContact}.
                 </div>
               </div>
             ) : null}
+              </div>
+
+              <aside className={styles.identityScan}>
+                <button
+                  type="button"
+                  className={`${styles.scanBox} ${styles.scanBoxCard} ${styles.identityScanBox}`}
+                  onClick={() => handleScanBoxClick(identityInputRef)}
+                >
+                  <div className={`${styles.scanFrame} ${styles.scanFrameWide}`}>
+                    <span className={`${styles.corner} ${styles.cornerTL}`} />
+                    <span className={`${styles.corner} ${styles.cornerTR}`} />
+                    <span className={`${styles.corner} ${styles.cornerBL}`} />
+                    <span className={`${styles.corner} ${styles.cornerBR}`} />
+                    <span className={styles.scanLine} aria-hidden="true" />
+                    <Upload size={30} className={styles.scanIcon} />
+                  </div>
+                  <div className={styles.scanLabel}>Scanner la carte d'identite</div>
+                  <div className={styles.scanSub}>
+                    Activer la camera ou <u>importer une photo de la carte</u>
+                  </div>
+                  <input
+                    ref={identityInputRef}
+                    type="file"
+                    accept="image/*,.pdf"
+                    className={styles.hiddenInput}
+                    onChange={(event) => handleFilePick(event, "identity")}
+                  />
+                </button>
+
+                <div className={[styles.scanResult, scanIdentityDone ? styles.scanResultVisible : ""].join(" ")}>
+                  <div className={styles.scanResultIcon}>
+                    <CheckCircle2 size={18} />
+                  </div>
+                  <div>
+                    <div className={styles.scanResultTitle}>Carte d'identite reconnue</div>
+                    <div className={styles.scanResultText}>
+                      Fichier: {identityFileName}. Representant associe: {form.prenom} {form.nom} - NIN {form.nin}
+                    </div>
+                  </div>
+                </div>
+
+                {scanIdentityDone ? (
+                  <div className={styles.scanPreviewCard}>
+                    <div className={styles.previewMedia}>
+                      {identityPreviewUrl && identityFile?.type.startsWith("image/") ? (
+                        <img src={identityPreviewUrl} alt="Apercu de la carte d'identite scannee" className={styles.previewImage} />
+                      ) : (
+                        <div className={styles.previewFileFallback}>
+                          <FileText size={24} />
+                          <span>Fichier joint</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className={styles.previewDetails}>
+                      <div className={styles.previewTitle}>Apercu de la carte</div>
+                      <div className={styles.previewMeta}>{identityFileName}</div>
+                      <div className={styles.previewHint}>Supprimez ce fichier pour rescanner une autre carte.</div>
+                    </div>
+                    <div className={styles.previewActions}>
+                      <button
+                        type="button"
+                        className={styles.previewViewButton}
+                        onClick={() =>
+                          openPreview(
+                            identityPreviewUrl,
+                            identityFileName,
+                            identityFile?.type,
+                            "Apercu de la carte d'identite",
+                          )
+                        }
+                      >
+                        <Eye size={16} />
+                        Voir
+                      </button>
+                      <button type="button" className={styles.previewDeleteButton} onClick={() => clearScan("identity")}>
+                        <Trash2 size={16} />
+                        Supprimer
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </aside>
+            </div>
           </div>
+
+          {previewModal ? (
+            <div
+              className={styles.previewModalOverlay}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="document-preview-title"
+              onClick={() => setPreviewModal(null)}
+            >
+              <div className={styles.previewModal} onClick={(event) => event.stopPropagation()}>
+                <div className={styles.previewModalHeader}>
+                  <div>
+                    <h3 id="document-preview-title">{previewModal.title}</h3>
+                    <p>{previewModal.fileName}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.previewModalClose}
+                    onClick={() => setPreviewModal(null)}
+                    aria-label="Fermer l'apercu"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                <div className={styles.previewModalBody}>
+                  {previewModal.mimeType.startsWith("image/") ? (
+                    <img src={previewModal.url} alt={previewModal.title} className={styles.previewModalImage} />
+                  ) : (
+                    <iframe
+                      src={previewModal.url}
+                      title={previewModal.title}
+                      className={styles.previewModalFrame}
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           <div className={styles.footerBar}>
             <div className={styles.footerNote}>
@@ -1465,9 +1550,9 @@ export default function DemandeDocumentCadastralePage() {
               <ArrowRight size={18} />
             </button>
           </div>
-        </section>
+          </section>
 
-        <section className={currentStep === 2 ? styles.panelActive : styles.panelHidden}>
+          <section className={currentStep === 2 ? styles.panelActive : styles.panelHidden}>
           <div className={styles.card}>
             <div className={styles.cardHeader}>
               <h2 className={styles.cardTitle}>Choisissez le ou les documents souhaites</h2>
@@ -1476,45 +1561,39 @@ export default function DemandeDocumentCadastralePage() {
               </p>
             </div>
 
-            {workflowOptionsLoading ? (
-              <div className={styles.workflowState}>Chargement des options depuis la base...</div>
-            ) : workflowOptionsError ? (
-              <div className={`${styles.workflowState} ${styles.workflowStateError}`}>{workflowOptionsError}</div>
-            ) : (
-              <div className={styles.documentGrid}>
-                {workflowDocumentOptions.map((document) => {
-                  const selected = selectedDocs.includes(document.code);
-                  const Icon = document.icon;
-                  return (
-                    <button
-                      key={document.code}
-                      type="button"
-                      className={[
-                        styles.documentCard,
-                        selected ? styles.documentCardSelected : "",
-                        document.accent === "teal" ? styles.documentCardTeal : "",
-                      ].join(" ")}
-                      onClick={() => toggleDocument(document.code)}
-                    >
-                      <div className={styles.documentCheck}>{selected ? <CheckCircle2 size={18} /> : null}</div>
-                      <div className={styles.documentIcon}>
-                        <Icon size={22} />
-                      </div>
-                      <div className={styles.documentTitle}>{document.title}</div>
-                      <div className={styles.documentSubtitle}>{document.subtitle}</div>
-                      <div className={styles.documentDescription}>{document.description}</div>
-                      <div className={styles.documentTags}>
-                        {document.tags.map((tag) => (
-                          <span key={tag} className={styles.documentTag}>
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            <div className={styles.documentGrid}>
+              {DOCUMENT_OPTIONS.map((document) => {
+                const selected = selectedDocs.includes(document.id);
+                const Icon = document.icon;
+                return (
+                  <button
+                    key={document.id}
+                    type="button"
+                    className={[
+                      styles.documentCard,
+                      selected ? styles.documentCardSelected : "",
+                      document.accent === "teal" ? styles.documentCardTeal : "",
+                    ].join(" ")}
+                    onClick={() => toggleDocument(document.id)}
+                  >
+                    <div className={styles.documentCheck}>{selected ? <CheckCircle2 size={18} /> : null}</div>
+                    <div className={styles.documentIcon}>
+                      <Icon size={22} />
+                    </div>
+                    <div className={styles.documentTitle}>{document.title}</div>
+                    <div className={styles.documentSubtitle}>{document.subtitle}</div>
+                    <div className={styles.documentDescription}>{document.description}</div>
+                    <div className={styles.documentTags}>
+                      {document.tags.map((tag) => (
+                        <span key={tag} className={styles.documentTag}>
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
 
             <div className={styles.infoBanner}>
               <Sparkles size={18} />
@@ -1548,7 +1627,7 @@ export default function DemandeDocumentCadastralePage() {
           </div>
 
           <div className={styles.footerBar}>
-              <button type="button" className={styles.secondaryButton} onClick={() => goToStep(1)}>
+            <button type="button" className={styles.secondaryButton} onClick={() => goToStep(1)}>
               Retour
             </button>
             <button
@@ -1561,57 +1640,155 @@ export default function DemandeDocumentCadastralePage() {
               <ArrowRight size={18} />
             </button>
           </div>
-        </section>
+          </section>
 
-        <section className={currentStep === 3 ? styles.panelActive : styles.panelHidden}>
-          <div className={styles.card}>
-            <div className={styles.successHeader}>
-              <div className={styles.successIcon}>
-                <CheckCircle2 size={24} />
+          <section className={currentStep === 3 ? styles.panelActive : styles.panelHidden}>
+          {!processingReady ? (
+            <div className={styles.card}>
+              <div className={styles.processingHeader}>
+                <div className={styles.processingSpinner} />
+                <div>
+                  <div className={styles.processingTitle}>
+                    Vos documents sont en cours de generation
+                  </div>
+                  <div className={styles.processingText}>
+                    Reference demande {requestReference} - Ne fermez pas cette page
+                  </div>
+                </div>
               </div>
-              <div>
-                <div className={styles.successTitle}>
-                  Votre demande de cadastre a ete enregistree avec succes
+
+              <div className={styles.processingTrack}>
+                <div className={styles.processingFill} style={{ width: `${generationProgress}%` }} />
+              </div>
+
+              <div className={styles.processingList}>
+                <div className={[styles.processingItem, styles.processingDone].join(" ")}>
+                  <span className={styles.processingCheck}>
+                    <CheckCircle2 size={16} />
+                  </span>
+                  <span>Identite et titre minier verifies</span>
                 </div>
-                <div className={styles.successText}>
-                  L&apos;accuse de reception a ete genere et archive dans le dossier public du serveur.
-                  {generatedRequestMessage ? ` ${generatedRequestMessage}` : ""}
+                <div
+                  className={[
+                    styles.processingItem,
+                    processingStep >= 2 ? styles.processingDone : "",
+                    processingStep === 2 ? styles.processingActive : "",
+                  ].join(" ")}
+                >
+                  <span className={styles.processingCheck}>
+                    {processingStep >= 2 ? <CheckCircle2 size={16} /> : <span className={styles.processingDot} />}
+                  </span>
+                  <span>Generation des documents cadastraux</span>
                 </div>
+                <div
+                  className={[
+                    styles.processingItem,
+                    processingStep >= 3 ? styles.processingDone : "",
+                    processingStep === 3 ? styles.processingActive : "",
+                  ].join(" ")}
+                >
+                  <span className={styles.processingCheck}>
+                    {processingStep >= 3 ? <CheckCircle2 size={16} /> : <span className={styles.processingDot} />}
+                  </span>
+                  <span>Signature electronique et code de verification</span>
+                </div>
+                <div
+                  className={[
+                    styles.processingItem,
+                    processingStep >= 4 ? styles.processingDone : "",
+                    processingStep === 4 ? styles.processingActive : "",
+                  ].join(" ")}
+                >
+                  <span className={styles.processingCheck}>
+                    {processingStep >= 4 ? <CheckCircle2 size={16} /> : <span className={styles.processingDot} />}
+                  </span>
+                  <span>Transmission des fichiers a votre espace</span>
+                </div>
+              </div>
+
+              <div className={styles.infoBanner}>
+                <Sparkles size={18} />
+                <span>
+                  Le delai moyen de transmission est de quelques instants. Vous recevrez egalement une notification
+                  par email une fois les documents disponibles.
+                </span>
               </div>
             </div>
+          ) : (
+            <div className={styles.card}>
+              <div className={styles.successHeader}>
+                <div className={styles.successIcon}>
+                  <CheckCircle2 size={24} />
+                </div>
+                <div>
+                  <div className={styles.successTitle}>
+                    Votre demande de cadastre a ete transmise avec succes
+                  </div>
+                  <div className={styles.successText}>
+                    Vous recevrez une notification dans votre espace cadastre des que votre document aura ete prepare.
+                    {generatedRequestMessage ? ` ${generatedRequestMessage}` : ""}
+                  </div>
+                </div>
+              </div>
 
-            <div className={styles.successBanner}>
-              <Sparkles size={18} />
-              <span>
-                Vous pouvez telecharger votre accuse de reception maintenant. Les autres documents seront traites
-                apres le traitement interne et la synchronisation.
-              </span>
+              <div className={styles.successBanner}>
+                <Sparkles size={18} />
+                <span>
+                  Demande enregistree et transmise. Le dossier a bien ete pris en charge par le workflow cadastral.
+                </span>
+              </div>
+
+              <div className={styles.downloadList}>
+                {downloads.map((document) => {
+                  const isExtrait = document.id === "extrait";
+                  return (
+                    <div key={document.id} className={styles.downloadRow}>
+                      <div className={styles.downloadIcon}>
+                        <document.icon size={20} />
+                      </div>
+                      <div className={styles.downloadMeta}>
+                        <div className={styles.downloadTitle}>{document.title}.pdf</div>
+                        <div className={styles.downloadSub}>
+                          {isExtrait ? "6,7 Ko - 1 page" : "7,4 Ko - 1 page - A4 paysage"}
+                        </div>
+                      </div>
+                      <button type="button" className={styles.downloadButton}>
+                        <Download size={16} />
+                        Telecharger
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button type="button" className={`${styles.primaryButton} ${styles.fullWidthButton}`}>
+                <Download size={18} />
+                Telecharger tout (.zip)
+              </button>
             </div>
-
-            <a
-              href={receiptDownloadUrl}
-              className={`${styles.primaryButton} ${styles.fullWidthButton}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <Download size={18} />
-              Telecharger l&apos;accuse de reception
-            </a>
-          </div>
+          )}
 
           <div className={styles.footerBar}>
-            <button type="button" className={styles.secondaryButton} onClick={handleResetWorkflow}>
-              Nouvelle demande
-            </button>
-            <button
-              type="button"
-              className={styles.secondaryButton}
-              onClick={() => navigate(getDefaultDashboardPath(auth?.role), { replace: true })}
-            >
-              Retour au dashboard
-            </button>
+            {processingReady ? (
+              <button type="button" className={styles.secondaryButton} onClick={handleResetWorkflow}>
+                Nouvelle demande
+              </button>
+            ) : (
+              <button type="button" className={styles.secondaryButton} onClick={() => goToStep(2)}>
+                Retour
+              </button>
+            )}
+            <div className={styles.footerNote}>
+              <ShieldCheck size={16} />
+              <span>
+                {processingReady
+                  ? "Le dossier est termine. Vous pouvez repartir sur une nouvelle demande."
+                  : "Le traitement est en cours. Le workflow passe automatiquement a la phase finale."}
+              </span>
+            </div>
           </div>
-        </section>
+          </section>
+        </div>
       </main>
     </InvestorLayout>
   );

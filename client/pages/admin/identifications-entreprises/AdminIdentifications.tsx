@@ -9,6 +9,7 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiClock,
+  FiFileText,
   FiEye,
   FiRefreshCw,
   FiSearch,
@@ -16,6 +17,7 @@ import {
 } from 'react-icons/fi';
 import Navbar from '@/pages/navbar/Navbar';
 import Sidebar from '@/pages/sidebar/Sidebar';
+import { BrandLoader } from '@/components/loading/BrandLoader';
 import { useViewNavigator } from '@/src/hooks/useViewNavigator';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { Button } from '@/components/ui/button';
@@ -101,18 +103,18 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const STATUS_OPTIONS: Array<{ value: StatusFilter; label: string }> = [
   { value: 'ALL', label: 'Tous statuts' },
   { value: 'EN_ATTENTE', label: 'En attente' },
-  { value: 'CONFIRMEE', label: 'Confirmees' },
-  { value: 'REFUSEE', label: 'Refusees' },
+  { value: 'CONFIRMEE', label: 'Confirmées' },
+  { value: 'REFUSEE', label: 'Refusées' },
 ];
 
 const DETENTEUR_STATUS_OPTIONS: Array<{
   value: DetenteurStatusFilter;
   label: string;
 }> = [
-  { value: 'ALL', label: 'Tous statuts detenteur' },
-  { value: 'PERSONNE_MORALE_ALGERIENNE', label: 'Personne morale algerienne' },
-  { value: 'PERSONNE_MORALE_ETRANGERE', label: 'Personne morale etrangere' },
-  { value: 'PERSONNE_PHYSIQUE_ALGERIENNE', label: 'Personne physique algerienne' },
+  { value: 'ALL', label: 'Tous statuts détenteur' },
+  { value: 'PERSONNE_MORALE_ALGERIENNE', label: 'Personne morale algérienne' },
+  { value: 'PERSONNE_MORALE_ETRANGERE', label: 'Personne morale étrangère' },
+  { value: 'PERSONNE_PHYSIQUE_ALGERIENNE', label: 'Personne physique algérienne' },
 ];
 
 function safeText(value?: string | null) {
@@ -145,18 +147,18 @@ function formatDate(value?: string | null) {
 }
 
 function detenteurStatusLabel(value?: string | null) {
-  if (value === 'PERSONNE_MORALE_ALGERIENNE') return 'Personne morale algerienne';
-  if (value === 'PERSONNE_MORALE_ETRANGERE') return 'Personne morale etrangere';
-  if (value === 'PERSONNE_PHYSIQUE_ALGERIENNE') return 'Personne physique algerienne';
+  if (value === 'PERSONNE_MORALE_ALGERIENNE') return 'Personne morale algérienne';
+  if (value === 'PERSONNE_MORALE_ETRANGERE') return 'Personne morale étrangère';
+  if (value === 'PERSONNE_PHYSIQUE_ALGERIENNE') return 'Personne physique algérienne';
   return '--';
 }
 
 function statusMeta(status: IdentificationStatus) {
   if (status === 'CONFIRMEE') {
-    return { label: 'Confirmee', className: styles.statusConfirmed };
+    return { label: 'Confirmée', className: styles.statusConfirmed };
   }
   if (status === 'REFUSEE') {
-    return { label: 'Refusee', className: styles.statusRejected };
+    return { label: 'Refusée', className: styles.statusRejected };
   }
   return { label: 'En attente', className: styles.statusPending };
 }
@@ -433,8 +435,8 @@ export default function AdminIdentifications() {
     () => [
       { value: 'ALL' as StatusFilter, label: 'Tous', count: stats.total },
       { value: 'EN_ATTENTE' as StatusFilter, label: 'En attente', count: stats.pending },
-      { value: 'CONFIRMEE' as StatusFilter, label: 'Confirmees', count: stats.confirmed },
-      { value: 'REFUSEE' as StatusFilter, label: 'Refusees', count: stats.rejected },
+      { value: 'CONFIRMEE' as StatusFilter, label: 'Confirmées', count: stats.confirmed },
+      { value: 'REFUSEE' as StatusFilter, label: 'Refusées', count: stats.rejected },
     ],
     [stats],
   );
@@ -490,7 +492,7 @@ export default function AdminIdentifications() {
   }, [detailItem?.representant?.taux_participation]);
 
   if (!isLoaded) {
-    return <div className={styles.loadingScreen}>Chargement...</div>;
+    return <BrandLoader fullScreen label="Chargement des identifications..." />;
   }
 
   return (
@@ -501,15 +503,19 @@ export default function AdminIdentifications() {
         <main className={styles.mainContent}>
           <header className={styles.pageHeader}>
             <div>
-              <h1>Gestion des Identifications Entreprises</h1>
+              <span className={styles.pageEyebrow}>
+                <FiFileText />
+                Administration
+              </span>
+              <h1>Identifications des entreprises</h1>
               <p>
-                Verification manuelle des demandes d identification avant activation
-                definitive des comptes.
+                Vérifiez les dossiers d’identification avant l’activation définitive
+                des comptes.
               </p>
             </div>
             <div className={styles.headerActions}>
               <Button
-                className={`${styles.refreshBtn} btn-primary`}
+                className={styles.refreshBtn}
                 onClick={() => {
                   void loadRows();
                   void loadStats();
@@ -558,7 +564,7 @@ export default function AdminIdentifications() {
             <Card className={`${styles.statCard} ${styles.statConfirmed}`}>
               <CardContent className={styles.statContent}>
                 <div>
-                  <p className={styles.statLabel}>Confirmees</p>
+                  <p className={styles.statLabel}>Confirmées</p>
                   <p className={styles.statValue}>{stats.confirmed}</p>
                 </div>
                 <FiCheck className={styles.statIcon} />
@@ -567,7 +573,7 @@ export default function AdminIdentifications() {
             <Card className={`${styles.statCard} ${styles.statRejected}`}>
               <CardContent className={styles.statContent}>
                 <div>
-                  <p className={styles.statLabel}>Refusees</p>
+                  <p className={styles.statLabel}>Refusées</p>
                   <p className={styles.statValue}>{stats.rejected}</p>
                 </div>
                 <FiX className={styles.statIcon} />
@@ -579,7 +585,7 @@ export default function AdminIdentifications() {
             <div className={styles.filterSearch}>
               <FiSearch />
               <Input
-                placeholder="Rechercher par utilisateur, email, societe, NIF..."
+                placeholder="Rechercher par utilisateur, email, société, NIF..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
               />
@@ -602,7 +608,7 @@ export default function AdminIdentifications() {
                 </select>
               </label>
               <label className={styles.filterField}>
-                <span>Statut detenteur</span>
+                <span>Statut détenteur</span>
                 <select
                   value={statutDetenteur}
                   onChange={(e) => {
@@ -663,7 +669,7 @@ export default function AdminIdentifications() {
                   setPageSize(20);
                 }}
               >
-                Reinitialiser filtres
+                Réinitialiser
               </Button>
             </div>
           </section>
@@ -755,7 +761,7 @@ export default function AdminIdentifications() {
                           <TableCell>
                             <Button
                               type="button"
-                              className={`${styles.verifyBtn} btn-primary`}
+                              className={styles.verifyBtn}
                               onClick={() => void openDetail(targetUserId)}
                             >
                               <FiEye /> Verifier

@@ -324,15 +324,15 @@
 }
 
 .homePremiumSignupButton {
-  background: linear-gradient(135deg, #b14680 0%, #a13b73 100%) !important;
-  color: #ffffff !important;
-  border: 1px solid rgba(255, 255, 255, 0.14) !important;
-  box-shadow: 0 10px 24px rgba(177, 70, 128, 0.35) !important;
+  background: linear-gradient(135deg, #e8b83e 0%, #c79212 100%) !important;
+  color: #14181f !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  box-shadow: 0 10px 24px rgba(199, 146, 18, 0.3) !important;
 }
 
 .homePremiumSignupButton:hover {
-  background: linear-gradient(135deg, #c55592 0%, #ab3f7a 100%) !important;
-  box-shadow: 0 14px 30px rgba(177, 70, 128, 0.44) !important;
+  background: linear-gradient(135deg, #f0c553 0%, #d6a21c 100%) !important;
+  box-shadow: 0 14px 30px rgba(199, 146, 18, 0.38) !important;
   transform: translateY(-1px);
 }
 
@@ -354,15 +354,15 @@
 .homePremiumGhostButtonLight {
   color: #1f2937 !important;
   background: #ffffff !important;
-  border: 1px solid rgba(177, 70, 128, 0.28) !important;
+  border: 1px solid rgba(214, 162, 28, 0.32) !important;
   box-shadow: 0 12px 24px -16px rgba(15, 23, 42, 0.34) !important;
 }
 
 .homePremiumGhostButtonLight:hover {
-  color: #7d2f59 !important;
-  background: #fff7fb !important;
-  border-color: rgba(177, 70, 128, 0.52) !important;
-  box-shadow: 0 16px 28px -16px rgba(177, 70, 128, 0.3) !important;
+  color: #8a6410 !important;
+  background: #fffaf0 !important;
+  border-color: rgba(214, 162, 28, 0.58) !important;
+  box-shadow: 0 16px 28px -16px rgba(199, 146, 18, 0.28) !important;
   transform: translateY(-1px);
 }
 
@@ -381,6 +381,6 @@
 .homePremiumSignupButton:focus-visible,
 .homePremiumGhostButton:focus-visible,
 .homePremiumGhostButtonLight:focus-visible {
-  outline: 2px solid rgba(177, 70, 128, 0.8) !important;
+  outline: 2px solid rgba(214, 162, 28, 0.85) !important;
   outline-offset: 2px !important;
 }

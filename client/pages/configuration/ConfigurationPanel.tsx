@@ -24,10 +24,10 @@ const tabs: Tab[] = [
   { id: 'substances', label: 'Substances / redevances' },
   { id: 'taxe-superficiaire', label: 'Taxe superficiaire / produit' },
   { id: 'zones-exclusion', label: "Zones d'exclusion" },
-  { id: 'loc-adm', label: 'Locations' },
+  { id: 'loc-adm', label: 'Localisation administrative' },
   { id: 'statuts-juridiques', label: 'Statuts juridiques' },
-  { id: 'phases-etapes', label: 'Phases / etapes' },
-  { id: 'permis-procedures', label: 'Procedures par permis' },
+  { id: 'phases-etapes', label: 'Phases / étapes' },
+  { id: 'permis-procedures', label: 'Procédures par permis' },
   { id: 'navbar-config', label: 'Configuration Navbar' },
 ];
 
@@ -91,7 +91,13 @@ const handleTabChange = (tabId: string) => {
           </div>
         );
       case 'zones-exclusion':
-        return <div className={styles.contentPlaceholder}></div>;
+        return (
+          <div className={styles.emptyState}>
+            <span className={styles.emptyIcon}>!</span>
+            <h2>Zones d&apos;exclusion</h2>
+            <p>Ce module de configuration n&apos;est pas encore disponible.</p>
+          </div>
+        );
       case 'loc-adm':
         return (
           <div className={styles.contentPlaceholder}>
@@ -134,7 +140,14 @@ const handleTabChange = (tabId: string) => {
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles['main-content']}>
           <div className={styles.panelContainer}>
-            <header className={styles.titleBar}>Configuration</header>
+            <header className={styles.titleBar}>
+              <div>
+                <span className={styles.eyebrow}>Administration</span>
+                <h1>Configuration</h1>
+                <p>Gérez les référentiels, les phases, les procédures et les paramètres du portail.</p>
+              </div>
+              <span className={styles.headerBadge}>{tabs.length} modules</span>
+            </header>
             <nav className={styles.tabBar}>
               {tabs.map((tab) => (
                 <button
@@ -148,7 +161,9 @@ const handleTabChange = (tabId: string) => {
             </nav>
             <main className={styles.contentArea}>{renderContent()}</main>
             <footer className={styles.footer}>
-              <button className={styles.closeButton}>Fermer</button>
+              <button className={styles.closeButton} onClick={() => router.back()}>
+                Retour
+              </button>
             </footer>
           </div>
         </main>

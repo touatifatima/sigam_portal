@@ -1666,3 +1666,2087 @@
   color: #6b4d5e;
   cursor: not-allowed;
 }
+
+/* Extension step 1 redesign: dense operational workspace */
+.app-container {
+  min-height: 100vh;
+  background: #eef2f5;
+  color: #18212f;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.app-content {
+  display: flex;
+  min-height: calc(100vh - 64px);
+}
+
+.main-content {
+  flex: 1;
+  background: #eef2f5;
+  padding: 18px 22px 24px;
+  min-width: 0;
+}
+
+.breadcrumb {
+  margin: 0 0 10px;
+  color: #536174;
+  font-size: 13px;
+}
+
+.content-wrapper {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.cadastre-app {
+  margin-top: 14px;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.cadastre-app > div[style] {
+  margin-bottom: 10px !important;
+}
+
+.cadastre-app > div[style]:first-child {
+  display: grid !important;
+  grid-template-columns: auto minmax(260px, 420px) 1fr;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 10px 12px !important;
+  background: #ffffff;
+  border: 1px solid #dbe3ec;
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(24, 33, 47, 0.06);
+}
+
+.cadastre-app > div[style]:nth-child(2) {
+  justify-content: flex-end;
+  padding: 0 !important;
+  background: transparent;
+}
+
+.cadastre-app > div[style] select,
+.cadastre-app > div[style] input {
+  height: 36px;
+  border-radius: 6px !important;
+  border: 1px solid #cdd7e2 !important;
+  background: #ffffff;
+  color: #18212f;
+}
+
+.cadastre-app > div[style] button {
+  height: 36px;
+  border-radius: 6px !important;
+}
+
+.app-layout {
+  display: grid;
+  grid-template-columns: minmax(360px, 440px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.appLayoutFullscreen {
+  display: block;
+}
+
+.data-panel {
+  order: 1;
+  min-width: 0;
+  height: calc(100vh - 230px);
+  min-height: 620px;
+  background: #ffffff;
+  border: 1px solid #d6e0ea;
+  border-radius: 8px;
+  box-shadow: 0 10px 26px rgba(24, 33, 47, 0.08);
+  padding: 0;
+  overflow: hidden;
+}
+
+.map-container {
+  order: 2;
+  min-width: 0;
+  height: calc(100vh - 230px);
+  min-height: 620px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 0;
+  background: #ffffff;
+  border: 1px solid #d6e0ea;
+  border-radius: 8px;
+  box-shadow: 0 10px 26px rgba(24, 33, 47, 0.08);
+  overflow: hidden;
+}
+
+.map-header {
+  padding: 12px 14px;
+  background: #172033;
+  color: #f8fafc;
+  border-bottom: 1px solid #26344d;
+  gap: 12px;
+}
+
+.map-header h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.badge {
+  background: #14b8a6;
+  color: #052e2b;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 12px;
+}
+
+.map-controls-group {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+
+.coordinate-system-controls,
+.map-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.system-select,
+.zone-select,
+.hemisphere-select {
+  height: 34px;
+  min-width: 76px;
+  border-radius: 6px;
+  border: 1px solid #40506c;
+  background: #ffffff;
+  color: #172033;
+  font-size: 13px;
+}
+
+.map-toggle {
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border-color: #40506c;
+  background: #23304a;
+  color: #e5edf7;
+}
+
+.map-btn,
+.add-btn,
+.primary-btn,
+.secondary-btn,
+.btn,
+.btnSave {
+  min-height: 34px;
+  border-radius: 6px;
+  font-weight: 650;
+}
+
+.map-btn {
+  background: #2563eb;
+  color: #ffffff;
+  border: 1px solid #2563eb;
+  box-shadow: none;
+}
+
+.map-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.map-btn.active {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  color: #1f2937;
+}
+
+.map-btn:disabled {
+  background: #94a3b8;
+  border-color: #94a3b8;
+}
+
+.map-viewport {
+  min-height: 0;
+  height: auto !important;
+  position: relative;
+}
+
+.map-viewport > div,
+.map-viewport :global(.arcgis-map),
+.map-viewport :global(.esri-view) {
+  height: 100% !important;
+}
+
+.map-footer {
+  min-height: 54px;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border-top: 1px solid #dbe3ec;
+}
+
+.area-display {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: #536174;
+  font-size: 13px;
+}
+
+.area-display strong {
+  color: #0f766e;
+  font-size: 16px;
+}
+
+.panel-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-bottom: 1px solid #dbe3ec;
+  background: #f8fafc;
+}
+
+.tab-btn {
+  height: 44px;
+  padding: 0 10px;
+  border-bottom: 3px solid transparent;
+  color: #536174;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tab-btn:hover {
+  color: #0f766e;
+}
+
+.tab-btn.active {
+  color: #0f766e;
+  border-bottom-color: #14b8a6;
+  background: #ffffff;
+}
+
+.panel-content {
+  height: calc(100% - 110px);
+  overflow: auto;
+  padding: 14px;
+}
+
+.table-header {
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.table-header h3 {
+  margin: 0;
+  color: #18212f;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.table-header > div {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.add-btn {
+  padding: 0 11px;
+  background: #0f766e;
+  border: 1px solid #0f766e;
+  color: #ffffff;
+}
+
+.add-btn:hover:not(:disabled) {
+  background: #115e59;
+}
+
+.coordinates-table {
+  display: grid;
+  grid-template-columns: 72px minmax(110px, 1fr) minmax(110px, 1fr) 92px;
+  gap: 0;
+  border: 1px solid #dbe3ec;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.table-row {
+  display: contents;
+}
+
+.table-row.header > div {
+  min-height: 34px;
+  background: #eef2f5;
+  color: #536174;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.table-row > div {
+  min-height: 48px;
+  padding: 6px;
+  border-bottom: 1px solid #e7edf4;
+  border-right: 1px solid #e7edf4;
+}
+
+.table-row > div:last-child {
+  border-right: 0;
+}
+
+.table-row input {
+  height: 36px;
+  border-radius: 6px;
+  border-color: #cdd7e2;
+  font-size: 13px;
+}
+
+.table-row input:focus {
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.16);
+}
+
+.table-row input:disabled {
+  background: #f8fafc;
+  color: #6b7280;
+}
+
+.delete-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 6px;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: #be123c;
+}
+
+.delete-btn:hover:not(:disabled) {
+  background: #ffe4e6;
+  border-color: #fb7185;
+}
+
+.validation-section,
+.summary-section {
+  gap: 12px;
+}
+
+.validation-card,
+.summary-card {
+  border-radius: 8px;
+  border: 1px solid #dbe3ec;
+  box-shadow: none;
+  padding: 14px;
+}
+
+.validation-card.success {
+  border-left: 4px solid #14b8a6;
+}
+
+.validation-card.error {
+  border-left: 4px solid #e11d48;
+}
+
+.validation-card.warning {
+  border-left: 4px solid #f59e0b;
+}
+
+.card-header h3,
+.summary-card h3 {
+  margin: 0;
+  font-size: 15px;
+  color: #18212f;
+}
+
+.info-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.info-grid label {
+  color: #536174;
+  font-weight: 700;
+}
+
+.info-grid input,
+.info-grid p {
+  min-height: 36px;
+  margin: 0;
+}
+
+.info-grid input {
+  border-radius: 6px;
+  border-color: #cdd7e2;
+}
+
+.panel-actions {
+  min-height: 66px;
+  margin: 0;
+  padding: 12px 14px;
+  border-top: 1px solid #dbe3ec;
+  background: #ffffff;
+}
+
+.secondary-btn {
+  border: 1px solid #cdd7e2;
+  background: #ffffff;
+  color: #334155;
+}
+
+.secondary-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.navigation-buttons {
+  margin-top: 14px;
+  justify-content: flex-end;
+}
+
+.navigation-buttons .btn,
+.btn {
+  border-radius: 6px;
+}
+
+.navigation-buttons .btn-outline,
+.btn-outline {
+  border: 1px solid #cdd7e2;
+  background: #ffffff;
+  color: #334155;
+}
+
+.navigation-buttons .btn-outline:hover,
+.btn-outline:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.navigation-buttons .btn-primary,
+.btn-primary,
+.validateBtn {
+  background: #172033;
+  color: #ffffff;
+  border: 1px solid #172033;
+  box-shadow: none;
+}
+
+.navigation-buttons .btn-primary:hover:not(:disabled),
+.btn-primary:hover:not(:disabled),
+.validateBtn:hover:not(:disabled) {
+  background: #0f172a;
+  transform: none;
+  box-shadow: none;
+}
+
+.etapeSaveSection {
+  margin-top: 10px;
+  justify-content: flex-end;
+}
+
+.etapeMessage {
+  border-radius: 8px;
+}
+
+.toast {
+  border-radius: 8px;
+}
+
+.mapFullscreenOverlay {
+  background: rgba(15, 23, 42, 0.96);
+}
+
+.mapFullscreenToolbar,
+.mapFullscreenBody {
+  border-radius: 8px;
+}
+
+@media (max-width: 1280px) {
+  .app-layout {
+    grid-template-columns: minmax(330px, 390px) minmax(0, 1fr);
+  }
+
+  .coordinates-table {
+    grid-template-columns: 64px minmax(94px, 1fr) minmax(94px, 1fr) 82px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .main-content {
+    padding: 14px;
+  }
+
+  .app-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .data-panel,
+  .map-container {
+    height: auto;
+    min-height: 0;
+  }
+
+  .map-container {
+    grid-template-rows: auto 520px auto;
+  }
+
+  .data-panel {
+    order: 2;
+  }
+
+  .map-container {
+    order: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .map-header,
+  .map-controls-group,
+  .coordinate-system-controls,
+  .map-controls {
+    align-items: stretch;
+  }
+
+  .map-controls-group,
+  .coordinate-system-controls,
+  .map-controls,
+  .panel-actions,
+  .action-group,
+  .navigation-buttons {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .system-select,
+  .zone-select,
+  .hemisphere-select,
+  .map-btn,
+  .map-toggle,
+  .add-btn,
+  .secondary-btn,
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .coordinates-table {
+    display: block;
+  }
+
+  .table-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-bottom: 1px solid #e7edf4;
+    padding: 8px;
+  }
+
+  .table-row.header {
+    display: none;
+  }
+
+  .table-row > div {
+    border: 0;
+    padding: 4px;
+  }
+
+  .table-row > div:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Non-cadastre extension screen redesign */
+.cadastreHeader {
+  margin: 12px 0 12px;
+  display: block;
+  text-align: left;
+}
+
+.cadastreTitle {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid #d6e0ea;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(24, 33, 47, 0.06);
+}
+
+.cadastreTitleIcon {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border-radius: 8px;
+  background: #dff7f4;
+  color: #0f766e;
+}
+
+.cadastreTitle h1 {
+  margin: 0 0 3px;
+  color: #172033;
+  font-size: 22px;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.cadastreTitle p {
+  margin: 0;
+  color: #536174;
+  font-size: 14px;
+  text-align: left;
+}
+
+.cadastreGrid {
+  display: grid;
+  grid-template-columns: minmax(380px, 460px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.pointsPanel,
+.mapPanel {
+  border: 1px solid #d6e0ea;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 10px 26px rgba(24, 33, 47, 0.08);
+}
+
+.pointsPanel {
+  min-width: 0;
+  max-height: calc(100vh - 250px);
+  min-height: 620px;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+.pointsHeader {
+  margin: 0;
+  padding: 13px 14px;
+  border-radius: 0;
+  background: #172033;
+  color: #ffffff;
+}
+
+.pointsHeader h3 {
+  margin: 0 0 3px;
+  color: #ffffff;
+  font-size: 15px;
+}
+
+.pointsHeader p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 12px;
+}
+
+.systemSelect {
+  margin: 0;
+  padding: 12px 14px;
+  border: 0;
+  border-bottom: 1px solid #dbe3ec;
+  border-radius: 0;
+  background: #f8fafc;
+}
+
+.systemSelect label {
+  margin-bottom: 6px;
+  color: #536174;
+  font-weight: 700;
+}
+
+.systemTrigger,
+.zoneSelect {
+  height: 36px;
+  border-radius: 6px;
+  border-color: #cdd7e2;
+  box-shadow: none;
+}
+
+.systemTrigger:hover,
+.systemTrigger:focus-visible,
+.systemTrigger[data-state='open'],
+.zoneSelect:hover,
+.zoneSelect:focus-visible,
+.zoneSelect[data-state='open'] {
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.16);
+}
+
+.pointsList {
+  max-height: calc(100vh - 570px);
+  min-height: 220px;
+  padding: 12px 14px;
+  gap: 8px;
+  overflow: auto;
+  background: #ffffff;
+}
+
+.pointRow {
+  grid-template-columns: 32px minmax(96px, 1fr) minmax(96px, 1fr) 80px 32px;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  border-color: #dbe3ec;
+  background: #ffffff;
+}
+
+.pointRow:hover {
+  border-color: #b6c5d5;
+  background: #fbfdff;
+}
+
+.pointRow input {
+  height: 36px;
+  border-radius: 6px;
+  border-color: #cdd7e2;
+  font-size: 13px;
+}
+
+.pointRow input:focus {
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.16);
+}
+
+.pointBadge {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: #0f766e;
+  color: #ecfeff;
+  font-size: 12px;
+}
+
+.pointDelete {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+}
+
+.addPointBtn,
+.importExcelBtn,
+.templateLink,
+.areaCard,
+.helperAlert,
+.warningAlert,
+.successAlert {
+  margin-left: 14px;
+  margin-right: 14px;
+}
+
+.addPointBtn,
+.importExcelBtn {
+  height: 38px;
+  margin-top: 10px;
+  border-radius: 6px;
+}
+
+.addPointBtn {
+  border-color: #14b8a6;
+  background: #ecfeff;
+  color: #0f766e;
+}
+
+.addPointBtn:hover:not(:disabled) {
+  background: #ccfbf1;
+  border-color: #0f766e;
+}
+
+.importExcelBtn {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.templateLink {
+  display: inline-flex;
+  margin-top: 8px;
+  color: #475569;
+  font-weight: 700;
+}
+
+.areaCard {
+  margin-top: 12px;
+  border-radius: 8px;
+  border: 1px solid #99f6e4;
+  background: #f0fdfa;
+  color: #134e4a;
+}
+
+.areaCard strong {
+  color: #0f766e;
+  font-size: 18px;
+}
+
+.helperAlert,
+.warningAlert,
+.successAlert {
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.mapPanel {
+  min-height: 620px;
+  max-height: calc(100vh - 250px);
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+.mapHeader {
+  height: 54px;
+  padding: 0 14px;
+  background: #ffffff;
+  border-bottom: 1px solid #dbe3ec;
+}
+
+.mapHeader h3 {
+  color: #172033;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.mapCanvas {
+  height: calc(100% - 54px);
+  min-height: 560px;
+  border-radius: 0;
+}
+
+.legendToggle {
+  top: 14px;
+  right: 14px;
+  border-radius: 6px;
+  color: #0f766e;
+  border-color: #99f6e4;
+  background: #ffffff;
+}
+
+.legendToggle:hover {
+  border-color: #14b8a6;
+  background: #f0fdfa;
+  box-shadow: 0 8px 20px rgba(20, 184, 166, 0.16);
+}
+
+.mapLegend {
+  right: 14px;
+  bottom: 14px;
+  min-width: 230px;
+  border-radius: 8px;
+  box-shadow: 0 12px 28px rgba(24, 33, 47, 0.18);
+}
+
+.legendSwatchPrimary {
+  background: #2563eb;
+}
+
+.legendSwatchTitles {
+  background: #0f766e;
+}
+
+.legendSwatchExclusion {
+  background: #7c3aed;
+}
+
+.legendSwatchDemandes {
+  background: #e11d48;
+}
+
+.bottomBar {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid #d6e0ea;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(24, 33, 47, 0.06);
+}
+
+.pointsStatus {
+  color: #334155;
+  font-weight: 700;
+}
+
+@media (max-width: 1200px) {
+  .cadastreGrid {
+    grid-template-columns: minmax(340px, 400px) minmax(0, 1fr);
+  }
+
+  .pointRow {
+    grid-template-columns: 30px minmax(86px, 1fr) minmax(86px, 1fr) 72px 30px;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .cadastreGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .pointsPanel,
+  .mapPanel {
+    min-height: 0;
+    max-height: none;
+  }
+
+  .pointsList {
+    max-height: none;
+  }
+
+  .mapCanvas {
+    height: 520px;
+    min-height: 520px;
+  }
+}
+
+@media (max-width: 640px) {
+  .cadastreTitle {
+    align-items: flex-start;
+  }
+
+  .cadastreTitle h1 {
+    font-size: 19px;
+  }
+
+  .pointRow {
+    grid-template-columns: 30px 1fr;
+  }
+
+  .zoneSelect,
+  .pointDelete {
+    grid-column: 2;
+    width: 100%;
+  }
+
+  .bottomBar {
+    align-items: stretch;
+  }
+}
+
+/* Concept v2: console cartographique compacte */
+.app-container {
+  background: #f4f6f8;
+  color: #1c2430;
+  font-size: 13px;
+}
+
+.main-content {
+  background:
+    linear-gradient(180deg, #f7f9fb 0%, #eef2f6 100%);
+  padding: 12px 16px 18px;
+}
+
+.breadcrumb {
+  font-size: 11px;
+  margin-bottom: 8px;
+  color: #7a8594;
+}
+
+.cadastreHeader {
+  margin: 8px 0 10px;
+}
+
+.cadastreTitle {
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 0;
+  border-left: 4px solid #111827;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.cadastreTitleIcon {
+  width: 30px;
+  height: 30px;
+  flex-basis: 30px;
+  border-radius: 50%;
+  background: #111827;
+  color: #ffffff;
+  font-size: 14px;
+}
+
+.cadastreTitle h1 {
+  color: #111827;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.cadastreTitle p {
+  max-width: 820px;
+  color: #637083;
+  font-size: 12px;
+}
+
+.cadastreGrid,
+.app-layout {
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 10px;
+}
+
+.mapPanel,
+.map-container {
+  order: 1;
+  min-height: calc(100vh - 205px);
+  max-height: calc(100vh - 205px);
+  border: 1px solid #cfd8e3;
+  border-radius: 0;
+  box-shadow: none;
+  background: #ffffff;
+}
+
+.pointsPanel,
+.data-panel {
+  order: 2;
+  min-height: calc(100vh - 205px);
+  max-height: calc(100vh - 205px);
+  border: 0;
+  border-radius: 0;
+  background: #111827;
+  color: #e5e7eb;
+  box-shadow: none;
+}
+
+.pointsHeader,
+.map-header {
+  height: auto;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #111827;
+}
+
+.map-header {
+  background: #ffffff;
+  border-bottom: 1px solid #d8e0ea;
+  color: #111827;
+}
+
+.pointsHeader h3,
+.map-header h2,
+.mapHeader h3 {
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.pointsHeader p {
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.mapHeader {
+  height: 42px;
+  padding: 0 12px;
+  border-bottom: 1px solid #d8e0ea;
+  background: #ffffff;
+}
+
+.mapCanvas {
+  height: calc(100% - 42px);
+  min-height: 560px;
+}
+
+.systemSelect,
+.panel-tabs,
+.panel-actions {
+  background: #172033;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.systemSelect {
+  padding: 10px 12px;
+}
+
+.systemSelect label {
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.systemTrigger,
+.zoneSelect,
+.system-select,
+.zone-select,
+.hemisphere-select {
+  height: 32px;
+  border-radius: 0;
+  border: 1px solid #374151;
+  background: #0b1220;
+  color: #f8fafc;
+  font-size: 12px;
+}
+
+.systemTrigger:hover,
+.systemTrigger:focus-visible,
+.systemTrigger[data-state='open'],
+.zoneSelect:hover,
+.zoneSelect:focus-visible,
+.zoneSelect[data-state='open'],
+.system-select:focus,
+.zone-select:focus,
+.hemisphere-select:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+}
+
+.pointsList,
+.panel-content {
+  max-height: calc(100vh - 515px);
+  min-height: 230px;
+  padding: 10px 12px;
+  background: #111827;
+  color: #e5e7eb;
+}
+
+.pointRow {
+  grid-template-columns: 26px 1fr 1fr 64px 28px;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid #283344;
+  border-radius: 0;
+  background: #172033;
+}
+
+.pointRow:hover {
+  border-color: #38bdf8;
+  background: #1b2638;
+}
+
+.pointBadge {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #38bdf8;
+  color: #082f49;
+  font-size: 11px;
+}
+
+.pointRow input,
+.table-row input,
+.info-grid input {
+  height: 30px;
+  border-radius: 0;
+  border: 1px solid #374151;
+  background: #0b1220;
+  color: #f8fafc;
+  font-size: 12px;
+}
+
+.pointRow input:focus,
+.table-row input:focus,
+.info-grid input:focus {
+  border-color: #38bdf8;
+  box-shadow: none;
+}
+
+.pointRow input:disabled,
+.table-row input:disabled {
+  background: #1f2937;
+  color: #9ca3af;
+}
+
+.pointDelete,
+.delete-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 0;
+  border-color: rgba(248, 113, 113, 0.35);
+  background: rgba(127, 29, 29, 0.3);
+  color: #fca5a5;
+}
+
+.pointDelete:hover:not(:disabled),
+.delete-btn:hover:not(:disabled) {
+  background: #7f1d1d;
+  color: #ffffff;
+}
+
+.addPointBtn,
+.importExcelBtn,
+.add-btn,
+.map-btn,
+.secondary-btn,
+.btn {
+  height: 32px;
+  min-height: 32px;
+  border-radius: 0;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.addPointBtn,
+.add-btn {
+  border-color: #38bdf8;
+  background: #075985;
+  color: #ffffff;
+}
+
+.addPointBtn:hover:not(:disabled),
+.add-btn:hover:not(:disabled) {
+  background: #0369a1;
+}
+
+.importExcelBtn {
+  border-color: #475569;
+  background: #1f2937;
+  color: #e5e7eb;
+}
+
+.templateLink {
+  color: #93c5fd;
+  font-size: 11px;
+}
+
+.areaCard {
+  border: 0;
+  border-top: 1px solid #283344;
+  border-bottom: 1px solid #283344;
+  border-radius: 0;
+  background: #0b1220;
+  color: #cbd5e1;
+  padding: 10px 0;
+}
+
+.areaCard span,
+.area-display span {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.areaCard strong,
+.area-display strong {
+  color: #38bdf8;
+  font-size: 16px;
+}
+
+.helperAlert,
+.warningAlert,
+.successAlert,
+.validation-card,
+.summary-card {
+  border-radius: 0;
+  border: 1px solid #283344;
+  background: #172033;
+  color: #e5e7eb;
+  box-shadow: none;
+}
+
+.successAlert {
+  border-color: rgba(45, 212, 191, 0.45);
+}
+
+.warningAlert {
+  border-color: rgba(251, 191, 36, 0.5);
+}
+
+.mapHeader,
+.map-footer {
+  background: #ffffff;
+}
+
+.map-footer {
+  min-height: 44px;
+  padding: 8px 12px;
+}
+
+.map-controls-group,
+.map-controls,
+.coordinate-system-controls {
+  gap: 6px;
+}
+
+.map-toggle {
+  height: 32px;
+  border-radius: 0;
+  background: #ffffff;
+  color: #334155;
+}
+
+.map-btn {
+  border-color: #111827;
+  background: #111827;
+  color: #ffffff;
+}
+
+.map-btn:hover:not(:disabled) {
+  border-color: #0f172a;
+  background: #0f172a;
+}
+
+.legendToggle {
+  top: 10px;
+  right: 10px;
+  border-radius: 0;
+  border-color: #111827;
+  background: #111827;
+  color: #ffffff;
+  font-size: 11px;
+}
+
+.legendToggle:hover {
+  background: #0f172a;
+  border-color: #0f172a;
+  box-shadow: none;
+}
+
+.mapLegend {
+  right: 10px;
+  bottom: 10px;
+  min-width: 210px;
+  border-radius: 0;
+  border-color: #d8e0ea;
+  font-size: 12px;
+}
+
+.mapLegend h4 {
+  font-size: 12px;
+}
+
+.bottomBar {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 0;
+  background: #111827;
+  box-shadow: none;
+}
+
+.pointsStatus {
+  color: #d1d5db;
+  font-size: 12px;
+}
+
+.navigation-buttons {
+  margin-top: 0;
+}
+
+.navigation-buttons .btn-outline,
+.btn-outline,
+.secondary-btn {
+  border-color: #374151;
+  background: transparent;
+  color: #e5e7eb;
+}
+
+.navigation-buttons .btn-outline:hover,
+.btn-outline:hover,
+.secondary-btn:hover:not(:disabled) {
+  background: #1f2937;
+  color: #ffffff;
+}
+
+.navigation-buttons .btn-primary,
+.btn-primary,
+.validateBtn {
+  border-color: #38bdf8;
+  background: #38bdf8;
+  color: #082f49;
+}
+
+.navigation-buttons .btn-primary:hover:not(:disabled),
+.btn-primary:hover:not(:disabled),
+.validateBtn:hover:not(:disabled) {
+  background: #7dd3fc;
+  border-color: #7dd3fc;
+  color: #082f49;
+}
+
+.tab-btn {
+  height: 38px;
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.tab-btn.active {
+  background: #111827;
+  color: #38bdf8;
+  border-bottom-color: #38bdf8;
+}
+
+.table-header h3,
+.card-header h3,
+.summary-card h3 {
+  color: #e5e7eb;
+  font-size: 13px;
+}
+
+.table-row.header > div {
+  background: #0b1220;
+  color: #9ca3af;
+  font-size: 10px;
+}
+
+.coordinates-table {
+  border-radius: 0;
+  border-color: #283344;
+  background: #111827;
+}
+
+.table-row > div {
+  min-height: 40px;
+  border-color: #283344;
+}
+
+.info-grid label {
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.info-grid p {
+  color: #e5e7eb;
+  font-size: 12px;
+}
+
+@media (max-width: 1024px) {
+  .cadastreGrid,
+  .app-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .mapPanel,
+  .map-container,
+  .pointsPanel,
+  .data-panel {
+    min-height: 0;
+    max-height: none;
+  }
+
+  .mapPanel,
+  .map-container {
+    order: 1;
+  }
+
+  .pointsPanel,
+  .data-panel {
+    order: 2;
+  }
+}
+
+/* Final redesign: GIS workstation with map-first layout */
+.app-container {
+  background: #f3f5f7;
+  color: #1f2933;
+  font-size: 12px;
+}
+
+.main-content {
+  padding: 10px 14px 14px;
+  background: #f3f5f7;
+}
+
+.breadcrumb {
+  display: none;
+}
+
+.content-wrapper {
+  width: 100%;
+  max-width: none;
+}
+
+.cadastreHeader {
+  margin: 8px 0;
+}
+
+.cadastreTitle {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.cadastreTitleIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 13px;
+}
+
+.cadastreTitle h1 {
+  margin: 0;
+  color: #111827;
+  font-size: 17px;
+  font-weight: 750;
+  letter-spacing: 0;
+}
+
+.cadastreTitle p {
+  display: none;
+}
+
+.cadastreGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "map"
+    "points";
+  gap: 8px;
+}
+
+.app-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "map"
+    "points";
+  gap: 8px;
+}
+
+.mapPanel,
+.map-container {
+  grid-area: map;
+  order: 1;
+  height: 62vh;
+  min-height: 440px;
+  max-height: none;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.mapHeader,
+.map-header {
+  height: 42px;
+  min-height: 42px;
+  padding: 0 12px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  color: #111827;
+}
+
+.mapHeader h3,
+.map-header h2 {
+  color: #111827;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.mapCanvas,
+.map-viewport {
+  height: calc(100% - 42px) !important;
+  min-height: 398px;
+  border-radius: 0;
+}
+
+.map-viewport > div,
+.map-viewport :global(.arcgis-map),
+.map-viewport :global(.esri-view) {
+  height: 100% !important;
+}
+
+.legendToggle {
+  top: 10px;
+  right: 10px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 11px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
+}
+
+.legendToggle:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.mapLegend {
+  right: 10px;
+  bottom: 10px;
+  min-width: 190px;
+  padding: 10px;
+  border: 1px solid #dbe3ec;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  font-size: 11px;
+}
+
+.mapLegend h4 {
+  margin-bottom: 6px;
+  font-size: 11px;
+}
+
+.pointsPanel,
+.data-panel {
+  grid-area: points;
+  order: 2;
+  min-height: 0;
+  max-height: none;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #111827;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.pointsPanel {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 210px;
+  grid-template-rows: auto auto auto;
+  align-items: stretch;
+}
+
+.pointsHeader {
+  grid-column: 1;
+  grid-row: 1 / span 3;
+  margin: 0;
+  padding: 12px;
+  background: #0f172a;
+  border: 0;
+  color: #ffffff;
+}
+
+.pointsHeader h3 {
+  margin: 0 0 6px;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.pointsHeader p {
+  color: #cbd5e1;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.systemSelect {
+  grid-column: 1;
+  grid-row: 2;
+  align-self: end;
+  margin: 64px 12px 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.systemSelect label {
+  color: #cbd5e1;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.systemTrigger,
+.zoneSelect,
+.system-select,
+.zone-select,
+.hemisphere-select {
+  height: 30px;
+  border-radius: 7px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #111827;
+  font-size: 11px;
+}
+
+.systemSelect .systemTrigger {
+  background: #111827;
+  border-color: #334155;
+  color: #ffffff;
+}
+
+.pointsList {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 6px;
+  max-height: 230px;
+  min-height: 154px;
+  padding: 10px;
+  overflow: auto;
+  background: #ffffff;
+}
+
+.pointRow {
+  display: grid;
+  grid-template-columns: 24px minmax(88px, 1fr) minmax(88px, 1fr) 66px 28px;
+  gap: 6px;
+  align-items: center;
+  padding: 6px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.pointRow:hover {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.pointBadge {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.pointRow input,
+.table-row input,
+.info-grid input {
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #111827;
+  font-size: 11px;
+  padding: 0 7px;
+}
+
+.pointRow input:focus,
+.table-row input:focus,
+.info-grid input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.14);
+}
+
+.pointRow input:disabled,
+.table-row input:disabled {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.pointDelete,
+.delete-btn {
+  width: 26px;
+  height: 26px;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  background: #fff1f2;
+  color: #e11d48;
+}
+
+.pointDelete:hover:not(:disabled),
+.delete-btn:hover:not(:disabled) {
+  background: #ffe4e6;
+  color: #be123c;
+}
+
+.addPointBtn,
+.importExcelBtn,
+.templateLink,
+.areaCard,
+.helperAlert,
+.warningAlert,
+.successAlert {
+  grid-column: 3;
+  margin-left: 0;
+  margin-right: 10px;
+}
+
+.addPointBtn,
+.importExcelBtn {
+  height: 30px;
+  margin-top: 10px;
+  border-radius: 7px;
+  font-size: 11px;
+}
+
+.addPointBtn {
+  grid-row: 1;
+  align-self: start;
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.addPointBtn:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.importExcelBtn {
+  grid-row: 1;
+  align-self: center;
+  border-color: #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+}
+
+.templateLink {
+  grid-row: 1;
+  align-self: end;
+  margin-top: 0;
+  color: #2563eb;
+  font-size: 10px;
+  text-align: left;
+}
+
+.areaCard {
+  grid-row: 2;
+  align-self: start;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.areaCard span,
+.area-display span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.areaCard strong,
+.area-display strong {
+  color: #1d4ed8;
+  font-size: 15px;
+}
+
+.helperAlert,
+.warningAlert,
+.successAlert {
+  grid-row: 3;
+  align-self: start;
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+.bottomBar {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.pointsStatus {
+  color: #334155;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.btn,
+.navigation-buttons .btn,
+.map-btn,
+.add-btn,
+.secondary-btn,
+.primary-btn {
+  min-height: 30px;
+  height: 30px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.navigation-buttons .btn-outline,
+.btn-outline,
+.secondary-btn {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+}
+
+.navigation-buttons .btn-outline:hover,
+.btn-outline:hover,
+.secondary-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  color: #111827;
+}
+
+.navigation-buttons .btn-primary,
+.btn-primary,
+.validateBtn,
+.map-btn,
+.add-btn {
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.navigation-buttons .btn-primary:hover:not(:disabled),
+.btn-primary:hover:not(:disabled),
+.validateBtn:hover:not(:disabled),
+.map-btn:hover:not(:disabled),
+.add-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.map-footer {
+  min-height: 38px;
+  padding: 6px 10px;
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+}
+
+.area-display {
+  font-size: 11px;
+}
+
+.map-controls-group,
+.map-controls,
+.coordinate-system-controls {
+  gap: 5px;
+}
+
+.map-toggle {
+  height: 30px;
+  border-radius: 7px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 11px;
+}
+
+.data-panel {
+  display: grid;
+  grid-template-rows: 36px minmax(0, 1fr) auto;
+}
+
+.panel-tabs {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.tab-btn {
+  height: 36px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.tab-btn.active {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-bottom-color: #2563eb;
+}
+
+.panel-content {
+  height: auto;
+  max-height: 230px;
+  padding: 10px;
+  background: #ffffff;
+  color: #111827;
+}
+
+.table-header h3,
+.card-header h3,
+.summary-card h3 {
+  color: #111827;
+  font-size: 12px;
+}
+
+.coordinates-table {
+  border-color: #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.table-row.header > div {
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 10px;
+}
+
+.table-row > div {
+  min-height: 38px;
+  border-color: #e2e8f0;
+}
+
+.validation-card,
+.summary-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111827;
+}
+
+.info-grid label {
+  color: #64748b;
+  font-size: 10px;
+}
+
+.info-grid p {
+  color: #111827;
+  font-size: 11px;
+}
+
+.panel-actions {
+  min-height: 48px;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+@media (max-width: 1180px) {
+  .pointsPanel {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .addPointBtn,
+  .importExcelBtn,
+  .templateLink,
+  .areaCard,
+  .helperAlert,
+  .warningAlert,
+  .successAlert {
+    grid-column: 1 / -1;
+    margin: 0 10px 8px;
+  }
+}
+
+@media (max-width: 760px) {
+  .mapPanel,
+  .map-container {
+    height: 52vh;
+    min-height: 360px;
+  }
+
+  .pointsPanel {
+    display: block;
+  }
+
+  .pointsHeader,
+  .systemSelect,
+  .pointsList {
+    margin: 0;
+  }
+
+  .pointsHeader {
+    padding: 10px;
+  }
+
+  .systemSelect {
+    padding: 10px;
+    background: #0f172a;
+  }
+
+  .pointsList {
+    max-height: none;
+    grid-template-columns: 1fr;
+  }
+}

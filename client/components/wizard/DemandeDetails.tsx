@@ -36,6 +36,7 @@ import {
 import { InvestorLayout } from "@/components/investor/InvestorLayout";
 import PerimeterCoordinatesTable from "@/components/perimeter/PerimeterCoordinatesTable";
 import { OnboardingTour, type OnboardingStep } from "@/components/onboarding/OnboardingTour";
+import { BrandLoader } from "@/components/loading/BrandLoader";
 import styles from "./DemandeDetails.module.css";
 
 type DemandeCommune = {
@@ -1880,15 +1881,7 @@ const DemandeDetails = () => {
   if (isLoading) {
     return (
       <InvestorLayout>
-        <div className={styles.loadingState}>
-          <div className={`${styles.skeletonBlock} ${styles.skeletonHero}`} />
-          <div className={`${styles.skeletonBlock} ${styles.skeletonTabs}`} />
-          <div className={styles.skeletonGrid}>
-            <div className={`${styles.skeletonBlock} ${styles.skeletonCard}`} />
-            <div className={`${styles.skeletonBlock} ${styles.skeletonCard}`} />
-            <div className={`${styles.skeletonBlock} ${styles.skeletonCard}`} />
-          </div>
-        </div>
+        <BrandLoader label="Chargement de la demande..." />
       </InvestorLayout>
     );
   }

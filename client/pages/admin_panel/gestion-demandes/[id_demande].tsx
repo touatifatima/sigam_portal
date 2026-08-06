@@ -22,6 +22,7 @@ import Navbar from '@/pages/navbar/Navbar';
 import Sidebar from '@/pages/sidebar/Sidebar';
 import EntityMessagesPanel from '@/components/chat/EntityMessagesPanel';
 import PerimeterCoordinatesTable from '@/components/perimeter/PerimeterCoordinatesTable';
+import { BrandLoader } from '@/components/loading/BrandLoader';
 import type { ArcGISMapRef, Coordinate } from '@/components/arcgismap/ArcgisMap';
 import { useViewNavigator } from '@/src/hooks/useViewNavigator';
 import { useAuthStore } from '@/src/store/useAuthStore';
@@ -1849,11 +1850,7 @@ export default function GestionDemandeDetailAdminPage() {
   };
 
   if (!isLoaded || !isAdmin) {
-    return (
-      <div className={styles.loadingScreen}>
-        <p>Chargement...</p>
-      </div>
-    );
+    return <BrandLoader fullScreen label="Chargement de la demande..." />;
   }
 
   return (

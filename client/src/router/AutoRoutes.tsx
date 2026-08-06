@@ -1,5 +1,7 @@
 import React, { Suspense } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
+import { BrandLoader } from '@/components/loading/BrandLoader'
+import { Footer } from '@/components/Footer'
 
 // Eager false for code-splitting
 const modules = import.meta.glob('../../pages/**/*.{tsx,jsx}', { eager: false })
@@ -29,22 +31,43 @@ function fileToPath(file: string): string | null {
   return p
 }
 
-export default function AutoRoutes() {
-  const routes = Object.entries(modules)
-    .map(([file, loader]) => {
-      const path = fileToPath(file)
-      if (!path) return null
-      const Component = React.lazy(loader as any)
-      return { path, Component }
-    })
-    .filter(Boolean) as { path: string; Component: React.LazyExoticComponent<any> }[]
+const routes = Object.entries(modules)
+  .map(([file, loader]) => {
+    const path = fileToPath(file)
+    if (!path) return null
+    const Component = React.lazy(loader as any)
+    return { path, Component }
+  })
+  .filter(Boolean) as { path: string; Component: React.LazyExoticComponent<any> }[]
 
-  // Always include 404 fallback to redirect to '/'
+function RouteWithFooter({ Component }: { Component: React.LazyExoticComponent<any> }) {
+  const location = useLocation()
+  const routePath = location.pathname
+  const showFooter = routePath !== '/auth/login' && routePath !== '/Signup/page'
+
   return (
-    <Suspense fallback={<div style={{ padding: 16 }}>Loading...</div>}>
+    <div
+      data-route-path={routePath}
+      style={{ display: 'flex', minHeight: '100vh', flexDirection: 'column' }}
+    >
+      <div style={{ flex: '1 0 auto', minWidth: 0 }}>
+        <Component />
+      </div>
+      {showFooter && <Footer />}
+    </div>
+  )
+}
+
+export default function AutoRoutes() {
+  return (
+    <Suspense fallback={<BrandLoader fullScreen label="Chargement de la page..." />}>
       <Routes>
         {routes.map(({ path, Component }) => (
-          <Route key={path} path={path} element={<Component />} />
+          <Route
+            key={path}
+            path={path}
+            element={<RouteWithFooter Component={Component} />}
+          />
         ))}
         <Route path="*" element={<div>Not Found</div>} />
       </Routes>

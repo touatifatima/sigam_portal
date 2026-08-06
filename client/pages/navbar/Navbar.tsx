@@ -97,9 +97,6 @@ export default function Navbar() {
   const isIdentificationsRoute =
     router.pathname?.includes('/admin/identifications-entreprises') ||
     router.asPath?.startsWith('/admin/identifications-entreprises');
-  const isCadastreDashboardRoute =
-    router.pathname?.includes('/cadastre/dashboard') ||
-    router.asPath?.startsWith('/cadastre/dashboard');
   const disableLiveNotifications = Boolean(isIdentificationsRoute);
   const notificationHeaders = useMemo(() => {
     const userId = Number(auth?.id || 0);
@@ -563,11 +560,12 @@ export default function Navbar() {
     [],
   );
 
-  const displayUsername = auth.username ?? auth.email ?? '';
-  const initials = getInitials(displayUsername || auth.role || '');
-  const displayEmail = auth.email ?? '';
+  const displayUsername = auth.username || auth.email || 'Utilisateur';
+  const initials = getInitials(displayUsername || auth.role || 'U');
+  const displayEmail = auth.email || 'Compte GUNAM';
   const canCreateDemande = isInvestisseur;
   const precheckHref = '/investisseur/interactive';
+  const visibleRoleQuickLinks = isInvestisseur ? [] : roleQuickLinks;
 
   const handleLogout = async () => {
     setIsDropdownOpen(false);
@@ -583,30 +581,17 @@ export default function Navbar() {
   };
 
   return (
-    <nav
-      className={`${styles['navbar']} ${
-        isCadastreDashboardRoute ? styles['navbar-cadastre'] : ''
-      }`}
-    >
+    <nav data-gunam-navbar="true" className={styles['navbar']}>
       <div className={styles['navbar-header']}>
-        <Link
-          href={dashboardHref}
-          className={styles['app-logo']}
-          aria-label="Aller au tableau de bord"
-          onClick={() => {
-            setIsCompactMenuOpen(false);
-            setIsDropdownOpen(false);
-            setIsNotificationsOpen(false);
-          }}
-        >
-          <span>GUNAM</span>
+        <Link href="/investisseur/InvestorDashboard" className={styles['app-logo']} aria-label="Retour au tableau de bord investisseur">
+          <img src="/Logo.png?v=7" alt="" className={styles['app-logo-img']} />
         </Link>
       </div>
 
       <div className={styles['navbar-actions']}>
-        {roleQuickLinks.length > 0 && (
+        {visibleRoleQuickLinks.length > 0 && (
           <div className={styles['role-nav-links']}>
-            {roleQuickLinks.map((link) => (
+            {visibleRoleQuickLinks.map((link) => (
               <Link key={link.href} href={link.href} className={styles['role-nav-link']}>
                 {link.label}
               </Link>
@@ -628,7 +613,7 @@ export default function Navbar() {
 
             {isCompactMenuOpen && (
               <div className={styles['mobile-nav-menu']}>
-                {roleQuickLinks.map((link) => (
+                {visibleRoleQuickLinks.map((link) => (
                   <Link
                     key={`mobile-${link.href}`}
                     href={link.href}
@@ -680,6 +665,15 @@ export default function Navbar() {
       </div>
 
       <div className={styles['navbar-user']}>
+        <div className={styles['language-switch']} aria-label="Langue">
+          <button type="button" className={`${styles['language-option']} ${styles['active']}`}>
+            FR
+          </button>
+          <button type="button" className={styles['language-option']}>
+            عربي
+          </button>
+        </div>
+
         {!isRestrictedInvestisseur && (
           <div className={styles['notification-container']} ref={notificationsRef}>
           <div

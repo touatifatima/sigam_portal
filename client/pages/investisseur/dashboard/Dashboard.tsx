@@ -1,9 +1,11 @@
-﻿import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { toast } from "react-toastify";
 import {
   AlertCircle,
   ArrowRight,
+  ArrowUpRight,
   Bell,
   BadgeCheck,
   Building2,
@@ -14,7 +16,6 @@ import {
   CreditCard,
   Download,
   FileText,
-  Headphones,
   HelpCircle,
   Home,
   Flag,
@@ -26,23 +27,23 @@ import {
   RefreshCcw,
   Search,
   ShieldCheck,
+  RotateCcw,
   User,
   WalletCards,
 } from "lucide-react";
 import Navbar from "@/pages/navbar/Navbar";
 import styles from "./Dashboard.module.css";
-import algerieMapUrl from "@/src/assets/algerie.png";
 import { useAuthStore } from "@/src/store/useAuthStore";
 import { useAuthReady } from "@/src/hooks/useAuthReady";
-import heroDashboardImage from "@/src/assets/ChatGPT Image 17 juin 2026, 11_21_32.png";
+import heroDashboardImage from "@/src/assets/mines.png";
+import { getDefaultDashboardPath, isCadastreRole } from "@/src/utils/roleNavigation";
+import { cleanLocalStorageForNewDemande } from "@/utils/cleanLocalStorage";
 import {
-  getDefaultDashboardPath,
-  isCadastreRole,
-} from "@/src/utils/roleNavigation";
-import {
-  OnboardingTour,
-  type OnboardingStep,
-} from "@/components/onboarding/OnboardingTour";
+  setSessionBackedItem,
+  writeSessionBackedJson,
+} from "@/src/utils/sessionBackedStorage";
+import { OnboardingTour, type OnboardingStep } from "@/components/onboarding/OnboardingTour";
+import { BrandLoader } from "@/components/loading/BrandLoader";
 import {
   getHasSeenOnboarding,
   getOnboardingActive,
@@ -217,6 +218,18 @@ type QuickLink = {
   tone: "blue" | "green" | "gold" | "violet" | "red";
 };
 
+type TypePermis = {
+  id: number;
+  lib_type: string;
+  code_type: string;
+  regime: string;
+  duree_initiale: number;
+  nbr_renouv_max: number;
+  duree_renouv: number;
+  delai_renouv: number;
+  superficie_max?: number | null;
+};
+
 const DASHBOARD_ONBOARDING_STEPS: OnboardingStep[] = [
   {
     id: "dashboard-hero",
@@ -298,30 +311,10 @@ const HERO_FEATURES: HeroFeature[] = [
 const PROCESS_STEPS: ProcessStep[] = [
   { label: "Soumise", date: "12/05/2025", state: "done", icon: CheckCircle2 },
   { label: "Reçue", date: "13/05/2025", state: "done", icon: CheckCircle2 },
-  {
-    label: "En instruction",
-    date: "16/05/2025",
-    state: "active",
-    icon: Clock3,
-  },
-  {
-    label: "Validation",
-    date: "En attente",
-    state: "pending",
-    icon: CheckCircle2,
-  },
-  {
-    label: "Paiement",
-    date: "En attente",
-    state: "pending",
-    icon: CheckCircle2,
-  },
-  {
-    label: "Délivrée",
-    date: "En attente",
-    state: "pending",
-    icon: CheckCircle2,
-  },
+  { label: "En instruction", date: "16/05/2025", state: "active", icon: Clock3 },
+  { label: "Validation", date: "En attente", state: "pending", icon: CheckCircle2 },
+  { label: "Paiement", date: "En attente", state: "pending", icon: CheckCircle2 },
+  { label: "Délivrée", date: "En attente", state: "pending", icon: CheckCircle2 },
 ];
 
 const normalizeReference = (value: string) =>
@@ -705,19 +698,14 @@ const buildTrackerSteps = (
       null,
   ];
 
-  return [
-    "Soumise",
-    "Reçue",
-    "En instruction",
-    "Validation",
-    "Paiement",
-    "Délivrée",
-  ].map((label, index) => ({
-    label,
-    date: index <= stage ? formatDateLabel(stepDates[index]) : "En attente",
-    state: index < stage ? "done" : index === stage ? "active" : "pending",
-    icon: index === 2 ? Clock3 : CheckCircle2,
-  }));
+  return ["Soumise", "Reçue", "En instruction", "Validation", "Paiement", "Délivrée"].map(
+    (label, index) => ({
+      label,
+      date: index <= stage ? formatDateLabel(stepDates[index]) : "En attente",
+      state: index < stage ? "done" : index === stage ? "active" : "pending",
+      icon: index === 2 ? Clock3 : CheckCircle2,
+    }),
+  );
 };
 
 const buildTrackerResult = (
@@ -742,7 +730,6 @@ const buildTrackerResult = (
     item.typeProcedure?.libelle ||
     item.typePermis?.lib_type ||
     "Demande minière";
-  const submittedAt = formatDateLabel(detail?.date_demande ?? item.date_demande);
 
   const timestamps = [
     toTimestamp(detail?.date_demande ?? item.date_demande),
@@ -812,6 +799,7 @@ const buildTrackerResult = (
             : "blue";
   const statusLabel = formatTrackerStatusLabel(status);
   const priority = formatTrackerPriority(statusTone);
+  const submittedAt = formatDateLabel(detail?.date_demande ?? item.date_demande);
 
   return {
     reference,
@@ -887,44 +875,31 @@ const buildRecentRequestCard = (
   };
 };
 
+const PAYMENTS: PaymentItem[] = [
+  {
+    code: "MIN-2025-00120",
+    label: "Permis d'exploitation",
+    amount: "450 000 DZD",
+    status: "Payé",
+    date: "12/05/2025",
+  },
+  {
+    code: "MIN-2025-00118",
+    label: "Autorisation de prospection",
+    amount: "75 000 DZD",
+    status: "Payé",
+    date: "05/05/2025",
+  },
+];
+
 const QUICK_LINKS: QuickLink[] = [
-  {
-    label: "Nouvelle demande",
-    icon: Plus,
-    href: "/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis",
-    tone: "blue",
-  },
-  {
-    label: "Mes demandes",
-    icon: FileText,
-    href: "/investisseur/demandes",
-    tone: "green",
-  },
-  {
-    label: "Paiements",
-    icon: CreditCard,
-    href: "/investisseur/statistiques",
-    tone: "gold",
-  },
-  {
-    label: "Carte minière",
-    icon: Map,
-    href: "/carte/carte_public",
-    tone: "violet",
-  },
+  { label: "Nouvelle demande", icon: Plus, href: "/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis", tone: "blue" },
+  { label: "Mes demandes", icon: FileText, href: "/investisseur/demandes", tone: "green" },
+  { label: "Paiements", icon: CreditCard, href: "/investisseur/statistiques", tone: "gold" },
+  { label: "Carte minière", icon: Map, href: "/carte/carte_public", tone: "violet" },
   { label: "Documents", icon: FileText, href: "/documentation", tone: "red" },
-  {
-    label: "Modèles & Guides",
-    icon: FileText,
-    href: "/documentation",
-    tone: "blue",
-  },
-  {
-    label: "Législation",
-    icon: FileText,
-    href: "/documentation",
-    tone: "gold",
-  },
+  { label: "Modèles & guides", icon: FileText, href: "/documentation", tone: "blue" },
+  { label: "Législation", icon: FileText, href: "/documentation", tone: "gold" },
   { label: "FAQ", icon: HelpCircle, href: "/faq", tone: "violet" },
 ];
 
@@ -954,10 +929,9 @@ const HERO_STATS: StatCard[] = [
     tone: "violet",
   },
   {
-    key: "demandesApprouvees",
     label: "Demandes approuvées",
-    value: "",
-    hint: "",
+    value: "24",
+    hint: "+5 ce mois",
     icon: CheckCircle2,
     tone: "green",
   },
@@ -970,10 +944,9 @@ const HERO_STATS: StatCard[] = [
     tone: "red",
   },
   {
-    key: "totalPayeeYear",
-    label: "Total payée",
-    value: "",
-    hint: "",
+    label: "Total payé (2025)",
+    value: "3 250 000 DZD",
+    hint: "+22% vs 2024",
     icon: CreditCard,
     tone: "blue",
   },
@@ -1007,6 +980,34 @@ const toList = <T,>(payload: unknown): T[] => {
   return [];
 };
 
+const isTypePermis = (value: unknown): value is TypePermis => {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.id === "number" &&
+    typeof record.lib_type === "string" &&
+    typeof record.code_type === "string" &&
+    typeof record.regime === "string" &&
+    typeof record.duree_initiale === "number" &&
+    typeof record.nbr_renouv_max === "number" &&
+    typeof record.duree_renouv === "number" &&
+    typeof record.delai_renouv === "number"
+  );
+};
+
+const toPermisList = (payload: unknown): TypePermis[] => {
+  return toList<unknown>(payload).filter(isTypePermis);
+};
+
+const toPermisItem = (payload: unknown): TypePermis | null => {
+  if (isTypePermis(payload)) return payload;
+  if (payload && typeof payload === "object") {
+    const data = (payload as { data?: unknown }).data;
+    if (isTypePermis(data)) return data;
+  }
+  return null;
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -1025,13 +1026,63 @@ export default function Dashboard() {
   const [trackReference, setTrackReference] = useState("");
   const [trackLoading, setTrackLoading] = useState(false);
   const [trackError, setTrackError] = useState<string | null>(null);
-  const [trackedRequest, setTrackedRequest] = useState<TrackerResult | null>(
-    null,
-  );
-  const [paymentsData, setPaymentsData] =
-    useState<DashboardPaymentsResponse | null>(null);
-  const [paymentsLoading, setPaymentsLoading] = useState(false);
-  const [paymentsError, setPaymentsError] = useState<string | null>(null);
+  const [trackedRequest, setTrackedRequest] = useState<TrackerResult | null>(null);
+  const [entryChoiceModalOpen, setEntryChoiceModalOpen] = useState(false);
+  const [entryModalStep, setEntryModalStep] = useState<"choice" | "initial">("choice");
+  const [permisOptions, setPermisOptions] = useState<TypePermis[]>([]);
+  const [optionsLoading, setOptionsLoading] = useState(false);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [selectedPermisId, setSelectedPermisId] = useState<number | "">("");
+  const [selectedPermis, setSelectedPermis] = useState<TypePermis | null>(null);
+  const [permitDropdownOpen, setPermitDropdownOpen] = useState(false);
+  const [entryError, setEntryError] = useState<string | null>(null);
+  const [submittingEntry, setSubmittingEntry] = useState(false);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (!entryChoiceModalOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [entryChoiceModalOpen]);
+
+  useEffect(() => {
+    if (!entryChoiceModalOpen || entryModalStep !== "initial") return;
+    if (!apiURL) {
+      setEntryError("Configuration API manquante.");
+      return;
+    }
+    if (permisOptions.length > 0) return;
+
+    let isActive = true;
+    setOptionsLoading(true);
+    setEntryError(null);
+
+    axios
+      .get(`${apiURL}/type-permis`, { withCredentials: true })
+      .then((response) => {
+        if (!isActive) return;
+        const options = toPermisList(response.data);
+        setPermisOptions(options);
+        if (options.length === 0) {
+          setEntryError("Aucun type de permis reçu depuis le serveur.");
+        }
+      })
+      .catch(() => {
+        if (isActive) setEntryError("Impossible de charger la liste des types de permis.");
+      })
+      .finally(() => {
+        if (isActive) setOptionsLoading(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [apiURL, entryChoiceModalOpen, entryModalStep, permisOptions.length]);
 
   useEffect(() => {
     if (!isAuthReady) return;
@@ -1250,10 +1301,13 @@ export default function Dashboard() {
       };
     }
 
-    void loadRecentRequests();
+    const recentTimer = window.setTimeout(() => {
+      void loadRecentRequests();
+    }, 700);
 
     return () => {
       isActive = false;
+      window.clearTimeout(recentTimer);
     };
   }, [apiURL, auth?.id, demandes]);
 
@@ -1276,8 +1330,7 @@ export default function Dashboard() {
   }, [location.search]);
 
   const companyName = useMemo(
-    () =>
-      auth?.username || auth?.nom || auth?.email || "Société Minière SARL",
+    () => auth?.username || auth?.nom || auth?.email || "Société Minière SARL",
     [auth?.email, auth?.nom, auth?.username],
   );
 
@@ -1427,6 +1480,12 @@ export default function Dashboard() {
   };
 
   const handleNavigate = (href: string) => {
+    if (href === "/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis") {
+      setEntryModalStep("choice");
+      setEntryChoiceModalOpen(true);
+      return;
+    }
+
     if (href.startsWith("#")) {
       document
         .querySelector(href)
@@ -1434,6 +1493,122 @@ export default function Dashboard() {
       return;
     }
     navigate(href);
+  };
+
+  const closeEntryModal = () => {
+    setEntryChoiceModalOpen(false);
+    setEntryModalStep("choice");
+    setSelectedPermisId("");
+    setSelectedPermis(null);
+    setPermitDropdownOpen(false);
+    setEntryError(null);
+  };
+
+  const effectivePermis = useMemo(() => {
+    if (selectedPermis) return selectedPermis;
+    if (selectedPermisId === "") return null;
+    return permisOptions.find((option) => option.id === selectedPermisId) ?? null;
+  }, [permisOptions, selectedPermis, selectedPermisId]);
+
+  const selectedPermisLabel = effectivePermis
+    ? `${effectivePermis.lib_type} (${effectivePermis.code_type}) - ${effectivePermis.regime}`
+    : optionsLoading
+      ? "Chargement..."
+      : "-- Sélectionnez --";
+
+  const handlePermisChange = async (value: string) => {
+    if (!value) {
+      setSelectedPermisId("");
+      setSelectedPermis(null);
+      setPermitDropdownOpen(false);
+      return;
+    }
+
+    const permisId = Number(value);
+    if (Number.isNaN(permisId)) {
+      setSelectedPermisId("");
+      setSelectedPermis(null);
+      setPermitDropdownOpen(false);
+      toast.error("Identifiant de permis invalide.");
+      return;
+    }
+
+    setSelectedPermisId(permisId);
+    setSelectedPermis(null);
+    setPermitDropdownOpen(false);
+    setEntryError(null);
+
+    if (!apiURL) {
+      setEntryError("Configuration API manquante.");
+      return;
+    }
+
+    setDetailsLoading(true);
+
+    try {
+      const response = await axios.get(`${apiURL}/type-permis/${permisId}`, {
+        withCredentials: true,
+      });
+      setSelectedPermis(toPermisItem(response.data));
+    } catch {
+      setSelectedPermis(null);
+      toast.error("Impossible de charger les détails du type de permis.");
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
+  const handleStartInitialDemande = async () => {
+    const permis = effectivePermis;
+
+    if (!permis) {
+      toast.warning("Sélectionnez un type de permis.");
+      return;
+    }
+
+    if (!apiURL) {
+      setEntryError("Configuration API manquante.");
+      return;
+    }
+
+    setSubmittingEntry(true);
+    setEntryError(null);
+
+    try {
+      cleanLocalStorageForNewDemande();
+      const response = await axios.post(
+        `${apiURL}/demandes`,
+        {
+          id_typepermis: permis.id,
+          objet_demande: "Instruction initialisée",
+        },
+        { withCredentials: true },
+      );
+
+      const { procedure, code_demande: demandeCode, id_demande } = response.data ?? {};
+      const idProc = procedure?.id_proc;
+
+      if (id_demande) setSessionBackedItem("id_demande", String(id_demande));
+      if (idProc) setSessionBackedItem("id_proc", String(idProc));
+      setSessionBackedItem("code_demande", demandeCode ?? "");
+      writeSessionBackedJson("selected_permis", permis);
+      writeSessionBackedJson("permis_details", {
+        duree_initiale: permis.duree_initiale,
+        nbr_renouv_max: permis.nbr_renouv_max,
+        superficie_max: permis.superficie_max ?? null,
+        duree_renouv: permis.duree_renouv,
+      });
+
+      if (idProc) {
+        navigate(`/investisseur/nouvelle_demande/step2/page2?id=${idProc}`);
+      } else {
+        setEntryError("Demande créée, mais identifiant de procédure indisponible.");
+      }
+    } catch {
+      setEntryError("Erreur lors de la création de la demande.");
+    } finally {
+      setSubmittingEntry(false);
+    }
   };
 
   const handleTrackRequest = useCallback(async () => {
@@ -1502,13 +1677,8 @@ export default function Dashboard() {
         },
       );
 
-      const detail = (detailResponse.data?.data ??
-        detailResponse.data) as TrackerDetailResponse;
-      if (
-        auth?.id &&
-        detail?.utilisateurId &&
-        detail.utilisateurId !== auth.id
-      ) {
+      const detail = (detailResponse.data?.data ?? detailResponse.data) as TrackerDetailResponse;
+      if (auth?.id && detail?.utilisateurId && detail.utilisateurId !== auth.id) {
         setTrackError("Vous n'avez pas accès à cette demande");
         setTrackedRequest(null);
         return;
@@ -1516,10 +1686,7 @@ export default function Dashboard() {
 
       setTrackedRequest(buildTrackerResult(matched, detail));
     } catch (error) {
-      if (
-        axios.isAxiosError(error) &&
-        [401, 403].includes(error.response?.status ?? 0)
-      ) {
+      if (axios.isAxiosError(error) && [401, 403].includes(error.response?.status ?? 0)) {
         setTrackError("Vous n'avez pas accès à cette demande");
       } else {
         setTrackError("Impossible de récupérer le suivi pour le moment");
@@ -1599,17 +1766,169 @@ export default function Dashboard() {
     : [];
 
   if (!isAuthReady) {
-    return (
-      <div className={styles.loadingState}>
-        <div className={styles.spinner} />
-        <p>Chargement...</p>
-      </div>
-    );
+    return <BrandLoader fullScreen label="Chargement du tableau de bord..." />;
   }
 
   return (
     <div className={styles.dashboard}>
       <Navbar />
+      {entryChoiceModalOpen && (
+        <div className={styles.entryModalOverlay}>
+          <div className={styles.entryModalCard} role="dialog" aria-modal="true" aria-labelledby="entry-choice-title">
+            <div className={styles.entryModalHeader}>
+              <span className={styles.entryModalBadge}>Nouvelle demande</span>
+            </div>
+            {entryModalStep === "choice" ? (
+              <>
+                <h2 id="entry-choice-title" className={styles.entryModalTitle}>
+                  Que souhaitez-vous faire ?
+                </h2>
+                <p className={styles.entryModalText}>
+                  Choisissez le parcours le plus adapté à votre besoin. Vous pouvez revenir à tout moment.
+                </p>
+
+                <div className={styles.entryModalActions}>
+                  <button
+                    type="button"
+                    className={`${styles.entryActionButton} ${styles.entryActionPrimary}`}
+                    onClick={() => navigate("/investisseur/nouvelle-demande-posterieure")}
+                  >
+                    <span className={styles.entryActionArrow}>
+                      <ArrowUpRight size={13} strokeWidth={2.5} />
+                    </span>
+                    <span className={`${styles.entryActionIcon} ${styles.entryActionIconViolet}`}>
+                      <RotateCcw size={22} strokeWidth={2} />
+                    </span>
+                    <span className={styles.entryActionLabel}>Demande pour un permis existant</span>
+                    <span className={styles.entryActionHint}>Renouvellement, cession, transfert, etc.</span>
+                    <span className={styles.entryActionPill}>Le plus courant</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`${styles.entryActionButton} ${styles.entryActionSecondary}`}
+                    onClick={() => setEntryModalStep("initial")}
+                  >
+                    <span className={styles.entryActionArrow}>
+                      <ArrowUpRight size={13} strokeWidth={2.5} />
+                    </span>
+                    <span className={`${styles.entryActionIcon} ${styles.entryActionIconBlue}`}>
+                      <Plus size={22} strokeWidth={2} />
+                    </span>
+                    <span className={styles.entryActionLabel}>Nouvelle demande initiale</span>
+                    <span className={styles.entryActionHint}>Continuer le parcours normal de création.</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 id="entry-choice-title" className={styles.entryModalTitle}>
+                  Choisissez votre type de permis
+                </h2>
+                <p className={styles.entryModalText}>
+                  Sélectionnez le permis demande. La demande sera creee depuis ce popup.
+                </p>
+
+                <div className={styles.entryPermitForm}>
+                  {entryError && <div className={styles.entryErrorBox}>{entryError}</div>}
+                  <label className={styles.entryPermitLabel} htmlFor="dashboard-type-permis">
+                    Type de permis
+                  </label>
+                  <div className={styles.entryPermitDropdown}>
+                    <button
+                      id="dashboard-type-permis"
+                      type="button"
+                      className={`${styles.entryPermitSelectButton} ${
+                        effectivePermis ? styles.entryPermitSelectButtonFilled : ""
+                      }`}
+                      onClick={() => setPermitDropdownOpen((open) => !open)}
+                      disabled={optionsLoading || submittingEntry}
+                      aria-haspopup="listbox"
+                      aria-expanded={permitDropdownOpen}
+                    >
+                      <span>{selectedPermisLabel}</span>
+                      <ChevronDown size={18} className={permitDropdownOpen ? styles.entryPermitChevronOpen : ""} />
+                    </button>
+
+                    {permitDropdownOpen && (
+                      <div className={styles.entryPermitMenu} role="listbox" aria-labelledby="dashboard-type-permis">
+                        {permisOptions.map((permis) => {
+                          const active = selectedPermisId === permis.id;
+                          return (
+                            <button
+                              key={permis.id}
+                              type="button"
+                              role="option"
+                              aria-selected={active}
+                              className={`${styles.entryPermitOption} ${
+                                active ? styles.entryPermitOptionActive : ""
+                              }`}
+                              onClick={() => void handlePermisChange(String(permis.id))}
+                            >
+                              <span>{permis.lib_type}</span>
+                              <small>
+                                {permis.code_type} - {permis.regime}
+                              </small>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {detailsLoading && <p className={styles.entryPermitHint}>Chargement des détails...</p>}
+
+                  {effectivePermis && !detailsLoading && (
+                    <div className={styles.entryPermitDetails}>
+                      <div>
+                        <span>Duree initiale</span>
+                        <strong>{effectivePermis.duree_initiale} ans</strong>
+                      </div>
+                      <div>
+                        <span>Renouvellements max</span>
+                        <strong>{effectivePermis.nbr_renouv_max}</strong>
+                      </div>
+                      <div>
+                        <span>Superficie max</span>
+                        <strong>{effectivePermis.superficie_max ? `${effectivePermis.superficie_max} ha` : "Non spécifiée"}</strong>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className={styles.entryPermitActions}>
+                    <button
+                      type="button"
+                      className={styles.entryBackButton}
+                      onClick={() => setEntryModalStep("choice")}
+                      disabled={submittingEntry}
+                    >
+                      Retour
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.entryContinueButton}
+                      onClick={() => void handleStartInitialDemande()}
+                      disabled={!effectivePermis || submittingEntry || detailsLoading}
+                    >
+                      {submittingEntry ? "Création..." : "Continuer"}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div className={styles.entryModalFooter}>
+              <button
+                type="button"
+                className={styles.entryDashboardButton}
+                onClick={closeEntryModal}
+              >
+                Annuler et retour au tableau de bord
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <header className={styles.header}>
         <div className={styles.headerInner}>
           <button
@@ -1625,10 +1944,8 @@ export default function Dashboard() {
               />
             </span>
             <span className={styles.brandText}>
-              <span className={styles.brandKicker}>
-                République Algérienne
-              </span>
-              <span className={styles.brandTitle}>Ministère des Mines</span>
+              <span className={styles.brandKicker}>Republique Algerienne</span>
+              <span className={styles.brandTitle}>Ministere des Mines</span>
             </span>
           </button>
 
@@ -1684,7 +2001,7 @@ export default function Dashboard() {
               </span>
               <span className={styles.userMeta}>
                 <span className={styles.userName}>{companyName}</span>
-                <span className={styles.userRole}>Entreprise vérifiée</span>
+                <span className={styles.userRole}>Entreprise verifiee</span>
               </span>
               <ChevronDown size={16} className={styles.userChevron} />
             </button>
@@ -1692,687 +2009,25 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className={styles.main}>
-        <section className={styles.hero} data-onboarding-id="dashboard-hero">
-          <div
-            className={styles.heroBackdrop}
-            style={{ backgroundImage: `url(${heroDashboardImage})` }}
-          />
-          <div className={styles.heroOverlay} />
-
-          <div className={styles.heroGrid}>
-            <div className={styles.heroContent}>
-              <p className={styles.heroEyebrow}>GUICHET UNIQUE MINIER</p>
-              <h1 className={styles.heroTitle}>
-                Toutes vos <em>démarches</em>
-                <br />
-                minières, <em>en un seul</em>
-                <br />
-                <em>endroit.</em>
-              </h1>
-              <p className={styles.heroLead}>
-                Simplifiez, suivez et gérez l&apos;ensemble de vos demandes et
-                permis miniers en toute transparence.
-              </p>
-
-              <div className={styles.heroFeatures}>
-                {HERO_FEATURES.map((feature) => {
-                  const Icon = feature.icon;
-                  return (
-                    <div key={feature.title} className={styles.heroFeature}>
-                      <span className={styles.heroFeatureIcon}>
-                        <Icon size={16} />
-                      </span>
-                      <div>
-                        <strong>{feature.title}</strong>
-                        <span>{feature.description}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className={styles.heroActions}>
-                <button
-                  type="button"
-                  className={styles.primaryAction}
-                  data-onboarding-id="dashboard-new-request"
-                  onClick={() =>
-                    navigate(
-                      "/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis",
-                    )
-                  }
-                >
-                  <Plus size={18} />
-                  <span>Nouvelle demande</span>
-                </button>
-                <button
-                  type="button"
-                  className={styles.secondaryAction}
-                  onClick={() => navigate("/investisseur/demandes")}
-                >
-                  <FileText size={17} />
-                  <span>Voir mes demandes</span>
-                </button>
-              </div>
-            </div>
-
-            <aside className={styles.heroPanel}>
-              <div className={styles.heroPanelHeader}>
-                <h2>Mon entreprise</h2>
-                <span
-                  className={
-                    auth?.isEntrepriseVerified
-                      ? styles.statusVerified
-                      : styles.statusPending
-                  }
-                >
-                  {auth?.isEntrepriseVerified ? "✓ Vérifiée" : "En attente"}
-                </span>
-              </div>
-
-              <div className={styles.heroPanelCompanyRow}>
-                <div className={styles.heroPanelAvatar}>{companyInitials}</div>
-                <div className={styles.heroPanelBody}>
-                  <p className={styles.heroPanelCompany}>{companyName}</p>
-                  <p className={styles.heroPanelMeta}>NIF : 123456789012345</p>
-                  <p className={styles.heroPanelMeta}>
-                    Statut :{" "}
-                    <span className={styles.heroPanelActive}>Actif</span>
-                  </p>
-                </div>
-              </div>
-
-              <div className={styles.heroPanelStats}>
-                <div className={styles.heroPanelStat}>
-                  <strong>
-                    {overviewStatsError
-                      ? "—"
-                      : overviewStatsLoading
-                        ? "…"
-                        : formatCount(overviewStats?.demandesEnCours)}
-                  </strong>
-                  <span>Demandes</span>
-                </div>
-                <div className={styles.heroPanelStatDivider} />
-                <div className={styles.heroPanelStat}>
-                  <strong>
-                    {overviewStatsError
-                      ? "—"
-                      : overviewStatsLoading
-                        ? "…"
-                        : formatCount(overviewStats?.permisActifs)}
-                  </strong>
-                  <span>Permis actifs</span>
-                </div>
-                <div className={styles.heroPanelStatDivider} />
-                <div className={styles.heroPanelStat}>
-                  <strong>
-                    {overviewStatsError
-                      ? "—"
-                      : overviewStatsLoading
-                        ? "…"
-                        : formatCount(overviewStats?.demandesApprouvees)}
-                  </strong>
-                  <span>Approuvées</span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className={styles.heroPanelAction}
-                onClick={() => navigate("/investisseur/profil")}
-              >
-                <User size={15} />
-                <span>Voir mon profil</span>
-              </button>
-            </aside>
-          </div>
-        </section>
-
-        {/* ── Barre de raccourcis rapides ── */}
-        <div className={styles.quickBar}>
-          {QUICK_LINKS.filter(
-            (item) =>
-              item.label !== "Paiements" && item.label !== "Mes demandes",
-          ).map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.label}
-                type="button"
-                className={`${styles.quickBarBtn} ${styles[`quickTone_${item.tone}`]}`}
-                onClick={() => handleNavigate(item.href)}
-              >
-                <span className={styles.quickBarIcon}>
-                  <Icon size={18} />
-                </span>
-                <span className={styles.quickBarLabel}>{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        <section
-          className={styles.statsGrid}
-          data-onboarding-id="dashboard-status"
-        >
-          {overviewStatCards.map((item, index) => {
-            const Icon = item.icon;
-            return (
-              <article
-                key={item.key}
-                className={styles.statCard}
-                style={{ animationDelay: `${index * 0.05}s` }}
-              >
-                <div
-                  className={`${styles.statIcon} ${styles[`statTone_${item.tone}`]}`}
-                >
-                  <Icon size={18} />
-                </div>
-                <div className={styles.statBody}>
-                  <p className={styles.statLabel}>{item.label}</p>
-                  <p className={styles.statValue}>{item.value}</p>
-                  <p className={styles.statHint}>{item.hint}</p>
-                </div>
-              </article>
-            );
-          })}
-        </section>
-
-        <section className={styles.contentGrid}>
-          <section
-            className={`${styles.card} ${styles.requestsCard}`}
-            data-onboarding-id="dashboard-card-demandes"
-          >
-            <div className={styles.cardHeader}>
-              <h2>Mes demandes récentes</h2>
-              <button
-                type="button"
-                className={styles.cardLinkButton}
-                onClick={() => navigate("/investisseur/demandes")}
-              >
-                Voir tout
-              </button>
-            </div>
-
-            <div className={styles.requestList}>
-              {recentRequestsLoading && recentRequests.length === 0 ? (
-                <div className={styles.requestEmptyState}>
-                  <div className={styles.requestEmptyPulse} />
-                  <p>Chargement des dernières demandes...</p>
-                </div>
-              ) : recentRequests.length > 0 ? (
-                recentRequests.map((request) => (
-                  <article
-                    key={request.reference}
-                    className={styles.requestRow}
-                  >
-                    <div
-                      className={`${styles.requestIcon} ${styles[`requestTone_${request.tone}`]}`}
-                    >
-                      <FileText size={18} />
-                    </div>
-
-                    <div className={styles.requestBody}>
-                      <div className={styles.requestTopLine}>
-                        <div>
-                          <h3>{request.title}</h3>
-                          <p>Réf : {request.reference}</p>
-                        </div>
-                        <span
-                          className={`${styles.requestStatus} ${styles[`requestStatus_${request.tone}`]}`}
-                        >
-                          {request.status}
-                        </span>
-                      </div>
-
-                      <div className={styles.progressRow}>
-                        <div className={styles.progressTrack}>
-                          <div
-                            className={`${styles.progressFill} ${styles[`progressFill_${request.tone}`]}`}
-                            style={{ width: `${request.progress}%` }}
-                          />
-                        </div>
-                        <span>{request.progress}%</span>
-                      </div>
-
-                      <div className={styles.requestFoot}>
-                        <span className={styles.requestFootHint}>
-                          Mis à jour : {request.updated}
-                        </span>
-                      </div>
-                    </div>
-                  </article>
-                ))
-              ) : (
-                <div className={styles.requestEmptyState}>
-                  <FileText size={18} />
-                  <p>Aucune demande récente trouvée.</p>
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section className={styles.card}>
-            <div className={styles.cardHeader}>
-              <h2>Suivi d&apos;une demande</h2>
-            </div>
-
-            <p className={styles.sectionLead}>
-              Entrez le numéro de référence pour suivre l&apos;avancement
-            </p>
-
-            <div className={styles.trackRow}>
-              <label className={styles.trackField}>
-                <Search size={18} />
-                <input
-                  type="text"
-                  placeholder="Ex : MIN-2025-00124"
-                  aria-label="Numéro de référence"
-                  value={trackReference}
-                  onChange={(event) => {
-                    setTrackReference(event.target.value);
-                    if (trackError) setTrackError(null);
-                  }}
-                />
-              </label>
-              <button
-                type="button"
-                className={styles.trackButton}
-                onClick={() => void handleTrackRequest()}
-                disabled={trackLoading}
-              >
-                {trackLoading ? (
-                  <>
-                    <Loader2 size={16} className={styles.trackSpinner} />
-                    <span>Recherche...</span>
-                  </>
-                ) : (
-                  <span>Suivre</span>
-                )}
-              </button>
-            </div>
-
-            {trackError && (
-              <div className={styles.trackError} role="alert">
-                <AlertCircle size={16} />
-                <span>{trackError}</span>
-              </div>
-            )}
-
-            {trackedRequest && (
-              <div
-                className={`${styles.trackResult} ${styles[`trackTone_${trackedRequest.statusTone}`]}`}
-              >
-                <div className={styles.trackResultTop}>
-                  <div className={styles.trackResultIdentity}>
-                    <div className={styles.trackResultIcon}>
-                      <FileText size={28} />
-                    </div>
-                    <div className={styles.trackResultCopy}>
-                      <p className={styles.trackResultEyebrow}>Demande</p>
-                      <h3>{trackedRequest.reference}</h3>
-                      <p className={styles.trackResultSubline}>
-                        {trackedRequest.title}
-                      </p>
-                      <span className={styles.trackStatusBadge}>
-                        {trackedRequest.statusLabel}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className={styles.trackResultUpdateCard}>
-                    <CalendarDays size={18} />
-                    <div>
-                      <span>Dernière mise à jour</span>
-                      <strong>{trackedRequest.lastUpdated}</strong>
-                    </div>
-                  </div>
-                </div>
-
-                <div className={styles.trackResultGrid}>
-                  {trackerMetrics.map((metric) => {
-                    const Icon = metric.icon;
-
-                    return (
-                      <article key={metric.label} className={styles.trackMetric}>
-                        <div className={styles.trackMetricHeader}>
-                          <span className={styles.trackMetricIcon}>
-                            <Icon size={14} />
-                          </span>
-                          <span className={styles.trackMetricLabel}>
-                            {metric.label}
-                          </span>
-                        </div>
-                        <div className={styles.trackMetricValue}>
-                          {metric.variant === "badge" ? (
-                            <span className={styles.trackMetricValueBadge}>
-                              {metric.value}
-                            </span>
-                          ) : (
-                            <strong>{metric.value}</strong>
-                          )}
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
-
-                <div className={styles.trackDescription}>
-                  <div className={styles.trackDescriptionHeader}>
-                    <Info size={14} />
-                    <span>Description</span>
-                  </div>
-                  <p>{trackedRequest.nextAction}</p>
-                </div>
-
-                <div className={styles.trackTimelineCard}>
-                  <div className={styles.trackTimelineHeader}>
-                    <h3>Étapes du processus</h3>
-                    <span>{trackedRequest.statusLabel}</span>
-                  </div>
-                  <div className={styles.trackTimelineViewport}>
-                    <div
-                      className={styles.trackTimeline}
-                    >
-                      <span className={styles.trackTimelineRail} />
-                      <span
-                        className={styles.trackTimelineProgress}
-                        style={{ width: `${Math.min(90, trackerProgress * 0.9)}%` }}
-                      />
-                      {trackerSteps.map((step) => {
-                        const Icon = step.icon;
-                        const stepStateLabel =
-                          step.state === "done"
-                            ? "Terminé"
-                            : step.state === "active"
-                              ? "En cours"
-                              : "À venir";
-
-                        return (
-                          <article key={step.label} className={styles.trackStep}>
-                            <div
-                              className={`${styles.trackStepNode} ${
-                                step.state === "done"
-                                  ? styles.trackStepDone
-                                  : step.state === "active"
-                                    ? styles.trackStepActive
-                                    : styles.trackStepPending
-                              }`}
-                            >
-                              <Icon size={16} />
-                            </div>
-                            <div className={styles.trackStepBody}>
-                              <strong>{step.label}</strong>
-                              <span>{step.date}</span>
-                              <em>{stepStateLabel}</em>
-                            </div>
-                          </article>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </section>
-        </section>
-
-        <section
-          className={styles.contentGridSecondary}
-          data-onboarding-id="dashboard-quick-access"
-        >
-          <section className={`${styles.card} ${styles.mapCard}`}>
-            {/* Orbes décoratifs */}
-            <div className={styles.mapOrb1} aria-hidden="true" />
-            <div className={styles.mapOrb2} aria-hidden="true" />
-
-            <div className={styles.mapLeft}>
-              <div className={styles.mapCopy}>
-                <span className={styles.mapBadge}>
-                  <Map size={12} />
-                  Géologie &amp; Ressources
-                </span>
-                <h2 className={styles.mapTitle}>
-                  Carte minière
-                  <br />
-                  interactive
-                </h2>
-                <p className={styles.mapDesc}>
-                  Explorez les zones minières, gisements et titres miniers
-                  actifs sur le territoire algérien.
-                </p>
-
-                <div className={styles.mapMiniStats}>
-                  <div className={styles.mapMiniStat}>
-                    <strong>127</strong>
-                    <span>Concessions</span>
-                  </div>
-                  <div className={styles.mapMiniStatDiv} />
-                  <div className={styles.mapMiniStat}>
-                    <strong>48</strong>
-                    <span>Zones actives</span>
-                  </div>
-                  <div className={styles.mapMiniStatDiv} />
-                  <div className={styles.mapMiniStat}>
-                    <strong>09</strong>
-                    <span>Wilayas</span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  className={styles.mapButton}
-                  onClick={() => navigate("/carte/carte_public")}
-                >
-                  <span>Ouvrir la carte</span>
-                  <ArrowRight size={15} />
-                </button>
-              </div>
-
-              <div className={styles.mapLegend}>
-                <p className={styles.mapLegendTitle}>Légende</p>
-                <div className={styles.mapLegendGrid}>
-                  <span className={styles.legendPill}>
-                    <i className={styles.legendDotOrange} />
-                    Gisements
-                  </span>
-                  <span className={styles.legendPill}>
-                    <i className={styles.legendDotGreen} />
-                    Zones ouvertes
-                  </span>
-                  <span className={styles.legendPill}>
-                    <i className={styles.legendDotRed} />
-                    Zones réservées
-                  </span>
-                  <span className={styles.legendPill}>
-                    <i className={styles.legendDotBlue} />
-                    Mes permis
-                  </span>
-                  <span className={styles.legendPill}>
-                    <i className={styles.legendDotViolet} />
-                    Mes demandes
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className={styles.mapVisual}>
-              <iframe
-                src="https://sig.anam.dz/portal/apps/experiencebuilder/experience?id=fc56f54b45264df2a5f4e07fd2462664"
-                className={styles.mapIframe}
-                title="Carte minière interactive"
-                loading="lazy"
-                allowFullScreen
-              />
-            </div>
-          </section>
-
-          <section className={`${styles.card} ${styles.paymentCard}`}>
-            <div className={styles.cardHeader}>
-              <h2>Paiements</h2>
-              <button
-                type="button"
-                className={styles.cardLinkButton}
-                onClick={() => navigate("/investisseur/statistiques")}
-              >
-                Voir tout
-              </button>
-            </div>
-
-            {paymentsLoading ? (
-              <div className={styles.paymentState}>
-                <Loader2 size={20} className={styles.paymentSpinner} />
-                <div>
-                  <strong>Chargement des paiements</strong>
-                  <p>Récupération des dernières informations en cours.</p>
-                </div>
-              </div>
-            ) : paymentsError ? (
-              <div className={styles.paymentState}>
-                <AlertCircle
-                  size={20}
-                  className={styles.paymentStateIconError}
-                />
-                <div>
-                  <strong>Impossible de charger les paiements</strong>
-                  <p>{paymentsError}</p>
-                </div>
-                <button
-                  type="button"
-                  className={styles.cardLinkButton}
-                  onClick={() => void loadPayments()}
-                >
-                  Réessayer
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className={styles.paymentHighlight}>
-                  <div>
-                    <p>Montant à régler</p>
-                    <strong>{formatAmountDzd(paymentSummary.totalDue)}</strong>
-                    <span>
-                      {hasPendingPayments
-                        ? `${paymentSummary.pendingCount} paiement(s) en attente`
-                        : "Aucun paiement en attente"}
-                    </span>
-                  </div>
-                  {hasPendingPayments ? (
-                    <button
-                      type="button"
-                      className={styles.payButton}
-                      onClick={() =>
-                        navigate("/investisseur/statistiques#paiements")
-                      }
-                    >
-                      <LockIcon />
-                      <span>Payer maintenant</span>
-                    </button>
-                  ) : (
-                    <div className={styles.paymentNoAction}>
-                      <CheckCircle2 size={16} />
-                      <span>Aucun paiement en attente</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className={styles.paymentList}>
-                  <p className={styles.paymentSectionTitle}>
-                    Derniers paiements
-                  </p>
-                  {hasPayments ? (
-                    latestPayments.map((payment) => {
-                      const status = payment.status;
-                      const receiptHref = getPaymentReceiptHref(
-                        apiURL,
-                        payment.receiptUrl,
-                      );
-                      const statusClassName = getPaymentStatusClassName(status);
-
-                      return (
-                        <article key={payment.id} className={styles.paymentRow}>
-                          <div className={styles.paymentInfo}>
-                            <strong>{payment.requestReference}</strong>
-                            <span>{payment.permitType}</span>
-                          </div>
-                          <div className={styles.paymentMeta}>
-                            <strong>{formatAmountDzd(payment.amount)}</strong>
-                            <span
-                              className={`${styles.paymentStatusBadge} ${statusClassName}`}
-                            >
-                              {PAYMENT_STATUS_LABELS[status] ?? status}
-                            </span>
-                            <span>
-                              {formatPaymentDate(payment.paymentDate)}
-                            </span>
-                          </div>
-                          {status === "paid" && receiptHref ? (
-                            <a
-                              href={receiptHref}
-                              className={styles.downloadButton}
-                              aria-label={`Télécharger le reçu ${payment.requestReference}`}
-                              title="Télécharger le reçu"
-                              download
-                            >
-                              <Download size={16} />
-                            </a>
-                          ) : (
-                            <span
-                              className={styles.downloadSpacer}
-                              aria-hidden="true"
-                            />
-                          )}
-                        </article>
-                      );
-                    })
-                  ) : (
-                    <div className={styles.paymentStateCompact}>
-                      <WalletCards size={18} />
-                      <div>
-                        <strong>Aucun paiement enregistré</strong>
-                        <p>
-                          Les paiements liés à vos demandes apparaîtront ici dès
-                          qu&apos;ils seront disponibles.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-          </section>
-          <section className={styles.supportCard} id="support">
-            <div className={styles.supportCopy}>
-              <div className={styles.supportBadge}>
-                <Headphones size={17} />
-              </div>
-              <div className={styles.supportCopyText}>
-                <h2>Besoin d&apos;aide ?</h2>
-                <p>Notre équipe est à votre disposition</p>
-              </div>
-            </div>
-
-            <div className={styles.supportActions}>
-              <button
-                type="button"
-                className={styles.supportButton}
-                onClick={() => navigate("/contact")}
-              >
-                Contacter le support
-              </button>
-              <button
-                type="button"
-                className={styles.supportIconButton}
-                onClick={() => navigate("/faq")}
-              >
-                <HelpCircle size={18} />
-              </button>
-            </div>
-          </section>
-        </section>
-      </main>
+      <DashboardModernBody
+        companyName={companyName}
+        companyInitials={companyInitials}
+        isEntrepriseVerified={Boolean(auth?.isEntrepriseVerified)}
+        stats={stats}
+        recentRequests={recentRequests}
+        recentRequestsLoading={recentRequestsLoading}
+        trackReference={trackReference}
+        trackLoading={trackLoading}
+        trackError={trackError}
+        trackedRequest={trackedRequest}
+        onTrackReferenceChange={(value) => {
+          setTrackReference(value);
+          if (trackError) setTrackError(null);
+        }}
+        onTrackRequest={() => void handleTrackRequest()}
+        onNavigate={handleNavigate}
+        onOpenNewRequest={() => setEntryChoiceModalOpen(true)}
+      />
 
       <OnboardingTour
         isOpen={showOnboarding}
@@ -2384,16 +2039,397 @@ export default function Dashboard() {
   );
 }
 
-function AlgeriaMapIllustration() {
+type DashboardModernBodyProps = {
+  companyName: string;
+  companyInitials: string;
+  isEntrepriseVerified: boolean;
+  stats: StatState;
+  recentRequests: RecentRequestCard[];
+  recentRequestsLoading: boolean;
+  trackReference: string;
+  trackLoading: boolean;
+  trackError: string | null;
+  trackedRequest: TrackerResult | null;
+  onTrackReferenceChange: (value: string) => void;
+  onTrackRequest: () => void;
+  onNavigate: (href: string) => void;
+  onOpenNewRequest: () => void;
+};
+
+function DashboardModernBody({
+  companyName,
+  companyInitials,
+  isEntrepriseVerified,
+  stats,
+  recentRequests,
+  recentRequestsLoading,
+  trackReference,
+  trackLoading,
+  trackError,
+  trackedRequest,
+  onTrackReferenceChange,
+  onTrackRequest,
+  onNavigate,
+  onOpenNewRequest,
+}: DashboardModernBodyProps) {
+  const mapHostRef = useRef<HTMLDivElement | null>(null);
+  const [loadMapFrame, setLoadMapFrame] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const host = mapHostRef.current;
+    if (!host || !("IntersectionObserver" in window)) {
+      const timer = window.setTimeout(() => setLoadMapFrame(true), 6000);
+      return () => window.clearTimeout(timer);
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setLoadMapFrame(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "80px 0px" },
+    );
+
+    observer.observe(host);
+    const fallbackTimer = window.setTimeout(() => setLoadMapFrame(true), 12000);
+
+    return () => {
+      window.clearTimeout(fallbackTimer);
+      observer.disconnect();
+    };
+  }, []);
+  const kpis = [
+    { label: "Demandes en cours", value: String(stats.demandesEnCours || 17).padStart(2, "0"), hint: "↑ 18% ce mois", tone: "up", icon: FileText },
+    { label: "Permis actifs", value: String(stats.permisActifs || 8).padStart(2, "0"), hint: "+1 ce mois", tone: "neutral", icon: ShieldCheck },
+    { label: "En instruction", value: "06", hint: "−2 ce mois", tone: "neutral", icon: Clock3 },
+    { label: "Approuvées", value: "24", hint: "↑ 5 ce mois", tone: "up", icon: CheckCircle2 },
+    { label: "Paiements en attente", value: "2", hint: "125 000 DZD", tone: "warn", icon: WalletCards },
+    { label: "Total payé 2025", value: "3,25M", hint: "↑ 22% vs 2024", tone: "up", icon: CreditCard },
+  ];
+
+  const requests = recentRequests.length > 0 ? recentRequests : [
+    {
+      title: "Renouvellement",
+      reference: "RNV-TXC-123",
+      status: "En cours",
+      progress: 65,
+      tone: "amber" as const,
+      updated: "il y a 1 jour",
+    },
+    {
+      title: "Extension_Sub",
+      reference: "EXT-APM-121",
+      status: "En cours",
+      progress: 65,
+      tone: "amber" as const,
+      updated: "06/07/2026",
+    },
+    {
+      title: "Demande",
+      reference: "TEMP-PEM-1780218229795",
+      status: "Complément requis",
+      progress: 34,
+      tone: "blue" as const,
+      updated: "31/05/2026",
+    },
+  ];
+
+  const currentTracker = trackedRequest ?? {
+    reference: "EXT-APM-121",
+    title: "Extension_Sub",
+    status: "En cours",
+    statusTone: "gold" as const,
+    lastUpdated: "06/07/2026",
+    estimatedRemaining: "Non disponible",
+    responsibleService: "Instruction technique",
+    nextAction: "Instruction technique en cours - votre dossier est en cours d'analyse par le service compétent.",
+    steps: PROCESS_STEPS,
+  };
+
+  const quickActions = QUICK_LINKS.filter((item) => item.label !== "Paiements");
+
   return (
-    <div className={styles.mapStage} aria-hidden="true">
-      <img
-        className={styles.mapImage}
-        src={algerieMapUrl}
-        alt=""
-        aria-hidden="true"
-      />
-    </div>
+    <main className={styles.modernMain}>
+      <section className={styles.modernHero} data-onboarding-id="dashboard-hero">
+        <div
+          className={styles.modernHeroBackdrop}
+          style={{ backgroundImage: `url(${heroDashboardImage})` }}
+        />
+        <div className={styles.modernHeroOverlay} />
+        <div className={styles.modernHeroCompany}>
+          <div>
+            <strong>{companyName}</strong>
+            <span className={isEntrepriseVerified ? styles.modernHeroVerified : styles.modernHeroPending}>
+              {isEntrepriseVerified ? "Vérifiée" : "En attente"}
+            </span>
+            <small>NIF 123456789012345</small>
+          </div>
+          <b>{companyInitials.slice(0, 1)}</b>
+        </div>
+        <div className={styles.modernHeroBody}>
+          <span>Guichet unique minier</span>
+          <h1>
+            Toutes vos <em>démarches</em>
+            <br />
+            minières, <em>en un seul</em>
+            <br />
+            <em>endroit.</em>
+          </h1>
+          <p>Simplifiez, suivez et gérez l'ensemble de vos demandes et permis miniers en toute transparence.</p>
+          <div className={styles.modernHeroBadges}>
+            <strong>100% en ligne</strong>
+            <strong>Sécurisé</strong>
+            <strong>Paiements sécurisés</strong>
+          </div>
+          <div className={styles.modernHeroActions}>
+            <button type="button" onClick={onOpenNewRequest}>
+              <Plus size={16} />
+              Nouvelle demande
+            </button>
+            <button type="button" onClick={() => onNavigate("/investisseur/demandes")}>
+              Voir mes demandes
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.modernBlock}>
+        <div className={styles.modernSectionTitle}>
+          <h2>Indicateurs</h2>
+          <span>Mis à jour aujourd'hui</span>
+        </div>
+        <div className={styles.modernKpiRow} data-onboarding-id="dashboard-status">
+          {kpis.map((kpi) => {
+            const Icon = kpi.icon;
+            return (
+            <article key={kpi.label} className={`${styles.modernKpi} ${styles[`modernKpi_${kpi.tone}`]}`}>
+              <div className={styles.modernKpiTop}>
+                <label>{kpi.label}</label>
+                <span><Icon size={15} /></span>
+              </div>
+              <div className={styles.modernKpiValueRow}>
+                <strong>{kpi.value}</strong>
+              </div>
+              <em className={kpi.tone === "up" ? styles.modernUp : kpi.tone === "warn" ? styles.modernWarn : ""}>{kpi.hint}</em>
+            </article>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className={styles.modernBlock} data-onboarding-id="dashboard-quick-access">
+        <div className={styles.modernSectionTitle}>
+          <h2>Accès rapide</h2>
+        </div>
+        <div className={styles.modernActions}>
+          <button
+            type="button"
+            className={styles.modernActionPrimary}
+            data-onboarding-id="dashboard-new-request"
+            onClick={onOpenNewRequest}
+          >
+            <Plus size={15} />
+            Nouvelle demande
+          </button>
+          {quickActions
+            .filter((item) => item.label !== "Nouvelle demande")
+            .map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  className={styles.modernAction}
+                  onClick={() => onNavigate(item.href)}
+                >
+                  <Icon size={15} />
+                  {item.label}
+                </button>
+              );
+            })}
+        </div>
+      </section>
+
+      <section className={styles.modernBlock} data-onboarding-id="dashboard-card-notifications">
+        <div className={styles.modernSectionTitle}>
+          <h2>Carte minière</h2>
+          <span>127 concessions référencées</span>
+        </div>
+        <div className={styles.modernMapCard}>
+          <div className={styles.modernMapInfo}>
+            <span className={styles.modernMapEyebrow}>
+              <Map size={13} />
+              Géologie & ressources
+            </span>
+            <h3>Carte minière interactive</h3>
+            <p>Explorez les zones minières, gisements et titres miniers actifs sur le territoire algérien.</p>
+            <div className={styles.modernMapStats}>
+              <div><strong>127</strong><span>Concessions</span></div>
+              <div><strong>48</strong><span>Zones actives</span></div>
+              <div><strong>09</strong><span>Wilayas</span></div>
+            </div>
+            <button type="button" className={styles.modernMapButton} onClick={() => onNavigate("/carte/carte_public")}>
+              Ouvrir la carte
+              <ArrowRight size={15} />
+            </button>
+            <div className={styles.modernMapLegend}>
+              <span><i className={styles.dotGold} />Gisements</span>
+              <span><i className={styles.dotGreen} />Zones ouvertes</span>
+              <span><i className={styles.dotRed} />Zones réservées</span>
+              <span><i className={styles.dotBlue} />Mes permis</span>
+              <span><i className={styles.dotViolet} />Mes demandes</span>
+            </div>
+          </div>
+
+          <div className={styles.modernMapCanvas} ref={mapHostRef}>
+            {loadMapFrame ? (
+              <iframe
+                src="https://sig.anam.dz/portal/apps/experiencebuilder/experience?id=fc56f54b45264df2a5f4e07fd2462664"
+                className={styles.modernMapIframe}
+                title="Carte minière interactive"
+                loading="lazy"
+                allowFullScreen
+              />
+            ) : (
+              <div className={styles.modernMapDeferred}>
+                <Map size={28} />
+                <strong>Carte minière prête à charger</strong>
+                <span>Le tableau de bord s'affiche d'abord, la carte se charge ensuite.</span>
+                <button type="button" onClick={() => setLoadMapFrame(true)}>
+                  Charger la carte
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.modernGrid}>
+        <div className={styles.modernStack}>
+          <section className={styles.modernCard} data-onboarding-id="dashboard-card-demandes">
+            <div className={styles.modernCardHead}>
+              <h3>Demandes récentes</h3>
+              <button type="button" onClick={() => onNavigate("/investisseur/demandes")}>Voir tout</button>
+            </div>
+            <div className={styles.modernReqList}>
+              {recentRequestsLoading && recentRequests.length === 0 ? (
+                <div className={styles.modernEmpty}>Chargement des dernières demandes...</div>
+              ) : (
+                requests.slice(0, 3).map((request) => (
+                  <article key={request.reference} className={styles.modernReq}>
+                    <div className={styles.modernReqIcon}><FileText size={17} /></div>
+                    <div className={styles.modernReqBody}>
+                      <strong>{request.title}</strong>
+                      <span>Réf. {request.reference} - {request.updated}</span>
+                    </div>
+                    <div className={styles.modernReqProgress}>
+                      <div><i style={{ width: `${request.progress}%` }} /></div>
+                      <span>{request.progress}%</span>
+                    </div>
+                    <span className={request.tone === "amber" ? styles.modernStatusProgress : styles.modernStatusWait}>
+                      {request.status}
+                    </span>
+                  </article>
+                ))
+              )}
+            </div>
+          </section>
+
+          <section className={styles.modernCard}>
+            <div className={styles.modernCardHead}>
+              <h3>Paiements</h3>
+              <button type="button" onClick={() => onNavigate("/investisseur/statistiques")}>Voir tout</button>
+            </div>
+            <div className={styles.modernPayBanner}>
+              <div>
+                <span>Montant ? r?gler</span>
+                <strong>125 000 DZD</strong>
+                <small>2 paiement(s) en attente</small>
+              </div>
+              <button type="button">
+                <WalletCards size={15} />
+                Payer maintenant
+              </button>
+            </div>
+            <div className={styles.modernPayList}>
+              {PAYMENTS.map((payment) => (
+                <article key={payment.code} className={styles.modernPayRow}>
+                  <div>
+                    <strong>{payment.code}</strong>
+                    <span>{payment.label}</span>
+                  </div>
+                  <b>{payment.amount}</b>
+                  <em>{payment.status}</em>
+                  <span>{payment.date}</span>
+                  <button type="button" aria-label={`Télécharger le reçu ${payment.code}`}>
+                    <Download size={14} />
+                  </button>
+                </article>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <section className={styles.modernCard}>
+          <div className={styles.modernCardHead}>
+            <h3>Suivre une demande</h3>
+          </div>
+          <div className={styles.modernTrackPad}>
+            <div className={styles.modernTrackInput}>
+              <input
+                value={trackReference}
+                placeholder="EXT-APM-121"
+                onChange={(event) => onTrackReferenceChange(event.target.value)}
+              />
+              <button type="button" onClick={onTrackRequest} disabled={trackLoading}>
+                {trackLoading ? "Recherche..." : "Suivre"}
+              </button>
+            </div>
+            {trackError && (
+              <div className={styles.modernTrackError}>
+                <AlertCircle size={15} />
+                {trackError}
+              </div>
+            )}
+            <div className={styles.modernLiveTag}><span />Suivi instantan?</div>
+            <div className={styles.modernResultCard}>
+              <div className={styles.modernResultHead}>
+                <div>
+                  <strong>{currentTracker.title}</strong>
+                  <span>{currentTracker.reference}</span>
+                </div>
+                <em>{currentTracker.status}</em>
+              </div>
+              <div className={styles.modernInfoGrid}>
+                <div><Clock3 size={14} /><span>Dernière mise à jour</span><strong>{currentTracker.lastUpdated}</strong></div>
+                <div><ArrowRight size={14} /><span>Temps restant estimé</span><strong>{currentTracker.estimatedRemaining}</strong></div>
+                <div><ShieldCheck size={14} /><span>Service responsable</span><strong>{currentTracker.responsibleService}</strong></div>
+                <div><Plus size={14} /><span>Statut actuel</span><strong>{currentTracker.status}</strong></div>
+              </div>
+              <p>{currentTracker.nextAction}</p>
+            </div>
+            <div className={styles.modernSteps}>
+              {(currentTracker.steps ?? PROCESS_STEPS).map((step, index) => (
+                <div
+                  key={`${step.label}-${index}`}
+                  className={`${styles.modernStep} ${
+                    step.state === "done" ? styles.modernStepDone : step.state === "active" ? styles.modernStepActive : ""
+                  }`}
+                >
+                  <span>{step.state === "done" ? "✓" : index + 1}</span>
+                  <strong>{step.label}</strong>
+                  <small>{step.date}</small>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
   );
 }
 
@@ -2420,3 +2456,4 @@ function LockIcon() {
     </span>
   );
 }
+

@@ -2,9 +2,9 @@
   min-height: 100vh;
   background: linear-gradient(180deg, #f8f3f8 0%, #f5f7fb 100%);
   color: #2a1e2b;
-  --anam-primary: #8b3a62;
-  --anam-primary-dark: #6f2e4f;
-  --anam-primary-soft: #f8edf3;
+  --anam-primary: #d29a0e;
+  --anam-primary-dark: #a66f00;
+  --anam-primary-soft: #fff8e8;
   --anam-border: #eadce8;
   --anam-text: #3f2345;
   --anam-muted: #6f5b73;
@@ -183,7 +183,7 @@
 .input:focus,
 .textarea:focus {
   border-color: var(--anam-primary);
-  box-shadow: 0 0 0 3px rgba(139, 58, 98, 0.14);
+  box-shadow: 0 0 0 3px rgba(210, 154, 14, 0.18);
   outline: none;
 }
 
@@ -361,7 +361,7 @@
 /* Premium Declarations Refresh */
 .appContainer {
   background:
-    radial-gradient(circle at 8% -10%, rgba(139, 58, 98, 0.2) 0%, rgba(139, 58, 98, 0) 43%),
+    radial-gradient(circle at 8% -10%, rgba(210, 154, 14, 0.22) 0%, rgba(210, 154, 14, 0) 43%),
     radial-gradient(circle at 103% 0%, rgba(15, 118, 110, 0.12) 0%, rgba(15, 118, 110, 0) 40%),
     linear-gradient(180deg, #f7f2f8 0%, #f2f6fb 52%, #f4f8fb 100%);
 }
@@ -376,10 +376,10 @@
 .pageHeader {
   margin-bottom: 0.15rem;
   border-radius: 20px;
-  border-color: rgba(139, 58, 98, 0.24);
+  border-color: rgba(210, 154, 14, 0.24);
   background:
     linear-gradient(125deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 44%),
-    linear-gradient(135deg, #8b3a62 0%, #6f2f4f 54%, #4f2439 100%);
+    linear-gradient(135deg, #d29a0e 0%, #a66f00 54%, #6f4a00 100%);
   box-shadow:
     0 20px 38px rgba(54, 22, 39, 0.24),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);

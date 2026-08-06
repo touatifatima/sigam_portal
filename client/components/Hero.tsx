@@ -31,27 +31,27 @@ const slides: Slide[] = [
   {
     image: heroSlide1Jpg,
     imageWebp: heroSlide1Webp,
-    title: "Bienvenue sur le Portail des",
-    highlight: "Activites Minieres",
+    title: "Bienvenue sur le portail des",
+    highlight: "activités minières",
     subtitle:
-      "Plateforme nationale de gestion des permis et licences minieres de l'Algerie. Simplifiez vos demarches en toute transparence.",
-    cta: "Deposer une demande",
+      "Plateforme nationale de gestion des permis et licences minières en Algérie. Simplifiez vos démarches en toute transparence.",
+    cta: "Déposer une demande",
     ctaLink: "/Signup/page",
   },
   {
     image: heroSlide2Jpg,
     imageWebp: heroSlide2Webp,
     title: "Explorez les richesses",
-    highlight: "geologiques de l'Algerie",
+    highlight: "géologiques de l’Algérie",
     subtitle:
-      "Des montagnes du Hoggar aux plaines du Tell, decouvrez un patrimoine minier exceptionnel a travers notre carte interactive.",
+      "Des montagnes du Hoggar aux plaines du Tell, découvrez un patrimoine minier exceptionnel à travers notre carte interactive.",
     cta: "Explorer la carte",
     ctaLink: "/carte/carte_public",
   },
   {
     image: heroSlide3Jpg,
     imageWebp: heroSlide3Webp,
-    title: "Technologie au service de",
+    title: "La technologie au service de",
     highlight: "l'investissement minier",
     subtitle:
       "GUNAM: une plateforme moderne de suivi en temps reel, d'analyse geologique et de gestion numerique de vos permis.",
@@ -61,10 +61,10 @@ const slides: Slide[] = [
   {
     image: heroSlide4Jpg,
     imageWebp: heroSlide4Webp,
-    title: "Des ressources minerales",
+    title: "Des ressources minérales",
     highlight: "d'une richesse inestimable",
     subtitle:
-      "Or, fer, phosphate, zinc et bien plus. L'Algerie dispose d'un potentiel minier considerable qui n'attend que votre investissement.",
+      "Or, fer, phosphate, zinc et bien plus. L’Algérie dispose d’un potentiel minier considérable pour accompagner vos investissements.",
     cta: "Voir les opportunites",
     ctaLink: "/Signup/page",
   },
@@ -74,17 +74,17 @@ const slides: Slide[] = [
     title: "Exportez vers le monde avec",
     highlight: "confiance et efficacite",
     subtitle:
-      "Des infrastructures portuaires modernes et des procedures simplifiees pour accompagner vos projets miniers a l'international.",
+      "Des infrastructures modernes et des procédures simplifiées pour accompagner vos projets miniers à l’international.",
     cta: "Commencer maintenant",
     ctaLink: "/Signup/page",
   },
   {
     image: heroSlide6Jpg,
-    title: "Pilotez vos operations minieres avec",
-    highlight: "visibilite et securite",
+    title: "Pilotez vos opérations minières avec",
+    highlight: "visibilité et sécurité",
     subtitle:
-      "Suivez les activites sur site, structurez vos demarches administratives et avancez avec une vision claire de vos projets miniers.",
-    cta: "Suivre mes demarches",
+      "Suivez les activités sur site, structurez vos démarches administratives et avancez avec une vision claire de vos projets miniers.",
+    cta: "Suivre mes démarches",
     ctaLink: "/auth/login",
   },
   {
@@ -92,16 +92,16 @@ const slides: Slide[] = [
     title: "Valorisez le savoir-faire de vos",
     highlight: "equipes techniques minieres",
     subtitle:
-      "Ingenieurs, geologues et operateurs collaborent pour accelerer l'instruction, reduire les risques et fiabiliser chaque etape de vos projets.",
+      "Ingénieurs, géologues et opérateurs collaborent pour accélérer l’instruction, réduire les risques et fiabiliser chaque étape de vos projets.",
     cta: "Structurer mon projet",
     ctaLink: "/Signup/page",
   },
   {
     image: heroFinJpg,
     title: "Ouvrez la voie a vos projets",
-    highlight: "souterrains strategiques",
+    highlight: "souterrains stratégiques",
     subtitle:
-      "De l'exploration aux travaux en profondeur, accedez a un portail unique pour encadrer vos permis et vos investissements.",
+      "De l’exploration aux travaux en profondeur, accédez à un portail unique pour encadrer vos permis et vos investissements.",
     cta: "Voir les opportunites",
     ctaLink: "/Signup/page",
   },

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import styles from './PhasesEtapes.module.css';
+import { BrandLoader } from '@/components/loading/BrandLoader';
 
 interface Etape {
   id_etape: number;
@@ -637,7 +638,7 @@ const PhasesEtapes: React.FC = () => {
   }, [manyEtapesList, relations]);
 
   if (loading) {
-    return <div className={styles.loading}>Chargement des phases et étapes...</div>;
+    return <BrandLoader label="Chargement des phases et etapes..." />;
   }
 
   return (

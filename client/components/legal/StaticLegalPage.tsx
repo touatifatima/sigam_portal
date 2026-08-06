@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { FiCalendar, FiFileText, FiGlobe } from 'react-icons/fi';
-import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import {
   fetchPublicStaticPage,
@@ -597,7 +596,6 @@ export function StaticLegalPage({ slug }: StaticLegalPageProps) {
         </section>
       </main>
 
-      <Footer />
     </div>
   );
 }

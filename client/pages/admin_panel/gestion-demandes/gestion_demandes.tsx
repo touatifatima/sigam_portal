@@ -26,6 +26,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Navbar from '@/pages/navbar/Navbar';
 import Sidebar from '@/pages/sidebar/Sidebar';
+import { BrandLoader } from '@/components/loading/BrandLoader';
 import { useViewNavigator } from '@/src/hooks/useViewNavigator';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import styles from './gestion_demandes.module.css';
@@ -1505,11 +1506,7 @@ export default function GestionDemandesAdminPage() {
   }, [page, pages]);
 
   if (!isLoaded || !isAdmin) {
-    return (
-      <div className={styles.loadingScreen}>
-        <p>Chargement...</p>
-      </div>
-    );
+    return <BrandLoader fullScreen label="Chargement des demandes..." />;
   }
 
   return (

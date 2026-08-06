@@ -3,17 +3,16 @@
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(120% 120% at 14% 4%, rgba(177, 70, 128, 0.22), transparent 46%),
-    radial-gradient(100% 120% at 88% 8%, rgba(18, 40, 58, 0.26), transparent 52%),
-    linear-gradient(180deg, #140d15 0%, #251526 52%, #311b2a 100%);
-  color: #f8f1f8;
+    radial-gradient(90% 90% at 8% 0%, rgba(232, 184, 62, 0.1), transparent 48%),
+    linear-gradient(180deg, #171c24 0%, #202631 100%);
+  color: #f8fafc;
 }
 
 .backgroundGradient {
   position: absolute;
   inset: -12% -30% auto -30%;
   height: 75%;
-  background: radial-gradient(circle at 50% 0%, rgba(177, 70, 128, 0.25), transparent 66%);
+  background: radial-gradient(circle at 50% 0%, rgba(232, 184, 62, 0.14), transparent 66%);
   pointer-events: none;
 }
 
@@ -23,7 +22,7 @@
   bottom: -8rem;
   width: 26rem;
   height: 26rem;
-  background: radial-gradient(circle, rgba(24, 80, 89, 0.24), rgba(24, 80, 89, 0));
+  background: radial-gradient(circle, rgba(232, 184, 62, 0.1), transparent);
   border-radius: 9999px;
   filter: blur(38px);
   pointer-events: none;
@@ -54,7 +53,7 @@
 }
 
 .label {
-  color: #cf5f98;
+  color: #f0c553;
   font-weight: 700;
   font-size: 0.78rem;
   text-transform: uppercase;
@@ -73,7 +72,7 @@
 
 .description {
   font-size: 1.02rem;
-  color: rgba(248, 238, 247, 0.78);
+  color: rgba(236, 240, 246, 0.76);
   max-width: 37rem;
   line-height: 1.5;
 }
@@ -101,7 +100,7 @@
 
 .serviceCard {
   border-radius: 1rem;
-  background: linear-gradient(180deg, rgba(95, 54, 78, 0.54), rgba(77, 44, 63, 0.82));
+  background: linear-gradient(180deg, rgba(48, 55, 68, 0.88), rgba(30, 36, 46, 0.96));
   border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow: 0 18px 38px -20px rgba(0, 0, 0, 0.62);
   transition: transform 0.35s ease, box-shadow 0.35s ease, border-color 0.3s ease;
@@ -111,11 +110,11 @@
 }
 
 .serviceCard:hover {
-  border-color: rgba(177, 70, 128, 0.62);
+  border-color: rgba(232, 184, 62, 0.56);
   transform: translateY(-6px);
   box-shadow:
     0 26px 46px -20px rgba(0, 0, 0, 0.72),
-    0 10px 32px -20px rgba(177, 70, 128, 0.58);
+    0 10px 32px -20px rgba(199, 146, 18, 0.42);
 }
 
 .serviceImageWrapper {
@@ -147,8 +146,8 @@
   background: linear-gradient(
     to bottom,
     rgba(13, 10, 15, 0.1) 0%,
-    rgba(30, 19, 30, 0.45) 58%,
-    rgba(49, 29, 43, 0.9) 100%
+    rgba(24, 29, 37, 0.42) 58%,
+    rgba(20, 24, 31, 0.92) 100%
   );
 }
 
@@ -183,8 +182,8 @@
   width: 2.45rem;
   height: 2.45rem;
   border-radius: 0.72rem;
-  background: rgba(177, 70, 128, 0.18);
-  border: 1px solid rgba(177, 70, 128, 0.33);
+  background: rgba(232, 184, 62, 0.13);
+  border: 1px solid rgba(232, 184, 62, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -193,14 +192,14 @@
 }
 
 .serviceCard:hover .iconWrapper {
-  background: rgba(177, 70, 128, 0.28);
-  border-color: rgba(177, 70, 128, 0.48);
+  background: rgba(232, 184, 62, 0.2);
+  border-color: rgba(232, 184, 62, 0.48);
 }
 
 .icon {
   width: 1.08rem;
   height: 1.08rem;
-  color: #f074ac;
+  color: #f0c553;
 }
 
 .serviceTitle {

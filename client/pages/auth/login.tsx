@@ -1,16 +1,16 @@
 ﻿'use client';// page login 
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { getPostLoginPath } from '../../src/utils/roleNavigation';
 import { executeRecaptcha, preloadRecaptcha } from '../../src/utils/recaptcha';
+import gunamLogo from '../../src/assets/gunam-login.png';
+import institutionalMark from '../../src/assets/test.png';
 import styles from '../login.module.css';
 
-const logo = '/anamlogo.png';
 const REMEMBER_ME_EMAIL_KEY = 'sigam_remember_email';
 
 export default function LoginPage() {
@@ -20,6 +20,7 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const rightPanelRef = useRef<HTMLDivElement>(null);
   
   const router = useRouter();
   const login = useAuthStore((s) => s.login);
@@ -131,33 +132,79 @@ export default function LoginPage() {
     }
   };
 
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const panel = rightPanelRef.current;
+    if (!panel) return;
+
+    const rect = panel.getBoundingClientRect();
+    panel.style.setProperty('--cursor-x', `${event.clientX - rect.left}px`);
+    panel.style.setProperty('--cursor-y', `${event.clientY - rect.top}px`);
+    panel.style.setProperty('--cursor-opacity', '1');
+  };
+
+  const handlePointerLeave = () => {
+    rightPanelRef.current?.style.setProperty('--cursor-opacity', '0');
+  };
+
   return (
     <div className={styles.container}>
-      <Link href="/" className={styles.homeButton} aria-label="Retour a l'accueil">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M19 12H5" />
-          <path d="M12 19l-7-7 7-7" />
-        </svg>
-        <span>Accueil</span>
-      </Link>
-      {/* SECTION GAUCHE - Identique au sign up */}
       <div className={styles.leftSection}>
-        <div className={styles.logoContainer}>
-          <Image src={logo} alt="ANAM Logo" className={styles.logo} width={256} height={256} />
+        <Link href="/" className={styles.homeButton} aria-label="Retour à l'accueil">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M19 12H5" />
+            <path d="M12 19l-7-7 7-7" />
+          </svg>
+          <span>Accueil</span>
+        </Link>
+
+        <div className={styles.badgeMark} aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <path d="M12 2l3 7h7l-5.5 4.5L18.5 21 12 16.5 5.5 21l2-7.5L2 9h7z" />
+          </svg>
         </div>
-        <h1 className={styles.title}>
-          AGENCE NATIONALE DES <br />
-          ACTIVITÉS MINIÈRES
-        </h1>
-        <p className={styles.subtitle}>Plateforme de gestion et de suivi des activitées minières</p>
+        <div className={styles.sweep} aria-hidden="true" />
+        <div className={styles.dust} aria-hidden="true">
+          {Array.from({ length: 12 }).map((_, index) => (
+            <span key={index} />
+          ))}
+        </div>
+        <div className={styles.leftContent}>
+          <div className={styles.brandCopy}>
+            <div className={styles.institutionalMark}>
+              <img src={institutionalMark} alt="" aria-hidden="true" />
+            </div>
+            <span className={styles.eyebrow}>Guichet unique national des activités minières</span>
+            <h1 className={styles.title}>Agence Nationale des Activités Minières</h1>
+            <p className={styles.subtitle}>
+              Plateforme officielle de gestion, de suivi et d&apos;instruction des titres et activités minières.
+            </p>
+            <div className={styles.trustRow} aria-label="Indicateurs de la plateforme">
+              <span><strong>58</strong><small>Wilayas</small></span>
+              <span><strong>100%</strong><small>Dématérialisé</small></span>
+              <span><strong>24/7</strong><small>Accès</small></span>
+            </div>
+          </div>
+        </div>
+        <div className={styles.goldSeam} aria-hidden="true" />
       </div>
 
-      {/* SECTION DROITE - Formulaire de connexion */}
-      <div className={styles.rightSection}>
+      <div
+        ref={rightPanelRef}
+        className={styles.rightSection}
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
+      >
+        <div className={styles.cursorSpotlight} aria-hidden="true" />
+        <div className={styles.cursorRing} aria-hidden="true" />
         <div className={styles.formCard}>
+          <div className={styles.formLogo} aria-label="GUNAM">
+            <img src={gunamLogo} alt="GUNAM" />
+          </div>
+          <div className={styles.formMark} aria-hidden="true" />
           <div className={styles.formHeader}>
+            <span className={styles.formEyebrow}>Espace sécurisé</span>
             <h2>Connexion</h2>
-            <p>Accédez à votre espace personnel</p>
+            <p>Accédez à votre espace personnel GUNAM.</p>
           </div>
 
           {error && (
@@ -172,21 +219,31 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className={styles.form}>
             <div className={styles.inputGroup}>
               <label htmlFor="email">Email *</label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="exemple@email.com"
-                disabled={isLoading}
-                required
-              />
+              <div className={styles.inputWithIcon}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="2" y="4" width="20" height="16" rx="2" />
+                  <path d="m22 6-10 7L2 6" />
+                </svg>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="exemple@email.com"
+                  disabled={isLoading}
+                  required
+                />
+              </div>
             </div>
 
             <div className={styles.inputGroup}>
               <label htmlFor="password">Mot de passe *</label>
               <div className={styles.passwordWrapper}>
+                <svg className={styles.fieldIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="4" y="10" width="16" height="10" rx="2" />
+                  <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                </svg>
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
@@ -202,6 +259,7 @@ export default function LoginPage() {
                   className={styles.passwordToggle}
                   onClick={() => setShowPassword(!showPassword)}
                   tabIndex={-1}
+                  aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                 >
                   {showPassword ? (
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

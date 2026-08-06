@@ -19,7 +19,7 @@ export const LoadingProvider: React.FC<{children: React.ReactNode}> = ({ childre
   const [count, setCount] = useState(0);
   const timerRef = useRef<number | null>(null);
   const lastStartAtRef = useRef<number>(0);
-  const MIN_VISIBLE_MS = 250; // keep spinner at least this long so user sees it
+  const MIN_VISIBLE_MS = 80; // keep route feedback short so navigation feels instant
 
   const startLoading = () => {
     lastStartAtRef.current = Date.now();

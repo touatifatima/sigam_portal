@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styles from './substances.module.css';
 import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import { toast } from 'react-toastify';
+import { BrandLoader } from '@/components/loading/BrandLoader';
 
 interface Substance {
   id_sub: number;
@@ -222,7 +223,7 @@ const Substances = () => {
     }
   };
 
-  if (loading) return <div className={styles.loading}>Loading...</div>;
+  if (loading) return <BrandLoader label="Chargement des substances..." />;
   if (error) return <div className={styles.error}>{error}</div>;
 
   return (

@@ -10,14 +10,12 @@ import {
   Req,
   UploadedFile,
   UseInterceptors,
-  Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Request } from 'express';
-import { Response } from 'express';
 import {
   CanalVerificationCadastre,
   TypePieceCadastre,
@@ -27,6 +25,36 @@ import { CadastreDocumentService } from './cadastre-document.service';
 @Controller('api/cadastre/demandes-documents-cadastraux')
 export class CadastreDocumentController {
   constructor(private readonly service: CadastreDocumentService) {}
+
+  @Post('verify-title')
+  verifyTitle(
+    @Body()
+    body: {
+      permisId?: number | string;
+      qrCodeTitre?: string;
+      codePermis?: string;
+      typePermis?: string;
+    },
+    @Req() req: Request,
+  ) {
+    return this.service.verifyTitleInformation(body, req);
+  }
+
+  @Post('verify-contact')
+  verifyContact(
+    @Body()
+    body: {
+      permisId?: number | string;
+      qrCodeTitre?: string;
+      codePermis?: string;
+      emailContact?: string;
+      telephoneContact?: string;
+      canalVerification?: CanalVerificationCadastre | string;
+    },
+    @Req() req: Request,
+  ) {
+    return this.service.verifyDetenteurContact(body, req);
+  }
 
   @Post()
   createRequest(
@@ -52,25 +80,6 @@ export class CadastreDocumentController {
     @Req() req: Request,
   ) {
     return this.service.createRequest(body, req);
-  }
-
-  @Post('verification-contact')
-  validateOtpContact(
-    @Body()
-    body: {
-      typeDocument?: string;
-      permisId?: number | string;
-      qrCodeTitre?: string;
-      codePermis?: string;
-      typePermis?: string;
-      qualiteDemandeur?: string;
-      emailContact?: string;
-      telephoneContact?: string;
-      canalVerification?: CanalVerificationCadastre | string;
-    },
-    @Req() req: Request,
-  ) {
-    return this.service.validateOtpContact(body, req);
   }
 
   @Post(':id/otp/resend')
@@ -176,23 +185,8 @@ export class CadastreDocumentController {
     return this.service.listMyRequests(req, { statut });
   }
 
-  @Get('references')
-  getWorkflowReferences() {
-    return this.service.getWorkflowReferences();
-  }
-
   @Get(':id')
   getRequest(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
     return this.service.getAuthenticatedDemandById(id, req);
-  }
-
-  @Get(':id/accuse-reception')
-  async downloadAccuseReception(
-    @Param('id', ParseIntPipe) id: number,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    const receipt = await this.service.getAccuseReceptionFile(id, req);
-    return res.download(receipt.absolutePath, receipt.filename ?? 'accuse-reception.pdf');
   }
 }

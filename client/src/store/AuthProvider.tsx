@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { BrandLoader } from '@/components/loading/BrandLoader';
 import { useAuthStore } from './useAuthStore';
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -13,7 +14,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   }, [initialize]);
 
   if (!isLoaded) {
-    return <div>Loading...</div>;
+    return <BrandLoader fullScreen label="Initialisation de la session..." />;
   }
 
   return <>{children}</>;

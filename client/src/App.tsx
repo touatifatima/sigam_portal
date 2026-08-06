@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { BrowserRouter, useLocation, useNavigate } from 'react-router-dom'
 import AutoRoutes from './router/AutoRoutes'
 import { __setNavigate } from './next-compat/router'
@@ -241,7 +241,7 @@ function GlobalRouteLoading() {
         watchdogRef.current = window.setTimeout(() => {
           resetLoading()
           watchdogRef.current = null
-        }, ) as any
+        }, 8000) as any
       } catch {}
     }
     window.addEventListener('routeChangeStart', onStartWithWatchdog)
@@ -262,19 +262,6 @@ function NavigatorBinder() {
     __setNavigate((to, opts) => navigate(to, opts))
   }, [navigate])
   return null
-}
-
-function RemountOnRouteChange({ children }: { children: React.ReactNode }) {
-  const location = useLocation()
-  const [tick, setTick] = useState(0)
-  // Also remount on synthetic route completes for same-URL navigations
-  useEffect(() => {
-    const onComplete = () => setTick((t) => t + 1)
-    window.addEventListener('routeChangeComplete', onComplete as EventListener)
-    return () => window.removeEventListener('routeChangeComplete', onComplete as EventListener)
-  }, [])
-  const key = `${location.pathname}${location.search}${location.hash}:${tick}`
-  return <div key={key}>{children}</div>
 }
 
 function AppShell() {
@@ -298,9 +285,7 @@ function AppShell() {
           <InvestisseurOperatorPermisGuard />
           <ClientLayout>
             <GlobalSpinner />
-            <RemountOnRouteChange>
-              <AutoRoutes />
-            </RemountOnRouteChange>
+            <AutoRoutes />
           </ClientLayout>
         </ConfigProvider>
       </StepGuardProvider>

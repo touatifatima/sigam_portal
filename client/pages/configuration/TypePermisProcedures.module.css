@@ -74,7 +74,7 @@
 
 .searchInput:focus {
   outline: none;
-  border-color: #8b3a62;
+  border-color: #d29a0e;
   box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
   background-color: #ffffff;
 }
@@ -102,7 +102,7 @@
 }
 
 .permisItemSelected {
-  border-color: #8b3a6b;
+  border-color: #c99008;
   background-color: #eff6ff;
   box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
   transform: translateY(-1px);

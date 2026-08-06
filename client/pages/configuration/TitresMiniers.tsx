@@ -3,6 +3,7 @@ import {  toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import styles from './TitresMiniers.module.css';
 import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { BrandLoader } from '@/components/loading/BrandLoader';
 
 interface TypePermis {
   id: number;
@@ -356,7 +357,7 @@ const TitresMiniers = () => {
     }
   };
 
-  if (loading) return <div className={styles.loading}>Chargement...</div>;
+  if (loading) return <BrandLoader label="Chargement de la configuration..." />;
   if (error) return <div className={styles.error}>{error}</div>;
 
   return (

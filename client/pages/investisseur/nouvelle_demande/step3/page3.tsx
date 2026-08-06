@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { useDemandeInfo } from '../../../../utils/useDemandeInfo';
-import { FiChevronLeft, FiChevronRight, FiUser, FiDollarSign, FiTool, FiFileText, FiCalendar } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiDollarSign, FiTool, FiBriefcase } from 'react-icons/fi';
 import styles from './capacities3.module.css';
 import { useSearchParams } from '@/src/hooks/useSearchParams';
 import Navbar from '../../../navbar/Navbar';
@@ -18,6 +18,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { FieldHelpLabel } from '@/components/ui/field-help';
+import { BrandLoader } from '@/components/loading/BrandLoader';
 
 // Data status interface
 interface DataStatus {
@@ -323,7 +324,7 @@ export default function Capacites() {
     }
 
     if (!idProc) {
-      toast.error("ID de proc?dure manquant");
+      toast.error("ID de procédure manquant");
       return;
     }
 
@@ -378,12 +379,12 @@ export default function Capacites() {
       etapeId = etapeIdForThisPage ?? etapeId;
       await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`);
       setRefetchTrigger((prev) => prev + 1);
-      toast.success("Capacit?s enregistr?es avec succ?s");
+      toast.success("Capacités enregistrées avec succès");
       router.push(`/investisseur/nouvelle_demande/step11/page11?id=${idProc}`);
     } catch (err) {
       console.error(err);
       toast.error("Erreur lors de l'enregistrement");
-      setEtapeMessage("Erreur lors de l'enregistrement de l'?tape.");
+      setEtapeMessage("Erreur lors de l'enregistrement de l'étape.");
     } finally {
       setSavingEtape(false);
     }
@@ -398,29 +399,11 @@ export default function Capacites() {
   };
 
   if (!isReady) {
-    return (
-      <div className="loading-container">
-        <div className="spinner"></div>
-        <p>Chargement des informations de la demande...</p>
-      </div>
-    );
+    return <BrandLoader fullScreen label="Chargement des informations de la demande..." />;
   }
 
   if (!isPageReady) {
-    return (
-      <div className="loading-container">
-        <div className="spinner"></div>
-        <p>{loadingMessage}</p>
-        <div className={styles.dataStatus}>
-          <p>état des données:</p>
-          <ul>
-            <li>ID Procédure: {dataStatus.idProc ? 'âœ“' : 'â³'}</li>
-            <li>Données Procédure: {dataStatus.procedureData ? 'âœ“' : 'â³'}</li>
-            <li>ID Demande: {dataStatus.idDemande ? 'âœ“' : 'â³'}</li>
-          </ul>
-        </div>
-      </div>
-    );
+    return <BrandLoader fullScreen label={loadingMessage || "Chargement des donnees..."} />;
   }
 
   return (    
@@ -429,12 +412,14 @@ export default function Capacites() {
       <div className={styles.appContent}>
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles.mainContent}>
-          <div className={styles.breadcrumb}>
-            <span>P</span>
-            <FiChevronRight className={styles.breadcrumbArrow} />
-            <span>Capacitiés</span>
-          </div>
           <div className={styles.capacitesContainer}>
+            <div className={styles.breadcrumb}>
+              <span>GUNAM</span>
+              <FiChevronRight className={styles.breadcrumbArrow} />
+              <span>Nouvelle demande</span>
+              <FiChevronRight className={styles.breadcrumbArrow} />
+              <span>Capacités</span>
+            </div>
             <div className={styles.contentWrapper}>
               {/* Progress Steps */}
               {procedureData && (
@@ -447,21 +432,25 @@ export default function Capacites() {
                    procedureEtapes={procedureData.ProcedureEtape || []}
                  />
               )}
-      <h2 className={styles.pageTitle}>  
-                 Capacités techniques et financiéres
-              </h2>
-                 <p className={styles['page-subtitle']}>
-                              Veuillez fournir les informations sur les substances et les coordonnées prévues
-                            </p>
+              <div className={styles.stepHero}>
+                <span className={styles.stepKicker}>ÉTAPE 3</span>
+                <h2 className={styles.pageTitle}>Capacités techniques et financières</h2>
+                <p className={styles['page-subtitle']}>
+                  Présentez les moyens techniques, le financement et le référent chargé du dossier.
+                </p>
+              </div>
                 
 
 
               <div className={styles.formSections}>
-                {/* Capacités Techniques Section */}
+                {/* Capacités techniques */}
                 <section className={styles.formSection}>
                   <div className={styles.sectionHeader}>
                     <FiTool className={styles.sectionIcon} />
-                    <h3 className={styles.sectionTitle}>Capacités techniques</h3>
+                    <div>
+                      <h3 className={styles.sectionTitle}>Capacités techniques</h3>
+                      <p className={styles.sectionSubtitle}>Durée, calendrier et description des travaux prévus.</p>
+                    </div>
                   </div>
                   <div className={styles.formGrid}>
                     <div className={styles.formGroup}>
@@ -481,7 +470,7 @@ export default function Capacites() {
                     </div>
                     <div className={styles.formGroup}>
                       <FieldHelpLabel
-                        label="Date de Début Prévue"
+                        label="Date de début prévue"
                         helpText="Choisissez la date estimée de démarrage des travaux."
                       />
                       <input
@@ -512,11 +501,14 @@ export default function Capacites() {
                   </div>
                 </section>
 
-                {/* Capacités Financiéres Section */}
+                {/* Capacités financières */}
                 <section className={styles.formSection}>
                   <div className={styles.sectionHeader}>
                     <FiDollarSign className={styles.sectionIcon} />
-                    <h3 className={styles.sectionTitle}>Capacités financiéres</h3>
+                    <div>
+                      <h3 className={styles.sectionTitle}>Capacités financières</h3>
+                      <p className={styles.sectionSubtitle}>Sources de financement et moyens mobilisés.</p>
+                    </div>
                   </div>
                   <div className={styles.formGroup}>
                     <FieldHelpLabel
@@ -538,8 +530,11 @@ export default function Capacites() {
                 {/* Expert Minier Section */}
                 <section className={styles.formSection}>
                   <div className={styles.sectionHeader}>
-                    <FiUser className={styles.sectionIcon} />
-                    <h3 className={styles.sectionTitle}>Expert minier / Référent technique</h3>
+                    <FiBriefcase className={styles.sectionIcon} />
+                    <div>
+                      <h3 className={styles.sectionTitle}>Expert minier / Référent technique</h3>
+                      <p className={styles.sectionSubtitle}>Identifiez le bureau, l'expert ou le responsable technique.</p>
+                    </div>
                   </div>
 
                   <div className={styles.expertOptions}>

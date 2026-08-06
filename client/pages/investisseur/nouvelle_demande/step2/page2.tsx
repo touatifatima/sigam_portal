@@ -16,6 +16,7 @@ import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import layoutStyles from './page2.module.css';
 import styles from '../../../../components/wizard/steps/StepIdentification.module.css';
 import { toast } from 'react-toastify';
+import { BrandLoader } from '@/components/loading/BrandLoader';
 
 type StatutJuridique = {
   id_statutJuridique: number;
@@ -213,11 +214,11 @@ const FIELD_HELP_TEXTS: Record<string, string> = {
   'Numéro NIS': "Numéro d'identification statistique.",
   'Numéro NIF': "Numéro d'identification fiscale.",
   'Adresse du siège': 'Adresse complète du siège social.',
-  Nom: 'Nom de famille de l’actionnaire.',
-  Prénom: 'Prénom de l’actionnaire.',
-  'Lieu de naissance': 'Lieu de naissance de l’actionnaire.',
-  Qualification: 'Fonction ou qualification de l’actionnaire, si nécessaire.',
-  "Numéro d'identité": "Numéro d'identité de l’actionnaire.",
+  Nom: "Nom de famille de l'actionnaire.",
+  Prénom: "Prénom de l'actionnaire.",
+  'Lieu de naissance': "Lieu de naissance de l'actionnaire.",
+  Qualification: "Fonction ou qualification de l'actionnaire, si nécessaire.",
+  "Numéro d'identité": "Numéro d'identité de l'actionnaire.",
 };
 
 const normalizeFieldHelpKey = (label: string): string => {
@@ -661,7 +662,7 @@ export default function Step2() {
     }
 
     if (!idProc) {
-      toast.error('ID proc?dure manquant.');
+      toast.error('ID procédure manquant.');
       return;
     }
     if (!etapeIdForThisPage) {
@@ -681,8 +682,8 @@ export default function Step2() {
       await router.push(`/investisseur/nouvelle_demande/step4/page4?id=${idProc}`);
     } catch (err) {
       console.error(err);
-      setEtapeMessage("Erreur lors de l'enregistrement de l'?tape.");
-      toast.error("Erreur lors de l'enregistrement de l'?tape.");
+      setEtapeMessage("Erreur lors de l'enregistrement de l'étape.");
+      toast.error("Erreur lors de l'enregistrement de l'étape.");
     } finally {
       setIsNavigating(false);
       setIsSubmitting(false);
@@ -808,7 +809,7 @@ export default function Step2() {
       } catch {}
     } else {
       if (!formData.repLegal.nin) {
-        throw new Error('NIN du repr?sentant l?gal est requis');
+        throw new Error('NIN du représentant légal est requis');
       }
 
       const repPayload = {
@@ -856,16 +857,7 @@ export default function Step2() {
 
   if (!isPageReady) {
     return (
-      <div className="loading-container">
-        <div className="spinner"></div>
-        <p>{loadingMessage}</p>
-        {!idProc && <p>En attente de l'ID de procédure...</p>}
-        {idProc && !procedureData && <p>Chargement des données de procédure...</p>}
-        {procedureData && !idDemande && <p>Chargement des données de demande...</p>}
-        {idDemande && (!paysOptions.length || !statutsJuridiques.length) && (
-          <p>Chargement des options...</p>
-        )}
-      </div>
+      <BrandLoader fullScreen label={loadingMessage} />
     );
   }
 
@@ -875,13 +867,16 @@ export default function Step2() {
       <div className={layoutStyles.appContent}>
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={layoutStyles.mainContent}>
-          <div className={layoutStyles.breadcrumb}>
-            <span>GUNAM</span>
-            <FiChevronRight className={layoutStyles.breadcrumbArrow} />
-            <span>Identification</span>
-          </div>
+          <div className={layoutStyles.demandeShell}>
+            <div className={layoutStyles.breadcrumb}>
+              <span>GUNAM</span>
+              <FiChevronRight className={layoutStyles.breadcrumbArrow} />
+              <span>Nouvelle demande</span>
+              <FiChevronRight className={layoutStyles.breadcrumbArrow} />
+              <span>Identification</span>
+            </div>
 
-          <div className={layoutStyles.demandeContainer}>
+            <div className={layoutStyles.demandeContainer}>
             {procedureData && (
               <ProgressStepper
                 phases={phases}
@@ -893,15 +888,17 @@ export default function Step2() {
               />
             )}
 
-            <h2 className={layoutStyles.pageTitle}>Étape 2 : Identification de la société</h2>
-            <p className={layoutStyles.pageSubtitle}>
-              Veuillez renseigner les informations générales, le représentant légal, les détails du
-              registre de commerce et les actionnaires.
-            </p>
+            <div className={layoutStyles.pageHero}>
+              <span className={layoutStyles.pageEyebrow}>Étape 2</span>
+              <h2 className={layoutStyles.pageTitle}>Identification de la société</h2>
+              <p className={layoutStyles.pageSubtitle}>
+                Renseignez les informations générales, le représentant légal, le registre de commerce et les actionnaires.
+              </p>
+            </div>
 
             {codeDemande && (
               <div className={layoutStyles.codeDemandLine}>
-                <span className={layoutStyles.infoLabel}>Code Demande :</span>
+                <span className={layoutStyles.infoLabel}>Code demande</span>
                 <span className={layoutStyles.infoValue}>{codeDemande}</span>
               </div>
             )}
@@ -911,7 +908,7 @@ export default function Step2() {
                 <div className={styles.cardHeader}>
                   <div className={styles.cardTitle}>
                     <Building2 className={styles.cardIcon} />
-                    Informations sur l'Entreprise
+                    Informations sur l'entreprise
                   </div>
                   <p className={styles.cardDescription}>Renseignements généraux de la société</p>
                   {entrepriseMissingRequiredFields.length > 0 && (
@@ -1041,7 +1038,7 @@ export default function Step2() {
                         }
                         disabled={isLocked}
                       >
-                        <option value="">SÃ©lectionner</option>
+                        <option value="">Sélectionner</option>
                         {statutDetenteurOptions.map((option) => (
                           <option key={option.value} value={option.value}>
                             {option.label}
@@ -1083,7 +1080,7 @@ export default function Step2() {
                           <span className={styles.portefeuilleToggleHint}>
                             {isPublicSector
                               ? 'Cette option active la gestion du dossier via le portefeuille public.'
-                              : 'Choisissez d’abord le secteur Public pour l’activer.'}
+                              : "Choisissez d'abord le secteur Public pour l'activer."}
                           </span>
                         </span>
                       </label>
@@ -1881,6 +1878,7 @@ export default function Step2() {
             <div className={layoutStyles.etapeSaveSection}>
               {etapeMessage && <div className={layoutStyles.etapeMessage}>{etapeMessage}</div>}
             </div>
+          </div>
           </div>
         </main>
       </div>

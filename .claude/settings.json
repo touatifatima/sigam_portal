@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e ' *)",
+      "Bash(grep -E \"^\\(gem|building-2|bar-chart-3|lock|check|user\\)\\\\.js$\")"
+    ]
+  }
+}

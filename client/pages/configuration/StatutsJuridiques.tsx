@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styles from './StatutsJuridiques.module.css';
 import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { BrandLoader } from '@/components/loading/BrandLoader';
 
 interface StatutJuridique {
   id_statutJuridique: number;
@@ -117,7 +118,7 @@ const StatutsJuridiques = () => {
       item.statut_ar.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (loading) return <div className={styles.loading}>Chargement...</div>;
+  if (loading) return <BrandLoader label="Chargement de la configuration..." />;
   if (error) return <div className={styles.error}>{error}</div>;
 
   return (

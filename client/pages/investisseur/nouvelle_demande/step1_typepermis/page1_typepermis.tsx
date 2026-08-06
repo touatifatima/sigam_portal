@@ -5,7 +5,7 @@ import { useRouter } from 'next/router';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { FieldHelp } from '@/components/ui/field-help';
-import { ArrowLeft, BadgeCheck, CalendarDays, ChevronRight, Clock3, FileText, Repeat, Ruler } from 'lucide-react';
+import { ArrowUpRight, BadgeCheck, CalendarDays, Clock3, FileText, Plus, Repeat, RotateCcw, Ruler } from 'lucide-react';
 
 import styles from './page1_typepermis.module.css';
 import Navbar from '../../../navbar/Navbar';
@@ -171,8 +171,9 @@ export default function DemandeStart() {
   useEffect(() => {
     if (!router.isReady) return;
     const hasExistingProcedure = Boolean(router.query.id);
-    setEntryChoiceModalOpen(!hasExistingProcedure);
-  }, [router.isReady, router.query.id]);
+    const hasAlreadyChosenEntry = router.query.entry === 'initial';
+    setEntryChoiceModalOpen(!hasExistingProcedure && !hasAlreadyChosenEntry);
+  }, [router.isReady, router.query.entry, router.query.id]);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -461,38 +462,15 @@ export default function DemandeStart() {
                     className={`${styles.entryActionButton} ${styles.entryActionPrimary}`}
                     onClick={() => router.push('/investisseur/nouvelle-demande-posterieure')}
                   >
-                    <span className={styles.entryActionIconWrap}>
-                      <Repeat className={styles.entryActionIcon} />
+                    <span className={styles.entryActionArrow}>
+                      <ArrowUpRight size={13} strokeWidth={2.5} />
                     </span>
-                    <span className={styles.entryActionBody}>
-                      <span className={styles.entryActionLabel}>Gérer un permis existant</span>
-                      <span className={styles.entryActionHint}>Poursuivez la gestion de votre permis actuel</span>
-                      <span className={styles.entryActionFeatures}>
-                        <span className={styles.entryActionFeature}>
-                          <BadgeCheck className={styles.entryActionFeatureIcon} />
-                          Renouvellement
-                        </span>
-                        <span className={styles.entryActionFeature}>
-                          <BadgeCheck className={styles.entryActionFeatureIcon} />
-                          Modification
-                        </span>
-                        <span className={styles.entryActionFeature}>
-                          <BadgeCheck className={styles.entryActionFeatureIcon} />
-                          Extension
-                        </span>
-                        <span className={styles.entryActionFeature}>
-                          <BadgeCheck className={styles.entryActionFeatureIcon} />
-                          Autres opérations
-                        </span>
-                        <span className={styles.entryActionFeature}>
-                          <BadgeCheck className={styles.entryActionFeatureIcon} />
-                          Cession / Transfert
-                        </span>
-                      </span>
+                    <span className={`${styles.entryActionIcon} ${styles.entryActionIconViolet}`}>
+                      <RotateCcw size={22} strokeWidth={2} />
                     </span>
-                    <span className={styles.entryActionChevron}>
-                      <ChevronRight className={styles.entryChevronIcon} />
-                    </span>
+                    <span className={styles.entryActionLabel}>Demande pour un permis existant</span>
+                    <span className={styles.entryActionHint}>Renouvellement, cession, transfert, etc.</span>
+                    <span className={styles.entryActionPill}>Le plus courant</span>
                   </button>
 
                   <button
@@ -500,26 +478,14 @@ export default function DemandeStart() {
                     className={`${styles.entryActionButton} ${styles.entryActionSecondary}`}
                     onClick={() => setEntryChoiceModalOpen(false)}
                   >
-                    <span className={styles.entryActionIconWrap}>
-                      <FileText className={styles.entryActionIcon} />
+                    <span className={styles.entryActionArrow}>
+                      <ArrowUpRight size={13} strokeWidth={2.5} />
                     </span>
-                    <span className={styles.entryActionBody}>
-                      <span className={styles.entryActionLabel}>Créer un nouveau permis</span>
-                      <span className={styles.entryActionHint}>Déposez une nouvelle demande</span>
-                      <span className={styles.entryActionFeatures}>
-                        <span className={styles.entryActionFeature}>
-                          <BadgeCheck className={styles.entryActionFeatureIcon} />
-                          Première demande
-                        </span>
-                        <span className={styles.entryActionFeature}>
-                          <BadgeCheck className={styles.entryActionFeatureIcon} />
-                          Nouveau titre minier
-                        </span>
-                      </span>
+                    <span className={`${styles.entryActionIcon} ${styles.entryActionIconBlue}`}>
+                      <Plus size={22} strokeWidth={2} />
                     </span>
-                    <span className={styles.entryActionChevron}>
-                      <ChevronRight className={styles.entryChevronIcon} />
-                    </span>
+                    <span className={styles.entryActionLabel}>Nouvelle demande initiale</span>
+                    <span className={styles.entryActionHint}>Continuer le parcours normal de création.</span>
                   </button>
                 </div>
 
@@ -529,10 +495,7 @@ export default function DemandeStart() {
                     className={styles.entryDashboardButton}
                     onClick={() => router.push(dashboardPath)}
                   >
-                    <span className={styles.entryDashboardButtonIconWrap}>
-                      <ArrowLeft className={styles.entryDashboardButtonIcon} />
-                    </span>
-                    <span>Retour au Dashboard</span>
+                    Annuler et retour au tableau de bord
                   </button>
                 </div>
               </div>

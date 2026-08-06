@@ -21,9 +21,6 @@ const Partners = lazy(() =>
 const CallToAction = lazy(() =>
   import("@/components/CallToAction").then((mod) => ({ default: mod.CallToAction })),
 );
-const Footer = lazy(() =>
-  import("@/components/Footer").then((mod) => ({ default: mod.Footer })),
-);
 
 const DeferredSection = ({
   children,
@@ -75,10 +72,10 @@ const Index = () => {
       <section className={styles.mapAccessBar}>
         <div className={styles.mapAccessContent}>
           <p className={styles.mapAccessText}>
-            Consulter la carte publique des permis via Experience Builder.
+            Consultez la carte publique des permis et des titres miniers.
           </p>
           <Link href="/carte/carte_public" className={styles.mapAccessLink}>
-            <span className={styles.mapAccessLinkLabel}>Acceder a la Carte Publique</span>
+            <span className={styles.mapAccessLinkLabel}>Accéder à la carte publique</span>
             <span className={styles.mapAccessLinkArrow}>
               <ArrowUpRight className="w-4 h-4" />
             </span>
@@ -111,11 +108,6 @@ const Index = () => {
       <DeferredSection minHeight={360}>
         <Suspense fallback={null}>
           <CallToAction />
-        </Suspense>
-      </DeferredSection>
-      <DeferredSection minHeight={420}>
-        <Suspense fallback={null}>
-          <Footer />
         </Suspense>
       </DeferredSection>
     </div>

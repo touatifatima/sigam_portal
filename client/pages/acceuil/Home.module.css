@@ -4,46 +4,46 @@
 /* ===== CSS Variables (Design System) ===== */
 :root {
   /* Colors */
-  --background: #0f1724;
-  --foreground: #f8fafc;
+  --background: #f4f6fa;
+  --foreground: #14181f;
   
   --card: #ffffff;
   --card-foreground: #1a1a2e;
   
-  --primary: #8b3a62;
+  --primary: #d6a21c;
   --primary-foreground: #ffffff;
   
-  --secondary: #1a1a35;
+  --secondary: #14181f;
   --secondary-foreground: #ffffff;
   
-  --muted: #f0ebe4;
-  --muted-foreground: #5c5c5c;
+  --muted: #f8f4e9;
+  --muted-foreground: #667085;
   
-  --accent: #f5c468;
-  --accent-foreground: #1a1a2e;
+  --accent: #e8b83e;
+  --accent-foreground: #14181f;
   
   --destructive: #ff4d4d;
   --destructive-foreground: #fafaf8;
   
-  --border: #243047;
-  --input: #243047;
-  --ring: #8b3a62;
+  --border: #e2e7ef;
+  --input: #e2e7ef;
+  --ring: #d6a21c;
   
   /* Mining Theme */
-  --mining-green: #8b3a62;
-  --mining-dark: #0f1724;
-  --mining-gold: #f5c468;
-  --mining-slate: #3a3a52;
+  --mining-green: #d6a21c;
+  --mining-dark: #14181f;
+  --mining-gold: #e8b83e;
+  --mining-slate: #475467;
   
   /* Gradients */
-  --gradient-hero: linear-gradient(120deg, rgba(10, 14, 25, 0.95) 0%, rgba(10, 14, 25, 0.75) 45%, rgba(10, 14, 25, 0.35) 75%, transparent 100%);
-  --gradient-dark: linear-gradient(180deg, #0f1628 0%, #0b1120 100%);
-  --gradient-green: linear-gradient(135deg, #8b3a62 0%, #a84968 100%);
+  --gradient-hero: linear-gradient(120deg, rgba(10, 14, 22, 0.94) 0%, rgba(10, 14, 22, 0.72) 45%, rgba(10, 14, 22, 0.28) 75%, transparent 100%);
+  --gradient-dark: linear-gradient(180deg, #1b2029 0%, #11151c 100%);
+  --gradient-green: linear-gradient(135deg, #e8b83e 0%, #c79212 100%);
   
   /* Shadows */
   --shadow-card: 0 18px 60px -20px rgba(0, 0, 0, 0.35);
   --shadow-hover: 0 24px 60px -18px rgba(0, 0, 0, 0.4);
-  --shadow-glow: 0 0 60px rgba(139, 58, 98, 0.35);
+  --shadow-glow: 0 0 60px rgba(214, 162, 28, 0.24);
   
   /* Transitions */
   --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -135,22 +135,19 @@ p {
 }
 
 .homePage {
-  background: radial-gradient(circle at 20% 20%, rgba(139, 58, 98, 0.12), transparent 35%),
-              radial-gradient(circle at 80% 15%, rgba(245, 196, 104, 0.08), transparent 35%),
-              var(--background);
-  color: #f8fafc;
+  background:
+    radial-gradient(circle at 12% 15%, rgba(214, 162, 28, 0.07), transparent 28%),
+    linear-gradient(180deg, #ffffff 0%, #f4f6fa 100%);
+  color: #14181f;
   overflow-x: hidden;
 }
 
 .mapAccessBar {
   width: 100%;
   padding: 1rem 0 0.75rem;
-  background:
-    radial-gradient(120% 120% at 14% 4%, rgba(177, 70, 128, 0.18), transparent 48%),
-    radial-gradient(100% 120% at 88% 8%, rgba(15, 34, 49, 0.22), transparent 54%),
-    linear-gradient(180deg, #0f0a11 0%, #1b111d 52%, #231425 100%);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(90deg, #151a22 0%, #202631 60%, #151a22 100%);
+  border-top: 1px solid rgba(232, 184, 62, 0.3);
+  border-bottom: 1px solid rgba(232, 184, 62, 0.22);
 }
 
 .mapAccessContent {
@@ -165,7 +162,7 @@ p {
 
 .mapAccessText {
   margin: 0;
-  color: #d3d8ea;
+  color: #e8ecf2;
   font-size: 0.95rem;
 }
 
@@ -178,10 +175,9 @@ p {
   text-decoration: none;
   padding: 0.5rem 0.6rem 0.5rem 1rem;
   border-radius: 999px;
-  border: 1px solid rgba(177, 70, 128, 0.46);
-  background:
-    linear-gradient(145deg, rgba(177, 70, 128, 0.24), rgba(43, 24, 40, 0.92));
-  color: #f7d6e7;
+  border: 1px solid rgba(232, 184, 62, 0.5);
+  background: rgba(232, 184, 62, 0.12);
+  color: #f7d777;
   font-size: 0.9rem;
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -196,7 +192,7 @@ p {
   position: absolute;
   inset: -2px;
   border-radius: inherit;
-  background: linear-gradient(90deg, rgba(177, 70, 128, 0.3), rgba(20, 70, 80, 0.22));
+  background: linear-gradient(90deg, rgba(232, 184, 62, 0.24), rgba(255, 255, 255, 0.06));
   opacity: 0;
   transition: opacity 0.2s ease;
   z-index: -1;
@@ -214,17 +210,17 @@ p {
   align-items: center;
   justify-content: center;
   background: rgba(15, 10, 17, 0.65);
-  color: #f08cbf;
-  border: 1px solid rgba(177, 70, 128, 0.55);
+  color: #f7d777;
+  border: 1px solid rgba(232, 184, 62, 0.55);
   transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .mapAccessLink:hover {
-  border-color: rgba(177, 70, 128, 0.82);
-  background: linear-gradient(145deg, rgba(177, 70, 128, 0.34), rgba(56, 30, 52, 0.94));
+  border-color: rgba(232, 184, 62, 0.85);
+  background: rgba(232, 184, 62, 0.2);
   box-shadow:
     0 14px 30px rgba(8, 10, 18, 0.56),
-    0 0 0 4px rgba(177, 70, 128, 0.16);
+    0 0 0 4px rgba(232, 184, 62, 0.12);
   transform: translateY(-1px);
 }
 
@@ -234,12 +230,12 @@ p {
 
 .mapAccessLink:hover .mapAccessLinkArrow {
   transform: translate(2px, -2px);
-  border-color: rgba(177, 70, 128, 0.8);
+  border-color: rgba(232, 184, 62, 0.8);
   background: rgba(20, 12, 22, 0.82);
 }
 
 .mapAccessLink:focus-visible {
-  outline: 2px solid rgba(177, 70, 128, 0.95);
+  outline: 2px solid rgba(232, 184, 62, 0.95);
   outline-offset: 3px;
 }
 
@@ -298,7 +294,7 @@ p {
 }
 
 .btn-primary:hover {
-  background-color: #a84968;
+  background-color: #c79212;
   box-shadow: var(--shadow-hover);
   transform: translateY(-2px);
 }
@@ -398,7 +394,7 @@ p {
 }
 
 .badge-primary {
-  background-color: rgba(139, 58, 98, 0.14);
+  background-color: rgba(214, 162, 28, 0.14);
   color: var(--primary);
   border: 1px solid var(--primary);
 }

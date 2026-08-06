@@ -16,6 +16,7 @@ import Sidebar from '../../../sidebar/Sidebar';
 import ConfirmReplaceModal from './ConfirmReplaceModal';
 import SummaryModal from '../popup/page6_popup';
 import ProgressStepper from '../../../../components/ProgressStepper';
+import { BrandLoader } from '@/components/loading/BrandLoader';
 import { useStepperPhases } from '@/src/hooks/useStepperPhases';
 import { STEP_LABELS } from '../../../../src/constants/steps';
 import { useViewNavigator } from '../../../../src/hooks/useViewNavigator';
@@ -65,6 +66,15 @@ type CoordinateConversion = {
   zone?: number;
   hemisphere?: 'N';
 };
+
+type MissingField =
+  | 'zone'
+  | 'lieuDitFr'
+  | 'lieuDitAr'
+  | 'statutJuridique'
+  | 'occupantLegal'
+  | 'superficieDeclaree'
+  | 'principalSubstance';
 
 type SubstanceWithPriority = {
   id_sub: number;
@@ -119,6 +129,7 @@ export default function Step4_Substances() {
   const [activatedSteps, setActivatedSteps] = useState<Set<number>>(new Set());
   const [isPageReady, setIsPageReady] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('Chargement des paramétres...');
+  const [missingFields, setMissingFields] = useState<Set<MissingField>>(new Set());
 
   // Site Information State
   const [points, setPoints] = useState<Point[]>([]);
@@ -825,6 +836,7 @@ useEffect(() => {
     if (field === 'dairaId' && value) {
       loadCommunesForDaira(value);
     }
+    clearMissingField('zone');
   };
 
   const addZoneRow = () => {
@@ -832,7 +844,12 @@ useEffect(() => {
   };
 
   const removeZoneRow = (zoneId: string) => {
-    setZoneSelections((prev) => (prev.length > 1 ? prev.filter((zone) => zone.id !== zoneId) : prev));
+    setZoneSelections((prev) => {
+      if (prev.length > 1) {
+        return prev.filter((zone) => zone.id !== zoneId);
+      }
+      return [createZoneRow()];
+    });
   };
 
   useEffect(() => {
@@ -868,7 +885,8 @@ useEffect(() => {
   const fallbackPhases: Phase[] = procedureData?.ProcedurePhase
     ? procedureData.ProcedurePhase.slice().sort((a: ProcedurePhase, b: ProcedurePhase) => a.ordre - b.ordre).map((pp: ProcedurePhase) => ({ ...pp.phase, ordre: pp.ordre }))
     : [];
-  const phases: Phase[] = stepperPhases.length > 0 ? stepperPhases : fallbackPhases;
+  const phases: Phase[] =
+    stepperPhases.length >= fallbackPhases.length ? stepperPhases : fallbackPhases;
 
   const etapeIdForThisPage = useMemo(() => {
     if (etapeIdForRoute) return etapeIdForRoute;
@@ -954,12 +972,27 @@ useEffect(() => {
     return Array.from(uniqueByCommune.values());
   }, [zoneSelections]);
 
+  const parseDeclaredArea = useCallback((value: string) => {
+    const parsed = Number(
+      value
+        .trim()
+        .replace(/[\s\u00A0\u202F]/g, '')
+        .replace(/,/g, '.'),
+    );
+    return Number.isFinite(parsed) ? parsed : NaN;
+  }, []);
+
+  const clearMissingField = useCallback((field: MissingField) => {
+    setMissingFields((prev) => {
+      if (!prev.has(field)) return prev;
+      const next = new Set(prev);
+      next.delete(field);
+      return next;
+    });
+  }, []);
+
   const isFormComplete = useMemo(() => {
-    const superficieDecl =
-      superficieDeclaree &&
-      superficieDeclaree.trim() !== '' &&
-      !isNaN(Number(superficieDeclaree)) &&
-      Number(superficieDeclaree) > 0;
+    const superficieDecl = parseDeclaredArea(superficieDeclaree) > 0;
     const hasAdmin = hasCompleteZones;
     const hasLocation = lieuDitFr.trim() !== '' && lieuDitAr.trim() !== '';
     const hasTerrain = statutJuridique.trim() !== '' && occupantLegal.trim() !== '';
@@ -974,6 +1007,7 @@ useEffect(() => {
     );
   }, [
     superficieDeclaree,
+    parseDeclaredArea,
     hasCompleteZones,
     lieuDitFr,
     lieuDitAr,
@@ -1559,6 +1593,7 @@ const checkButtonConditions = () => {
       });
       upsertSelectedSubstance(id_sub, 'principale');
       setPrincipalSubstanceId(id_sub);
+      clearMissingField('principalSubstance');
       setSecondaryRows((prev) =>
         prev.filter(
           (row) =>
@@ -1772,19 +1807,48 @@ const checkButtonConditions = () => {
 
   const handleNext = async () => {
     if (!idProc || !idDemande) {
-      toast.error('ID de proc?dure ou de demande introuvable');
+      toast.error('ID de procédure ou de demande introuvable');
       return;
     }
 
-    const superficieDecl =
-      superficieDeclaree &&
-      superficieDeclaree.trim() !== '' &&
-      !isNaN(Number(superficieDeclaree)) &&
-      Number(superficieDeclaree) > 0;
-    if (!hasCompleteZones || !superficieDecl || !isFormComplete) {
-      toast.error('Veuillez remplir tous les champs obligatoires (Wilaya, Da?ra, Commune, Superficie d?clar?e)');
+    const missing: MissingField[] = [];
+    const missingLabels: string[] = [];
+    if (!hasCompleteZones) {
+      missing.push('zone');
+      missingLabels.push('Wilaya, Daïra et Commune');
+    }
+    if (lieuDitFr.trim() === '') {
+      missing.push('lieuDitFr');
+      missingLabels.push('Lieu Dit FR');
+    }
+    if (lieuDitAr.trim() === '') {
+      missing.push('lieuDitAr');
+      missingLabels.push('Lieu Dit AR');
+    }
+    if (statutJuridique.trim() === '') {
+      missing.push('statutJuridique');
+      missingLabels.push('Statut juridique');
+    }
+    if (occupantLegal.trim() === '') {
+      missing.push('occupantLegal');
+      missingLabels.push('Occupant légal');
+    }
+    if (!(parseDeclaredArea(superficieDeclaree) > 0)) {
+      missing.push('superficieDeclaree');
+      missingLabels.push('Superficie déclarée');
+    }
+    if (principalSubstanceId === null) {
+      missing.push('principalSubstance');
+      missingLabels.push('Substance principale');
+    }
+
+    if (missing.length > 0) {
+      setMissingFields(new Set(missing));
+      toast.error(`Veuillez renseigner : ${missingLabels.join(', ')}`);
       return;
     }
+
+    setMissingFields(new Set());
 
     setIsLoading(true);
     setSavingEtape(true);
@@ -1885,12 +1949,12 @@ const checkButtonConditions = () => {
       etapeId = etapeIdForThisPage ?? etapeId;
       await axios.post(`${apiURL}/api/procedure-etape/finish/${idProc}/${etapeId}`);
       setRefetchTrigger((prev) => prev + 1);
-      setSuccess('Donn?es enregistr?es avec succ?s !');
+      setSuccess('Données enregistrées avec succès !');
       setTimeout(() => setSuccess(null), 3000);
       router.push(`/investisseur/nouvelle_demande/step5/page5?id=${idProc}`);
     } catch (err) {
-      toast.error("Erreur lors de la sauvegarde de l'?tape");
-      setEtapeMessage("Erreur lors de l'enregistrement de l'?tape.");
+      toast.error("Erreur lors de la sauvegarde de l'étape");
+      setEtapeMessage("Erreur lors de l'enregistrement de l'étape.");
     } finally {
       setSavingEtape(false);
       setIsLoading(false);
@@ -2113,12 +2177,7 @@ const checkButtonConditions = () => {
   };
 
   if (!isPageReady) {
-    return (
-      <div className="loading-container">
-        <div className="spinner"></div>
-        <p>{loadingMessage}</p>
-      </div>
-    );
+    return <BrandLoader fullScreen label={loadingMessage} />;
   }
 
   return (
@@ -2127,10 +2186,13 @@ const checkButtonConditions = () => {
       <div className={styles['app-content']}>
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles['main-content']}>
+          <div className={styles['page-shell']}>
           <div className={styles['breadcrumb']}>
             <span>GUNAM</span>
             <FiChevronRight className={styles['breadcrumb-arrow']} />
-            <span>Localisation & Substances</span>
+            <span>Nouvelle demande</span>
+            <FiChevronRight className={styles['breadcrumb-arrow']} />
+            <span>Localisation & substances</span>
           </div>
           <div className={styles['informations-container']}>
             {procedureData && (
@@ -2144,20 +2206,20 @@ const checkButtonConditions = () => {
                />
             )}
             <div className={styles['header-section']}>
-              <h1 className={styles['page-title']}>
-                <FiMapPin className={styles['title-icon']} />
-                 Localisation & Substances
-              </h1>
-              <p className={styles['page-subtitle']}>
-                Veuillez fournir les informations sur la localisation et les substances visées
-              </p>
+              <div className={styles['page-hero']}>
+                <span className={styles['page-eyebrow']}>Étape 4</span>
+                <h1 className={styles['page-title']}>Localisation & substances</h1>
+                <p className={styles['page-subtitle']}>
+                  Définissez la zone administrative, le statut du terrain et les substances visées par la demande.
+                </p>
+              </div>
             </div>
             <div className={styles['form-grid']}>
               <div className={styles['form-column']}>
                 <div className={styles['form-card']}>
                   <div className={styles['form-card-header']}>
                     <FiGlobe className={styles['card-icon']} />
-                    <h3>Localisation Administrative</h3>
+                    <h3>Localisation administrative</h3>
                   </div>
                   <div className={styles['form-card-body']}>
                     <div className={styles['zone-list']}>
@@ -2167,7 +2229,7 @@ const checkButtonConditions = () => {
                           return (
                             <div key={zone.id} className={styles['zone-row']}>
                               <div className={styles['zone-fields']}>
-                                <div className={styles['form-group']}>
+                                <div className={`${styles['form-group']} ${missingFields.has('zone') && !zone.wilayaId ? styles['field-error'] : ''}`}>
                                   <label className={styles['form-label']}>
                                     <FiMapPin className={styles['input-icon']} />
                                     Wilaya
@@ -2182,7 +2244,7 @@ const checkButtonConditions = () => {
                                     <SelectTrigger className={styles['form-select']}>
                                       <SelectValue
                                         className={styles.selectValue}
-                                        placeholder="Selectionner une wilaya"
+                                        placeholder="Sélectionner une wilaya"
                                       />
                                     </SelectTrigger>
                                     <SelectContent className={styles.selectContent}>
@@ -2197,11 +2259,14 @@ const checkButtonConditions = () => {
                                       ))}
                                     </SelectContent>
                                   </Select>
+                                  {missingFields.has('zone') && !zone.wilayaId && (
+                                    <small className={styles['field-error-message']}>Wilaya requise</small>
+                                  )}
                                 </div>
-                                <div className={styles['form-group']}>
+                                <div className={`${styles['form-group']} ${missingFields.has('zone') && !zone.dairaId ? styles['field-error'] : ''}`}>
                                   <label className={styles['form-label']}>
                                     <FiMapPin className={styles['input-icon']} />
-                                    Daira
+                                    Daïra
                                   </label>
                                   <Select
                                     value={zone.dairaId || undefined}
@@ -2213,7 +2278,7 @@ const checkButtonConditions = () => {
                                     <SelectTrigger className={styles['form-select']}>
                                       <SelectValue
                                         className={styles.selectValue}
-                                        placeholder="Selectionner une Daira"
+                                        placeholder="Sélectionner une Daïra"
                                       />
                                     </SelectTrigger>
                                     <SelectContent className={styles.selectContent}>
@@ -2228,8 +2293,11 @@ const checkButtonConditions = () => {
                                       ))}
                                     </SelectContent>
                                   </Select>
+                                  {missingFields.has('zone') && !zone.dairaId && (
+                                    <small className={styles['field-error-message']}>Daïra requise</small>
+                                  )}
                                 </div>
-                                <div className={styles['form-group']}>
+                                <div className={`${styles['form-group']} ${missingFields.has('zone') && !zone.communeId ? styles['field-error'] : ''}`}>
                                   <label className={styles['form-label']}>
                                     <FiMapPin className={styles['input-icon']} />
                                     Commune
@@ -2244,7 +2312,7 @@ const checkButtonConditions = () => {
                                     <SelectTrigger className={styles['form-select']}>
                                       <SelectValue
                                         className={styles.selectValue}
-                                        placeholder="Selectionner une commune"
+                                        placeholder="Sélectionner une commune"
                                       />
                                     </SelectTrigger>
                                     <SelectContent className={styles.selectContent}>
@@ -2259,6 +2327,9 @@ const checkButtonConditions = () => {
                                       ))}
                                     </SelectContent>
                                   </Select>
+                                  {missingFields.has('zone') && !zone.communeId && (
+                                    <small className={styles['field-error-message']}>Commune requise</small>
+                                  )}
                                 </div>
                               </div>
                               <div className={styles['zone-actions']}>
@@ -2266,8 +2337,8 @@ const checkButtonConditions = () => {
                                   type="button"
                                   className={styles['btn-remove-row']}
                                   onClick={() => removeZoneRow(zone.id)}
-                                  disabled={statutProc === 'TERMINEE' || zoneSelections.length === 1}
-                                  aria-label="Supprimer cette zone"
+                                  disabled={statutProc === 'TERMINEE'}
+                                  aria-label={zoneSelections.length === 1 ? 'Vider cette zone' : 'Supprimer cette zone'}
                                 >
                                   <FiX />
                                 </button>
@@ -2285,55 +2356,70 @@ const checkButtonConditions = () => {
                           Ajouter une zone
                         </button>
                       </div>
-                    <div className={styles['form-group']}>
+                    <div className={`${styles['form-group']} ${missingFields.has('lieuDitFr') ? styles['field-error'] : ''}`}>
                       <label className={styles['form-label']}>
                         <FiFileText className={styles['input-icon']} />
-                        Lieu Dit FR
+                        Lieu Dit FR *
                       </label>
                       <input
                         disabled={statutProc === 'TERMINEE'}
                         type="text"
                         className={styles['form-input']}
                         value={lieuDitFr}
-                        onChange={(e) => setLieuDitFr(e.target.value)}
+                        onChange={(e) => {
+                          setLieuDitFr(e.target.value);
+                          clearMissingField('lieuDitFr');
+                        }}
                       />
+                      {missingFields.has('lieuDitFr') && (
+                        <small className={styles['field-error-message']}>Lieu Dit FR requis</small>
+                      )}
                     </div>
-                    <div className={styles['form-group']}>
+                    <div className={`${styles['form-group']} ${missingFields.has('lieuDitAr') ? styles['field-error'] : ''}`}>
                       <label className={styles['form-label']}>
                         <FiFileText className={styles['input-icon']} />
-                        Lieu Dit AR
+                        Lieu Dit AR *
                       </label>
                       <input
                         disabled={statutProc === 'TERMINEE'}
                         type="text"
                         className={styles['form-input']}
                         value={lieuDitAr}
-                        onChange={(e) => setLieuDitAr(e.target.value)}
+                        onChange={(e) => {
+                          setLieuDitAr(e.target.value);
+                          clearMissingField('lieuDitAr');
+                        }}
                       />
+                      {missingFields.has('lieuDitAr') && (
+                        <small className={styles['field-error-message']}>Lieu Dit AR requis</small>
+                      )}
                     </div>
                   </div>
                 </div>
                 <div className={styles['form-card']}>
                   <div className={styles['form-card-header']}>
                     <FiFileText className={styles['card-icon']} />
-                    <h3>Statut Juridique du Terrain</h3>
+                    <h3>Statut juridique du terrain</h3>
                   </div>
                   <div className={styles['form-card-body']}>
-                    <div className={styles['form-group']}>
+                    <div className={`${styles['form-group']} ${missingFields.has('statutJuridique') ? styles['field-error'] : ''}`}>
                       <label className={styles['form-label']}>
                         <FiFileText className={styles['input-icon']} />
-                        Statut Juridique
+                        Statut Juridique *
                       </label>
                       
                       <Select
                         value={statutJuridique || undefined}
-                        onValueChange={(value) => setStatutJuridique(value)}
+                        onValueChange={(value) => {
+                          setStatutJuridique(value);
+                          clearMissingField('statutJuridique');
+                        }}
                         disabled={statutProc === 'TERMINEE'}
                       >
                         <SelectTrigger className={styles['form-select']}>
                           <SelectValue
                             className={styles.selectValue}
-                            placeholder="Selectionner un statut"
+                            placeholder="Sélectionner un statut"
                           />
                         </SelectTrigger>
                         <SelectContent className={styles.selectContent}>
@@ -2351,33 +2437,48 @@ const checkButtonConditions = () => {
                           </SelectItem>
                         </SelectContent>
                       </Select>
+                      {missingFields.has('statutJuridique') && (
+                        <small className={styles['field-error-message']}>Statut juridique requis</small>
+                      )}
 
                     </div>
-                    <div className={styles['form-group']}>
+                    <div className={`${styles['form-group']} ${missingFields.has('occupantLegal') ? styles['field-error'] : ''}`}>
                       <label className={styles['form-label']}>
                         <FiFileText className={styles['input-icon']} />
-                        Occupant Légal
+                        Occupant légal *
                       </label>
                       <input
                         disabled={statutProc === 'TERMINEE'}
                         type="text"
                         className={styles['form-input']}
                         value={occupantLegal}
-                        onChange={(e) => setOccupantLegal(e.target.value)}
+                        onChange={(e) => {
+                          setOccupantLegal(e.target.value);
+                          clearMissingField('occupantLegal');
+                        }}
                       />
+                      {missingFields.has('occupantLegal') && (
+                        <small className={styles['field-error-message']}>Occupant légal requis</small>
+                      )}
                     </div>
-                    <div className={styles['form-group']}>
+                    <div className={`${styles['form-group']} ${missingFields.has('superficieDeclaree') ? styles['field-error'] : ''}`}>
                       <label className={styles['form-label']}>
                         <FiHash className={styles['input-icon']} />
-                        Superficie déclarée (Ha)
+                        Superficie déclarée (Ha) *
                       </label>
                       <input
                         disabled={statutProc === 'TERMINEE'}
                         type="number"
                         className={styles['form-input']}
                         value={superficieDeclaree}
-                        onChange={(e) => setSuperficieDeclaree(e.target.value)}
+                        onChange={(e) => {
+                          setSuperficieDeclaree(e.target.value);
+                          clearMissingField('superficieDeclaree');
+                        }}
                       />
+                      {missingFields.has('superficieDeclaree') && (
+                        <small className={styles['field-error-message']}>Superficie requise</small>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -2386,10 +2487,10 @@ const checkButtonConditions = () => {
                 <div className={styles['form-card']}>
                   <div className={styles['form-card-header']}>
                     <FiFileText className={styles['card-icon']} />
-                    <h3>Substances Minérales Visées</h3>
+                    <h3>Substances minérales visées</h3>
                   </div>
                   <div className={styles['form-card-body']}>
-                    <div className={styles['form-group']}>
+                    <div className={`${styles['form-group']} ${missingFields.has('principalSubstance') ? styles['field-error'] : ''}`}>
                       <FieldHelpLabel
                         label="Substance Principale *"
                         required
@@ -2404,7 +2505,7 @@ const checkButtonConditions = () => {
                         <SelectTrigger className={styles['form-select']}>
                           <SelectValue
                             className={styles.selectValue}
-                            placeholder="Selectionner une substance principale"
+                            placeholder="Sélectionner une substance principale"
                           />
                         </SelectTrigger>
                         <SelectContent className={styles.selectContent}>
@@ -2419,6 +2520,9 @@ const checkButtonConditions = () => {
                           ))}
                         </SelectContent>
                       </Select>
+                      {missingFields.has('principalSubstance') && (
+                        <small className={styles['field-error-message']}>Substance principale requise</small>
+                      )}
 
                     </div>
 
@@ -2450,7 +2554,7 @@ const checkButtonConditions = () => {
                                 <SelectTrigger className={styles['form-select']}>
                                   <SelectValue
                                     className={styles.selectValue}
-                                    placeholder="Selectionner une substance"
+                                    placeholder="Sélectionner une substance"
                                   />
                                 </SelectTrigger>
                                 <SelectContent className={styles.selectContent}>
@@ -2540,13 +2644,12 @@ const checkButtonConditions = () => {
             )}
             {showConversionModal && <ConversionModal />}
           </div>
+          </div>
         </main>
       </div>
     </div>
   );
 }
-
-
 
 
 
