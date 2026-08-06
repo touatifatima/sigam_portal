@@ -145,6 +145,10 @@
   color: #ffffff;
 }
 
+.navLinkActive {
+  color: #ffffff;
+}
+
 .navLinkUnderline {
   position: absolute;
   bottom: -0.25rem;
@@ -156,6 +160,10 @@
 }
 
 .navLink:hover .navLinkUnderline {
+  width: 100%;
+}
+
+.navLinkActive .navLinkUnderline {
   width: 100%;
 }
 
@@ -269,6 +277,11 @@
 
 .mobileNavLink:hover {
   color: hsl(var(--primary));
+}
+
+.mobileNavLinkActive {
+  color: hsl(var(--primary));
+  font-weight: 700;
 }
 
 .mobileActions {

@@ -19,6 +19,7 @@ export const Footer = () => {
       { label: "Guide d'utilisation", href: "/auth/login" },
       { label: "FAQ", href: "/acceuil/faq" },
       { label: "Actualites", href: "/acceuil/actualites" },
+      { label: "Tarifs & Abonnements", href: "/cadastre/trifs_abonnement" },
       { label: "Documentation", href: "/acceuil/documentation" },
     ],
     legal: [

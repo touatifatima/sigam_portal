@@ -9,16 +9,20 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { SessionService } from 'src/session/session.service';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import {
   ActionDocumentCadastral,
   CanalVerificationCadastre,
+  EnumTypeFonction,
   Prisma,
   StatutDemandeDocument,
   TypeDocumentCadastral,
   TypePieceCadastre,
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import * as fs from 'fs';
 import * as nodemailer from 'nodemailer';
+import * as path from 'path';
 import { createHash, randomBytes } from 'crypto';
 import { isIP } from 'net';
 
@@ -63,6 +67,45 @@ type SubmitCadastreRequestBody = {
   baseCommunication?: string;
 };
 
+type CadastreDocumentReference = {
+  id: number;
+  code: string;
+  label: string;
+  subtitle: string | null;
+  description: string | null;
+  iconKey: string | null;
+  accentKey: string | null;
+  isDefault: boolean;
+  sortOrder: number;
+};
+
+type CadastreVerificationReference = {
+  id: number;
+  code: string;
+  label: string;
+  description: string | null;
+  iconKey: string | null;
+  isDefault: boolean;
+  sortOrder: number;
+};
+
+type CadastreWorkflowReferencesResponse = {
+  documents: CadastreDocumentReference[];
+  verificationChannels: CadastreVerificationReference[];
+};
+
+type OtpContactValidationResponse = {
+  valid: boolean;
+  message: string;
+  qualiteDemandeur: string;
+  canalVerification: CanalVerificationCadastre;
+  expectedContact: string | null;
+  actualContact: string;
+  targetLabel: string;
+  permisId: number | null;
+  permisCode: string | null;
+};
+
 @Injectable()
 export class CadastreDocumentService {
   constructor(
@@ -94,17 +137,425 @@ export class CadastreDocumentService {
     return value.replace(/\s+/g, ' ').trim();
   }
 
+  private normalizeLabel(value?: string | null) {
+    return String(value || '').trim();
+  }
+
   private generateOtp() {
     return String(Math.floor(100000 + Math.random() * 900000));
   }
 
-  private generateReferenceDemande() {
-    const date = new Date();
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
+  private generateTemporaryReferenceDemande() {
     const suffix = randomBytes(3).toString('hex').toUpperCase();
-    return `CDC-${y}${m}${d}-${suffix}`;
+    return `TMP-CDC-${Date.now()}-${suffix}`;
+  }
+
+  private buildSequentialReferenceDemande(demandeId: number) {
+    return `CDC-${String(demandeId).padStart(6, '0')}`;
+  }
+
+  private normalizeDemandeurQuality(value?: string | null) {
+    const normalized = this.normalizeLabel(value).toLowerCase();
+    if (!normalized) return null;
+    if (normalized.includes('representant')) return 'REPRESENTANT';
+    if (normalized.includes('titulaire')) return 'TITULAIRE';
+    if (normalized.includes('actionnaire')) return 'ACTIONNAIRE';
+    return null;
+  }
+
+  private async resolveTypePermisId(value?: string | null) {
+    const raw = this.normalizeLabel(value);
+    if (!raw) {
+      throw new BadRequestException('Le type de permis est requis.');
+    }
+
+    const numericTypePermisId = Number(raw);
+    if (Number.isFinite(numericTypePermisId) && numericTypePermisId > 0) {
+      const typePermis = await this.prisma.typePermis.findUnique({
+        where: { id: numericTypePermisId },
+        select: { id: true },
+      });
+
+      if (typePermis) {
+        return typePermis.id;
+      }
+    }
+
+    const matchedTypePermis = await this.prisma.typePermis.findFirst({
+      where: {
+        OR: [
+          { code_type: { equals: raw, mode: 'insensitive' } },
+          { lib_type: { equals: raw, mode: 'insensitive' } },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (!matchedTypePermis) {
+      throw new NotFoundException('Type de permis introuvable.');
+    }
+
+    return matchedTypePermis.id;
+  }
+
+  private async buildOtpContactValidation(
+    body: CreateCadastreRequestBody,
+  ): Promise<OtpContactValidationResponse> {
+    const qualiteDemandeur = this.normalizeDemandeurQuality(body.qualiteDemandeur);
+    const canalVerification = await this.normalizeCanal(body.canalVerification);
+    const emailContact = this.normalizeEmail(body.emailContact);
+    const telephoneContact = this.normalizePhone(body.telephoneContact);
+    const qrCode = this.normalizeLabel(body.qrCodeTitre);
+    const codePermis = this.normalizeLabel(body.codePermis);
+    const typePermis = this.normalizeLabel(body.typePermis);
+    const actualContact =
+      canalVerification === CanalVerificationCadastre.EMAIL
+        ? emailContact
+        : telephoneContact;
+
+    if (!qrCode || !codePermis || !typePermis) {
+      return {
+        valid: false,
+        message:
+          'Veuillez saisir le code QR, le code permis et le type de permis avant d\'envoyer le code OTP.',
+        qualiteDemandeur: String(body.qualiteDemandeur || '').trim(),
+        canalVerification,
+        expectedContact: null,
+        actualContact,
+        targetLabel: 'demandeur',
+        permisId: null,
+        permisCode: null,
+      };
+    }
+
+    if (!qualiteDemandeur) {
+      return {
+        valid: false,
+        message:
+          'Veuillez selectionner une qualite du demandeur valide avant de continuer.',
+        qualiteDemandeur: String(body.qualiteDemandeur || '').trim(),
+        canalVerification,
+        expectedContact: null,
+        actualContact,
+        targetLabel: 'demandeur',
+        permisId: null,
+        permisCode: null,
+      };
+    }
+
+    const permisId = await this.resolvePermisId(body);
+    const permis = await this.prisma.permisPortail.findUnique({
+      where: { id: permisId },
+      select: {
+        id: true,
+        code_permis: true,
+        detenteur: {
+          select: {
+            id_detenteur: true,
+            nom_societeFR: true,
+            nom_societeAR: true,
+            email: true,
+            telephone: true,
+          },
+        },
+      },
+    });
+
+    if (!permis) {
+      return {
+        valid: false,
+        message: 'Permis introuvable.',
+        qualiteDemandeur: String(body.qualiteDemandeur || '').trim(),
+        canalVerification,
+        expectedContact: null,
+        actualContact,
+        targetLabel: 'demandeur',
+        permisId,
+        permisCode: null,
+      };
+    }
+
+    const targetLabel =
+      qualiteDemandeur === 'REPRESENTANT'
+        ? 'representant legal'
+        : qualiteDemandeur === 'ACTIONNAIRE'
+          ? 'actionnaire'
+          : 'titulaire';
+
+    const detenteurId = permis.detenteur?.id_detenteur ?? null;
+
+    let expectedContact = '';
+    if (qualiteDemandeur === 'REPRESENTANT') {
+      if (!detenteurId) {
+        return {
+          valid: false,
+          message: 'Ce permis ne possède pas de détenteur pour verifier le representant legal.',
+          qualiteDemandeur: String(body.qualiteDemandeur || '').trim(),
+          canalVerification,
+          expectedContact: null,
+          actualContact,
+          targetLabel,
+          permisId: permis.id,
+          permisCode: permis.code_permis ?? null,
+        };
+      }
+
+      const representant = await this.prisma.fonctionPersonneMoral.findFirst({
+        where: {
+          id_detenteur: detenteurId,
+          type_fonction: EnumTypeFonction.Representant,
+        },
+        select: {
+          personne: {
+            select: {
+              nomFR: true,
+              prenomFR: true,
+              email: true,
+              telephone: true,
+            },
+          },
+        },
+      });
+
+      expectedContact =
+        canalVerification === CanalVerificationCadastre.EMAIL
+          ? this.normalizeEmail(representant?.personne?.email)
+          : this.normalizePhone(representant?.personne?.telephone);
+
+      if (!expectedContact) {
+        return {
+          valid: false,
+          message:
+            canalVerification === CanalVerificationCadastre.EMAIL
+              ? 'Aucun email du representant legal n\'est renseigne pour ce permis.'
+              : 'Aucun numero de telephone du representant legal n\'est renseigne pour ce permis.',
+          qualiteDemandeur: String(body.qualiteDemandeur || '').trim(),
+          canalVerification,
+          expectedContact: null,
+          actualContact,
+          targetLabel,
+          permisId: permis.id,
+          permisCode: permis.code_permis ?? null,
+        };
+      }
+    } else if (qualiteDemandeur === 'ACTIONNAIRE') {
+      if (!detenteurId) {
+        return {
+          valid: false,
+          message: 'Ce permis ne possède pas de détenteur pour verifier les actionnaires.',
+          qualiteDemandeur: String(body.qualiteDemandeur || '').trim(),
+          canalVerification,
+          expectedContact: null,
+          actualContact,
+          targetLabel,
+          permisId: permis.id,
+          permisCode: permis.code_permis ?? null,
+        };
+      }
+
+      const actionnaires = await this.prisma.fonctionPersonneMoral.findMany({
+        where: {
+          id_detenteur: detenteurId,
+          type_fonction: EnumTypeFonction.Actionnaire,
+        },
+        select: {
+          personne: {
+            select: {
+              nomFR: true,
+              prenomFR: true,
+              email: true,
+              telephone: true,
+            },
+          },
+        },
+      });
+
+      const expectedContacts =
+        canalVerification === CanalVerificationCadastre.EMAIL
+          ? actionnaires
+              .map((row) => this.normalizeEmail(row.personne?.email))
+              .filter(Boolean)
+          : actionnaires
+              .map((row) => this.normalizePhone(row.personne?.telephone))
+              .filter(Boolean);
+
+      if (expectedContacts.length === 0) {
+        return {
+          valid: false,
+          message:
+            canalVerification === CanalVerificationCadastre.EMAIL
+              ? 'Aucun email d\'actionnaire n\'est renseigne pour ce permis.'
+              : 'Aucun numero de telephone d\'actionnaire n\'est renseigne pour ce permis.',
+          qualiteDemandeur: String(body.qualiteDemandeur || '').trim(),
+          canalVerification,
+          expectedContact: null,
+          actualContact,
+          targetLabel,
+          permisId: permis.id,
+          permisCode: permis.code_permis ?? null,
+        };
+      }
+
+      expectedContact = expectedContacts.includes(actualContact) ? actualContact : expectedContacts[0];
+    } else {
+      expectedContact =
+        canalVerification === CanalVerificationCadastre.EMAIL
+          ? this.normalizeEmail(permis.detenteur?.email)
+          : this.normalizePhone(permis.detenteur?.telephone);
+
+      if (!expectedContact) {
+        return {
+          valid: false,
+          message:
+            canalVerification === CanalVerificationCadastre.EMAIL
+              ? 'Aucun email du titulaire n\'est renseigne pour ce permis.'
+              : 'Aucun numero de telephone du titulaire n\'est renseigne pour ce permis.',
+          qualiteDemandeur: String(body.qualiteDemandeur || '').trim(),
+          canalVerification,
+          expectedContact: null,
+          actualContact,
+          targetLabel,
+          permisId: permis.id,
+          permisCode: permis.code_permis ?? null,
+        };
+      }
+    }
+
+    if (!actualContact) {
+      return {
+        valid: false,
+        message:
+          canalVerification === CanalVerificationCadastre.EMAIL
+            ? `Veuillez saisir l'email de ${targetLabel}.`
+            : `Veuillez saisir le numero de telephone de ${targetLabel}.`,
+        qualiteDemandeur: String(body.qualiteDemandeur || '').trim(),
+        canalVerification,
+        expectedContact,
+        actualContact,
+        targetLabel,
+        permisId: permis.id,
+        permisCode: permis.code_permis ?? null,
+      };
+    }
+
+    const matches = expectedContact === actualContact;
+    if (!matches) {
+      return {
+        valid: false,
+        message:
+          canalVerification === CanalVerificationCadastre.EMAIL
+            ? `Cet email est different de celui du ${targetLabel}.`
+            : `Ce numero de telephone est different de celui du ${targetLabel}.`,
+        qualiteDemandeur: String(body.qualiteDemandeur || '').trim(),
+        canalVerification,
+        expectedContact,
+        actualContact,
+        targetLabel,
+        permisId: permis.id,
+        permisCode: permis.code_permis ?? null,
+      };
+    }
+
+    return {
+      valid: true,
+      message:
+        canalVerification === CanalVerificationCadastre.EMAIL
+          ? `L'email correspond au ${targetLabel}.`
+          : `Le numero de telephone correspond au ${targetLabel}.`,
+      qualiteDemandeur: String(body.qualiteDemandeur || '').trim(),
+      canalVerification,
+      expectedContact,
+      actualContact,
+      targetLabel,
+      permisId: permis.id,
+      permisCode: permis.code_permis ?? null,
+    };
+  }
+
+  private async assertOtpContactValidation(body: CreateCadastreRequestBody) {
+    const validation = await this.buildOtpContactValidation(body);
+    if (!validation.valid) {
+      throw new BadRequestException(validation.message);
+    }
+    return validation;
+  }
+
+  private getCadastreDemandDirectory(demandeId: number) {
+    return path.join(
+      process.cwd(),
+      'public',
+      'uploads',
+      'cadastre',
+      'demandes',
+      String(demandeId),
+    );
+  }
+
+  private sanitizeFilenameSegment(value: string, fallback = 'document') {
+    const raw = String(value || '').trim();
+    const safe = (raw || fallback)
+      .normalize('NFKD')
+      .replace(/[^\w.-]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+    return safe || fallback;
+  }
+
+  private normalizePdfText(value: unknown, fallback = '—') {
+    const text = String(value ?? '').replace(/\s+/g, ' ').trim();
+    return text || fallback;
+  }
+
+  private formatFrenchDate(value?: Date | string | null) {
+    if (!value) return '—';
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleDateString('fr-DZ');
+  }
+
+  private formatFrenchDateTime(value?: Date | string | null) {
+    if (!value) return '—';
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    return `${date.toLocaleDateString('fr-DZ')} à ${date.toLocaleTimeString('fr-DZ', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })}`;
+  }
+
+  private wrapPdfText(
+    text: string,
+    font: any,
+    fontSize: number,
+    maxWidth: number,
+  ) {
+    const normalized = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!normalized) {
+      return [''];
+    }
+
+    const words = normalized.split(' ');
+    const lines: string[] = [];
+    let current = '';
+
+    for (const word of words) {
+      const testLine = current ? `${current} ${word}` : word;
+      const width = font.widthOfTextAtSize(testLine, fontSize);
+      if (width <= maxWidth) {
+        current = testLine;
+        continue;
+      }
+
+      if (current) {
+        lines.push(current);
+      }
+      current = word;
+    }
+
+    if (current) {
+      lines.push(current);
+    }
+
+    return lines.length > 0 ? lines : [normalized];
   }
 
   private isValidEmail(email: string) {
@@ -278,61 +729,192 @@ export class CadastreDocumentService {
 
   private async resolvePermisId(payload: CreateCadastreRequestBody) {
     const explicitPermisId = Number(payload.permisId);
+    const qrCode = this.normalizeLabel(payload.qrCodeTitre);
+    const codePermis = this.normalizeLabel(payload.codePermis);
+    const typePermisValue = this.normalizeLabel(payload.typePermis);
+
+    if (!qrCode || !codePermis || !typePermisValue) {
+      throw new BadRequestException(
+        'Le code QR, le code permis et le type de permis sont requis pour identifier le titre.',
+      );
+    }
+
+    const typePermisId = await this.resolveTypePermisId(typePermisValue);
+
     if (Number.isFinite(explicitPermisId) && explicitPermisId > 0) {
       const permis = await this.prisma.permisPortail.findUnique({
         where: { id: explicitPermisId },
-        select: { id: true },
+        select: {
+          id: true,
+          qr_code: true,
+          code_permis: true,
+          id_typePermis: true,
+        },
       });
 
       if (!permis) {
         throw new NotFoundException('Permis introuvable.');
       }
 
-      return permis.id;
-    }
+      const matchesQr = this.normalizeLabel(permis.qr_code).toLowerCase() === qrCode.toLowerCase();
+      const matchesCode =
+        this.normalizeLabel(permis.code_permis).toLowerCase() === codePermis.toLowerCase();
+      const matchesType = Number(permis.id_typePermis) === Number(typePermisId);
 
-    const qrCode = String(payload.qrCodeTitre || '').trim();
-    const codePermis = String(payload.codePermis || '').trim();
-    const search = [qrCode, codePermis].filter(Boolean);
-    if (search.length === 0) {
-      throw new BadRequestException(
-        'QR code ou code permis requis pour identifier le titre.',
-      );
+      if (!matchesQr || !matchesCode || !matchesType) {
+        throw new BadRequestException(
+          'Le permis fourni ne correspond pas au code QR, au code permis et au type de permis saisis.',
+        );
+      }
+
+      return permis.id;
     }
 
     const permis = await this.prisma.permisPortail.findFirst({
       where: {
-        OR: [
-          ...(qrCode ? [{ qr_code: qrCode }] : []),
-          ...(codePermis ? [{ code_permis: codePermis }] : []),
-        ],
+        qr_code: { equals: qrCode, mode: 'insensitive' },
+        code_permis: { equals: codePermis, mode: 'insensitive' },
+        id_typePermis: typePermisId,
       },
       select: { id: true },
     });
 
     if (!permis) {
       throw new NotFoundException(
-        'Aucun permis ne correspond au QR code ou au code permis fourni.',
+        'Aucun permis ne correspond simultanement au code QR, au code permis et au type de permis fournis.',
       );
     }
 
     return permis.id;
   }
 
-  private normalizeTypeDocument(value?: string | null) {
-    const normalized = String(value || '').trim();
-    if (normalized === TypeDocumentCadastral.PLAN_CADASTRAL_OFFICIEL) {
-      return TypeDocumentCadastral.PLAN_CADASTRAL_OFFICIEL;
-    }
-    return TypeDocumentCadastral.EXTRAIT_CERTIFIE_CONFORME;
+  async getWorkflowReferences(): Promise<CadastreWorkflowReferencesResponse> {
+    const [documents, verificationChannels] = await Promise.all([
+      this.prisma.$queryRaw<CadastreDocumentReference[]>`
+        SELECT
+          "id",
+          "code",
+          "label",
+          "subtitle",
+          "description",
+          "iconKey",
+          "accentKey",
+          "isDefault",
+          "sortOrder"
+        FROM "cadastre_document_references"
+        WHERE "isActive" = TRUE
+        ORDER BY "isDefault" DESC, "sortOrder" ASC, "label" ASC
+      `,
+      this.prisma.$queryRaw<CadastreVerificationReference[]>`
+        SELECT
+          "id",
+          "code",
+          "label",
+          "description",
+          "iconKey",
+          "isDefault",
+          "sortOrder"
+        FROM "cadastre_verification_references"
+        WHERE "isActive" = TRUE
+        ORDER BY "isDefault" DESC, "sortOrder" ASC, "label" ASC
+      `,
+    ]);
+
+    return { documents, verificationChannels };
   }
 
-  private normalizeCanal(value?: string | null) {
+  private async normalizeTypeDocument(value?: string | null) {
     const normalized = String(value || '').trim().toUpperCase();
-    if (normalized === CanalVerificationCadastre.TELEPHONE) {
-      return CanalVerificationCadastre.TELEPHONE;
+    const fallback = await this.prisma.$queryRaw<Array<{ code: string }>>`
+      SELECT "code"
+      FROM "cadastre_document_references"
+      WHERE "isActive" = TRUE
+      ORDER BY "isDefault" DESC, "sortOrder" ASC, "label" ASC
+      LIMIT 1
+    `;
+
+    if (!normalized) {
+      if (fallback[0]?.code) {
+        return fallback[0].code as TypeDocumentCadastral;
+      }
+      throw new BadRequestException(
+        'Aucun type de document cadastral n\'est configure.',
+      );
     }
-    return CanalVerificationCadastre.EMAIL;
+
+    const activeMatch = await this.prisma.$queryRaw<Array<{ code: string }>>`
+      SELECT "code"
+      FROM "cadastre_document_references"
+      WHERE "code" = ${normalized}
+        AND "isActive" = TRUE
+      LIMIT 1
+    `;
+
+    if (activeMatch[0]?.code) {
+      return activeMatch[0].code as TypeDocumentCadastral;
+    }
+
+    const anyMatch = await this.prisma.$queryRaw<Array<{ code: string }>>`
+      SELECT "code"
+      FROM "cadastre_document_references"
+      WHERE "code" = ${normalized}
+      LIMIT 1
+    `;
+
+    if (anyMatch[0]?.code) {
+      return anyMatch[0].code as TypeDocumentCadastral;
+    }
+
+    throw new BadRequestException(
+      `Type de document cadastral invalide: ${normalized}.`,
+    );
+  }
+
+  private async normalizeCanal(value?: string | null) {
+    const normalized = String(value || '').trim().toUpperCase();
+    const fallback = await this.prisma.$queryRaw<Array<{ code: string }>>`
+      SELECT "code"
+      FROM "cadastre_verification_references"
+      WHERE "isActive" = TRUE
+      ORDER BY "isDefault" DESC, "sortOrder" ASC, "label" ASC
+      LIMIT 1
+    `;
+
+    if (!normalized) {
+      if (fallback[0]?.code) {
+        return fallback[0].code as CanalVerificationCadastre;
+      }
+      throw new BadRequestException(
+        'Aucun canal de verification cadastral n\'est configure.',
+      );
+    }
+
+    const activeMatch = await this.prisma.$queryRaw<Array<{ code: string }>>`
+      SELECT "code"
+      FROM "cadastre_verification_references"
+      WHERE "code" = ${normalized}
+        AND "isActive" = TRUE
+      LIMIT 1
+    `;
+
+    if (activeMatch[0]?.code) {
+      return activeMatch[0].code as CanalVerificationCadastre;
+    }
+
+    const anyMatch = await this.prisma.$queryRaw<Array<{ code: string }>>`
+      SELECT "code"
+      FROM "cadastre_verification_references"
+      WHERE "code" = ${normalized}
+      LIMIT 1
+    `;
+
+    if (anyMatch[0]?.code) {
+      return anyMatch[0].code as CanalVerificationCadastre;
+    }
+
+    throw new BadRequestException(
+      `Canal de verification cadastral invalide: ${normalized}.`,
+    );
   }
 
   private async assertOwnershipOrAdmin(demandeId: number, user: CadastreSessionUser) {
@@ -384,6 +966,558 @@ export class CadastreDocumentService {
     };
   }
 
+  private async buildAccuseReceptionPdf(demande: any) {
+    const pdfDoc = await PDFDocument.create();
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+    const PAGE_W = 595;
+    const PAGE_H = 842;
+    const BORDER_X = 20;
+    const BORDER_Y = 20;
+    const BORDER_W = PAGE_W - BORDER_X * 2;
+    const BORDER_H = PAGE_H - BORDER_Y * 2;
+    const CONTENT_X = BORDER_X + 5;
+    const CONTENT_W = BORDER_W - 10;
+    const LABEL_W = 130;
+    const VALUE_W = CONTENT_W - LABEL_W - 2;
+    const BLUE = rgb(25 / 255, 71 / 255, 106 / 255);
+    const BLUE_DARK = rgb(30 / 255, 53 / 255, 73 / 255);
+    const GREY = rgb(88 / 255, 97 / 255, 106 / 255);
+
+    const page = pdfDoc.addPage([PAGE_W, PAGE_H]);
+    page.drawRectangle({
+      x: BORDER_X,
+      y: BORDER_Y,
+      width: BORDER_W,
+      height: BORDER_H,
+      color: rgb(1, 1, 1),
+      borderColor: BLUE,
+      borderWidth: 0.6,
+    });
+
+    const centerX = PAGE_W / 2;
+    const drawCenteredText = (
+      text: string,
+      y: number,
+      size: number,
+      useBold = false,
+      color = BLUE_DARK,
+    ) => {
+      const selectedFont = useBold ? fontBold : font;
+      const width = selectedFont.widthOfTextAtSize(text, size);
+      page.drawText(text, {
+        x: centerX - width / 2,
+        y,
+        size,
+        font: selectedFont,
+        color,
+      });
+    };
+
+    const drawLabelValue = (label: string, value: string, y: number) => {
+      const cleanValue = this.normalizePdfText(value);
+      const valueLines = this.wrapPdfText(cleanValue, font, 8.4, VALUE_W);
+      const lineHeight = 11.8;
+      page.drawText(`${this.normalizePdfText(label)} :`, {
+        x: CONTENT_X,
+        y,
+        size: 8.4,
+        font: fontBold,
+        color: BLUE_DARK,
+      });
+      valueLines.forEach((line, index) => {
+        page.drawText(line, {
+          x: CONTENT_X + LABEL_W,
+          y: y - index * lineHeight,
+          size: 8.4,
+          font,
+          color: BLUE_DARK,
+        });
+      });
+      return Math.max(14, valueLines.length * lineHeight + 6.5);
+    };
+
+    const piecesJointes = Array.isArray(demande?.piecesJointes) ? demande.piecesJointes : [];
+    const submitDate = demande?.dateSoumission || demande?.updatedAt || demande?.createdAt || new Date();
+    const horodatage = this.formatFrenchDateTime(new Date());
+    const dateDepot = this.formatFrenchDateTime(submitDate);
+    const referenceAccuse = this.normalizePdfText(demande?.referenceDemande);
+    const codeDemande = this.normalizePdfText(`CDC-${String(demande?.id ?? Date.now()).padStart(6, '0')}`);
+    const titulaire = this.normalizePdfText(demande?.titulaire);
+    const numeroRc = this.normalizePdfText(demande?.numeroRc);
+    const codeQr = this.normalizePdfText(demande?.qrCodeTitre);
+    const codePermis = this.normalizePdfText(demande?.codePermis);
+    const typePermis = this.normalizePdfText(demande?.typePermis);
+    const nin = this.normalizePdfText(demande?.nin);
+    const deposant = this.normalizePdfText(
+      `${demande?.prenom || ''} ${demande?.nom || ''}`.trim() ||
+        demande?.titulaire ||
+        demande?.emailContact ||
+        demande?.telephoneContact,
+    );
+    const canalVerification = this.normalizePdfText(
+      demande?.canalVerification === CanalVerificationCadastre.TELEPHONE ? 'Telephone' : 'Email',
+    );
+    const contactVerification = this.normalizePdfText(
+      demande?.canalVerification === CanalVerificationCadastre.TELEPHONE
+        ? demande?.telephoneContact
+        : demande?.emailContact,
+    );
+    const qualiteDemandeur = this.normalizePdfText(demande?.qualiteDemandeur);
+    const objetDemande = this.normalizePdfText(demande?.objetDemande);
+    const baseCommunication = this.normalizePdfText(demande?.baseCommunication);
+    const piecesCount = piecesJointes.length;
+
+    drawCenteredText('REPUBLIQUE ALGERIENNE DEMOCRATIQUE ET POPULAIRE', 807, 8.7, true);
+    drawCenteredText("MINISTERE DE L'ENERGIE ET DES MINES", 798, 8.4, true);
+    drawCenteredText('AGENCE NATIONALE DES ACTIVITES MINIERES (ANAM)', 789, 8.1, true);
+    page.drawLine({
+      start: { x: BORDER_X + 3, y: 783.5 },
+      end: { x: PAGE_W - BORDER_X - 3, y: 783.5 },
+      color: BLUE,
+      thickness: 0.6,
+    });
+    drawCenteredText('ACCUSE DE RECEPTION HORODATE', 762, 13, true, BLUE_DARK);
+    drawCenteredText('Document de preuve du depot enregistre dans le systeme ANAM', 749.5, 8, false, GREY);
+
+    let y = 742;
+    page.drawText('Informations du depot', {
+      x: CONTENT_X,
+      y,
+      size: 10.2,
+      font: fontBold,
+      color: BLUE,
+    });
+    page.drawLine({
+      start: { x: CONTENT_X, y: y - 1.8 },
+      end: { x: CONTENT_X + CONTENT_W, y: y - 1.8 },
+      color: BLUE,
+      thickness: 0.6,
+    });
+    y -= 12;
+
+    const rows: Array<[string, string]> = [
+      ['Reference accuse', referenceAccuse],
+      ['Code demande', codeDemande],
+      ['Horodatage systeme', horodatage],
+      ['Date et heure de depot', dateDepot],
+      ['Titulaire', titulaire],
+      ['Numero de registre de commerce', numeroRc],
+      ['Code QR du titre', codeQr],
+      ['Code permis', codePermis],
+      ['Type de permis', typePermis],
+      ['NIN', nin],
+      ['Nom et prenom', deposant],
+      ['Canal de verification', canalVerification],
+      ['Contact de verification', contactVerification],
+      ['Qualite du demandeur', qualiteDemandeur],
+      ['Objet de la demande', objetDemande],
+      ['Base de communication', baseCommunication],
+      ['Nombre de pieces remises', String(piecesCount)],
+      ['Agent recepteur', 'Systeme ANAM'],
+    ];
+
+    rows.forEach(([label, value]) => {
+      y -= drawLabelValue(label, value, y);
+    });
+
+    page.drawText(
+      `Document officiel genere automatiquement le ${this.formatFrenchDateTime(new Date())}`,
+      {
+        x: BORDER_X + 6,
+        y: 28,
+        size: 7.2,
+        font,
+        color: GREY,
+      },
+    );
+    const footerRight = 'ANAM - Registre numerique des demandes';
+    page.drawText(footerRight, {
+      x: PAGE_W - BORDER_X - 6 - font.widthOfTextAtSize(footerRight, 7.2),
+      y: 28,
+      size: 7.2,
+      font,
+      color: GREY,
+    });
+
+    const buffer = Buffer.from(await pdfDoc.save());
+    const filename = `accuse-reception-${this.sanitizeFilenameSegment(
+      demande?.referenceDemande || `demande-${demande?.id || Date.now()}`,
+    )}.pdf`;
+    const outputDir = this.getCadastreDemandDirectory(Number(demande.id));
+    fs.mkdirSync(outputDir, { recursive: true });
+    const absolutePath = path.join(outputDir, filename);
+    fs.writeFileSync(absolutePath, buffer);
+
+    return {
+      buffer,
+      filename,
+      absolutePath,
+      fileUrl: `/uploads/cadastre/demandes/${demande.id}/${filename}`,
+    };
+
+    if (false) {
+
+    const PAGE_W = 595;
+    const PAGE_H = 842;
+    const MARGIN_X = 42;
+    const MARGIN_BOTTOM = 54;
+    const CONTENT_W = PAGE_W - MARGIN_X * 2;
+    const HEADER_H = 112;
+    const FOOTER_H = 32;
+
+    const COLORS = {
+      header: rgb(0.09, 0.38, 0.21),
+      headerDark: rgb(0.06, 0.28, 0.16),
+      accent: rgb(0.05, 0.48, 0.3),
+      border: rgb(0.84, 0.88, 0.92),
+      panel: rgb(0.98, 0.99, 1),
+      text: rgb(0.11, 0.15, 0.22),
+      muted: rgb(0.41, 0.46, 0.54),
+      light: rgb(0.95, 0.98, 0.96),
+      gold: rgb(0.76, 0.58, 0.16),
+    };
+
+    let page = pdfDoc.addPage([PAGE_W, PAGE_H]);
+    let pageNumber = 1;
+    let cursorY = PAGE_H - HEADER_H - 30;
+
+    const drawChrome = () => {
+      page.drawRectangle({
+        x: 0,
+        y: PAGE_H - HEADER_H,
+        width: PAGE_W,
+        height: HEADER_H,
+        color: COLORS.header,
+      });
+      page.drawRectangle({
+        x: PAGE_W - 152,
+        y: PAGE_H - 78,
+        width: 110,
+        height: 28,
+        color: rgb(1, 1, 1),
+        borderColor: COLORS.gold,
+        borderWidth: 1,
+      });
+      page.drawText('ANAM CADASTRE', {
+        x: PAGE_W - 139,
+        y: PAGE_H - 68,
+        size: 8,
+        font: fontBold,
+        color: COLORS.headerDark,
+      });
+      page.drawText('ACCUSE DE RECEPTION', {
+        x: MARGIN_X,
+        y: PAGE_H - 54,
+        size: 9,
+        font,
+        color: rgb(0.9, 0.96, 0.92),
+      });
+      page.drawText('Accusé de réception de demande cadastrale', {
+        x: MARGIN_X,
+        y: PAGE_H - 82,
+        size: 18,
+        font: fontBold,
+        color: rgb(1, 1, 1),
+      });
+      page.drawText(
+        'Ce document atteste l’enregistrement de votre demande dans le registre cadastral numérique.',
+        {
+          x: MARGIN_X,
+          y: PAGE_H - 98,
+          size: 8.4,
+          font,
+          color: rgb(0.92, 0.97, 0.94),
+        },
+      );
+
+      page.drawLine({
+        start: { x: MARGIN_X, y: FOOTER_H + 12 },
+        end: { x: PAGE_W - MARGIN_X, y: FOOTER_H + 12 },
+        color: COLORS.border,
+        thickness: 1,
+      });
+      page.drawText('Document généré automatiquement par le système cadastre ANAM', {
+        x: MARGIN_X,
+        y: 16,
+        size: 7.5,
+        font,
+        color: COLORS.muted,
+      });
+      page.drawText(`Page ${pageNumber}`, {
+        x: PAGE_W - MARGIN_X - 36,
+        y: 16,
+        size: 7.5,
+        font,
+        color: COLORS.muted,
+      });
+    };
+
+    const startPage = () => {
+      if (pageNumber > 1) {
+        page = pdfDoc.addPage([PAGE_W, PAGE_H]);
+      }
+      drawChrome();
+      cursorY = PAGE_H - HEADER_H - 28;
+      pageNumber += 1;
+    };
+
+    const ensureSpace = (heightNeeded: number) => {
+      if (cursorY - heightNeeded < MARGIN_BOTTOM) {
+        startPage();
+      }
+    };
+
+    const drawSectionTitle = (title: string) => {
+      ensureSpace(24);
+      page.drawText(title.toUpperCase(), {
+        x: MARGIN_X,
+        y: cursorY,
+        size: 9.5,
+        font: fontBold,
+        color: COLORS.headerDark,
+      });
+      page.drawLine({
+        start: { x: MARGIN_X, y: cursorY - 6 },
+        end: { x: PAGE_W - MARGIN_X, y: cursorY - 6 },
+        color: COLORS.border,
+        thickness: 1,
+      });
+      cursorY -= 18;
+    };
+
+    const drawParagraph = (text: string, size = 10.5, gapAfter = 8) => {
+      const lines = this.wrapPdfText(text, font, size, CONTENT_W);
+      const lineHeight = size + 3.8;
+      ensureSpace(lines.length * lineHeight + gapAfter + 2);
+      for (const line of lines) {
+        page.drawText(line, {
+          x: MARGIN_X,
+          y: cursorY,
+          size,
+          font,
+          color: COLORS.text,
+        });
+        cursorY -= lineHeight;
+      }
+      cursorY -= gapAfter;
+    };
+
+    const drawInfoGrid = (
+      items: Array<{ label: string; value: string }>,
+    ) => {
+      const gap = 12;
+      const colW = (CONTENT_W - gap) / 2;
+      for (let index = 0; index < items.length; index += 2) {
+        const rowItems = items.slice(index, index + 2);
+        const rowLayout = rowItems.map((item) => {
+          const valueLines = this.wrapPdfText(
+            item.value,
+            fontBold,
+            10.3,
+            colW - 22,
+          );
+          return {
+            item,
+            valueLines,
+            height: Math.max(48, 26 + valueLines.length * 12),
+          };
+        });
+
+        const rowHeight = Math.max(...rowLayout.map((entry) => entry.height));
+        ensureSpace(rowHeight + 12);
+
+        rowLayout.forEach((entry, idx) => {
+          const x = MARGIN_X + idx * (colW + gap);
+          const y = cursorY - rowHeight;
+          page.drawRectangle({
+            x,
+            y,
+            width: colW,
+            height: rowHeight,
+            color: COLORS.panel,
+            borderColor: COLORS.border,
+            borderWidth: 1,
+          });
+          page.drawText(entry.item.label.toUpperCase(), {
+            x: x + 10,
+            y: cursorY - 14,
+            size: 7.1,
+            font,
+            color: COLORS.muted,
+          });
+          entry.valueLines.forEach((line, lineIndex) => {
+            page.drawText(line, {
+              x: x + 10,
+              y: cursorY - 30 - lineIndex * 12,
+              size: 10.2,
+              font: lineIndex === 0 ? fontBold : font,
+              color: COLORS.text,
+            });
+          });
+        });
+
+        cursorY -= rowHeight + 12;
+      }
+    };
+
+    const drawBulletList = (items: string[]) => {
+      ensureSpace(items.length * 18 + 10);
+      items.forEach((item) => {
+        const lines = this.wrapPdfText(item, font, 10.4, CONTENT_W - 20);
+        const lineHeight = 12.4;
+        page.drawCircle({
+          x: MARGIN_X + 4,
+          y: cursorY - 4,
+          size: 3.3,
+          color: COLORS.accent,
+        });
+        lines.forEach((line, index) => {
+          page.drawText(line, {
+            x: MARGIN_X + 14,
+            y: cursorY - index * lineHeight,
+            size: 10.4,
+            font,
+            color: COLORS.text,
+          });
+        });
+        cursorY -= lines.length * lineHeight + 6;
+      });
+    };
+
+    startPage();
+
+    const piecesJointes = Array.isArray(demande?.piecesJointes)
+      ? demande.piecesJointes
+      : [];
+    const selectedDocLabel = this.normalizePdfText(
+      demande?.typeDocument === TypeDocumentCadastral.PLAN_CADASTRAL_OFFICIEL
+        ? 'Plan cadastral officiel'
+        : 'Extrait cadastral officiel',
+    );
+    const submitDate = demande?.dateSoumission || demande?.updatedAt || demande?.createdAt || new Date();
+    const receiptDate = this.formatFrenchDateTime(submitDate);
+    const verificationDate = this.formatFrenchDateTime(demande?.otpVerifiedAt);
+    const verificationChannel = this.normalizePdfText(
+      demande?.canalVerification === CanalVerificationCadastre.TELEPHONE
+        ? 'Téléphone'
+        : 'Email',
+    );
+    const contactValue =
+      demande?.canalVerification === CanalVerificationCadastre.TELEPHONE
+        ? this.normalizePdfText(demande?.telephoneContact)
+        : this.normalizePdfText(demande?.emailContact);
+
+    drawInfoGrid([
+      { label: 'Référence de la demande', value: this.normalizePdfText(demande?.referenceDemande) },
+      { label: 'Statut', value: 'Demande enregistrée' },
+      { label: 'Date de réception', value: receiptDate },
+      { label: 'Date de vérification OTP', value: verificationDate },
+      { label: 'Type de document demandé', value: selectedDocLabel },
+      { label: 'Canal de vérification', value: verificationChannel },
+    ]);
+
+    drawSectionTitle('Identité du demandeur');
+    drawInfoGrid([
+      { label: 'Titulaire', value: this.normalizePdfText(demande?.titulaire) },
+      { label: 'Numéro de registre de commerce', value: this.normalizePdfText(demande?.numeroRc) },
+      { label: 'Code QR du titre', value: this.normalizePdfText(demande?.qrCodeTitre) },
+      { label: 'Code permis', value: this.normalizePdfText(demande?.codePermis) },
+      { label: 'Type de permis', value: this.normalizePdfText(demande?.typePermis) },
+      { label: 'Contact de vérification', value: contactValue },
+      { label: 'NIN', value: this.normalizePdfText(demande?.nin) },
+      { label: 'Nom et prénom', value: this.normalizePdfText(`${demande?.prenom || ''} ${demande?.nom || ''}`) },
+    ]);
+
+    drawSectionTitle('Dossier transmis');
+    drawBulletList([
+      `Scan du titre minier : ${piecesJointes.some((piece: any) => piece.typePiece === TypePieceCadastre.SCAN_TITRE) ? 'reçu' : 'non trouvé'}.`,
+      `Scan de la carte d'identité : ${piecesJointes.some((piece: any) => piece.typePiece === TypePieceCadastre.SCAN_CARTE_IDENTITE) ? 'reçu' : 'non trouvé'}.`,
+      `Objet de la demande : ${this.normalizePdfText(demande?.objetDemande)}`,
+      `Qualité du demandeur : ${this.normalizePdfText(demande?.qualiteDemandeur)}`,
+    ]);
+
+    drawSectionTitle('Base de communication');
+    drawParagraph(this.normalizePdfText(demande?.baseCommunication), 10.4, 6);
+
+    drawParagraph(
+      'Ce document confirme que votre demande cadastrale a été correctement enregistrée. Conservez cet accusé de réception pour vos suivis ultérieurs.',
+      10.2,
+      0,
+    );
+
+    const buffer = Buffer.from(await pdfDoc.save());
+    const filename = `accuse-reception-${this.sanitizeFilenameSegment(
+      demande?.referenceDemande || `demande-${demande?.id || Date.now()}`,
+    )}.pdf`;
+    const outputDir = this.getCadastreDemandDirectory(Number(demande.id));
+    fs.mkdirSync(outputDir, { recursive: true });
+    const absolutePath = path.join(outputDir, filename);
+    fs.writeFileSync(absolutePath, buffer);
+
+    return {
+      buffer,
+      filename,
+      absolutePath,
+      fileUrl: `/uploads/cadastre/demandes/${demande.id}/${filename}`,
+    };
+    }
+  }
+
+  private async persistAccuseReceptionPdf(demande: any) {
+    const receipt = await this.buildAccuseReceptionPdf(demande);
+
+    await this.prisma.demandeDocumentCadastral.update({
+      where: { id: Number(demande.id) },
+      data: {
+        accuseReceptionPdfUrl: receipt.fileUrl,
+        accuseReceptionPdfFilename: receipt.filename,
+        accuseReceptionGeneratedAt: new Date(),
+      },
+    });
+
+    return receipt;
+  }
+
+  private async ensureAccuseReceptionPdf(demandeId: number, user?: CadastreSessionUser) {
+    const demande = await this.prisma.demandeDocumentCadastral.findUnique({
+      where: { id: demandeId },
+      include: {
+        piecesJointes: true,
+        historique: true,
+        documentsGeneres: true,
+      },
+    });
+
+    if (!demande) {
+      throw new NotFoundException('Demande cadastrale introuvable.');
+    }
+
+    if (user) {
+      const roleName = String(user?.role?.name || '').toLowerCase();
+      const isAdmin =
+        roleName.includes('admin') || roleName.includes('administrateur');
+      if (!isAdmin && Number(demande.utilisateurId) !== Number(user.id)) {
+        throw new ForbiddenException('Acces refuse');
+      }
+    }
+
+    const existingPath =
+      demande.accuseReceptionPdfFilename &&
+      path.join(this.getCadastreDemandDirectory(demande.id), demande.accuseReceptionPdfFilename);
+
+    if (existingPath && fs.existsSync(existingPath)) {
+      return {
+        absolutePath: existingPath,
+        filename: demande.accuseReceptionPdfFilename,
+        fileUrl: demande.accuseReceptionPdfUrl || `/uploads/cadastre/demandes/${demande.id}/${demande.accuseReceptionPdfFilename}`,
+      };
+    }
+
+    return this.persistAccuseReceptionPdf(demande);
+  }
+
   async createRequest(body: CreateCadastreRequestBody, req: any) {
     const session = await this.requireCadastreSession(req);
 
@@ -397,7 +1531,7 @@ export class CadastreDocumentService {
     const prenom = String(body.prenom || '').trim();
     const emailContact = this.normalizeEmail(body.emailContact);
     const telephoneContact = this.normalizePhone(body.telephoneContact);
-    const canalVerification = this.normalizeCanal(body.canalVerification);
+    const canalVerification = await this.normalizeCanal(body.canalVerification);
     const qualiteDemandeur = String(body.qualiteDemandeur || 'Representant legal').trim();
     const objetDemande = String(body.objetDemande || 'Demande de document cadastral').trim();
     const baseCommunication = String(
@@ -429,34 +1563,46 @@ export class CadastreDocumentService {
     if (emailContact && !this.isValidEmail(emailContact)) {
       throw new BadRequestException('Adresse email de contact invalide.');
     }
+    if (!typePermis) {
+      throw new BadRequestException('Le type de permis est requis.');
+    }
+
+    await this.assertOtpContactValidation(body);
 
     const permisId = await this.resolvePermisId(body);
-    const referenceDemande = this.generateReferenceDemande();
-    const typeDocument = this.normalizeTypeDocument(body.typeDocument);
+    const typeDocument = await this.normalizeTypeDocument(body.typeDocument);
 
-    const demande = await this.prisma.demandeDocumentCadastral.create({
-      data: {
-        referenceDemande,
-        utilisateurId: session.userId,
-        permisId,
-        typeDocument,
-        statut: StatutDemandeDocument.ENREGISTREE,
-        numeroRc: numeroRc || null,
-        titulaire,
-        qrCodeTitre: qrCodeTitre || null,
-        codePermis: codePermis || null,
-        typePermis: typePermis || null,
-        nin,
-        nom,
-        prenom,
-        emailContact: emailContact || null,
-        telephoneContact: telephoneContact || null,
-        canalVerification,
-        objetDemande,
-        qualiteDemandeur,
-        baseCommunication,
-      },
+    const demande = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.demandeDocumentCadastral.create({
+        data: {
+          referenceDemande: this.generateTemporaryReferenceDemande(),
+          utilisateurId: session.userId,
+          permisId,
+          typeDocument,
+          statut: StatutDemandeDocument.ENREGISTREE,
+          numeroRc: numeroRc || null,
+          titulaire,
+          qrCodeTitre: qrCodeTitre || null,
+          codePermis: codePermis || null,
+          typePermis: typePermis || null,
+          nin,
+          nom,
+          prenom,
+          emailContact: emailContact || null,
+          telephoneContact: telephoneContact || null,
+          canalVerification,
+          objetDemande,
+          qualiteDemandeur,
+          baseCommunication,
+        },
+      });
+
+      return tx.demandeDocumentCadastral.update({
+        where: { id: created.id },
+        data: { referenceDemande: this.buildSequentialReferenceDemande(created.id) },
+      });
     });
+    const referenceDemande = demande.referenceDemande;
 
     const otpCode = this.generateOtp();
     const otpHash = await bcrypt.hash(otpCode, 10);
@@ -492,6 +1638,11 @@ export class CadastreDocumentService {
       message: 'Demande cadastrale creee. Le code OTP a ete envoye.',
       demande: await this.getDemandById(demande.id, session.user),
     };
+  }
+
+  async validateOtpContact(body: CreateCadastreRequestBody, req: any) {
+    await this.requireCadastreSession(req);
+    return this.buildOtpContactValidation(body);
   }
 
   async resendOtp(demandeId: number, req: any) {
@@ -679,12 +1830,14 @@ export class CadastreDocumentService {
       );
     }
 
-    await this.prisma.demandeDocumentCadastral.update({
+    const updatedDemand = await this.prisma.demandeDocumentCadastral.update({
       where: { id: demande.id },
       data: {
         statut: StatutDemandeDocument.VERIFIEE,
         dateSoumission: new Date(),
-        typeDocument: this.normalizeTypeDocument(body.typeDocument || fullDemand.typeDocument),
+        typeDocument: await this.normalizeTypeDocument(
+          body.typeDocument || fullDemand.typeDocument,
+        ),
         qualiteDemandeur:
           String(body.qualiteDemandeur || fullDemand.qualiteDemandeur || '').trim() ||
           'Representant legal',
@@ -695,6 +1848,13 @@ export class CadastreDocumentService {
           String(body.baseCommunication || fullDemand.baseCommunication || '').trim() ||
           'Demande introduite via le workflow cadastral du portail.',
       },
+    });
+
+    await this.persistAccuseReceptionPdf({
+      ...updatedDemand,
+      piecesJointes: fullDemand.piecesJointes,
+      historique: fullDemand.historique,
+      documentsGeneres: fullDemand.documentsGeneres,
     });
 
     await this.recordHistory(
@@ -708,6 +1868,11 @@ export class CadastreDocumentService {
         'Votre demande de cadastre a ete bien transmise avec succes. Vous recevrez une notification dans votre espace cadastre des que votre document sera pret.',
       demande: await this.getDemandById(demande.id, session.user),
     };
+  }
+
+  async getAccuseReceptionFile(demandeId: number, req: any) {
+    const session = await this.requireCadastreSession(req);
+    return this.ensureAccuseReceptionPdf(demandeId, session.user);
   }
 
   async getDemandById(demandeId: number, user?: CadastreSessionUser) {

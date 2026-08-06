@@ -1768,6 +1768,40 @@ enum ActionDocumentCadastral {
   DOCUMENT_DELIVRE
 }
 
+model CadastreDocumentReference {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique @db.VarChar(100)
+  label       String   @db.VarChar(255)
+  subtitle    String?  @db.VarChar(255)
+  description String?  @db.Text
+  iconKey     String?  @db.VarChar(50)
+  accentKey   String?  @db.VarChar(50)
+  isActive    Boolean  @default(true)
+  isDefault   Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+  @@map("cadastre_document_references")
+}
+
+model CadastreVerificationReference {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique @db.VarChar(100)
+  label       String   @db.VarChar(255)
+  description String?  @db.Text
+  iconKey     String?  @db.VarChar(50)
+  isActive    Boolean  @default(true)
+  isDefault   Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+  @@map("cadastre_verification_references")
+}
+
 model PieceJointeDemandeDocumentCadastral {
   id                  Int                     @id @default(autoincrement())
   demandeId           Int
@@ -1821,6 +1855,9 @@ model DemandeDocumentCadastral {
   baseCommunication  String                  @db.Text
 
   preuvePaiementUrl  String?                 @db.Text
+  accuseReceptionPdfUrl String?              @db.Text
+  accuseReceptionPdfFilename String?         @db.VarChar(255)
+  accuseReceptionGeneratedAt DateTime?
 
   dateDemande        DateTime                @default(now())
   createdAt           DateTime                @default(now())

@@ -1,12 +1,15 @@
-﻿import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Globe } from "lucide-react";
 import styles from "./Header.module.css";
+
 const logo = "/anamlogo.png";
 
 export const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -20,10 +23,17 @@ export const Header = () => {
   const navLinks = [
     { label: "Accueil", href: "/" },
     { label: "Services", href: "#services" },
+    { label: "Tarifs & Abonnements", href: "/cadastre/trifs_abonnement" },
     { label: "Carte Minière", href: "/carte/carte_public" },
     { label: "Actualites", href: "/acceuil/actualites" },
     { label: "Contact", href: "/acceuil/contact" },
   ];
+
+  const isActiveLink = (href: string) => {
+    if (href === "/") return location.pathname === "/";
+    if (href.startsWith("#")) return false;
+    return location.pathname === href || location.pathname.startsWith(`${href}/`);
+  };
 
   return (
     <header
@@ -74,7 +84,7 @@ export const Header = () => {
             <a
               key={link.label}
               href={link.href}
-              className={styles.navLink}
+              className={`${styles.navLink} ${isActiveLink(link.href) ? styles.navLinkActive : ""}`}
             >
               {link.label}
               <span className={styles.navLinkUnderline} />
@@ -87,17 +97,10 @@ export const Header = () => {
           <button className={styles.globeButton}>
             <Globe className="h-5 w-5" />
           </button>
-          <Button 
-            variant="ghost" 
-            className={styles.loginButton}
-            asChild
-          >
+          <Button variant="ghost" className={styles.loginButton} asChild>
             <a href="/auth/login">Connexion</a>
           </Button>
-          <Button 
-            className={styles.signupButton}
-            asChild
-          >
+          <Button className={styles.signupButton} asChild>
             <a href="/Signup/page">Créer un compte</a>
           </Button>
         </div>
@@ -119,14 +122,20 @@ export const Header = () => {
               <a
                 key={link.label}
                 href={link.href}
-                className={styles.mobileNavLink}
+                className={`${styles.mobileNavLink} ${
+                  isActiveLink(link.href) ? styles.mobileNavLinkActive : ""
+                }`}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 {link.label}
               </a>
             ))}
             <div className={styles.mobileActions}>
-              <Button variant="outline" className="w-full border-primary/30 text-primary-foreground" asChild>
+              <Button
+                variant="outline"
+                className="w-full border-primary/30 text-primary-foreground"
+                asChild
+              >
                 <a href="/auth/login">Connexion</a>
               </Button>
               <Button className="w-full bg-primary" asChild>

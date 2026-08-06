@@ -236,6 +236,14 @@ export default function CadastreDashboardPage() {
                   Nouvelle demande de document cadastral
                   <FileText size={18} />
                 </button>
+                <button
+                  type="button"
+                  className={`${styles.heroButton} ${styles.heroButtonSecondary}`}
+                  onClick={() => navigate("/cadastre/documents-cadastraux/")}
+                >
+                  Documents cadastraux
+                  <FileText size={18} />
+                </button>
               </div>
 
               <div className={styles.heroStats}>

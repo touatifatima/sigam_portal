@@ -568,6 +568,174 @@
   flex-shrink: 0;
 }
 
+.requestsPanel {
+  position: relative;
+  z-index: 1;
+  margin-top: 1.55rem;
+  padding: 1.4rem;
+  border-radius: 30px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(247, 250, 252, 0.82));
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  box-shadow: var(--cadastre-shadow);
+  backdrop-filter: blur(16px);
+}
+
+.requestsHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.requestsEyebrow {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 0.45rem 0.82rem;
+  border-radius: 999px;
+  background: rgba(31, 143, 151, 0.09);
+  color: var(--cadastre-teal);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.requestsTitle {
+  margin: 0.9rem 0 0.4rem;
+  color: var(--cadastre-ink);
+  font-size: clamp(1.45rem, 2.3vw, 2rem);
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.requestsSubtitle {
+  margin: 0;
+  color: var(--cadastre-muted);
+  line-height: 1.65;
+  max-width: 72ch;
+}
+
+.requestsPrimaryAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 52px;
+  padding: 0 1.2rem;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--cadastre-bordeaux) 0%, #b14e79 100%);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 18px 36px rgba(141, 47, 95, 0.24);
+  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+  flex-shrink: 0;
+}
+
+.requestsPrimaryAction:hover {
+  transform: translateY(-2px);
+  filter: saturate(1.04);
+  box-shadow: 0 24px 42px rgba(141, 47, 95, 0.3);
+}
+
+.requestsGrid {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.requestCard {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem 1.05rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(17, 32, 58, 0.08);
+}
+
+.requestCardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.requestReference {
+  display: block;
+  color: var(--cadastre-ink);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.requestMeta {
+  margin-top: 0.28rem;
+  color: var(--cadastre-muted);
+  font-size: 0.92rem;
+}
+
+.requestPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.55rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(22, 163, 74, 0.09);
+  color: var(--cadastre-green-dark);
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.requestActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.requestLinkButton,
+.requestSecondaryLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 46px;
+  padding: 0 1rem;
+  border-radius: 14px;
+  text-decoration: none;
+  font-weight: 800;
+  transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+}
+
+.requestLinkButton:hover,
+.requestSecondaryLink:hover {
+  transform: translateY(-1px);
+}
+
+.requestLinkButton {
+  background: linear-gradient(135deg, var(--cadastre-green) 0%, var(--cadastre-teal) 100%);
+  color: #fff;
+  box-shadow: 0 16px 28px rgba(22, 163, 74, 0.18);
+}
+
+.requestSecondaryLink {
+  background: #f3f6fa;
+  color: var(--cadastre-ink);
+  border: 1px solid #d8e2ec;
+}
+
+.requestsEmptyState {
+  padding: 0.95rem 1rem;
+  border-radius: 16px;
+  background: rgba(243, 246, 250, 0.88);
+  color: var(--cadastre-muted);
+  border: 1px dashed rgba(17, 32, 58, 0.12);
+  margin-bottom: 0.8rem;
+}
+
 .loadingState {
   min-height: 100vh;
   display: grid;
@@ -621,6 +789,10 @@
     align-items: flex-start;
   }
 
+  .requestsHeader {
+    flex-direction: column;
+  }
+
   .heroActions {
     flex-direction: column;
     align-items: stretch;
@@ -649,6 +821,7 @@
   }
 
   .heroPanelCard,
+  .requestsPanel,
   .toolVisualContent {
     padding: 1rem;
   }
