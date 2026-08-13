@@ -3,6 +3,7 @@ import { useSessionLoader } from '../src/hooks/useSessionLoader';
 import { useAuthStore } from '../src/store/useAuthStore';
 import { useLocation } from 'react-router-dom';
 import { BrandLoader } from '@/components/loading/BrandLoader';
+import BackToTopButton from '@/components/BackToTopButton';
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   useSessionLoader();

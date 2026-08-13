@@ -63,6 +63,11 @@ type DashboardOverviewStats = {
   referenceYear: number;
 };
 
+type StatState = Pick<
+  DashboardOverviewStats,
+  "demandesEnCours" | "permisActifs"
+>;
+
 type StatCardKey =
   | "demandesEnCours"
   | "permisActifs"
@@ -209,6 +214,14 @@ type DashboardPaymentItem = {
 type DashboardPaymentsResponse = {
   summary: DashboardPaymentSummary;
   latestPayments: DashboardPaymentItem[];
+};
+
+type PaymentItem = {
+  code: string;
+  label: string;
+  amount: string;
+  status: string;
+  date: string;
 };
 
 type QuickLink = {
@@ -929,6 +942,7 @@ const HERO_STATS: StatCard[] = [
     tone: "violet",
   },
   {
+    key: "demandesApprouvees",
     label: "Demandes approuvées",
     value: "24",
     hint: "+5 ce mois",
@@ -944,6 +958,7 @@ const HERO_STATS: StatCard[] = [
     tone: "red",
   },
   {
+    key: "totalPayeeYear",
     label: "Total payé (2025)",
     value: "3 250 000 DZD",
     hint: "+22% vs 2024",
@@ -1020,6 +1035,10 @@ export default function Dashboard() {
   const [overviewStatsError, setOverviewStatsError] = useState<string | null>(
     null,
   );
+  const [paymentsData, setPaymentsData] =
+    useState<DashboardPaymentsResponse | null>(null);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [paymentsError, setPaymentsError] = useState<string | null>(null);
   const [recentRequests, setRecentRequests] = useState<RecentRequestCard[]>([]);
   const [recentRequestsLoading, setRecentRequestsLoading] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -1768,6 +1787,11 @@ export default function Dashboard() {
   if (!isAuthReady) {
     return <BrandLoader fullScreen label="Chargement du tableau de bord..." />;
   }
+
+  const stats: StatState = {
+    demandesEnCours: overviewStats?.demandesEnCours ?? 0,
+    permisActifs: overviewStats?.permisActifs ?? 0,
+  };
 
   return (
     <div className={styles.dashboard}>

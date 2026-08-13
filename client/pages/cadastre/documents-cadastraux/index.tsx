@@ -56,6 +56,87 @@ type DocumentFilter = "ALL" | "EXTRAIT" | "PLAN";
 type StatusFilter = "ALL" | "ENREGISTREE" | "VERIFIEE" | "GENEREE" | "DELIVREE";
 type SortMode = "recent" | "oldest";
 
+type FilterOption = { value: string; label: string; color?: string };
+
+function MultiFilterDropdown({
+  label,
+  options,
+  values,
+  onChange,
+}: {
+  label: string;
+  options: FilterOption[];
+  values: string[];
+  onChange: (values: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const toggleValue = (value: string) => {
+    onChange(values.includes(value) ? values.filter((item) => item !== value) : [...values, value]);
+  };
+
+  return (
+    <div className={styles.filterDropdown}>
+      <button type="button" className={`${styles.dropdownButton} ${values.length ? styles.dropdownButtonActive : ""}`} onClick={() => setOpen((current) => !current)} aria-expanded={open}>
+        {label}{values.length > 0 && <span className={styles.filterCount}>{values.length}</span>}<ChevronDown size={14} />
+      </button>
+      {open && <div className={styles.dropdownPanel}>
+        <div className={styles.dropdownOptions}>
+          {options.map((option) => (
+            <label className={styles.dropdownOption} key={option.value}>
+              <input type="checkbox" checked={values.includes(option.value)} onChange={() => toggleValue(option.value)} />
+              {option.color && <span className={styles.optionSwatch} style={{ background: option.color }} />}
+              <span>{option.label}</span>
+            </label>
+          ))}
+        </div>
+        <div className={styles.dropdownFooter}>
+          <button type="button" className={styles.clearFilterButton} onClick={() => onChange([])}>Effacer</button>
+          <button type="button" className={styles.applyFilterButton} onClick={() => setOpen(false)}>Appliquer</button>
+        </div>
+      </div>}
+    </div>
+  );
+}
+
+function SingleFilterDropdown({
+  label,
+  value,
+  options,
+  onChange,
+  defaultValue,
+}: {
+  label: string;
+  value: string;
+  options: FilterOption[];
+  onChange: (value: string) => void;
+  defaultValue: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const selectedLabel = options.find((option) => option.value === value)?.label || label;
+
+  return (
+    <div className={styles.filterDropdown}>
+      <button type="button" className={`${styles.dropdownButton} ${value !== defaultValue ? styles.dropdownButtonActive : ""}`} onClick={() => setOpen((current) => !current)} aria-expanded={open}>
+        <span>{selectedLabel}</span><ChevronDown size={14} />
+      </button>
+      {open && <div className={styles.dropdownPanel}>
+        <div className={styles.dropdownOptions}>
+          {options.map((option) => (
+            <label className={`${styles.dropdownOption} ${value === option.value ? styles.dropdownOptionSelected : ""}`} key={option.value}>
+              <input type="radio" name={`filter-${label}`} checked={value === option.value} onChange={() => onChange(option.value)} />
+              <span>{option.label}</span>
+            </label>
+          ))}
+        </div>
+        <div className={styles.dropdownFooter}>
+          <button type="button" className={styles.clearFilterButton} onClick={() => onChange(defaultValue)}>Effacer</button>
+          <button type="button" className={styles.applyFilterButton} onClick={() => setOpen(false)}>Appliquer</button>
+        </div>
+      </div>}
+    </div>
+  );
+}
+
 const statAccentClasses = [styles.statGreen, styles.statBlue, styles.statPurple, styles.statOrange];
 
 const navItems = [
@@ -128,8 +209,10 @@ export default function DocumentsCadastrauxPage() {
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<CadastreDocumentItem[]>([]);
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<DocumentFilter>("ALL");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [typeFilter, setTypeFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [periodFilter, setPeriodFilter] = useState("ALL");
+  const [showFilters, setShowFilters] = useState(true);
   const [sortMode, setSortMode] = useState<SortMode>("recent");
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -179,10 +262,7 @@ export default function DocumentsCadastrauxPage() {
   const filteredItems = useMemo(() => {
     const q = normalize(search);
     const now = Date.now();
-    const periodDays =
-      "ALL" === "ALL"
-        ? null
-        : null;
+    const periodDays = periodFilter === "ALL" ? null : Number(periodFilter);
 
     const filtered = items.filter((item) => {
       const typeKey = getTypeKey(item);
@@ -198,8 +278,8 @@ export default function DocumentsCadastrauxPage() {
         normalize(item.numeroRc).includes(q) ||
         normalize(item.objetDemande).includes(q);
 
-      const matchesType = typeFilter === "ALL" || typeKey === typeFilter;
-      const matchesStatus = statusFilter === "ALL" || statusKey === statusFilter;
+      const matchesType = typeFilter.length === 0 || typeFilter.includes(typeKey);
+      const matchesStatus = statusFilter.length === 0 || statusFilter.includes(statusKey);
       const matchesPeriod =
         !periodDays ||
         (Number.isFinite(createdTs) && now - createdTs <= periodDays * 24 * 60 * 60 * 1000);
@@ -214,11 +294,11 @@ export default function DocumentsCadastrauxPage() {
     });
 
     return filtered;
-  }, [items, search, sortMode, statusFilter, typeFilter]);
+  }, [items, periodFilter, search, sortMode, statusFilter, typeFilter]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, sortMode, statusFilter, typeFilter, pageSize]);
+  }, [periodFilter, search, sortMode, statusFilter, typeFilter, pageSize]);
 
   useEffect(() => {
     if (filteredItems.length === 0) {
@@ -259,7 +339,7 @@ export default function DocumentsCadastrauxPage() {
     return { total, plans, extraits, disponibles };
   }, [items]);
 
-  const activeFiltersCount = [typeFilter !== "ALL", statusFilter !== "ALL", search.trim().length > 0].filter(Boolean)
+  const activeFiltersCount = [typeFilter.length > 0, statusFilter.length > 0, periodFilter !== "ALL", search.trim().length > 0].filter(Boolean)
     .length;
 
   const receiptUrl = selectedItem
@@ -283,8 +363,9 @@ export default function DocumentsCadastrauxPage() {
 
   const resetFilters = () => {
     setSearch("");
-    setTypeFilter("ALL");
-    setStatusFilter("ALL");
+    setTypeFilter([]);
+    setStatusFilter([]);
+    setPeriodFilter("ALL");
     setSortMode("recent");
   };
 
@@ -442,9 +523,9 @@ export default function DocumentsCadastrauxPage() {
                     onChange={(event) => setSearch(event.target.value)}
                   />
                 </div>
-                <button type="button" className={styles.toolBtn}>
+                <button type="button" className={`${styles.toolBtn} ${activeFiltersCount > 0 ? styles.toolBtnActive : ""}`} onClick={() => setShowFilters((visible) => !visible)} aria-expanded={showFilters}>
                   <Filter size={15} />
-                  Filtres avancés
+                  {showFilters ? "Masquer" : "Filtres avancés"}
                   <span className={styles.countPill}>{activeFiltersCount}</span>
                 </button>
                 <button type="button" className={styles.toolBtn} onClick={resetFilters}>
@@ -453,83 +534,19 @@ export default function DocumentsCadastrauxPage() {
                 </button>
               </div>
 
-              <div className={styles.filterRow}>
-                <div className={styles.filterField}>
-                  <label>Type de document</label>
-                  <div className={styles.filterSelectWrapper}>
-                    <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as DocumentFilter)}>
-                      <option value="ALL">Tous les types</option>
-                      <option value="EXTRAIT">Extrait cadastral</option>
-                      <option value="PLAN">Plan cadastral</option>
-                    </select>
-                    <ChevronDown size={12} />
-                  </div>
-                </div>
-                <div className={styles.filterField}>
-                  <label>Catégorie</label>
-                  <div className={styles.filterSelectWrapper}>
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-                    >
-                      <option value="ALL">Toutes les catégories</option>
-                      <option value="ENREGISTREE">Demandes enregistrées</option>
-                      <option value="VERIFIEE">Demandes vérifiées</option>
-                      <option value="GENEREE">Demandes générées</option>
-                      <option value="DELIVREE">Demandes délivrées</option>
-                    </select>
-                    <ChevronDown size={12} />
-                  </div>
-                </div>
-                <div className={styles.filterField}>
-                  <label>Titre / Référence</label>
-                  <div className={styles.filterSelectWrapper}>
-                    <select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)}>
-                      <option value="recent">Tous les titres</option>
-                      <option value="oldest">Titres plus anciens</option>
-                    </select>
-                    <ChevronDown size={12} />
-                  </div>
-                </div>
-                <div className={styles.filterField}>
-                  <label>Statut</label>
-                  <div className={styles.filterSelectWrapper}>
-                    <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}>
-                      <option value="ALL">Tous les statuts</option>
-                      <option value="ENREGISTREE">Enregistrée</option>
-                      <option value="VERIFIEE">Vérifiée</option>
-                      <option value="GENEREE">Générée</option>
-                      <option value="DELIVREE">Disponible</option>
-                    </select>
-                    <ChevronDown size={12} />
-                  </div>
-                </div>
-                <div className={styles.filterField}>
-                  <label>Période</label>
-                  <div className={styles.filterSelectWrapper}>
-                    <select defaultValue="all">
-                      <option value="all">Du - Au</option>
-                      <option value="7">7 derniers jours</option>
-                      <option value="30">30 derniers jours</option>
-                      <option value="90">90 derniers jours</option>
-                    </select>
-                    <ChevronDown size={12} />
-                  </div>
-                </div>
-              </div>
+              {showFilters && <div className={styles.filterRow}>
+                <MultiFilterDropdown label="Type de document" values={typeFilter} onChange={setTypeFilter} options={[{ value: "EXTRAIT", label: "Extrait cadastral" }, { value: "PLAN", label: "Plan cadastral" }]} />
+                <MultiFilterDropdown label="Statut" values={statusFilter} onChange={setStatusFilter} options={[{ value: "ENREGISTREE", label: "Enregistrée", color: "#d8892f" }, { value: "VERIFIEE", label: "Vérifiée", color: "#7a62c9" }, { value: "GENEREE", label: "Générée", color: "#2f9b62" }, { value: "DELIVREE", label: "Disponible", color: "#2f9b62" }]} />
+                <div className={styles.filterField}><SingleFilterDropdown label="Trier par" value={sortMode} defaultValue="recent" onChange={(value) => setSortMode(value as SortMode)} options={[{ value: "recent", label: "Plus récent" }, { value: "oldest", label: "Plus ancien" }]} /></div>
+                <div className={styles.filterField}><SingleFilterDropdown label="Période" value={periodFilter} defaultValue="ALL" onChange={setPeriodFilter} options={[{ value: "ALL", label: "Toutes les périodes" }, { value: "7", label: "7 derniers jours" }, { value: "30", label: "30 derniers jours" }, { value: "90", label: "90 derniers jours" }]} /></div>
+              </div>}
 
               <div className={styles.tableCard}>
                 <div className={styles.tableHeadRow}>
                   <div className={styles.resultsCount}>{filteredItems.length} demandes trouvées</div>
                   <div className={styles.sortControls}>
                     <span>Trier par :</span>
-                    <div className={styles.sortSelect}>
-                      <select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)}>
-                        <option value="recent">Date (plus récent)</option>
-                        <option value="oldest">Date (plus ancienne)</option>
-                      </select>
-                      <ChevronDown size={10} />
-                    </div>
+                    <SingleFilterDropdown label="Trier par" value={sortMode} defaultValue="recent" onChange={(value) => setSortMode(value as SortMode)} options={[{ value: "recent", label: "Date (plus récent)" }, { value: "oldest", label: "Date (plus ancienne)" }]} />
                   </div>
                 </div>
 

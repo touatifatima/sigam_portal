@@ -1934,7 +1934,7 @@ const expiringTimeline = useMemo(() => {
                       </div>
                     </div>
                   </div>
-                </section>
+                </div>
 
                 <div className={styles.enrichedGrid}>
                   <div className={styles.enrichedCard}>

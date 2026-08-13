@@ -22,6 +22,7 @@ import {
   FiTool,
   FiCamera,
   FiMenu,
+  FiFilePlus,
 } from 'react-icons/fi';
 import styles from './sidebar.module.css';
 import type { ViewType } from '../../src/types/viewtype';
@@ -73,7 +74,9 @@ export default function Sidebar({ currentView, navigateTo }: SidebarProps) {
     );
   }
 
-  if (!isAdminRole) {
+  const isCadastreAgentRole = roleTokens.some((role) => role === 'agent_cadastre');
+
+  if (!isAdminRole && !isCadastreAgentRole) {
     return null;
   }
 
@@ -102,6 +105,20 @@ export default function Sidebar({ currentView, navigateTo }: SidebarProps) {
         { id: 'manage_documents', icon: <FiFile />, label: 'Manage Documents', permission: 'manage_documents' },
       ],
     },
+    {
+      id: 'agent-cadastre',
+      icon: <FiFilePlus />,
+      label: 'Agent Cadastre',
+      permission: 'manage_cadastre_documents',
+      subItems: [
+        {
+          id: 'agent_cadastre_documents',
+          icon: <FiClipboard />,
+          label: 'Demandes de documents cadastraux',
+          permission: 'manage_cadastre_documents',
+        },
+      ],
+    },
     { id: 'operateur_nvl_demande', icon: <FiFileText />, label: 'Nouvelle Demande', permission: 'operateur' },
     {
       id: 'outils',
@@ -115,6 +132,7 @@ export default function Sidebar({ currentView, navigateTo }: SidebarProps) {
         { id: 'Permis', icon: <FiFileText />, label: 'Liste des permis', permission: 'dashboard' },
       ],
     },
+
   ];
 
   const toggleSidebar = () => {

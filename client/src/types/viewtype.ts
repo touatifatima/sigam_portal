@@ -30,6 +30,8 @@ export type ViewType =
   | 'Gestion_seances'
   | 'Configurations' 
   | 'manage_declarations'
+  | 'agent-cadastre'
+  | 'agent_cadastre_documents'
   | 'promotion'
   | 'convertisseur'
   | 'mes-demandes'

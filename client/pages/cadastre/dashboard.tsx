@@ -1,598 +1,170 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ComponentType } from "react";  // dashboard page is now at /cadastre/dashboard, this component is here to redirect old links to the new one
-import { useLocation, useNavigate } from "react-router-dom"; //user cadastre dashboard
+import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
-  ArrowRight,
-  BadgeCheck,
-  Bell,
-  Clock3,
-  FileCheck2,
-  FilePlus2,
-  Layers,
-  Lock,
-  Map,
-  MapPin,
-  Moon,
-  MousePointerClick,
-  PlayCircle,
-  ScanSearch,
-  ShieldCheck,
-  Sun,
-  Waypoints,
+  ArrowRight, BookOpen, Building2, Clock3, Download,
+  FileCheck2, FilePlus2, FileText, Map,
+  Megaphone, MousePointerClick, ShieldCheck, Sparkles,
+  Users, Waypoints, Zap,
 } from "lucide-react";
-import { CadastreHeroMap } from "@/components/cadastre/CadastreHeroMap";
 import { InvestorLayout } from "@/components/investor/InvestorLayout";
+import { BrandLoader } from "@/components/loading/BrandLoader";
 import { OnboardingTour, type OnboardingStep } from "@/components/onboarding/OnboardingTour";
 import { OnboardingWelcomeModal } from "@/components/onboarding/OnboardingWelcomeModal";
-import { BrandLoader } from "@/components/loading/BrandLoader";
-import verificationSectionImage from "@/src/assets/hero-mining.jpg";
-import publicMapSectionImage from "@/src/assets/hero-slide-2.jpg";
-import { useAuthStore } from "@/src/store/useAuthStore";
 import { useAuthReady } from "@/src/hooks/useAuthReady";
+import { useAuthStore } from "@/src/store/useAuthStore";
+import { getDefaultDashboardPath, isCadastreRole } from "@/src/utils/roleNavigation";
+import { fetchPublishedActualites } from "@/src/utils/actualitesApi";
+import { getDefaultActualites, type ActualiteItem } from "@/src/utils/actualitesStorage";
 import {
-  getHasSeenOnboarding,
-  getOnboardingActive,
-  getOnboardingPageSeen,
-  markOnboardingPageCompleted,
-  resetOnboardingPages,
-  setHasSeenOnboarding,
-  setOnboardingActive,
-  stopOnboardingForever,
+  getHasSeenOnboarding, getOnboardingActive, getOnboardingPageSeen,
+  markOnboardingPageCompleted, resetOnboardingPages, setHasSeenOnboarding,
+  setOnboardingActive, stopOnboardingForever,
 } from "@/src/onboarding/storage";
-import {
-  getDefaultDashboardPath,
-  isCadastreRole,
-} from "@/src/utils/roleNavigation";
+import heroImage from "@/src/assets/cadastre-dashboard-map.png";
+import mapImage from "@/src/assets/cadastre-dashboard-hero.png";
 import styles from "./CadastreDashboard.module.css";
 
-type CadastreTool = {
-  title: string;
-  eyebrow: string;
-  description: string;
-  highlights: string[];
-  cta: string;
-  route: string;
-  accent: "bordeaux" | "teal";
-  icon: typeof Map;
-  visualImage: string;
-};
+const DOCUMENT_REQUEST_ROUTE = "/cadastre/demandedocumentcadastrale";
+const DOCUMENTS_ROUTE = "/cadastre/documents-cadastraux";
 
-const tools: CadastreTool[] = [
-  {
-    title: "Vérification préalable",
-    eyebrow: "Analyse cadastrale",
-    description:
-      "Accéder directement au module de vérification cadastrale et de contrôle géométrique.",
-    highlights: [
-      "Projection et contrôle des coordonnées",
-      "Détection des chevauchements avant dépôt",
-      "Lecture immédiate des couches de référence",
-    ],
-    cta: "Lancer la vérification",
-    route: "/investisseur/interactive",
-    accent: "bordeaux",
-    icon: Waypoints,
-    visualImage: verificationSectionImage,
-  },
-  {
-    title: "Carte publique",
-    eyebrow: "Consultation cartographique",
-    description:
-      "Consulter la carte publique des permis et ouvrir les couches de référence depuis l’espace cadastre.",
-    highlights: [
-      "Visualisation des titres publics et zones ouvertes",
-      "Lecture rapide du territoire avant instruction",
-      "Accès direct aux vues de référence ANAM",
-    ],
-    cta: "Ouvrir la carte publique",
-    route: "/carte/carte_public",
-    accent: "teal",
-    icon: Map,
-    visualImage: publicMapSectionImage,
-  },
+type DocumentRequest = { id: number; statut?: string | null; documentsGeneres?: unknown[] };
+
+const onboardingSteps: OnboardingStep[] = [
+  { id: "cadastre-dashboard-hero", target: '[data-onboarding-id="cadastre-dashboard-hero"]', title: "Tableau de bord cadastre", description: "Retrouvez ici les services et accès principaux de votre espace cadastral.", placement: "bottom" },
+  { id: "cadastre-dashboard-scope", target: '[data-onboarding-id="cadastre-dashboard-scope"]', title: "Accès rapides", description: "Lancez rapidement une vérification, une demande de document ou ouvrez la carte publique.", placement: "top" },
 ];
 
-type CadastreStep = {
-  title: string;
-  description: string;
-  icon: ComponentType<{ size?: number }>;
-};
-
-const steps: CadastreStep[] = [
-  {
-    title: "Choisissez votre outil",
-    description: "Vérification préalable ou carte publique, selon votre besoin du moment.",
-    icon: MousePointerClick,
-  },
-  {
-    title: "Définissez le périmètre",
-    description: "Saisissez ou importez les coordonnées de référence à contrôler.",
-    icon: MapPin,
-  },
-  {
-    title: "Lancez le controle",
-    description: "Détection des chevauchements et lecture des couches en temps réel.",
-    icon: ScanSearch,
-  },
-  {
-    title: "Consultez le résultat",
-    description: "Exploitez la synthèse et poursuivez sur la carte interactive.",
-    icon: FileCheck2,
-  },
-];
-
-type CadastreTheme = "light" | "dark";
-
-const CADASTRE_THEME_STORAGE_KEY = "cadastre-dashboard-theme";
-const CADASTRE_DOCUMENT_REQUEST_ROUTE = "/cadastre/demandedocumentcadastrale";
-
-const getStoredTheme = (): CadastreTheme => {
-  if (typeof window === "undefined") return "light";
-  const stored = window.localStorage.getItem(CADASTRE_THEME_STORAGE_KEY);
-  return stored === "dark" ? "dark" : "light";
-};
-
-const CADASTRE_DASHBOARD_ONBOARDING_STEPS: OnboardingStep[] = [
-  {
-    id: "cadastre-dashboard-hero",
-    target: '[data-onboarding-id="cadastre-dashboard-hero"]',
-    title: "Tableau de bord cadastre",
-    description:
-      "Ce panneau centralise l'acces rapide aux outils de verification cadastrale et de consultation cartographique.",
-    placement: "bottom",
-  },
-  {
-    id: "cadastre-dashboard-scope",
-    target: '[data-onboarding-id="cadastre-dashboard-scope"]',
-    title: "Perimetre du role",
-    description:
-      "Ce profil reste volontairement limite a la verification prealable et a la carte publique, sans acces aux demandes ni aux permis.",
-    placement: "bottom",
-  },
-  {
-    id: "cadastre-dashboard-verification",
-    target: '[data-onboarding-id="cadastre-dashboard-verification"]',
-    title: "Verification prealable",
-    description:
-      "Accedez ici au module cadastral prioritaire pour controler les points, perimetres et chevauchements.",
-    placement: "right",
-  },
-  {
-    id: "cadastre-dashboard-map",
-    target: '[data-onboarding-id="cadastre-dashboard-map"]',
-    title: "Carte publique",
-    description:
-      "Cette entree ouvre la carte publique pour consulter les couches de reference et les titres publies.",
-    placement: "left",
-  },
-];
+const formatNewsDate = (value: string) => new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
 
 export default function CadastreDashboardPage() {
-  const location = useLocation();
   const navigate = useNavigate();
+  const location = useLocation();
   const auth = useAuthStore((state) => state.auth);
   const isAuthReady = useAuthReady();
+  const [requests, setRequests] = useState<DocumentRequest[]>([]);
+  const [news, setNews] = useState<ActualiteItem[]>([]);
   const [showOnboardingPrompt, setShowOnboardingPrompt] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [theme, setTheme] = useState<CadastreTheme>("light");
 
-  useEffect(() => {
-    setTheme(getStoredTheme());
-  }, []);
-
-  const toggleTheme = (next: CadastreTheme) => {
-    setTheme(next);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(CADASTRE_THEME_STORAGE_KEY, next);
-    }
-  };
+  const displayName = auth?.username || auth?.email || "Utilisateur cadastre";
 
   useEffect(() => {
     if (!isAuthReady) return;
-
-    if (!auth?.id && !auth?.email && !auth?.username) {
-      navigate("/", { replace: true });
-      return;
-    }
-
-    if (!isCadastreRole(auth?.role)) {
-      navigate(getDefaultDashboardPath(auth?.role), { replace: true });
-    }
+    if (!auth?.id && !auth?.email && !auth?.username) navigate("/", { replace: true });
+    else if (!isCadastreRole(auth?.role)) navigate(getDefaultDashboardPath(auth?.role), { replace: true });
   }, [auth?.email, auth?.id, auth?.role, auth?.username, isAuthReady, navigate]);
 
-  const displayName = useMemo(
-    () => auth?.username || auth?.email || "Utilisateur cadastre",
-    [auth?.email, auth?.username],
-  );
-  const verificationTool = tools[0];
-  const publicMapTool = tools[1];
+  useEffect(() => {
+    if (!isAuthReady || !isCadastreRole(auth?.role)) return;
+    let active = true;
+    void axios.get<{ items?: DocumentRequest[] }>("/api/cadastre/demandes-documents-cadastraux", { withCredentials: true })
+      .then((response) => { if (active) setRequests(response.data.items || []); })
+      .catch(() => { if (active) setRequests([]); });
+    void fetchPublishedActualites()
+      .then((items) => { if (active) setNews(items.slice(0, 4)); })
+      .catch(() => { if (active) setNews(getDefaultActualites().slice(0, 4)); });
+    return () => { active = false; };
+  }, [auth?.role, isAuthReady]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!isAuthReady || !isCadastreRole(auth?.role)) return;
-    if (getHasSeenOnboarding()) return;
-
+    if (!isAuthReady || !isCadastreRole(auth?.role) || getHasSeenOnboarding()) return;
     const params = new URLSearchParams(location.search);
-    const shouldStartFromQuery = params.get("onboarding") === "1";
-    const active = getOnboardingActive() || shouldStartFromQuery;
-    const alreadySeenDashboard = getOnboardingPageSeen("cadastre-dashboard");
-
-    if (shouldStartFromQuery) {
-      setOnboardingActive(true);
-    }
-
-    if (active && !alreadySeenDashboard) {
-      setShowOnboarding(true);
-      setShowOnboardingPrompt(false);
-      return;
-    }
-
-    if (!alreadySeenDashboard) {
-      setShowOnboardingPrompt(true);
-    }
+    if (params.get("onboarding") === "1") setOnboardingActive(true);
+    if ((getOnboardingActive() || params.get("onboarding") === "1") && !getOnboardingPageSeen("cadastre-dashboard")) setShowOnboarding(true);
+    else if (!getOnboardingPageSeen("cadastre-dashboard")) setShowOnboardingPrompt(true);
   }, [auth?.role, isAuthReady, location.search]);
 
-  const handleStartOnboarding = () => {
-    resetOnboardingPages();
-    setHasSeenOnboarding(false);
-    setOnboardingActive(true);
-    setShowOnboardingPrompt(false);
-    setShowOnboarding(true);
-  };
+  const startOnboarding = () => { resetOnboardingPages(); setHasSeenOnboarding(false); setOnboardingActive(true); setShowOnboardingPrompt(false); setShowOnboarding(true); };
+  const closeOnboarding = () => { setShowOnboarding(false); setShowOnboardingPrompt(false); stopOnboardingForever(); };
+  const completeOnboarding = () => { setShowOnboarding(false); markOnboardingPageCompleted("cadastre-dashboard"); };
+  const skipOnboarding = () => { setShowOnboardingPrompt(false); stopOnboardingForever(); };
 
-  const handleCloseOnboarding = () => {
-    setShowOnboarding(false);
-    setShowOnboardingPrompt(false);
-    stopOnboardingForever();
-  };
-
-  const handleCompleteOnboarding = () => {
-    setShowOnboarding(false);
-    markOnboardingPageCompleted("cadastre-dashboard");
-  };
-
-  const handleSkipOnboarding = () => {
-    setShowOnboardingPrompt(false);
-    stopOnboardingForever();
-  };
+  const requestStats = useMemo(() => {
+    const available = requests.filter((item) => ["GENEREE", "DELIVREE"].includes(String(item.statut || "").toUpperCase())).length;
+    const pending = requests.filter((item) => !["GENEREE", "DELIVREE", "REJETEE"].includes(String(item.statut || "").toUpperCase())).length;
+    return { total: requests.length, available, pending };
+  }, [requests]);
 
   const quickLinks = [
-    {
-      title: verificationTool.title,
-      description: "Contrôle géométrique",
-      icon: Waypoints,
-      onClick: () => navigate(verificationTool.route),
-    },
-    {
-      title: publicMapTool.title,
-      description: "Couches et titres publics",
-      icon: Map,
-      onClick: () => navigate(publicMapTool.route),
-    },
-    {
-      title: "Demande de documents",
-      description: "Extrait et plan cadastral",
-      icon: FilePlus2,
-      onClick: () => navigate(CADASTRE_DOCUMENT_REQUEST_ROUTE),
-    },
-    {
-      title: "Visite guidée",
-      description: "Revoir la présentation",
-      icon: PlayCircle,
-      onClick: handleStartOnboarding,
-    },
-    {
-      title: "Notifications",
-      description: "Suivre vos alertes",
-      icon: Bell,
-      onClick: () => navigate("/notification"),
-    },
+    { title: "Vérifier un titre", subtitle: "Contrôler un périmètre minier", icon: Waypoints, color: "green", onClick: () => navigate("/investisseur/interactive") },
+    { title: "Demander un extrait cadastral", subtitle: "Déposer une demande officielle", icon: FilePlus2, color: "blue", onClick: () => navigate(DOCUMENT_REQUEST_ROUTE) },
+    { title: "Mes demandes cadastrales", subtitle: "Suivre vos demandes et documents", icon: FileCheck2, color: "violet", onClick: () => navigate(DOCUMENTS_ROUTE) },
+    { title: "Carte cadastrale", subtitle: "Consulter les couches publiques", icon: Map, color: "red", onClick: () => navigate("/carte/carte_public") },
+    { title: "Formulaires & guides", subtitle: "Accéder aux ressources utiles", icon: BookOpen, color: "orange", onClick: () => navigate("/documentation") },
   ];
 
-  if (!isAuthReady) {
-    return <BrandLoader fullScreen label="Chargement de l'espace cadastre..." />;
-  }
+  const features = [
+    { title: "Cartes interactives", text: "Explorez les cartes géologiques, cadastrales et les indices miniers.", icon: Map, color: "green", onClick: () => navigate("/carte/carte_public") },
+    { title: "Titres miniers", text: "Consultez les titres, permis et autorisations minières.", icon: Waypoints, color: "orange", onClick: () => navigate("/investisseur/interactive") },
+    { title: "Demande de documents", text: "Générez et téléchargez vos extraits et plans cadastraux officiels.", icon: FileText, color: "blue", onClick: () => navigate(DOCUMENT_REQUEST_ROUTE) },
+    { title: "Gisements & ressources", text: "Accédez aux informations sur les gisements et ressources minérales.", icon: Sparkles, color: "violet", onClick: () => navigate("/carte/carte_public") },
+    { title: "Téléchargements", text: "Accédez aux données ouvertes et jeux de données disponibles.", icon: Download, color: "red", onClick: () => navigate("/documentation") },
+    { title: "Services en ligne", text: "Accédez à vos services cadastraux 24h/24 et 7j/7.", icon: ShieldCheck, color: "teal", onClick: () => navigate(DOCUMENTS_ROUTE) },
+  ];
+
+  if (!isAuthReady) return <BrandLoader fullScreen label="Chargement de l'espace cadastre..." />;
 
   return (
     <InvestorLayout>
-      <main className={styles.page} data-theme={theme}>
-        <div className={styles.controlsBar}>
-          <span className={styles.controlsLabel}>
-            <Layers size={14} />
-            Espace cadastre
-          </span>
-          <div className={styles.themeToggle} role="group" aria-label="Choix du theme">
-            <button
-              type="button"
-              className={`${styles.themeToggleOption} ${theme === "light" ? styles.themeToggleOptionActive : ""}`}
-              aria-pressed={theme === "light"}
-              onClick={() => toggleTheme("light")}
-            >
-              <Sun size={15} />
-              Clair
-            </button>
-            <button
-              type="button"
-              className={`${styles.themeToggleOption} ${theme === "dark" ? styles.themeToggleOptionActive : ""}`}
-              aria-pressed={theme === "dark"}
-              onClick={() => toggleTheme("dark")}
-            >
-              <Moon size={15} />
-              Sombre
-            </button>
-          </div>
-        </div>
-
-        <section className={styles.hero} data-onboarding-id="cadastre-dashboard-hero">
-          <div className={styles.heroContent}>
-            <div className={styles.heroCopy}>
-              <span className={styles.eyebrow}>
-                <ShieldCheck size={14} />
-                Espace cadastre officiel
-              </span>
-              <h1 className={styles.title}>
-                Pilotage cadastral et <span className={styles.titleAccent}>vérification minière</span>
-              </h1>
-              <p className={styles.subtitle}>
-                Bonjour {displayName}. Cet espace centralise la vérification
-                préalable et la lecture cartographique pour contrôler rapidement
-                les périmètres, les points et les couches de référence.
-              </p>
-
-              <div className={styles.heroActions}>
-                <button
-                  type="button"
-                  className={`${styles.heroButton} ${styles.heroButtonPrimary}`}
-                  onClick={() => navigate(verificationTool.route)}
-                >
-                  {verificationTool.cta}
-                  <ArrowRight size={18} />
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.heroButton} ${styles.heroButtonSecondary}`}
-                  onClick={() => navigate(publicMapTool.route)}
-                >
-                  {publicMapTool.cta}
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.heroButton} ${styles.heroButtonSecondary}`}
-                  onClick={() => navigate(CADASTRE_DOCUMENT_REQUEST_ROUTE)}
-                >
-                  Nouvelle demande de documents
-                  <FilePlus2 size={18} />
-                </button>
-              </div>
-
-              <div className={styles.trustRow}>
-                <div className={styles.trustItem}>
-                  <Lock size={18} />
-                  <div>
-                    <strong>Sécurisé</strong>
-                    <span>Données protégées</span>
-                  </div>
-                </div>
-                <div className={styles.trustItem}>
-                  <BadgeCheck size={18} />
-                  <div>
-                    <strong>Officiel</strong>
-                    <span>Références ANAM</span>
-                  </div>
-                </div>
-                <div className={styles.trustItem}>
-                  <Clock3 size={18} />
-                  <div>
-                    <strong>Continu</strong>
-                    <span>Accès 24/7</span>
-                  </div>
-                </div>
+      <main className={styles.referenceDashboard}>
+        <section className={styles.heroReference} data-onboarding-id="cadastre-dashboard-hero" style={{ backgroundImage: `linear-gradient(90deg, rgba(255,255,255,.98) 0%, rgba(255,255,255,.94) 28%, rgba(255,255,255,.65) 43%, rgba(255,255,255,.15) 60%, rgba(255,255,255,0) 75%), url(${heroImage})` }}>
+          <div className={styles.heroInner}>
+            <div className={styles.heroCopyReference}>
+              <span className={styles.referenceEyebrow}><ShieldCheck size={15} /> PORTAIL CADASTRAL OFFICIEL</span>
+              <h1>Portail cadastral officiel<br /><span>des titres miniers</span></h1>
+              <p>Accédez aux informations géographiques et cadastrales officielles, générez vos documents et gérez vos titres miniers en toute simplicité.</p>
+              <div className={styles.referenceHeroActions}>
+                <button type="button" className={styles.orangeButton} onClick={() => navigate(DOCUMENT_REQUEST_ROUTE)}>Demander un document <ArrowRight size={17} /></button>
+                <button type="button" className={styles.outlineButton} onClick={() => navigate("/carte/carte_public")}>Explorer la carte <Map size={17} /></button>
               </div>
             </div>
-
-            <aside className={styles.heroVisual}>
-              <div className={styles.heroVisualCard}>
-                <span className={styles.heroVisualBadge}>
-                  <Waypoints size={16} />
-                  Cadastre national
-                </span>
-                <CadastreHeroMap />
-                <div className={`${styles.heroFloatCard} ${styles.heroFloatCardTop}`}>
-                  <ScanSearch size={18} />
-                  <div>
-                    <strong>2</strong>
-                    <span>Modules métier actifs</span>
-                  </div>
-                </div>
-                <div className={`${styles.heroFloatCard} ${styles.heroFloatCardBottom}`}>
-                  <Layers size={18} />
-                  <div>
-                    <strong>EPSG 4326</strong>
-                  <span>Référence active</span>
-                  </div>
-                </div>
-              </div>
-            </aside>
           </div>
         </section>
 
-        <section className={styles.stepsSection}>
-          <div className={styles.sectionHeading}>
-            <h2>Comment ça marche ?</h2>
-            <p>Quatre étapes pour vérifier un périmètre et consulter les références officielles.</p>
-          </div>
-          <div className={styles.stepsRow}>
-            {steps.map((step, index) => {
-              const Icon = step.icon;
-              return (
-                <div className={styles.stepItem} key={step.title}>
-                  <div className={styles.stepCard}>
-                    <span className={styles.stepNumber}>{index + 1}</span>
-                    <div className={styles.stepIcon}>
-                      <Icon size={22} />
-                    </div>
-                    <h3>{step.title}</h3>
-                    <p>{step.description}</p>
-                  </div>
-                  {index < steps.length - 1 && (
-                    <ArrowRight className={styles.stepArrow} size={20} aria-hidden="true" />
-                  )}
-                </div>
-              );
-            })}
+        <section className={styles.featureStrip}>
+          <div className={styles.featureGrid}>
+            {features.map(({ title, text, icon: Icon, color, onClick }) => <button type="button" key={title} className={styles.featureCard} onClick={onClick}><span className={`${styles.featureIcon} ${styles[color]}`}><Icon size={19} /></span><strong>{title}</strong><span>{text}</span><em className={styles[color]}>Découvrir <ArrowRight size={13} /></em></button>)}
           </div>
         </section>
 
-        <section className={styles.quickAccessSection}>
-          <div className={styles.sectionHeading}>
-            <h2>Accès rapide</h2>
-            <p>Les raccourcis essentiels de votre espace cadastre.</p>
-          </div>
-          <div className={styles.quickGrid}>
-            {quickLinks.map((link) => {
-              const Icon = link.icon;
-              return (
-                <button
-                  type="button"
-                  key={link.title}
-                  className={styles.quickCard}
-                  onClick={link.onClick}
-                >
-                  <span className={styles.quickCardIcon}>
-                    <Icon size={20} />
-                  </span>
-                  <span className={styles.quickCardTitle}>{link.title}</span>
-                  <span className={styles.quickCardDescription}>{link.description}</span>
-                </button>
-              );
-            })}
+        <section className={styles.statsSection}>
+          <div className={styles.statsGridReference}>
+            <div className={styles.statItem}><Map size={24} className={styles.greenText} /><div><strong>{requestStats.total}</strong><span>Mes demandes</span></div></div>
+            <div className={styles.statItem}><FileCheck2 size={24} className={styles.orangeText} /><div><strong>{requestStats.available}</strong><span>Documents disponibles</span></div></div>
+            <div className={styles.statItem}><Clock3 size={24} className={styles.blueText} /><div><strong>{requestStats.pending}</strong><span>Demandes en cours</span></div></div>
+            <div className={styles.statItem}><Users size={24} className={styles.violetText} /><div><strong>24/7</strong><span>Services en ligne</span></div></div>
+            <div className={styles.statItem}><ShieldCheck size={24} className={styles.greenText} /><div><strong>100%</strong><span>Données sécurisées</span></div></div>
+            <div className={styles.statItem}><Zap size={24} className={styles.orangeText} /><div><strong>Simple</strong><span>Parcours numérique</span></div></div>
           </div>
         </section>
 
-        <section className={styles.noticePanel} data-onboarding-id="cadastre-dashboard-scope">
-          <div>
-            <h2 className={styles.noticeTitle}>Périmètre d&apos;accès</h2>
-            <p className={styles.noticeText}>
-              Ce profil n&apos;accède ni aux demandes investisseur ni aux permis
-              opérateur. Il est limité aux contrôles cadastraux.
-            </p>
+        <section className={styles.lowerGrid} data-onboarding-id="cadastre-dashboard-scope">
+          <div className={styles.referencePanel}>
+            <h2><Sparkles size={16} className={styles.orangeText} /> Accès rapides</h2>
+            {quickLinks.map(({ title, subtitle, icon: Icon, color, onClick }) => <button type="button" key={title} className={styles.quickItem} onClick={onClick}><span className={`${styles.quickIcon} ${styles[color]}`}><Icon size={16} /></span><span><strong>{title}</strong><small>{subtitle}</small></span><ArrowRight size={16} className={styles.quickArrow} /></button>)}
           </div>
-          <div className={styles.noticeChips}>
-            <span className={styles.noticeChip}>Vérification préalable</span>
-            <span className={styles.noticeChip}>Carte publique</span>
+
+          <div className={styles.referencePanel}>
+            <div className={styles.panelHeading}><h2><Megaphone size={16} className={styles.orangeText} /> Actualités & annonces</h2><button type="button" onClick={() => navigate("/acceuil/actualites")}>Voir toutes <ArrowRight size={13} /></button></div>
+            {news.map((item) => <button type="button" className={styles.newsItem} key={item.id} onClick={() => navigate(`/acceuil/actualites/${item.slug}`)}><img src={item.imageUrl || heroImage} alt="" /><span>{item.title}</span><time>{formatNewsDate(item.publishedAt)}</time></button>)}
+            {news.length === 0 && <p className={styles.emptyNews}>Aucune actualité disponible.</p>}
+          </div>
+
+          <div className={`${styles.referencePanel} ${styles.promoPanel}`} style={{ backgroundImage: `linear-gradient(90deg, rgba(255, 214, 137, .98) 0%, rgba(250, 204, 119, .88) 42%, rgba(224, 138, 30, .18) 78%), url(${mapImage})` }}>
+            <div className={styles.promoContent}><FileText size={30} /><h2>Générez vos extraits et plans cadastraux en quelques clics</h2><p>Simple, rapide et sécurisé. Disponible 24h/24.</p><button type="button" className={styles.promoButton} onClick={() => navigate(DOCUMENT_REQUEST_ROUTE)}>Demander un document <ArrowRight size={16} /></button></div>
           </div>
         </section>
 
-        <section className={styles.toolStack}>
-          {tools.map((tool) => {
-            const Icon = tool.icon;
-            const toolVisualStyle = {
-              "--tool-visual-image": `url(${tool.visualImage})`,
-            } as CSSProperties;
-            const onboardingId =
-              tool.route === "/investisseur/interactive"
-                ? "cadastre-dashboard-verification"
-                : tool.route === "/carte/carte_public"
-                ? "cadastre-dashboard-map"
-                : undefined;
-            return (
-              <article
-                key={tool.route}
-                className={`${styles.toolSection} ${tool.accent === "teal" ? styles.toolSectionReverse : ""}`}
-                data-onboarding-id={onboardingId}
-              >
-                <div className={styles.toolSectionCopy}>
-                  <span className={styles.toolEyebrow}>{tool.eyebrow}</span>
-                  <h2 className={styles.toolTitle}>{tool.title}</h2>
-                  <p className={styles.toolDescription}>{tool.description}</p>
-                  <div className={styles.toolHighlightList}>
-                    {tool.highlights.map((item) => (
-                      <span key={item} className={styles.toolHighlight}>
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    className={styles.toolButton}
-                    onClick={() => navigate(tool.route)}
-                  >
-                    {tool.cta}
-                    <ArrowRight size={18} />
-                  </button>
-                </div>
-
-                <div
-                  className={`${styles.toolVisual} ${
-                    tool.accent === "teal" ? styles.toolVisualTeal : styles.toolVisualBordeaux
-                  }`}
-                  style={toolVisualStyle}
-                  aria-hidden="true"
-                >
-                  <div className={styles.toolVisualIcon}>
-                    <Icon size={38} />
-                  </div>
-                  <div className={styles.toolVisualContent}>
-                    <div className={styles.toolVisualHeadline}>
-                      <span>{tool.accent === "teal" ? "Lecture" : "Analyse"}</span>
-                      <strong>{tool.accent === "teal" ? "Territoire public" : "Contrôle topologique"}</strong>
-                    </div>
-                    <div className={styles.toolVisualRows}>
-                      {tool.highlights.map((item) => (
-                        <div key={item} className={styles.toolVisualRow}>
-                          <span className={styles.toolVisualDot} />
-                          <span>{item}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </section>
-
-        <section className={styles.ctaBanner}>
-          <div className={styles.ctaCopy}>
-            <h2>Prêt à contrôler votre périmètre ?</h2>
-            <p>Lancez la vérification cadastrale ou explorez la carte publique en un instant.</p>
-          </div>
-          <div className={styles.ctaSteps}>
-            <div className={styles.ctaStep}>
-              <MousePointerClick size={18} />
-              <span>Choisissez</span>
-            </div>
-            <ArrowRight size={16} className={styles.ctaStepArrow} aria-hidden="true" />
-            <div className={styles.ctaStep}>
-              <ScanSearch size={18} />
-              <span>Vérifiez</span>
-            </div>
-            <ArrowRight size={16} className={styles.ctaStepArrow} aria-hidden="true" />
-            <div className={styles.ctaStep}>
-              <Map size={18} />
-              <span>Consultez</span>
-            </div>
-          </div>
-          <button
-            type="button"
-            className={styles.ctaButton}
-            onClick={() => navigate(CADASTRE_DOCUMENT_REQUEST_ROUTE)}
-          >
-            Nouvelle demande de documents
-            <ArrowRight size={18} />
-          </button>
+        <section className={styles.bottomBar}>
+          <div><Building2 size={18} /><span><strong>Données officielles</strong><small>Informations fiables et à jour</small></span></div>
+          <div><ShieldCheck size={18} /><span><strong>Sécurisé</strong><small>Vos données sont protégées</small></span></div>
+          <div><Clock3 size={18} /><span><strong>Disponible 24/7</strong><small>Accédez à nos services à tout moment</small></span></div>
+          <div><MousePointerClick size={18} /><span><strong>Simple & rapide</strong><small>Des démarches simplifiées en ligne</small></span></div>
         </section>
       </main>
-      <OnboardingWelcomeModal
-        isOpen={showOnboardingPrompt}
-        onStart={handleStartOnboarding}
-        onSkip={handleSkipOnboarding}
-      />
-      <OnboardingTour
-        isOpen={showOnboarding}
-        steps={CADASTRE_DASHBOARD_ONBOARDING_STEPS}
-        onClose={handleCloseOnboarding}
-        onComplete={handleCompleteOnboarding}
-      />
+      <OnboardingWelcomeModal isOpen={showOnboardingPrompt} onStart={startOnboarding} onSkip={skipOnboarding} />
+      <OnboardingTour isOpen={showOnboarding} steps={onboardingSteps} onClose={closeOnboarding} onComplete={completeOnboarding} />
     </InvestorLayout>
   );
 }

@@ -1757,6 +1757,10 @@ enum TypeDocumentCadastral {
 enum StatutDemandeDocument {
   ENREGISTREE
   VERIFIEE
+  EN_COURS_EXAMEN
+  ACCEPTEE
+  EN_COMPLEMENT
+  REJETEE
   GENEREE
   DELIVREE
 }
@@ -1764,8 +1768,28 @@ enum StatutDemandeDocument {
 enum ActionDocumentCadastral {
   DEMANDE_ENREGISTREE
   DEMANDE_VERIFIEE
+  DEMANDE_ACCEPTEE
+  DEMANDE_REJETEE
+  COMPLEMENT_DEMANDE
+  NOTE_AJOUTEE
+  DEMANDE_ASSIGNEE
   DOCUMENT_GENERE
   DOCUMENT_DELIVRE
+}
+
+enum QualiteDemandeurCadastre {
+  REPRESENTANT_LEGAL
+  ACTIONNAIRE
+  TITULAIRE_TITRE_MINIER
+}
+
+enum ObjetDemandeCadastre {
+  CONSTITUTION_DOSSIER_ADMINISTRATIF
+  TRANSACTION_CESSION_DROITS_MINIERS
+  CONTENTIEUX_PROCEDURE_JUDICIAIRE
+  FINANCEMENT_GARANTIE_BANCAIRE
+  CONTROLE_SUIVI_REGLEMENTAIRE
+  AUTRE
 }
 
 model CadastreDocumentReference {
@@ -1850,8 +1874,9 @@ model DemandeDocumentCadastral {
   otpVerifiedAt     DateTime?
   dateSoumission    DateTime?
 
-  objetDemande       String                  @db.Text
-  qualiteDemandeur   String                  @db.VarChar(255)
+  objetDemande       ObjetDemandeCadastre
+  objetDemandeAutre  String?                 @db.Text
+  qualiteDemandeur   QualiteDemandeurCadastre
   baseCommunication  String                  @db.Text
 
   preuvePaiementUrl  String?                 @db.Text

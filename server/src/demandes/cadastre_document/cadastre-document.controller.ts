@@ -26,6 +26,11 @@ import { CadastreDocumentService } from './cadastre-document.service';
 export class CadastreDocumentController {
   constructor(private readonly service: CadastreDocumentService) {}
 
+  @Get('document-references')
+  listDocumentReferences(@Req() req: Request) {
+    return this.service.listDocumentReferences(req);
+  }
+
   @Post('verify-title')
   verifyTitle(
     @Body()
@@ -75,6 +80,7 @@ export class CadastreDocumentController {
       canalVerification?: CanalVerificationCadastre | string;
       qualiteDemandeur?: string;
       objetDemande?: string;
+      objetDemandeAutre?: string;
       baseCommunication?: string;
     },
     @Req() req: Request,
@@ -173,11 +179,54 @@ export class CadastreDocumentController {
       typeDocument?: string;
       qualiteDemandeur?: string;
       objetDemande?: string;
+      objetDemandeAutre?: string;
       baseCommunication?: string;
     },
     @Req() req: Request,
   ) {
     return this.service.submitRequest(id, body, req);
+  }
+
+  @Get('admin/list')
+  listAdminRequests(
+    @Req() req: Request,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('search') search?: string,
+    @Query('statut') statut?: string,
+    @Query('typeDocument') typeDocument?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+    @Query('societe') societe?: string,
+    @Query('referenceDemande') referenceDemande?: string,
+    @Query('codePermis') codePermis?: string,
+    @Query('emailDemandeur') emailDemandeur?: string,
+    @Query('nomDemandeur') nomDemandeur?: string,
+  ) {
+    return this.service.listAdminRequests(req, { page, pageSize, search, statut, typeDocument, dateFrom, dateTo, societe, referenceDemande, codePermis, emailDemandeur, nomDemandeur });
+  }
+
+  @Get('admin/stats')
+  getAdminStats(@Req() req: Request) {
+    return this.service.getAdminStats(req);
+  }
+
+  @Post(':id/admin/status')
+  updateAdminStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { statut?: string; commentaire?: string },
+    @Req() req: Request,
+  ) {
+    return this.service.updateAdminStatus(id, body, req);
+  }
+
+  @Post(':id/admin/note')
+  addAdminNote(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { note?: string },
+    @Req() req: Request,
+  ) {
+    return this.service.addAdminNote(id, body.note || '', req);
   }
 
   @Get()

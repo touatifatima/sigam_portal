@@ -48,7 +48,7 @@ const buildApiUrl = (path: string) => `${apiURL}${path}`;
 
 type VerificationMode = "phone" | "email";
 type StepNumber = 1 | 2 | 3;
-type DocumentId = "extrait" | "plan";
+type DocumentId = string;
 type TitleVerificationState = "idle" | "checking" | "valid" | "invalid";
 type ContactVerificationState = "idle" | "checking" | "valid" | "invalid";
 type PreviewModalState = {
@@ -72,7 +72,14 @@ type RequestForm = {
   telephoneContact: string;
   qualiteDemandeur: string;
   objetDemande: string;
+  objetDemandeAutre: string;
   baseCommunication: string;
+};
+
+type TypePermisOption = {
+  id: number;
+  lib_type: string | null;
+  code_type: string | null;
 };
 
 type CadastreRequestResponse = {
@@ -83,6 +90,8 @@ type CadastreRequestResponse = {
     statut?: string;
     otpVerifiedAt?: string | null;
     piecesJointes?: Array<{ typePiece: string; fichierUrl: string }>;
+    accuseReceptionPdfUrl?: string | null;
+    accuseReceptionPdfFilename?: string | null;
   };
 };
 
@@ -105,54 +114,22 @@ type DocumentOption = {
   accent: "green" | "teal";
 };
 
-const DOCUMENT_OPTIONS: DocumentOption[] = [
-  {
-    id: "extrait",
-    title: "Extrait cadastral officiel",
-    subtitle: "Document d'identification juridique du titre",
-    description:
-      "Fiche officielle avec les informations du titre, du titulaire et des elements necessaires au suivi cadastral.",
-    tags: ["PDF", "A4", "QR de verification"],
-    icon: FileText,
-    accent: "green",
-  },
-  {
-    id: "plan",
-    title: "Plan cadastral officiel",
-    subtitle: "Representation cartographique du perimetre",
-    description:
-      "Plan de reference avec les limites, sommets, points de controle et la lecture cartographique du titre.",
-    tags: ["PDF", "A4 paysage", "Coordonnees"],
-    icon: MapPinned,
-    accent: "teal",
-  },
-];
-
-const TYPE_PERMIS_OPTIONS = [
-  "Permis de prospection",
-  "Permis d'exploration",
-  "Permis d'exploitation",
-  "Permis de recherche carriere",
-  "Permis d'exploitation carriere",
-  "Autorisation artisanale carriere",
-  "Permis de ramassage",
-  "Permis de transport",
-  "Permis d'Exploitation Carriere PXC",
-  "Autorisation de prospection de mines - APM",
-  "Titre d'exploration de mines - TEM",
-  "Titre d'exploration de carrieres - TEC",
-  "Autorisation d'exploitation artisanale de mines - AAM",
-  "Autorisation d'exploitation artisanale de carrieres - AAC",
-  "Titre d'exploitation de mines - TXM",
-  "Permis d'exploitation de petite ou moyenne exploitation miniere PM",
-  "Titre d'exploitation de carrieres - TXC",
-];
+type DocumentReferenceResponse = {
+  id: number;
+  code: string;
+  label: string;
+  subtitle: string | null;
+  description: string | null;
+  iconKey: string | null;
+  accentKey: string | null;
+  isDefault: boolean;
+  sortOrder: number;
+};
 
 const QUALITE_DEMANDEUR_OPTIONS = [
-  "Titulaire du titre minier",
   "Representant legal",
-  "Mandataire",
-  "Administration / organisme public",
+  "Actionnaire",
+  "Titulaire du titre minier",
 ];
 
 const OBJET_DEMANDE_OPTIONS = [
@@ -161,6 +138,7 @@ const OBJET_DEMANDE_OPTIONS = [
   "Contentieux ou procedure judiciaire",
   "Financement / garantie bancaire",
   "Controle et suivi reglementaire",
+  "Autre",
 ];
 
 const DEFAULT_FORM: RequestForm = {
@@ -177,8 +155,15 @@ const DEFAULT_FORM: RequestForm = {
   telephoneContact: "+213 555 12 34 89",
   qualiteDemandeur: "Representant legal",
   objetDemande: "Constitution de dossier administratif",
+  objetDemandeAutre: "",
   baseCommunication:
     "Demande introduite dans le cadre de la verification et de la constitution du dossier cadastral.",
+};
+
+const getQualityContactLabel = (quality: string) => {
+  if (quality === "Actionnaire") return "actionnaire";
+  if (quality === "Titulaire du titre minier") return "titulaire du titre minier";
+  return "representant legal";
 };
 
 function StyledSelect({
@@ -276,6 +261,7 @@ export default function DemandeDocumentCadastralePage() {
   const [currentStep, setCurrentStep] = useState<StepNumber>(1);
   const [verificationMode, setVerificationMode] = useState<VerificationMode>("phone");
   const [form, setForm] = useState<RequestForm>(DEFAULT_FORM);
+  const [typePermisOptions, setTypePermisOptions] = useState<TypePermisOption[]>([]);
   const [requestId, setRequestId] = useState<number | null>(null);
   const [requestReference, setRequestReference] = useState<string>("CDC-EN-ATTENTE");
   const [scanQrDone, setScanQrDone] = useState(false);
@@ -305,8 +291,11 @@ export default function DemandeDocumentCadastralePage() {
   const [step3Busy, setStep3Busy] = useState(false);
   const [attachmentsUploaded, setAttachmentsUploaded] = useState(false);
   const [generatedRequestMessage, setGeneratedRequestMessage] = useState<string | null>(null);
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+  const [receiptFilename, setReceiptFilename] = useState("accuse-reception.pdf");
   const [otpDigits, setOtpDigits] = useState<string[]>(Array.from({ length: OTP_LENGTH }, () => ""));
-  const [selectedDocs, setSelectedDocs] = useState<DocumentId[]>(["extrait", "plan"]);
+  const [documentOptions, setDocumentOptions] = useState<DocumentOption[]>([]);
+  const [selectedDocs, setSelectedDocs] = useState<DocumentId[]>([]);
   const [generationKey, setGenerationKey] = useState(0);
   const [generationProgress, setGenerationProgress] = useState(15);
   const [processingReady, setProcessingReady] = useState(false);
@@ -330,14 +319,91 @@ export default function DemandeDocumentCadastralePage() {
     }
   }, [auth?.email, auth?.id, auth?.role, auth?.username, isAuthReady, navigate]);
 
+  useEffect(() => {
+    if (!isAuthReady || !auth?.id) return;
+
+    let cancelled = false;
+    axios
+      .get<TypePermisOption[]>(buildApiUrl("/type-permis"), { withCredentials: true })
+      .then((response) => {
+        if (cancelled) return;
+
+        const options = (response.data || []).filter(
+          (option) => Boolean(option.lib_type?.trim() || option.code_type?.trim()),
+        );
+        setTypePermisOptions(options);
+
+        setForm((current) => {
+          const currentExists = options.some(
+            (option) =>
+              option.lib_type?.trim() === current.typePermis ||
+              option.code_type?.trim() === current.typePermis,
+          );
+
+          return {
+            ...current,
+            typePermis: currentExists
+              ? current.typePermis
+              : options[0]?.lib_type?.trim() || options[0]?.code_type?.trim() || "",
+          };
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setNetworkError("Impossible de charger les types de permis depuis la base de données.");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [auth?.id, isAuthReady]);
+
+  useEffect(() => {
+    if (!isAuthReady || !auth?.id) return;
+
+    let cancelled = false;
+    axios
+      .get<DocumentReferenceResponse[]>(
+        buildApiUrl("/api/cadastre/demandes-documents-cadastraux/document-references"),
+        { withCredentials: true },
+      )
+      .then((response) => {
+        if (cancelled) return;
+        const options = (response.data || []).map((item) => ({
+          id: item.code,
+          title: item.label,
+          subtitle: item.subtitle || "",
+          description: item.description || "",
+          tags: ["PDF"],
+          icon: item.iconKey === "map-pinned" ? MapPinned : FileText,
+          accent: item.accentKey === "teal" ? "teal" : "green",
+        } satisfies DocumentOption));
+        setDocumentOptions(options);
+        setSelectedDocs(
+          (response.data || [])
+            .filter((item) => item.isDefault)
+            .sort((left, right) => left.sortOrder - right.sortOrder)
+            .map((item) => item.code),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setNetworkError("Impossible de charger les documents cadastraux.");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [auth?.id, isAuthReady]);
+
   const displayName = useMemo(
     () => auth?.username || auth?.email || "Utilisateur cadastre",
     [auth?.email, auth?.username],
   );
 
   const selectedDocuments = useMemo(
-    () => DOCUMENT_OPTIONS.filter((doc) => selectedDocs.includes(doc.id)),
-    [selectedDocs],
+    () => documentOptions.filter((doc) => selectedDocs.includes(doc.id)),
+    [documentOptions, selectedDocs],
   );
 
   useEffect(() => {
@@ -356,7 +422,7 @@ export default function DemandeDocumentCadastralePage() {
   const otpCode = otpDigits.join("");
   const primaryDocumentType = useMemo(
     () =>
-      selectedDocs.includes("plan")
+      selectedDocs.includes("PLAN_CADASTRAL_OFFICIEL")
         ? "PLAN_CADASTRAL_OFFICIEL"
         : "EXTRAIT_CERTIFIE_CONFORME",
     [selectedDocs],
@@ -365,7 +431,7 @@ export default function DemandeDocumentCadastralePage() {
     () =>
       selectedDocuments.length > 0
         ? selectedDocuments.map((doc) => doc.title).join(" + ")
-        : "Extrait cadastral officiel",
+        : "Aucun document selectionne",
     [selectedDocuments],
   );
   const canContinueStep1 = requestId !== null && otpSent && otpComplete && scanQrDone && scanIdentityDone;
@@ -374,42 +440,9 @@ export default function DemandeDocumentCadastralePage() {
   useEffect(() => {
     if (currentStep !== 3) return;
 
-    setProcessingReady(false);
-    setProcessingStep(1);
-    setGenerationProgress(15);
-
-    const timers: number[] = [];
-
-    timers.push(
-      window.setTimeout(() => {
-        setGenerationProgress(45);
-        setProcessingStep(2);
-      }, 1200),
-    );
-
-    timers.push(
-      window.setTimeout(() => {
-        setGenerationProgress(75);
-        setProcessingStep(3);
-      }, 2400),
-    );
-
-    timers.push(
-      window.setTimeout(() => {
-        setGenerationProgress(100);
-        setProcessingStep(4);
-      }, 3600),
-    );
-
-    timers.push(
-      window.setTimeout(() => {
-        setProcessingReady(true);
-      }, 4300),
-    );
-
-    return () => {
-      timers.forEach((timer) => window.clearTimeout(timer));
-    };
+    setProcessingReady(true);
+    setProcessingStep(4);
+    setGenerationProgress(100);
   }, [currentStep, generationKey]);
 
   const resetTitleVerification = () => {
@@ -431,7 +464,7 @@ export default function DemandeDocumentCadastralePage() {
       resetTitleVerification();
       resetContactVerification();
     }
-    if (["emailContact", "telephoneContact"].includes(field)) {
+    if (["emailContact", "telephoneContact", "qualiteDemandeur"].includes(field)) {
       resetContactVerification();
     }
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -592,7 +625,8 @@ export default function DemandeDocumentCadastralePage() {
       telephoneContact: form.telephoneContact.trim(),
       canalVerification: verificationMode === "phone" ? "TELEPHONE" : "EMAIL",
       qualiteDemandeur: form.qualiteDemandeur.trim(),
-      objetDemande: `${form.objetDemande.trim()} - ${selectedDocumentsLabel}`,
+      objetDemande: form.objetDemande.trim(),
+      objetDemandeAutre: form.objetDemandeAutre.trim(),
       baseCommunication: form.baseCommunication.trim(),
     };
 
@@ -664,6 +698,7 @@ export default function DemandeDocumentCadastralePage() {
       qrCodeTitre: form.qrCode.trim(),
       codePermis: form.codePermis.trim(),
       canalVerification: verificationMode === "phone" ? "TELEPHONE" : "EMAIL",
+      qualiteDemandeur: form.qualiteDemandeur.trim(),
       emailContact: form.emailContact.trim(),
       telephoneContact: form.telephoneContact.trim(),
     };
@@ -715,6 +750,7 @@ export default function DemandeDocumentCadastralePage() {
     setOtpError(null);
     try {
       await verifyTitleInformation();
+      await verifyContactInformation();
 
       if (!requestId) {
         await createCadastreRequest();
@@ -832,7 +868,8 @@ export default function DemandeDocumentCadastralePage() {
         {
           typeDocument: primaryDocumentType,
           qualiteDemandeur: form.qualiteDemandeur.trim(),
-          objetDemande: `${form.objetDemande.trim()} - ${selectedDocumentsLabel}`,
+          objetDemande: form.objetDemande.trim(),
+          objetDemandeAutre: form.objetDemandeAutre.trim(),
           baseCommunication: form.baseCommunication.trim(),
         },
         { withCredentials: true },
@@ -841,6 +878,11 @@ export default function DemandeDocumentCadastralePage() {
       setGeneratedRequestMessage(
         response.data?.message ||
           "Votre demande de cadastre a ete bien transmise avec succes.",
+      );
+      setReceiptUrl(response.data?.demande?.accuseReceptionPdfUrl || null);
+      setReceiptFilename(
+        response.data?.demande?.accuseReceptionPdfFilename ||
+          `accuse-reception-${requestReference}.pdf`,
       );
       toast.success("Votre demande a ete transmise avec succes.");
       goToStep(3);
@@ -881,8 +923,10 @@ export default function DemandeDocumentCadastralePage() {
     setStep3Busy(false);
     setAttachmentsUploaded(false);
     setGeneratedRequestMessage(null);
+    setReceiptUrl(null);
+    setReceiptFilename("accuse-reception.pdf");
     setOtpDigits(Array.from({ length: OTP_LENGTH }, () => ""));
-    setSelectedDocs(["extrait", "plan"]);
+    setSelectedDocs([]);
     setGenerationProgress(15);
     setProcessingReady(false);
     setProcessingStep(1);
@@ -916,8 +960,6 @@ export default function DemandeDocumentCadastralePage() {
       subtitle: "Documents générés",
     },
   ];
-
-  const downloads = selectedDocuments.length > 0 ? selectedDocuments : DOCUMENT_OPTIONS;
 
   return (
     <InvestorLayout>
@@ -1033,7 +1075,10 @@ export default function DemandeDocumentCadastralePage() {
                     <span className={styles.fieldLabel}>Type de permis</span>
                     <StyledSelect
                       value={form.typePermis}
-                      options={TYPE_PERMIS_OPTIONS}
+                      options={typePermisOptions
+                        .map((option) => option.lib_type?.trim() || option.code_type?.trim() || "")
+                        .filter(Boolean)}
+                      disabled={step1Busy || typePermisOptions.length === 0}
                       placeholder="Selectionner un type de permis"
                       onChange={(value) => updateForm("typePermis", value)}
                     />
@@ -1062,14 +1107,6 @@ export default function DemandeDocumentCadastralePage() {
                     </div>
                     <div className={styles.titleCheckText}>{titleVerificationMessage}</div>
                   </div>
-                  <button
-                    type="button"
-                    className={styles.titleCheckButton}
-                    onClick={verifyTitleInformation}
-                    disabled={step1Busy || titleVerification === "checking"}
-                  >
-                    {titleVerification === "checking" ? "Verification..." : "Tester"}
-                  </button>
                 </div>
               </div>
 
@@ -1291,7 +1328,9 @@ export default function DemandeDocumentCadastralePage() {
               <div className={styles.fieldGrid}>
               <label className={`${styles.field} ${styles.fieldFull}`}>
                 <span className={styles.fieldLabel}>
-                  {verificationMode === "phone" ? "Telephone du representant" : "Email du representant"}
+                  {verificationMode === "phone"
+                    ? `Telephone du ${getQualityContactLabel(form.qualiteDemandeur)}`
+                    : `Email du ${getQualityContactLabel(form.qualiteDemandeur)}`}
                 </span>
                 <div className={styles.inlineRow}>
                   <input
@@ -1307,14 +1346,6 @@ export default function DemandeDocumentCadastralePage() {
                   <button
                     type="button"
                     className={styles.secondaryButton}
-                    onClick={verifyContactInformation}
-                    disabled={step1Busy || contactVerification === "checking"}
-                  >
-                    {contactVerification === "checking" ? "Verification..." : "Verifier contact"}
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.secondaryButton}
                     onClick={handleSendOtp}
                     disabled={step1Busy}
                   >
@@ -1322,7 +1353,7 @@ export default function DemandeDocumentCadastralePage() {
                   </button>
                 </div>
                 <span className={styles.fieldHint}>
-                  Le code de verification sera envoye au canal selectionne.
+                  Le contact sera verifie avec celui lie au permis exact et a la qualite selectionnee.
                 </span>
               </label>
 
@@ -1344,6 +1375,18 @@ export default function DemandeDocumentCadastralePage() {
                   onChange={(value) => updateForm("objetDemande", value)}
                 />
               </label>
+              {form.objetDemande === "Autre" ? (
+                <label className={`${styles.field} ${styles.fieldFull}`}>
+                  <span className={styles.fieldLabel}>Précisez l'objet de la demande</span>
+                  <textarea
+                    className={styles.fieldTextarea}
+                    value={form.objetDemandeAutre}
+                    disabled={step1Busy}
+                    onChange={(event) => updateForm("objetDemandeAutre", event.target.value)}
+                    placeholder="Décrivez l'objet de votre demande"
+                  />
+                </label>
+              ) : null}
               <label className={`${styles.field} ${styles.fieldFull}`}>
                 <span className={styles.fieldLabel}>Base de communication ou interet legitime</span>
                 <textarea
@@ -1377,14 +1420,6 @@ export default function DemandeDocumentCadastralePage() {
                 </div>
                 <div className={styles.titleCheckText}>{contactVerificationMessage}</div>
               </div>
-              <button
-                type="button"
-                className={styles.titleCheckButton}
-                onClick={verifyContactInformation}
-                disabled={step1Busy || contactVerification === "checking"}
-              >
-                {contactVerification === "checking" ? "Verification..." : "Tester le contact"}
-              </button>
             </div>
 
             {otpSent ? (
@@ -1562,7 +1597,7 @@ export default function DemandeDocumentCadastralePage() {
             </div>
 
             <div className={styles.documentGrid}>
-              {DOCUMENT_OPTIONS.map((document) => {
+              {documentOptions.map((document) => {
                 const selected = selectedDocs.includes(document.id);
                 const Icon = document.icon;
                 return (
@@ -1722,10 +1757,11 @@ export default function DemandeDocumentCadastralePage() {
                 </div>
                 <div>
                   <div className={styles.successTitle}>
-                    Votre demande de cadastre a ete transmise avec succes
+                    Votre demande a ete envoyee avec succes !
                   </div>
                   <div className={styles.successText}>
-                    Vous recevrez une notification dans votre espace cadastre des que votre document aura ete prepare.
+                    Votre dossier a bien ete enregistre et transmis au service du cadastre. Vous recevrez une notification
+                    dans votre espace Cadastre des que vos documents seront prets.
                     {generatedRequestMessage ? ` ${generatedRequestMessage}` : ""}
                   </div>
                 </div>
@@ -1734,37 +1770,36 @@ export default function DemandeDocumentCadastralePage() {
               <div className={styles.successBanner}>
                 <Sparkles size={18} />
                 <span>
-                  Demande enregistree et transmise. Le dossier a bien ete pris en charge par le workflow cadastral.
+                  Merci pour votre demande. L'accuse de reception est disponible ci-dessous. Nous vous informerons des que
+                  le traitement sera termine et que vos documents cadastraux seront disponibles.
                 </span>
               </div>
 
               <div className={styles.downloadList}>
-                {downloads.map((document) => {
-                  const isExtrait = document.id === "extrait";
-                  return (
-                    <div key={document.id} className={styles.downloadRow}>
-                      <div className={styles.downloadIcon}>
-                        <document.icon size={20} />
-                      </div>
-                      <div className={styles.downloadMeta}>
-                        <div className={styles.downloadTitle}>{document.title}.pdf</div>
-                        <div className={styles.downloadSub}>
-                          {isExtrait ? "6,7 Ko - 1 page" : "7,4 Ko - 1 page - A4 paysage"}
-                        </div>
-                      </div>
-                      <button type="button" className={styles.downloadButton}>
-                        <Download size={16} />
-                        Telecharger
-                      </button>
-                    </div>
-                  );
-                })}
+                <div className={styles.downloadRow}>
+                  <div className={styles.downloadIcon}>
+                    <FileText size={20} />
+                  </div>
+                  <div className={styles.downloadMeta}>
+                    <div className={styles.downloadTitle}>{receiptFilename}</div>
+                    <div className={styles.downloadSub}>Accuse de reception horodate - PDF officiel</div>
+                  </div>
+                  {receiptUrl ? (
+                    <a
+                      className={styles.downloadButton}
+                      href={`${apiURL}${receiptUrl}`}
+                      download={receiptFilename}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <Download size={16} />
+                      Telecharger
+                    </a>
+                  ) : (
+                    <span className={styles.downloadSub}>Accuse en cours de preparation</span>
+                  )}
+                </div>
               </div>
-
-              <button type="button" className={`${styles.primaryButton} ${styles.fullWidthButton}`}>
-                <Download size={18} />
-                Telecharger tout (.zip)
-              </button>
             </div>
           )}
 

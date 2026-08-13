@@ -32,6 +32,7 @@ async function main9() {
       { name: 'dashboard'},
       { name: 'Payments'},
       { name: 'manage_documents'},
+      { name: 'manage_cadastre_documents'},
       { name: 'Audit_Logs'}
 
     ],

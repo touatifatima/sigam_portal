@@ -12,6 +12,8 @@ import { SessionService } from 'src/session/session.service';
 import {
   ActionDocumentCadastral,
   CanalVerificationCadastre,
+  ObjetDemandeCadastre,
+  QualiteDemandeurCadastre,
   Prisma,
   StatutDemandeDocument,
   TypeDocumentCadastral,
@@ -21,6 +23,9 @@ import * as bcrypt from 'bcrypt';
 import * as nodemailer from 'nodemailer';
 import { createHash, randomBytes } from 'crypto';
 import { isIP } from 'net';
+import * as fs from 'fs';
+import * as path from 'path';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
 type CadastreSessionUser = {
   id: number;
@@ -47,8 +52,9 @@ type CreateCadastreRequestBody = {
   emailContact?: string;
   telephoneContact?: string;
   canalVerification?: CanalVerificationCadastre | string;
-  qualiteDemandeur?: string;
+  qualiteDemandeur?: QualiteDemandeurCadastre | string;
   objetDemande?: string;
+  objetDemandeAutre?: string;
   baseCommunication?: string;
 };
 
@@ -58,9 +64,15 @@ type VerifyOtpBody = {
 
 type SubmitCadastreRequestBody = {
   typeDocument?: TypeDocumentCadastral | string;
-  qualiteDemandeur?: string;
+  qualiteDemandeur?: QualiteDemandeurCadastre | string;
   objetDemande?: string;
+  objetDemandeAutre?: string;
   baseCommunication?: string;
+};
+
+type AdminRequestStatusBody = {
+  statut?: string;
+  commentaire?: string;
 };
 
 @Injectable()
@@ -69,6 +81,16 @@ export class CadastreDocumentService {
     private readonly prisma: PrismaService,
     private readonly sessionService: SessionService,
   ) {}
+
+  async listDocumentReferences(req: any) {
+    await this.requireCadastreSession(req);
+
+    return this.prisma.cadastreDocumentReference.findMany({
+      where: { isActive: true },
+      orderBy: [{ sortOrder: 'asc' }, { label: 'asc' }],
+      select: { id: true, code: true, label: true, subtitle: true, description: true, iconKey: true, accentKey: true, isDefault: true, sortOrder: true },
+    });
+  }
 
   private mailer?: nodemailer.Transporter;
 
@@ -303,6 +325,28 @@ export class CadastreDocumentService {
     };
   }
 
+  private async requireCadastreAdminSession(req: any) {
+    const session = await this.requireCadastreSession(req);
+    const roleName = String(session.roleName || '').toLowerCase();
+    const hasAdminPermission = Array.isArray(session.user?.role?.rolePermissions)
+      ? session.user.role.rolePermissions.some((rp) => {
+          const permission = String(rp?.permission?.name || '').toLowerCase();
+          return permission.includes('admin') || permission.includes('manage_cadastre');
+        })
+      : false;
+
+    if (
+      !roleName.includes('admin') &&
+      !roleName.includes('administrateur') &&
+      !roleName.includes('agent_cadastre') &&
+      !hasAdminPermission
+    ) {
+      throw new ForbiddenException('Acces reserve aux agents administratifs du cadastre.');
+    }
+
+    return session;
+  }
+
   private async resolvePermisForCadastre(payload: CreateCadastreRequestBody) {
     const permisSelect = {
       id: true,
@@ -313,6 +357,19 @@ export class CadastreDocumentService {
           id_detenteur: true,
           email: true,
           telephone: true,
+          fonctions: {
+            select: {
+              type_fonction: true,
+              personne: {
+                select: {
+                  nomFR: true,
+                  prenomFR: true,
+                  email: true,
+                  telephone: true,
+                },
+              },
+            },
+          },
         },
       },
       typePermis: {
@@ -423,18 +480,11 @@ export class CadastreDocumentService {
   }
 
   private assertContactMatchesDetenteur(
-    permis: Prisma.PermisPortailGetPayload<{
-      select: {
-        id: true;
-        code_permis: true;
-        qr_code: true;
-        detenteur: { select: { id_detenteur: true; email: true; telephone: true } };
-        typePermis: { select: { id: true; lib_type: true; code_type: true } };
-      };
-    }>,
+    permis: any,
     canalVerification: CanalVerificationCadastre,
     emailContact: string,
     telephoneContact: string,
+    qualiteDemandeur: QualiteDemandeurCadastre,
   ) {
     if (!permis.detenteur) {
       throw new BadRequestException(
@@ -442,32 +492,59 @@ export class CadastreDocumentService {
       );
     }
 
-    if (canalVerification === CanalVerificationCadastre.EMAIL) {
-      const detenteurEmail = this.normalizeEmail(permis.detenteur.email);
-      if (!detenteurEmail) {
-        throw new BadRequestException(
-          'Aucune adresse email n\'est renseignee pour le detenteur moral de ce permis.',
-        );
-      }
-      if (this.normalizeEmail(emailContact) !== detenteurEmail) {
-        throw new BadRequestException(
-          'L\'adresse email saisie ne correspond pas a celle du detenteur moral de ce permis.',
-        );
-      }
+    const functions = Array.isArray(permis.detenteur.fonctions)
+      ? permis.detenteur.fonctions
+      : [];
+    const candidates =
+      qualiteDemandeur === QualiteDemandeurCadastre.TITULAIRE_TITRE_MINIER
+        ? [{
+            email: permis.detenteur.email,
+            telephone: permis.detenteur.telephone,
+            prenom: null,
+          }]
+        : functions
+            .filter((fonction: any) => {
+              if (!fonction.personne) return false;
+              if (qualiteDemandeur === QualiteDemandeurCadastre.ACTIONNAIRE) {
+                return ['Actionnaire', 'Representant_Actionnaire'].includes(
+                  fonction.type_fonction,
+                );
+              }
+              return ['Representant', 'Representant_Actionnaire'].includes(
+                fonction.type_fonction,
+              );
+            })
+            .map((fonction: any) => ({
+              email: fonction.personne.email,
+              telephone: fonction.personne.telephone,
+              prenom: fonction.personne.prenomFR,
+            }));
+
+    const matched = candidates.find((candidate: any) =>
+      canalVerification === CanalVerificationCadastre.EMAIL
+        ? Boolean(candidate.email) &&
+          this.normalizeEmail(emailContact) === this.normalizeEmail(candidate.email)
+        : Boolean(candidate.telephone) &&
+          this.phoneMatches(telephoneContact, candidate.telephone),
+    );
+
+    if (!matched) {
+      const qualityLabel =
+        qualiteDemandeur === QualiteDemandeurCadastre.TITULAIRE_TITRE_MINIER
+          ? 'titulaire du titre minier'
+          : qualiteDemandeur === QualiteDemandeurCadastre.ACTIONNAIRE
+            ? 'actionnaire'
+            : 'representant legal';
+      throw new BadRequestException(
+        `Le contact saisi ne correspond pas au ${qualityLabel} associe a ce permis.`,
+      );
     }
 
-    if (canalVerification === CanalVerificationCadastre.TELEPHONE) {
-      if (!permis.detenteur.telephone) {
-        throw new BadRequestException(
-          'Aucun numero de telephone n\'est renseigne pour le detenteur moral de ce permis.',
-        );
-      }
-      if (!this.phoneMatches(telephoneContact, permis.detenteur.telephone)) {
-        throw new BadRequestException(
-          'Le numero de telephone saisi ne correspond pas a celui du detenteur moral de ce permis.',
-        );
-      }
-    }
+    return {
+      email: this.normalizeEmail(matched.email) || null,
+      telephone: this.normalizePhone(matched.telephone) || null,
+      prenom: matched.prenom || null,
+    };
   }
 
   private normalizeTypeDocument(value?: string | null) {
@@ -484,6 +561,37 @@ export class CadastreDocumentService {
       return CanalVerificationCadastre.TELEPHONE;
     }
     return CanalVerificationCadastre.EMAIL;
+  }
+
+  private normalizeQualiteDemandeur(value?: string | null) {
+    const normalized = this.normalizeComparable(value).replace(/[’']/g, '');
+
+    if (!normalized) return QualiteDemandeurCadastre.REPRESENTANT_LEGAL;
+    if (normalized === 'actionnaire') return QualiteDemandeurCadastre.ACTIONNAIRE;
+    if (
+      normalized === 'titulaire du titre minier' ||
+      normalized === 'titulaire titre minier'
+    ) {
+      return QualiteDemandeurCadastre.TITULAIRE_TITRE_MINIER;
+    }
+    if (normalized === 'representant legal' || normalized === 'representant') {
+      return QualiteDemandeurCadastre.REPRESENTANT_LEGAL;
+    }
+
+    throw new BadRequestException('Qualite du demandeur invalide.');
+  }
+
+  private normalizeObjetDemande(value?: string | null) {
+    const normalized = this.normalizeComparable(value);
+    const values: Array<[string, ObjetDemandeCadastre]> = [
+      ['constitution de dossier administratif', ObjetDemandeCadastre.CONSTITUTION_DOSSIER_ADMINISTRATIF],
+      ['transaction ou cession de droits miniers', ObjetDemandeCadastre.TRANSACTION_CESSION_DROITS_MINIERS],
+      ['contentieux ou procedure judiciaire', ObjetDemandeCadastre.CONTENTIEUX_PROCEDURE_JUDICIAIRE],
+      ['financement / garantie bancaire', ObjetDemandeCadastre.FINANCEMENT_GARANTIE_BANCAIRE],
+      ['controle et suivi reglementaire', ObjetDemandeCadastre.CONTROLE_SUIVI_REGLEMENTAIRE],
+    ];
+    const found = values.find(([label, code]) => normalized === label || normalized === code.toLowerCase());
+    return found?.[1] || ObjetDemandeCadastre.AUTRE;
   }
 
   private async assertOwnershipOrAdmin(demandeId: number, user: CadastreSessionUser) {
@@ -514,14 +622,176 @@ export class CadastreDocumentService {
     demandeId: number,
     action: ActionDocumentCadastral,
     detailsCommunication?: string,
+    agentEmetteur?: string | null,
   ) {
     await this.prisma.historiqueDemandeDocument.create({
       data: {
         demandeId,
         action,
         detailsCommunication: detailsCommunication || null,
+        agentEmetteur: agentEmetteur || null,
       },
     });
+  }
+
+  private async generateCadastreReceiptPdf(demandeId: number) {
+    const demande = await this.prisma.demandeDocumentCadastral.findUnique({
+      where: { id: demandeId },
+      include: {
+        piecesJointes: true,
+        permis: { include: { typePermis: true } },
+      },
+    });
+
+    if (!demande) throw new NotFoundException('Demande cadastrale introuvable.');
+
+    const pdf = await PDFDocument.create();
+    const page = pdf.addPage([595, 842]);
+    const font = await pdf.embedFont(StandardFonts.Helvetica);
+    const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+    const navy = rgb(0.08, 0.18, 0.28);
+    const muted = rgb(0.38, 0.42, 0.48);
+    const left = 25;
+    const right = 570;
+    const valueX = 155;
+    const contentWidth = right - valueX;
+    let y = 805;
+    const date = new Date(demande.dateSoumission || demande.dateDemande);
+    const dateText = `${date.toLocaleDateString('fr-DZ')} à ${date.toLocaleTimeString('fr-DZ', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })}`;
+    const channel = demande.canalVerification === CanalVerificationCadastre.TELEPHONE
+      ? 'Telephone'
+      : 'Email';
+    const contact = demande.canalVerification === CanalVerificationCadastre.TELEPHONE
+      ? demande.telephoneContact || demande.emailContact || '—'
+      : demande.emailContact || '—';
+    const quality = demande.qualiteDemandeur === QualiteDemandeurCadastre.ACTIONNAIRE
+      ? 'Actionnaire'
+      : demande.qualiteDemandeur === QualiteDemandeurCadastre.TITULAIRE_TITRE_MINIER
+        ? 'Titulaire du titre minier'
+        : 'Representant legal';
+
+    const wrap = (value: string, maxWidth: number, currentFont: any, size: number) => {
+      const words = String(value || '—').split(/\s+/).filter(Boolean);
+      const lines: string[] = [];
+      let line = '';
+      for (const word of words) {
+        const candidate = line ? `${line} ${word}` : word;
+        if (currentFont.widthOfTextAtSize(candidate, size) <= maxWidth) {
+          line = candidate;
+        } else {
+          if (line) lines.push(line);
+          line = word;
+        }
+      }
+      if (line) lines.push(line);
+      return lines.length ? lines : ['—'];
+    };
+
+    page.drawRectangle({
+      x: 20,
+      y: 20,
+      width: 555,
+      height: 802,
+      borderColor: navy,
+      borderWidth: 0.8,
+    });
+    const centered = (text: string, size: number, currentFont: any, yy: number) => {
+      const width = currentFont.widthOfTextAtSize(text, size);
+      page.drawText(text, { x: (595 - width) / 2, y: yy, size, font: currentFont, color: navy });
+    };
+
+    centered('REPUBLIQUE ALGERIENNE DEMOCRATIQUE ET POPULAIRE', 10, bold, y);
+    y -= 13;
+    centered("MINISTERE DE L'ENERGIE ET DES MINES", 10, bold, y);
+    y -= 13;
+    centered('AGENCE NATIONALE DES ACTIVITES MINIERES (ANAM)', 10, bold, y);
+    y -= 14;
+    page.drawLine({ start: { x: 23, y }, end: { x: 572, y }, thickness: 0.8, color: navy });
+    y -= 25;
+    centered('ACCUSE DE RECEPTION HORODATE', 17, bold, y);
+    y -= 18;
+    centered('Document de preuve du depot enregistre dans le systeme ANAM', 9, font, y);
+    y -= 25;
+    page.drawText('Informations du depot', { x: left, y, size: 13, font: bold, color: navy });
+    page.drawLine({ start: { x: left, y: y - 5 }, end: { x: right, y: y - 5 }, thickness: 0.8, color: navy });
+    y -= 25;
+
+    const rows: Array<[string, string]> = [
+      ['Reference accuse :', demande.referenceDemande],
+      ['Code demande :', demande.referenceDemande],
+      ['Horodatage systeme :', dateText],
+      ['Date et heure de depot :', dateText],
+      ['Titulaire :', demande.titulaire || '—'],
+      ['Numero de registre de commerce', demande.numeroRc || '—'],
+      ['Code QR du titre :', demande.qrCodeTitre || demande.permis?.qr_code || '—'],
+      ['Code permis :', demande.codePermis || demande.permis?.code_permis || '—'],
+      ['Type de permis :', demande.typePermis || demande.permis?.typePermis?.lib_type || demande.permis?.typePermis?.code_type || '—'],
+      ['NIN :', demande.nin || '—'],
+      ['Nom et prenom :', `${demande.prenom || ''} ${demande.nom || ''}`.trim() || '—'],
+      ['Canal de verification :', channel],
+      ['Contact de verification :', contact],
+      ['Qualite du demandeur :', quality],
+      ['Objet de la demande :', demande.objetDemande === ObjetDemandeCadastre.AUTRE
+        ? demande.objetDemandeAutre || 'Autre'
+        : demande.objetDemande === ObjetDemandeCadastre.CONSTITUTION_DOSSIER_ADMINISTRATIF
+          ? 'Constitution de dossier administratif'
+          : demande.objetDemande === ObjetDemandeCadastre.TRANSACTION_CESSION_DROITS_MINIERS
+            ? 'Transaction ou cession de droits miniers'
+            : demande.objetDemande === ObjetDemandeCadastre.CONTENTIEUX_PROCEDURE_JUDICIAIRE
+              ? 'Contentieux ou procedure judiciaire'
+              : demande.objetDemande === ObjetDemandeCadastre.FINANCEMENT_GARANTIE_BANCAIRE
+                ? 'Financement / garantie bancaire'
+                : 'Controle et suivi reglementaire'],
+      ['Base de communication :', demande.baseCommunication || '—'],
+      ['Nombre de pieces remises :', String(demande.piecesJointes?.length || 0)],
+      ['Agent recepteur :', 'Systeme ANAM'],
+    ];
+
+    for (const [label, value] of rows) {
+      const lines = wrap(value, contentWidth, font, 9);
+      page.drawText(label, { x: left, y, size: 9, font: bold, color: navy });
+      lines.forEach((line, index) => {
+        page.drawText(line, { x: valueX, y: y - index * 12, size: 9, font, color: navy });
+      });
+      y -= Math.max(19, lines.length * 12 + 7);
+    }
+
+    page.drawText(`Document officiel genere automatiquement le ${dateText}`, {
+      x: left + 2,
+      y: 31,
+      size: 8,
+      font,
+      color: muted,
+    });
+    const footer = 'ANAM - Registre numerique des demandes';
+    page.drawText(footer, {
+      x: right - font.widthOfTextAtSize(footer, 8),
+      y: 31,
+      size: 8,
+      font,
+      color: muted,
+    });
+
+    const folder = path.join(process.cwd(), 'public', 'uploads', 'cadastre', 'demandes', String(demande.id));
+    fs.mkdirSync(folder, { recursive: true });
+    const filename = `accuse-reception-${demande.referenceDemande}.pdf`;
+    const absolutePath = path.join(folder, filename);
+    fs.writeFileSync(absolutePath, Buffer.from(await pdf.save()));
+    const fichierUrl = `/uploads/cadastre/demandes/${demande.id}/${filename}`;
+
+    await this.prisma.demandeDocumentCadastral.update({
+      where: { id: demande.id },
+      data: {
+        accuseReceptionPdfUrl: fichierUrl,
+        accuseReceptionPdfFilename: filename,
+        accuseReceptionGeneratedAt: new Date(),
+      },
+    });
+
+    return { fichierUrl, filename };
   }
 
   private mapDemand(demande: any) {
@@ -533,6 +803,228 @@ export class CadastreDocumentService {
       piecesJointes: Array.isArray(demande.piecesJointes) ? demande.piecesJointes : [],
       historique: Array.isArray(demande.historique) ? demande.historique : [],
     };
+  }
+
+  private getAgentLabel(user: CadastreSessionUser) {
+    return [user?.Prenom, user?.nom].filter(Boolean).join(' ') || user?.email || `Agent #${user?.id}`;
+  }
+
+  async listAdminRequests(
+    req: any,
+    filters: {
+      page?: string;
+      pageSize?: string;
+      search?: string;
+      statut?: string;
+      typeDocument?: string;
+      dateFrom?: string;
+      dateTo?: string;
+      societe?: string;
+      referenceDemande?: string;
+      codePermis?: string;
+      emailDemandeur?: string;
+      nomDemandeur?: string;
+    } = {},
+  ) {
+    await this.requireCadastreAdminSession(req);
+
+    const page = Math.max(1, Number(filters.page || 1) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number(filters.pageSize || 10) || 10));
+    const search = String(filters.search || '').trim();
+    const normalizedStatuses = String(filters.statut || '').split(',').map((value) => value.trim().toUpperCase()).filter(Boolean);
+    const normalizedTypes = String(filters.typeDocument || '').split(',').map((value) => value.trim().toUpperCase()).filter(Boolean);
+    const normalizedSocietes = String(filters.societe || '').split(',').map((value) => value.trim()).filter(Boolean);
+    const referenceDemande = String(filters.referenceDemande || '').trim();
+    const codePermis = String(filters.codePermis || '').trim();
+    const emailDemandeur = String(filters.emailDemandeur || '').trim();
+    const nomDemandeur = String(filters.nomDemandeur || '').trim();
+    const validStatuses = Object.values(StatutDemandeDocument);
+    const dateFilter: Prisma.DateTimeFilter = {};
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(filters.dateFrom || ''))) {
+      dateFilter.gte = new Date(`${filters.dateFrom}T00:00:00.000Z`);
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(filters.dateTo || ''))) {
+      const endDate = new Date(`${filters.dateTo}T00:00:00.000Z`);
+      endDate.setUTCDate(endDate.getUTCDate() + 1);
+      dateFilter.lt = endDate;
+    }
+
+    const where: Prisma.DemandeDocumentCadastralWhereInput = {
+      ...(normalizedStatuses.some((value) => validStatuses.includes(value as StatutDemandeDocument))
+        ? { statut: { in: normalizedStatuses.filter((value): value is StatutDemandeDocument => validStatuses.includes(value as StatutDemandeDocument)) } }
+        : {}),
+      ...(normalizedTypes.some((value) => Object.values(TypeDocumentCadastral).includes(value as TypeDocumentCadastral))
+        ? { typeDocument: { in: normalizedTypes.filter((value): value is TypeDocumentCadastral => Object.values(TypeDocumentCadastral).includes(value as TypeDocumentCadastral)) } }
+        : {}),
+      ...(Object.keys(dateFilter).length ? { dateDemande: dateFilter } : {}),
+      ...(referenceDemande ? { referenceDemande: { contains: referenceDemande, mode: 'insensitive' as const } } : {}),
+      ...(codePermis ? { codePermis: { contains: codePermis, mode: 'insensitive' as const } } : {}),
+      ...(emailDemandeur ? { emailContact: { contains: emailDemandeur, mode: 'insensitive' as const } } : {}),
+      ...(nomDemandeur
+        ? {
+            AND: [{
+              OR: [
+                { nom: { contains: nomDemandeur, mode: 'insensitive' as const } },
+                { prenom: { contains: nomDemandeur, mode: 'insensitive' as const } },
+                { titulaire: { contains: nomDemandeur, mode: 'insensitive' as const } },
+              ],
+            }],
+          }
+        : {}),
+      ...(normalizedSocietes.length
+        ? {
+            utilisateur: {
+              detenteur: {
+                is: {
+                  OR: normalizedSocietes.flatMap((societe) => [
+                    { nom_societeFR: { contains: societe, mode: 'insensitive' as const } },
+                    { nom_societeAR: { contains: societe, mode: 'insensitive' as const } },
+                  ]),
+                },
+              },
+            },
+          }
+        : {}),
+      ...(search
+        ? {
+            OR: [
+              { referenceDemande: { contains: search, mode: 'insensitive' } },
+              { codePermis: { contains: search, mode: 'insensitive' } },
+              { titulaire: { contains: search, mode: 'insensitive' } },
+              { nom: { contains: search, mode: 'insensitive' } },
+              { prenom: { contains: search, mode: 'insensitive' } },
+              { emailContact: { contains: search, mode: 'insensitive' } },
+              ...(Object.values(ObjetDemandeCadastre).includes(search.toUpperCase() as ObjetDemandeCadastre)
+                ? [{ objetDemande: search.toUpperCase() as ObjetDemandeCadastre }]
+                : [{ objetDemandeAutre: { contains: search, mode: 'insensitive' as const } }]),
+            ],
+          }
+        : {}),
+    };
+
+    const [total, demandes] = await this.prisma.$transaction([
+      this.prisma.demandeDocumentCadastral.count({ where }),
+      this.prisma.demandeDocumentCadastral.findMany({
+        where,
+        orderBy: { dateDemande: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          piecesJointes: true,
+          documentsGeneres: true,
+          historique: { orderBy: { dateAction: 'desc' }, take: 1 },
+          utilisateur: {
+            select: {
+              id: true,
+              username: true,
+              email: true,
+              nom: true,
+              Prenom: true,
+              detenteur: { select: { nom_societeFR: true, nom_societeAR: true, email: true } },
+            },
+          },
+          permis: {
+            select: {
+              id: true,
+              code_permis: true,
+              qr_code: true,
+              typePermis: { select: { lib_type: true, code_type: true } },
+            },
+          },
+        },
+      }),
+    ]);
+
+    return {
+      page,
+      pageSize,
+      total,
+      pages: Math.max(1, Math.ceil(total / pageSize)),
+      items: demandes.map((item) => this.mapDemand(item)),
+    };
+  }
+
+  async getAdminStats(req: any) {
+    await this.requireCadastreAdminSession(req);
+    const [total, grouped, generated, pendingItems, societyRows] = await this.prisma.$transaction([
+      this.prisma.demandeDocumentCadastral.count(),
+      this.prisma.demandeDocumentCadastral.groupBy({
+        by: ['statut'],
+        orderBy: { statut: 'asc' },
+        _count: { _all: true },
+      }),
+      this.prisma.documentCadastralGenere.count(),
+      this.prisma.demandeDocumentCadastral.findMany({
+        where: { statut: { in: [StatutDemandeDocument.ENREGISTREE, StatutDemandeDocument.EN_COURS_EXAMEN, StatutDemandeDocument.VERIFIEE] } },
+        select: { dateDemande: true, dateSoumission: true },
+      }),
+      this.prisma.demandeDocumentCadastral.findMany({
+        select: { utilisateur: { select: { detenteur: { select: { nom_societeFR: true, nom_societeAR: true } } } } },
+      }),
+    ]);
+    const societes = Array.from(new Set(
+      societyRows
+        .flatMap((row) => [row.utilisateur.detenteur?.nom_societeFR, row.utilisateur.detenteur?.nom_societeAR])
+        .filter((value): value is string => Boolean(value?.trim()))
+        .map((value) => value.trim()),
+    )).sort((left, right) => left.localeCompare(right, 'fr'));
+    const counts = Object.fromEntries(
+      grouped.map((row) => [row.statut, Number((row._count as { _all?: number } | undefined)?._all || 0)]),
+    );
+    const durations = pendingItems
+      .map((item) => (Date.now() - new Date(item.dateSoumission || item.dateDemande).getTime()) / 86400000)
+      .filter((value) => Number.isFinite(value) && value >= 0);
+
+    return {
+      total,
+      pending: Number(counts.ENREGISTREE || 0) + Number(counts.EN_COURS_EXAMEN || 0) + Number(counts.VERIFIEE || 0),
+      accepted: Number(counts.ACCEPTEE || 0) + Number(counts.GENEREE || 0) + Number(counts.DELIVREE || 0),
+      rejected: Number(counts.REJETEE || 0),
+      documentsGenerated: generated,
+      averageProcessingDays: durations.length ? Number((durations.reduce((sum, value) => sum + value, 0) / durations.length).toFixed(1)) : 0,
+      byStatus: counts,
+      societes,
+    };
+  }
+
+  async updateAdminStatus(demandeId: number, body: AdminRequestStatusBody, req: any) {
+    const session = await this.requireCadastreAdminSession(req);
+    const statut = String(body?.statut || '').trim().toUpperCase() as StatutDemandeDocument;
+    if (!Object.values(StatutDemandeDocument).includes(statut)) {
+      throw new BadRequestException('Statut cadastral invalide.');
+    }
+
+    const demande = await this.prisma.demandeDocumentCadastral.findUnique({ where: { id: demandeId } });
+    if (!demande) throw new NotFoundException('Demande cadastrale introuvable.');
+
+    const actionByStatus: Partial<Record<StatutDemandeDocument, ActionDocumentCadastral>> = {
+      EN_COURS_EXAMEN: ActionDocumentCadastral.DEMANDE_VERIFIEE,
+      ACCEPTEE: ActionDocumentCadastral.DEMANDE_ACCEPTEE,
+      EN_COMPLEMENT: ActionDocumentCadastral.COMPLEMENT_DEMANDE,
+      REJETEE: ActionDocumentCadastral.DEMANDE_REJETEE,
+      GENEREE: ActionDocumentCadastral.DOCUMENT_GENERE,
+      DELIVREE: ActionDocumentCadastral.DOCUMENT_DELIVRE,
+    };
+
+    await this.prisma.demandeDocumentCadastral.update({ where: { id: demandeId }, data: { statut } });
+    await this.recordHistory(
+      demandeId,
+      actionByStatus[statut] || ActionDocumentCadastral.DEMANDE_ENREGISTREE,
+      String(body.commentaire || '').trim() || `Statut modifie vers ${statut}.`,
+      this.getAgentLabel(session.user),
+    );
+
+    return { message: 'Statut de la demande mis a jour.', demande: await this.getDemandById(demandeId, session.user) };
+  }
+
+  async addAdminNote(demandeId: number, note: string, req: any) {
+    const session = await this.requireCadastreAdminSession(req);
+    const cleanNote = String(note || '').trim();
+    if (!cleanNote) throw new BadRequestException('La note est requise.');
+    const demande = await this.prisma.demandeDocumentCadastral.findUnique({ where: { id: demandeId }, select: { id: true } });
+    if (!demande) throw new NotFoundException('Demande cadastrale introuvable.');
+    await this.recordHistory(demandeId, ActionDocumentCadastral.NOTE_AJOUTEE, cleanNote, this.getAgentLabel(session.user));
+    return { message: 'Note administrative ajoutee.' };
   }
 
   async createRequest(body: CreateCadastreRequestBody, req: any) {
@@ -549,8 +1041,9 @@ export class CadastreDocumentService {
     const emailContact = this.normalizeEmail(body.emailContact);
     const telephoneContact = this.normalizePhone(body.telephoneContact);
     const canalVerification = this.normalizeCanal(body.canalVerification);
-    const qualiteDemandeur = String(body.qualiteDemandeur || 'Representant legal').trim();
-    const objetDemande = String(body.objetDemande || 'Demande de document cadastral').trim();
+    const qualiteDemandeur = this.normalizeQualiteDemandeur(body.qualiteDemandeur);
+    const objetDemande = this.normalizeObjetDemande(body.objetDemande);
+    const objetDemandeAutre = String(body.objetDemandeAutre || '').trim();
     const baseCommunication = String(
       body.baseCommunication ||
         'Demande introduite via le workflow cadastral du portail.',
@@ -571,6 +1064,9 @@ export class CadastreDocumentService {
     if (!prenom) {
       throw new BadRequestException('Le prenom est requis.');
     }
+    if (objetDemande === ObjetDemandeCadastre.AUTRE && !objetDemandeAutre) {
+      throw new BadRequestException('Veuillez preciser l objet de la demande.');
+    }
     if (canalVerification === CanalVerificationCadastre.EMAIL && !emailContact) {
       throw new BadRequestException('L\'email de contact est requis.');
     }
@@ -583,6 +1079,13 @@ export class CadastreDocumentService {
 
     const permis = await this.resolvePermisForCadastre(body);
     this.assertPermisMatchesRequest(permis, typePermis);
+    const verifiedContact = this.assertContactMatchesDetenteur(
+      permis,
+      canalVerification,
+      emailContact,
+      telephoneContact,
+      qualiteDemandeur,
+    );
     const permisId = permis.id;
     const referenceDemande = this.generateReferenceDemande();
     const typeDocument = this.normalizeTypeDocument(body.typeDocument);
@@ -602,10 +1105,11 @@ export class CadastreDocumentService {
         nin,
         nom,
         prenom,
-        emailContact: emailContact || null,
-        telephoneContact: telephoneContact || null,
+        emailContact: verifiedContact.email,
+        telephoneContact: verifiedContact.telephone,
         canalVerification,
         objetDemande,
+        objetDemandeAutre: objetDemandeAutre || null,
         qualiteDemandeur,
         baseCommunication,
       },
@@ -625,13 +1129,18 @@ export class CadastreDocumentService {
     });
 
     if (canalVerification === CanalVerificationCadastre.EMAIL) {
-      await this.sendOtpEmail(emailContact, prenom, otpCode, referenceDemande);
-    } else {
-      await this.sendOtpPhoneFallback(
-        telephoneContact,
+      await this.sendOtpEmail(
+        verifiedContact.email || '',
+        verifiedContact.prenom || prenom,
         otpCode,
         referenceDemande,
-        emailContact,
+      );
+    } else {
+      await this.sendOtpPhoneFallback(
+        verifiedContact.telephone || '',
+        otpCode,
+        referenceDemande,
+        verifiedContact.email,
       );
     }
 
@@ -675,6 +1184,7 @@ export class CadastreDocumentService {
     const emailContact = this.normalizeEmail(body.emailContact);
     const telephoneContact = this.normalizePhone(body.telephoneContact);
     const canalVerification = this.normalizeCanal(body.canalVerification);
+    const qualiteDemandeur = this.normalizeQualiteDemandeur(body.qualiteDemandeur);
 
     if (canalVerification === CanalVerificationCadastre.EMAIL && !emailContact) {
       throw new BadRequestException('L\'email de contact est requis.');
@@ -687,19 +1197,25 @@ export class CadastreDocumentService {
     }
 
     const permis = await this.resolvePermisForCadastre(body);
-    this.assertContactMatchesDetenteur(
+    const verifiedContact = this.assertContactMatchesDetenteur(
       permis,
       canalVerification,
       emailContact,
       telephoneContact,
+      qualiteDemandeur,
     );
 
     return {
       valid: true,
       message:
         canalVerification === CanalVerificationCadastre.EMAIL
-          ? 'Adresse email conforme au detenteur moral.'
-          : 'Numero de telephone conforme au detenteur moral.',
+          ? 'Adresse email conforme a la qualite selectionnee pour ce permis.'
+          : 'Numero de telephone conforme a la qualite selectionnee pour ce permis.',
+      qualiteDemandeur,
+      contact: {
+        email: verifiedContact.email,
+        telephone: verifiedContact.telephone,
+      },
     };
   }
 
@@ -894,12 +1410,11 @@ export class CadastreDocumentService {
         statut: StatutDemandeDocument.VERIFIEE,
         dateSoumission: new Date(),
         typeDocument: this.normalizeTypeDocument(body.typeDocument || fullDemand.typeDocument),
-        qualiteDemandeur:
-          String(body.qualiteDemandeur || fullDemand.qualiteDemandeur || '').trim() ||
-          'Representant legal',
-        objetDemande:
-          String(body.objetDemande || fullDemand.objetDemande || '').trim() ||
-          'Demande de document cadastral',
+        qualiteDemandeur: this.normalizeQualiteDemandeur(
+          body.qualiteDemandeur || fullDemand.qualiteDemandeur,
+        ),
+        objetDemande: this.normalizeObjetDemande(body.objetDemande || fullDemand.objetDemande),
+        objetDemandeAutre: String(body.objetDemandeAutre || fullDemand.objetDemandeAutre || '').trim() || null,
         baseCommunication:
           String(body.baseCommunication || fullDemand.baseCommunication || '').trim() ||
           'Demande introduite via le workflow cadastral du portail.',
@@ -908,9 +1423,11 @@ export class CadastreDocumentService {
 
     await this.recordHistory(
       demande.id,
-      ActionDocumentCadastral.DOCUMENT_DELIVRE,
+      ActionDocumentCadastral.DEMANDE_VERIFIEE,
       'Demande soumise pour traitement.',
     );
+
+    await this.generateCadastreReceiptPdf(demande.id);
 
     return {
       message:
@@ -937,6 +1454,18 @@ export class CadastreDocumentService {
             id: true,
             code_permis: true,
             qr_code: true,
+            typePermis: { select: { lib_type: true, code_type: true } },
+          },
+        },
+        utilisateur: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            nom: true,
+            Prenom: true,
+            telephone: true,
+            detenteur: { select: { nom_societeFR: true, nom_societeAR: true, email: true } },
           },
         },
       },

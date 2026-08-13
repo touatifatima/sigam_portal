@@ -491,6 +491,7 @@ export default function Navbar() {
       return [
         { href: '/admin_panel/DossierAdminPage', label: 'Dossiers' },
         { href: '/admin_panel/gestion-demandes/gestion_demandes', label: 'Demandes' },
+        { href: '/admin_panel/agent_cadastre/gestion_demandes_documents', label: 'Demandes cadastrales' },
         { href: '/admin_panel/gestion_notifications', label: 'Notifications' },
       ];
     }
