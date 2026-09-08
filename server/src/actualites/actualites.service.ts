@@ -246,6 +246,23 @@ export class ActualitesService {
     };
   }
 
+  async getPublicActualite(slug: string) {
+    await this.ensureSeeded();
+
+    const item = await this.prisma.actualitePortail.findFirst({
+      where: {
+        slug: this.slugify(slug),
+        isPublished: true,
+      },
+    });
+
+    if (!item) {
+      throw new NotFoundException('Actualite introuvable');
+    }
+
+    return { item: this.mapItem(item) };
+  }
+
   async getAdminActualites() {
     await this.ensureSeeded();
 

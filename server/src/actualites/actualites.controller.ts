@@ -100,4 +100,9 @@ export class ActualitesController {
     await this.assertAdminAccess(req);
     return this.actualitesService.resetActualites();
   }
+
+  @Get(':slug')
+  async getPublicActualite(@Param('slug') slug: string) {
+    return this.actualitesService.getPublicActualite(slug);
+  }
 }

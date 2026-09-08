@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useEffect, useState, type MouseEvent } from "react";
 import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Globe } from "lucide-react";
@@ -25,7 +25,6 @@ export const Header = () => {
     { label: "Services", href: "#services" },
     { label: "Tarifs & Abonnements", href: "/cadastre/trifs_abonnement" },
     { label: "Carte Minière", href: "/carte/carte_public" },
-    { label: "Tarifs & Abonnements", href: "/abonnements" },
     { label: "Actualités", href: "/acceuil/actualites" },
     { label: "Contact", href: "/acceuil/contact" },
   ];
@@ -36,13 +35,25 @@ export const Header = () => {
     return location.pathname === href || location.pathname.startsWith(`${href}/`);
   };
 
+  const handleAnchorClick = (e: MouseEvent<HTMLAnchorElement>, href: string) => {
+    e.preventDefault();
+    setIsMobileMenuOpen(false);
+    if (location.pathname === "/") {
+      document
+        .getElementById(href.slice(1))
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      window.location.href = `/${href}`;
+    }
+  };
+
   return (
     <header
       className={`${styles.header} ${
         isScrolled ? styles.headerScrolled : styles.headerTransparent
       }`}
     >
-      <div className={`container ${styles.container}`}>
+      <div className={styles.container}>
         {/* Logo */}
         <a href="/" className={styles.logoLink}>
           <div className={styles.flagBadge} aria-hidden="true">
@@ -93,6 +104,11 @@ export const Header = () => {
             <a
               key={link.label}
               href={link.href}
+              onClick={
+                link.href.startsWith("#")
+                  ? (e) => handleAnchorClick(e, link.href)
+                  : undefined
+              }
               className={`${styles.navLink} ${isActiveLink(link.href) ? styles.navLinkActive : ""}`}
             >
               {link.label}
@@ -126,7 +142,7 @@ export const Header = () => {
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
         <div className={styles.mobileMenu}>
-          <nav className={`container ${styles.mobileNav}`}>
+          <nav className={styles.mobileNav}>
             {navLinks.map((link) => (
               <a
                 key={link.label}
@@ -134,7 +150,11 @@ export const Header = () => {
                 className={`${styles.mobileNavLink} ${
                   isActiveLink(link.href) ? styles.mobileNavLinkActive : ""
                 }`}
-                onClick={() => setIsMobileMenuOpen(false)}
+                onClick={
+                  link.href.startsWith("#")
+                    ? (e) => handleAnchorClick(e, link.href)
+                    : () => setIsMobileMenuOpen(false)
+                }
               >
                 {link.label}
               </a>

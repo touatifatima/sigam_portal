@@ -154,6 +154,14 @@ export const fetchPublishedActualites = async (params?: {
   return Array.isArray(payload.items) ? payload.items.map(toActualiteItem) : [];
 };
 
+export const fetchPublishedActualite = async (slug: string): Promise<ActualiteItem> => {
+  const payload = await request(`/api/actualites/${encodeURIComponent(slug)}`);
+  if (!payload.item) {
+    throw new Error('Actualite introuvable');
+  }
+  return toActualiteItem(payload.item);
+};
+
 export const fetchAdminActualites = async (): Promise<ActualiteItem[]> => {
   const payload = await request('/api/actualites/admin/all');
   return Array.isArray(payload.items) ? payload.items.map(toActualiteItem) : [];

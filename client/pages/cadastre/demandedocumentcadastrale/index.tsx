@@ -18,6 +18,7 @@ import {
   Eye,
   FileText,
   ImagePlus,
+  LayoutDashboard,
   Mail,
   MapPinned,
   Phone,
@@ -970,6 +971,17 @@ export default function DemandeDocumentCadastralePage() {
           <span>Cadastre</span>
           <ArrowRight size={14} />
           <b>Demande de documents</b>
+        </div>
+
+        <div className={styles.pageToolbar}>
+          <button
+            type="button"
+            className={styles.dashboardButton}
+            onClick={() => navigate(getDefaultDashboardPath(auth?.role), { replace: true })}
+          >
+            <LayoutDashboard size={16} />
+            Retour au dashboard
+          </button>
         </div>
 
         <div className={styles.workflowContainer}>

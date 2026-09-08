@@ -21,6 +21,12 @@
   overflow: hidden;
 }
 
+/* La page FAQ est volontairement légèrement réduite pour rester alignée
+   visuellement avec la page d'accueil. */
+.faqPage {
+  zoom: 0.9;
+}
+
 .page::before,
 .page::after {
   content: '';
@@ -864,5 +870,127 @@
   .contactMap {
     height: 360px;
   }
+}
+
+/* Contact / implantations visual system */
+.contactPage {
+  --contact-navy: #0d1b2a;
+  --contact-gold: #d98e2b;
+  --contact-gold-dark: #b8741e;
+  --contact-border: #e8e2d6;
+  --contact-text: #1e2530;
+  --contact-muted: #5c6470;
+  color: var(--contact-text);
+  background: #fff;
+  font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+}
+
+.contactPage .hero {
+  padding: 2.2rem 0 3.3rem;
+  color: #fff;
+  background: linear-gradient(90deg, rgba(13, 27, 42, .96), rgba(25, 52, 67, .86));
+}
+
+.contactPage .heroInner { max-width: 1240px; }
+.contactPage .badge, .contactPage .hero p, .contactPage .metaRow, .contactPage .actions { display: none; }
+.contactBreadcrumb { display: flex; align-items: center; gap: .55rem; margin-bottom: 2rem; color: #d6dde4; font-size: .78rem; }
+.contactBreadcrumb a { color: #fff; font-weight: 700; text-decoration: none; }
+.contactBreadcrumb b { color: #b8c3cc; font-weight: 500; }
+.contactPage .hero h1 { margin: 0 0 .8rem; color: #fff; font-size: clamp(2.25rem, 4.5vw, 3.6rem); line-height: 1.1; }
+.contactPage .hero h1 span { display: block; color: var(--contact-gold); }
+.contactLastUpdate { display: inline-flex; align-items: center; gap: .45rem; color: #c8d1d9; font-size: .8rem; }
+.contactLastUpdate svg { color: var(--contact-gold); }
+.contactPage .contentWrap { width: min(100%, 1240px); margin-top: 0; padding-top: 2rem; }
+.contactPage .contentCard { border: 0; border-radius: 0; background: transparent; box-shadow: none; overflow: visible; }
+.contactPage .contentHeader { display: none; }
+.contactPage .contentBody { padding: 0; display: block; }
+.contactBlock { display: grid; gap: 2rem; }
+.contactSummary { display: flex; align-items: center; gap: 1.4rem; padding: .75rem 0; color: var(--contact-muted); font-size: .78rem; flex-wrap: wrap; }
+.contactSummary span, .contactSummary a { display: inline-flex; align-items: center; gap: .4rem; }
+.contactSummary svg { color: var(--contact-gold); }
+.contactSummary a { color: var(--contact-gold-dark); font-weight: 700; text-decoration: none; }
+.hqCard { display: grid; grid-template-columns: 54px minmax(180px, 1fr) repeat(3, minmax(150px, 1fr)) auto; gap: 1.15rem; align-items: center; padding: 1.4rem; border: 1px solid #f0dfc1; border-radius: 12px; background: #fffaf0; }
+.hqIcon, .helpIcon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: var(--contact-gold-dark); background: #fff; font-size: 1.15rem; }
+.hqAddress span { color: var(--contact-gold-dark); font-size: .72rem; font-weight: 800; text-transform: uppercase; }
+.hqAddress h2 { margin: .25rem 0 .35rem; color: var(--contact-navy); font-size: 1.05rem; }
+.hqAddress p, .hqInfo span { margin: 0; color: var(--contact-muted); font-size: .76rem; line-height: 1.5; }
+.hqInfo { display: contents; }
+.hqInfo > div { display: grid; gap: .35rem; }
+.hqInfo b { display: inline-flex; align-items: center; gap: .35rem; color: var(--contact-text); font-size: .74rem; }
+.hqInfo b svg { color: var(--contact-gold-dark); }
+.smallMapButton, .fullMapButton, .goldButton { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border: 1px solid var(--contact-border); border-radius: 7px; padding: .62rem .75rem; color: var(--contact-text); background: #fff; font-size: .72rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.smallMapButton:hover, .fullMapButton:hover { border-color: var(--contact-gold); color: var(--contact-gold-dark); }
+.contactSectionHead { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; }
+.contactSectionHead > div:first-child > span { color: var(--contact-gold-dark); font-size: .75rem; font-weight: 800; text-transform: uppercase; }
+.contactSectionHead h2 { margin: .3rem 0 .25rem; color: var(--contact-navy); font-size: 1.35rem; }
+.contactSectionHead p { margin: 0; color: var(--contact-muted); font-size: .8rem; }
+.sectionTools { display: flex; gap: .45rem; }
+.sectionTools button { display: inline-flex; align-items: center; gap: .35rem; border: 1px solid var(--contact-border); border-radius: 7px; padding: .55rem .7rem; color: var(--contact-muted); background: #fff; font: inherit; font-size: .72rem; font-weight: 700; }
+.sectionTools button:first-child { color: var(--contact-gold-dark); border-color: #f0d5ac; background: #fffaf0; }
+.antennaGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+.antennaCard, .helpCard, .bottomPanel { padding: 1.1rem; border: 1px solid var(--contact-border); border-radius: 10px; background: #fff; }
+.antennaTitle { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; margin-bottom: .65rem; }
+.antennaTitle h3 { margin: 0; color: var(--contact-navy); font-size: .88rem; line-height: 1.35; }
+.antennaTitle svg { flex: none; color: var(--contact-gold); }
+.antennaCard p { display: flex; align-items: flex-start; gap: .4rem; margin: .42rem 0; color: var(--contact-muted); font-size: .72rem; line-height: 1.45; }
+.antennaCard p svg { flex: none; margin-top: .12rem; color: var(--contact-gold-dark); }
+.antennaCard .officeAddress { min-height: 34px; }
+.officeActions { display: flex; gap: .45rem; margin-top: .8rem; }
+.officeActions a { display: inline-flex; align-items: center; justify-content: center; gap: .3rem; flex: 1; padding: .48rem .3rem; border: 1px solid var(--contact-border); border-radius: 6px; color: var(--contact-text); font-size: .68rem; font-weight: 700; text-decoration: none; }
+.officeActions a:hover { border-color: var(--contact-gold); color: var(--contact-gold-dark); }
+.helpCard { background: #fffaf0; border-color: #f0dfc1; }
+.helpCard h3 { margin: .75rem 0 .35rem; color: var(--contact-gold-dark); font-size: .95rem; }
+.helpCard p { margin: 0 0 .85rem; color: #4a4030; font-size: .75rem; line-height: 1.5; }
+.goldButton { border: 0; color: #fff; background: var(--contact-gold); }
+.goldButton:hover { background: var(--contact-gold-dark); }
+.mapSection { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: 340px; overflow: hidden; border: 1px solid var(--contact-border); border-radius: 12px; }
+.mapInfo { padding: 1.4rem; background: #fff; }
+.mapInfo h2 { margin: 0 0 .45rem; color: var(--contact-navy); font-size: 1rem; }
+.mapInfo p { margin: 0 0 1.1rem; color: var(--contact-muted); font-size: .78rem; line-height: 1.55; }
+.legend { display: grid; gap: .65rem; margin-bottom: 1.2rem; }
+.legend span { display: flex; align-items: center; gap: .45rem; color: var(--contact-text); font-size: .75rem; }
+.legend i { width: 12px; height: 12px; border-radius: 50%; }
+.regionalDot { background: #e0a542; }.hqDot { background: var(--contact-gold-dark); }
+.fullMapButton { width: 100%; }
+.contactMap { min-height: 340px; border: 0; border-radius: 0; }
+.bottomGrid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 1.4rem; }
+.panelHead { display: flex; gap: .8rem; align-items: flex-start; margin-bottom: 1.1rem; }
+.panelHead > span { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; color: var(--contact-gold-dark); background: #fffaf0; }
+.panelHead h2 { margin: 0 0 .25rem; color: var(--contact-navy); font-size: .98rem; }
+.panelHead p { margin: 0; color: var(--contact-muted); font-size: .75rem; }
+.serviceGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
+.serviceGrid button { display: grid; justify-items: center; gap: .45rem; min-height: 82px; padding: .7rem .4rem; border: 1px solid var(--contact-border); border-radius: 8px; color: var(--contact-text); background: #fff; cursor: pointer; font: inherit; font-size: .69rem; font-weight: 700; }
+.serviceGrid button:hover { border-color: var(--contact-gold); color: var(--contact-gold-dark); }
+.serviceGrid svg { color: var(--contact-gold-dark); font-size: 1.15rem; }
+.contactForm { display: grid; gap: .75rem; }
+.formRow { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+.contactForm label { display: grid; gap: .32rem; color: var(--contact-text); font-size: .74rem; font-weight: 700; }
+.contactForm em { color: #c0442c; font-style: normal; }
+.contactForm input, .contactForm select, .contactForm textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--contact-border); border-radius: 6px; padding: .62rem .7rem; outline: 0; color: var(--contact-text); background: #fff; font: inherit; font-size: .75rem; font-weight: 400; }
+.contactForm textarea { min-height: 70px; resize: vertical; }
+.contactForm input:focus, .contactForm select:focus, .contactForm textarea:focus { border-color: var(--contact-gold); box-shadow: 0 0 0 3px rgba(217, 142, 43, .12); }
+.formActions { display: flex; align-items: center; justify-content: space-between; gap: .8rem; flex-wrap: wrap; }
+.formActions > span { display: flex; align-items: center; gap: .35rem; color: var(--contact-gold-dark); font-size: .71rem; font-weight: 700; }
+.formActions small { color: var(--contact-muted); font-size: .65rem; font-weight: 400; }
+.formActions button { display: inline-flex; align-items: center; gap: .4rem; border: 0; border-radius: 7px; padding: .65rem .85rem; color: #fff; background: var(--contact-gold); cursor: pointer; font: inherit; font-size: .74rem; font-weight: 800; }
+.formActions button:hover { background: var(--contact-gold-dark); }
+
+@media (max-width: 1100px) {
+  .hqCard { grid-template-columns: 54px 1fr 1fr; }
+  .hqInfo { display: grid; grid-template-columns: repeat(3, 1fr); grid-column: 2 / -1; }
+  .smallMapButton { grid-column: 2; justify-self: start; }
+  .antennaGrid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 700px) {
+  .contactPage .hero { padding: 1.5rem 0 2.3rem; }
+  .contactPage .hero h1 { font-size: 2.2rem; }
+  .contactPage .contentWrap { padding-top: 1.2rem; }
+  .hqCard, .hqInfo { display: grid; grid-template-columns: 1fr; }
+  .hqIcon { display: none; }
+  .hqInfo, .smallMapButton { grid-column: auto; }
+  .contactSectionHead { align-items: flex-start; flex-direction: column; }
+  .antennaGrid, .bottomGrid, .mapSection { grid-template-columns: 1fr; }
+  .contactMap { min-height: 300px; }
+  .formRow { grid-template-columns: 1fr; }
 }
 

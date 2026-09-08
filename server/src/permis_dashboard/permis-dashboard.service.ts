@@ -194,6 +194,37 @@ export class PermisDashboardService {
     };
   }
 
+  async getPublicDashboardStats() {
+    const now = new Date();
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+    const [total, typesSubstances, superficieAgg, titulaires, titresAccordesCetteAnnee] = await Promise.all([
+      this.prisma.permisPortail.count(),
+      this.prisma.substance.count(),
+      this.prisma.permisPortail.aggregate({
+        _sum: { superficie: true },
+      }),
+      this.prisma.permisPortail.groupBy({
+        by: ['id_detenteur'],
+        where: { id_detenteur: { not: null } },
+        _count: { id: true },
+      }),
+      this.prisma.permisPortail.count({
+        where: {
+          date_octroi: { gte: startOfYear, lte: now },
+        },
+      }),
+    ]);
+
+    return {
+      total,
+      typesSubstances,
+      superficieTotale: Number(superficieAgg._sum.superficie || 0),
+      entreprisesTitulaires: titulaires.length,
+      titresAccordesCetteAnnee,
+    };
+  }
+
   async getDashboardStats() {
     const now = new Date();
     const sixMonthsLater = new Date();

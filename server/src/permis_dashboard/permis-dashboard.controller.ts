@@ -31,6 +31,16 @@ export class PermisDashboardController {
     return null;
   }
 
+  @Get('public-stats')
+  @ApiOperation({ summary: 'Get public aggregate dashboard statistics' })
+  @ApiResponse({
+    status: 200,
+    description: 'Public aggregate dashboard statistics retrieved successfully',
+  })
+  async getPublicStats() {
+    return this.dashboardService.getPublicDashboardStats();
+  }
+
   @Get('stats')
   @ApiOperation({ summary: 'Get dashboard statistics' })
   @ApiResponse({

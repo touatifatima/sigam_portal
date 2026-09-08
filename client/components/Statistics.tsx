@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Factory, FileCheck, Gem, Search, TrendingUp } from "lucide-react";
+import { Factory, FileCheck, Gem, MapPinned, TrendingUp } from "lucide-react";
 import styles from "./Statistics.module.css";
 import { ScrollReveal } from "./ScrollReveal";
 
@@ -13,10 +13,10 @@ interface StatItemProps {
 
 type DashboardStatsResponse = {
   total?: number;
-  actifs?: number;
-  enCours?: number;
-  expires?: number;
-  expiringSoon?: number;
+  typesSubstances?: number;
+  superficieTotale?: number;
+  entreprisesTitulaires?: number;
+  titresAccordesCetteAnnee?: number;
 };
 
 type StatConfig = {
@@ -38,35 +38,36 @@ const buildDefaultStats = (): StatConfig[] => [
     key: "total",
     icon: <FileCheck className="h-8 w-8" />,
     value: 0,
-    label: "Permis miniers (total)",
+    label: "Titres miniers total",
     delay: 0,
   },
   {
-    key: "actifs",
-    icon: <Factory className="h-8 w-8" />,
+    key: "typesSubstances",
+    icon: <Gem className="h-8 w-8" />,
     value: 0,
-    label: "Permis en vigueur",
+    label: "Types de substances minières",
     delay: 100,
   },
   {
-    key: "encours",
-    icon: <TrendingUp className="h-8 w-8" />,
+    key: "superficieTotale",
+    icon: <MapPinned className="h-8 w-8" />,
     value: 0,
-    label: "Procedures en cours",
+    suffix: " ha",
+    label: "Superficie totale",
     delay: 200,
   },
   {
-    key: "expires",
-    icon: <Search className="h-8 w-8" />,
+    key: "entreprisesTitulaires",
+    icon: <Factory className="h-8 w-8" />,
     value: 0,
-    label: "Permis expires",
+    label: "Entreprises titulaires",
     delay: 300,
   },
   {
-    key: "expiringSoon",
-    icon: <Gem className="h-8 w-8" />,
+    key: "titresAccordesCetteAnnee",
+    icon: <TrendingUp className="h-8 w-8" />,
     value: 0,
-    label: "Expiration <= 6 mois",
+    label: "Titres accordés cette année",
     delay: 400,
   },
 ];
@@ -75,10 +76,10 @@ const mapStatsFromApi = (data: DashboardStatsResponse): StatConfig[] => {
   const defaults = buildDefaultStats();
   return [
     { ...defaults[0], value: toSafeNumber(data?.total) },
-    { ...defaults[1], value: toSafeNumber(data?.actifs) },
-    { ...defaults[2], value: toSafeNumber(data?.enCours) },
-    { ...defaults[3], value: toSafeNumber(data?.expires) },
-    { ...defaults[4], value: toSafeNumber(data?.expiringSoon) },
+    { ...defaults[1], value: toSafeNumber(data?.typesSubstances) },
+    { ...defaults[2], value: toSafeNumber(data?.superficieTotale) },
+    { ...defaults[3], value: toSafeNumber(data?.entreprisesTitulaires) },
+    { ...defaults[4], value: toSafeNumber(data?.titresAccordesCetteAnnee) },
   ];
 };
 
@@ -158,7 +159,7 @@ export const Statistics = () => {
         (import.meta as any)?.env?.VITE_API_URL) as string) ||
       "";
 
-    const url = `${API_BASE}/api/dashboard/stats`;
+    const url = `${API_BASE}/api/dashboard/public-stats`;
     const controller = new AbortController();
 
     const loadStats = async () => {

@@ -57,7 +57,10 @@ const DeferredSection = ({
     <div
       id={sectionId}
       ref={markerRef}
-      style={{ minHeight: isVisible ? undefined : minHeight }}
+      style={{
+        minHeight: isVisible ? undefined : minHeight,
+        scrollMarginTop: 110,
+      }}
     >
       {isVisible ? children : null}
     </div>
@@ -65,6 +68,24 @@ const DeferredSection = ({
 };
 
 const Index = () => {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash !== "#services") return;
+    const scrollToServices = () => {
+      document
+        .getElementById("services")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    scrollToServices();
+    // Le contenu est monté en différé (IntersectionObserver) : réessayer
+    const t1 = window.setTimeout(scrollToServices, 300);
+    const t2 = window.setTimeout(scrollToServices, 1000);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, []);
+
   return (
     <div className={`${styles.homePage} min-h-screen`}>
       <Header />
@@ -85,12 +106,12 @@ const Index = () => {
       <Suspense fallback={null}>
         <Statistics />
       </Suspense>
-      <DeferredSection minHeight={620} sectionId="services">
+      <DeferredSection minHeight={620}>
         <Suspense fallback={null}>
           <Services />
         </Suspense>
       </DeferredSection>
-      <DeferredSection minHeight={520}>
+      <DeferredSection minHeight={520} sectionId="services">
         <Suspense fallback={null}>
           <HowItWorks />
         </Suspense>

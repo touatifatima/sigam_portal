@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { FiCalendar, FiFileText, FiGlobe } from 'react-icons/fi';
+import {
+  FiArrowRight,
+  FiCalendar,
+  FiClock,
+  FiFileText,
+  FiGlobe,
+  FiHeadphones,
+  FiMail,
+  FiMapPin,
+  FiPhone,
+} from 'react-icons/fi';
 import { Header } from '@/components/Header';
 import {
   fetchPublicStaticPage,
@@ -163,10 +173,8 @@ const buildOfficeMap = () =>
   new Map(CONTACT_OFFICES.map((office) => [office.id, office]));
 
 function ContactMapBlock({
-  isArabic,
   cards,
 }: {
-  isArabic: boolean;
   cards: ContactCard[];
 }) {
   const mapRef = useRef<HTMLDivElement | null>(null);
@@ -252,69 +260,47 @@ function ContactMapBlock({
   const summaryPhone = resolvedCards[0]?.location?.phone || CONTACT_OFFICES[0]?.phone || '';
   const summaryEmail = resolvedCards[0]?.location?.email || CONTACT_OFFICES[0]?.email || '';
 
+  const hq = resolvedCards[0];
+  const antennas = resolvedCards.slice(1);
+  const officeLines = (card: (typeof resolvedCards)[number]) => {
+    const location = card.location;
+    return {
+      address: card.paragraphs[0] || location?.address || 'Adresse non renseignée',
+      phone: location?.phone || card.paragraphs.find((value) => value.includes('Tel')) || 'Téléphone non renseigné',
+      email: location?.email || card.paragraphs.find((value) => EMAIL_PATTERN.test(value)) || '',
+    };
+  };
+
   return (
     <section className={styles.contactBlock}>
-      <div className={styles.contactStats}>
-        <span>
-          {resolvedCards.length}{' '}
-          {isArabic ? '\u0639\u0646\u0627\u0648\u064a\u0646' : 'directions affichees'}
-          {isArabic ? ' - ' : ' Standard ANAM: '}
-        </span>
-        <span>{summaryPhone}</span>
-        <span>
-          <a href={`mailto:${summaryEmail}`}>{summaryEmail}</a>
-        </span>
+      <div className={styles.contactSummary}>
+        <span><FiMapPin /> {resolvedCards.length} implantations</span>
+        <span><FiPhone /> {summaryPhone}</span>
+        <a href={`mailto:${summaryEmail}`}><FiMail /> {summaryEmail}</a>
       </div>
 
-      <div className={styles.contactCardsGrid}>
-        {resolvedCards.map((card) => {
-          const mapHref = card.location
-            ? `https://www.google.com/maps?q=${card.location.lat},${card.location.lng}`
-            : '';
-          return (
-            <article key={card.id} className={styles.contactCard}>
-              <h3>{card.title}</h3>
-              {card.paragraphs.map((paragraph, index) => {
-                const value = String(paragraph || '').trim();
-                if (!value) return null;
+      {hq && (() => {
+        const info = officeLines(hq);
+        return <article className={styles.hqCard}>
+          <div className={styles.hqIcon}><FiFileText /></div>
+          <div className={styles.hqAddress}><span>Direction Générale</span><h2>{hq.title.replace(/\s*-\s*Si[eè]ge.*/i, '')}</h2><p>{info.address}</p></div>
+          <div className={styles.hqInfo}><div><b><FiPhone /> Téléphone</b><span>{info.phone}</span></div><div><b><FiMail /> E-mail</b><span>{info.email || 'Email non renseigné'}</span></div><div><b><FiClock /> Horaires d&apos;ouverture</b><span>Lun - Ven : 08h00 - 16h30<br />Sam - Dim : Fermé</span></div></div>
+          {hq.location && <a className={styles.smallMapButton} href={`https://www.google.com/maps?q=${hq.location.lat},${hq.location.lng}`} target="_blank" rel="noreferrer"><FiMapPin /> Voir sur la carte</a>}
+        </article>;
+      })()}
 
-                if (EMAIL_PATTERN.test(value)) {
-                  return (
-                    <p key={`${card.id}_line_${index}`}>
-                      <a href={`mailto:${value}`}>{value}</a>
-                    </p>
-                  );
-                }
+      <div className={styles.contactSectionHead}><div><span>Nos implantations</span><h2>Des équipes à votre écoute</h2><p>Retrouvez les coordonnées de nos antennes régionales à travers le territoire national.</p></div><div className={styles.sectionTools}><button type="button"><FiMapPin /> Carte</button><button type="button"><FiFileText /> Liste</button></div></div>
 
-                return <p key={`${card.id}_line_${index}`}>{value}</p>;
-              })}
-              {mapHref ? (
-                <a href={mapHref} target="_blank" rel="noreferrer">
-                  {isArabic
-                    ? '\u0639\u0631\u0636 \u0639\u0644\u0649 \u0627\u0644\u062e\u0631\u064a\u0637\u0629'
-                    : 'Voir sur la carte'}
-                </a>
-              ) : null}
-            </article>
-          );
+      <div className={styles.antennaGrid}>
+        {antennas.map((card) => {
+          const info = officeLines(card);
+          return <article key={card.id} className={styles.antennaCard}><div className={styles.antennaTitle}><h3>{card.title}</h3><FiMapPin /></div><p className={styles.officeAddress}>{info.address}</p><p><FiPhone /> {info.phone}</p><p><FiMail /> {info.email || 'Email non renseigné'}</p><div className={styles.officeActions}><a href={`tel:${info.phone.replace(/[^+\d]/g, '')}`}><FiPhone /> Appeler</a>{card.location && <a href={`https://www.google.com/maps?q=${card.location.lat},${card.location.lng}`} target="_blank" rel="noreferrer"><FiMapPin /> Voir la carte</a>}</div></article>;
         })}
+        <article className={styles.helpCard}><div className={styles.helpIcon}><FiHeadphones /></div><h3>Besoin d&apos;aide ?</h3><p>Notre équipe est disponible pour vous accompagner dans vos démarches.</p><Link href="/acceuil/contact" className={styles.goldButton}>Nous contacter <FiArrowRight /></Link></article>
       </div>
 
-      <article className={styles.contactMapCard}>
-        <header>
-          <h3>
-            {isArabic
-              ? '\u0645\u0648\u0627\u0642\u0639 \u0627\u0644\u0645\u062f\u064a\u0631\u064a\u0627\u062a'
-              : 'Localisation des directions'}
-          </h3>
-          <p>
-            {isArabic
-              ? '\u062e\u0631\u064a\u0637\u0629 \u062a\u0641\u0627\u0639\u0644\u064a\u0629 \u0645\u062a\u0627\u062d\u0629 \u0639\u0628\u0631 \u0631\u0648\u0627\u0628\u0637 \u0639\u0631\u0636 \u0639\u0644\u0649 \u0627\u0644\u062e\u0631\u064a\u0637\u0629 \u0644\u0643\u0644 \u0645\u062f\u064a\u0631\u064a\u0629.'
-              : "Carte interactive disponible via les liens 'Voir sur la carte' pour chaque direction."}
-          </p>
-        </header>
-        <div ref={mapRef} className={styles.contactMap} />
-      </article>
+      <article className={styles.mapSection}><div className={styles.mapInfo}><h2>Localiser nos implantations</h2><p>Consultez les directions et antennes régionales de l&apos;ANAM sur la carte.</p><div className={styles.legend}><span><i className={styles.regionalDot} /> Antenne régionale</span><span><i className={styles.hqDot} /> Siège ANAM</span></div><button type="button" className={styles.fullMapButton}><FiMapPin /> Voir toutes les antennes <FiArrowRight /></button></div><div ref={mapRef} className={styles.contactMap} /></article>
+
     </section>
   );
 }
@@ -512,12 +498,20 @@ export function StaticLegalPage({ slug }: StaticLegalPageProps) {
   }, [item?.content, slug]);
 
   return (
-    <div className={styles.page} dir={isArabic ? 'rtl' : 'ltr'}>
+    <div
+      className={`${styles.page} ${slug === 'faq' ? styles.faqPage : ''} ${slug === 'contact' ? styles.contactPage : ''}`}
+      dir={isArabic ? 'rtl' : 'ltr'}
+    >
       <Header />
 
       <main className={styles.main}>
         <section className={styles.hero}>
           <div className={`container ${styles.heroInner}`}>
+            {slug === 'contact' ? (
+              <div className={styles.contactBreadcrumb}>
+                <Link href="/">Accueil</Link><span>›</span><b>Contact</b>
+              </div>
+            ) : null}
             <div className={styles.badge}>
               <FiFileText size={14} />
               <span>
@@ -526,7 +520,8 @@ export function StaticLegalPage({ slug }: StaticLegalPageProps) {
                   : 'Centre de conformite'}
               </span>
             </div>
-            <h1>{title}</h1>
+            <h1>{slug === 'contact' ? <>Contact <span>&amp; implantations</span></> : title}</h1>
+            {slug === 'contact' ? <div className={styles.contactLastUpdate}><FiClock /> Dernière mise à jour : {lastUpdatedLabel || '04 mai 2026'}</div> : null}
             <p>
               {isArabic
                 ? '\u0645\u062d\u062a\u0648\u0649 \u0642\u0627\u0646\u0648\u0646\u064a \u062f\u064a\u0646\u0627\u0645\u064a\u0643\u064a \u0642\u0627\u0628\u0644 \u0644\u0644\u062a\u0639\u062f\u064a\u0644 \u0645\u0646 \u0644\u0648\u062d\u0629 \u0627\u0644\u0627\u062f\u0627\u0631\u0629.'
@@ -549,7 +544,7 @@ export function StaticLegalPage({ slug }: StaticLegalPageProps) {
             </div>
 
             <div className={styles.actions}>
-              <Link href="/acceuil/Home" className={styles.primaryCta}>
+              <Link href="/" className={styles.primaryCta}>
                 {isArabic
                   ? '\u0627\u0644\u0639\u0648\u062f\u0629 \u0627\u0644\u0649 \u0627\u0644\u0635\u0641\u062d\u0629 \u0627\u0644\u0631\u0626\u064a\u0633\u064a\u0629'
                   : 'Retour accueil'}
@@ -585,7 +580,7 @@ export function StaticLegalPage({ slug }: StaticLegalPageProps) {
                 </header>
                 <div className={styles.contentBody}>
                   {slug === 'contact' ? (
-                    <ContactMapBlock isArabic={isArabic} cards={contactCards} />
+                     <ContactMapBlock cards={contactCards} />
                   ) : (
                     <LegalContent content={item?.content || ''} />
                   )}
