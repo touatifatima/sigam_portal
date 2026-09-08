@@ -39,7 +39,54 @@ import {
   getSessionBackedItem,
   setSessionBackedItem,
 } from '../../src/utils/sessionBackedStorage';
-import { FiMousePointer, FiLayers, FiDownload, FiFileText, FiTool } from 'react-icons/fi';
+import {
+  FiMousePointer,
+  FiLayers,
+  FiDownload,
+  FiFileText,
+  FiTool,
+  FiTrash2,
+  FiRotateCw,
+  FiCrosshair,
+  FiBox,
+} from 'react-icons/fi';
+
+const MeasureIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 16 16"
+    width="16"
+    height="16"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <path
+      fill="currentColor"
+      fillRule="nonzero"
+      d="M0 9v6h16V9zm15 3h-1v2h-1v-3h-1v3h-1v-2h-1v2H9v-3H8v3H7v-2H6v2H5v-3H4v3H3v-2H2v2H1v-4h14zm.18-7.5-2.85 2.85-.71-.7L13.23 5H9V4h4.32l-1.7-1.69.71-.7zM2.68 4H7v1H2.77l1.61 1.65-.71.7L.82 4.5l2.85-2.85.71.7z"
+    />
+  </svg>
+);
+
+const AreaMeasureIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 16 16"
+    width="16"
+    height="16"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <path
+      d="M1.5 2.5h13v11h-13zM3 5.5h2M7 5.5h2M11 5.5h2M3 9h2M7 9h2M11 9h2M3 11.5h10"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 // Configure ArcGIS Enterprise portal
 try { esriConfig.portalUrl = "https://sig.anam.dz/portal"; } catch {}
@@ -231,6 +278,8 @@ export type Coordinate = {
   system: CoordinateSystem;
   zone?: number;
   hemisphere?: 'N';
+  /** Exact WGS84 location captured from the map, used to preserve display position. */
+  displayWgs84?: [number, number];
 };
 
 type SelectedPolygon = {
@@ -296,6 +345,7 @@ export interface ArcGISMapProps {
   isDrawing: boolean;
   onMapClick?: (x: number, y: number) => void;
   onPolygonChange?: (coordinates: [number, number][]) => void;
+  onDrawingVertexCountChange?: (count: number) => void;
   // Called when a "Titres Miniers ANAM" polygon is clicked
   // (attributes come from the ArcGIS FeatureLayer, e.g. idtitre, code, etc.).
   onTitreSelected?: (attributes: any) => void;
@@ -348,6 +398,8 @@ export interface ArcGISMapProps {
   selectionRequiresModifier?: boolean;
   enableBoxSelection?: boolean;
   disableEnterpriseLayers?: boolean;
+  performanceMode?: boolean;
+  autoZoomToPolygon?: boolean;
 }
 
 export interface ArcGISMapRef {
@@ -365,6 +417,10 @@ export interface ArcGISMapRef {
   detectAdminForCurrent: () => Promise<void>;
   zoomToCurrentPolygon: () => void;
   zoomToWgs84Polygon: (coords: [number, number][]) => void;
+  startPolygonDrawing: () => void;
+  completePolygonDrawing: () => void;
+  undoPolygonDrawing: () => void;
+  cancelPolygonDrawing: () => void;
   // Returns null if service unreachable or query fails
   queryMiningTitles: (geometry?: any) => Promise<any[] | null>;
 }
@@ -375,6 +431,7 @@ export interface ArcGISMapRef {
     isDrawing,
     onMapClick,
     onPolygonChange,
+    onDrawingVertexCountChange,
     onTitreSelected,
     existingPolygons = [],
     selectedExistingProcId = null,
@@ -397,10 +454,14 @@ export interface ArcGISMapRef {
     enableSelectionTools = false,
     selectionRequiresModifier = true,
     enableBoxSelection = false,
-    disableEnterpriseLayers = false
+    disableEnterpriseLayers = false,
+    performanceMode = false,
+    autoZoomToPolygon = true
   }, ref) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<MapView | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const resizeHandlerRef = useRef<(() => void) | null>(null);
   const graphicsLayerRef = useRef<GraphicsLayer | null>(null);
   const markersLayerRef = useRef<GraphicsLayer | null>(null);
   const existingPolygonsLayerRef = useRef<GraphicsLayer | null>(null);
@@ -418,6 +479,26 @@ export interface ArcGISMapRef {
   const communesLayerRef = useRef<FeatureLayer | null>(null);
   const villesLayerRef = useRef<FeatureLayer | null>(null);
   const currentPolygonRef = useRef<Polygon | null>(null);
+  // The map click handler is registered once during map initialization.
+  // Keep the drawing props in a ref so the handler always sees their latest values.
+  const drawingStateRef = useRef({
+    isDrawing,
+    onMapClick,
+    onPolygonChange,
+    onDrawingVertexCountChange,
+    coordinateSystem,
+    utmZone,
+    utmHemisphere,
+  });
+  drawingStateRef.current = {
+    isDrawing,
+    onMapClick,
+    onPolygonChange,
+    onDrawingVertexCountChange,
+    coordinateSystem,
+    utmZone,
+    utmHemisphere,
+  };
   const overlapHighlightRequestRef = useRef(0);
   const auth = useAuthStore((state) => state.auth);
   const [isMapReady, setIsMapReady] = useState(false);
@@ -466,8 +547,8 @@ export interface ArcGISMapRef {
   const defaultActiveLayers: { [key: string]: boolean } = {
      perimetresSig: true,   // layer 0
     titres: true,          // layer 1
-    provisoire: true,     // layer 1
-    promotion: true,       // layer 2
+    provisoire: !performanceMode,     // layer 1
+    promotion: !performanceMode,       // layer 2
     exclusions: true,      // layer 3
     wilayas: false,        // layer 4
     communes: false,       // layer 5
@@ -519,7 +600,20 @@ export interface ArcGISMapRef {
         migrated.pays = migrated.paye;
       }
       delete migrated.paye;
-      return { ...defaultActiveLayers, ...migrated };
+      return {
+        ...defaultActiveLayers,
+        ...migrated,
+        ...(performanceMode
+          ? {
+              provisoire: false,
+              promotion: false,
+              wilayas: false,
+              communes: false,
+              villes: false,
+              pays: false,
+            }
+          : {}),
+      };
     } catch {
       return { ...defaultActiveLayers };
     }
@@ -646,6 +740,7 @@ export interface ArcGISMapRef {
   const initializedRef = useRef<boolean>(false);
   const polygonGraphicRef = useRef<Graphic | null>(null);
   const sketchRef = useRef<Sketch | null>(null);
+  const sketchVertexCountRef = useRef(0);
   const distanceMeasurementRef = useRef<DistanceMeasurement2D | null>(null);
   const areaMeasurementRef = useRef<AreaMeasurement2D | null>(null);
   const navigationToggleRef = useRef<NavigationToggle | null>(null);
@@ -744,6 +839,27 @@ export interface ArcGISMapRef {
     }
   }, []);
 
+  const applyLayerPerformanceDefaults = (layer: FeatureLayer, layerKey: string) => {
+    if (!performanceMode) return;
+    try {
+      const detailedPolygonLayers = new Set([
+        'titres',
+        'perimetresSig',
+        'provisoire',
+        'promotion',
+        'exclusions',
+      ]);
+      if (detailedPolygonLayers.has(layerKey)) {
+        layer.minScale = 12000000;
+      }
+      if (layerKey === 'wilayas' || layerKey === 'communes' || layerKey === 'titres') {
+        layer.labelsVisible = false;
+      }
+      (layer as any).popupEnabled = enableSelectionTools || layerKey === 'titres' || layerKey === 'perimetresSig';
+      (layer as any).maxRecordCountFactor = 1;
+    } catch {}
+  };
+
   const applyBasemap = useCallback(async (mode: BasemapMode) => {
     const view = viewRef.current;
     if (!view) return;
@@ -782,6 +898,13 @@ export interface ArcGISMapRef {
   };
 
   const convertToWGS84 = (point: Coordinate): [number, number] => {
+    if (
+      Array.isArray(point.displayWgs84) &&
+      Number.isFinite(point.displayWgs84[0]) &&
+      Number.isFinite(point.displayWgs84[1])
+    ) {
+      return [point.displayWgs84[0], point.displayWgs84[1]];
+    }
     const xVal = parseCoordValue(point.x);
     const yVal = parseCoordValue(point.y);
     // Guard against invalid coordinates early
@@ -1696,6 +1819,36 @@ export interface ArcGISMapRef {
     detectAdminForCurrent,
     zoomToCurrentPolygon,
     zoomToWgs84Polygon,
+    startPolygonDrawing: () => {
+      const sketch = sketchRef.current;
+      if (!sketch) return;
+      // Synchronize the view's internal screen size with the visible container
+      // before ArcGIS starts translating pointer pixels into map coordinates.
+      try {
+        viewRef.current?.resize();
+        viewRef.current?.requestRender();
+      } catch {}
+      try { sketch.cancel(); } catch {}
+      try { graphicsLayerRef.current?.removeAll(); } catch {}
+      sketchVertexCountRef.current = 0;
+      drawingStateRef.current.onDrawingVertexCountChange?.(0);
+      sketch.create('polygon', { mode: 'click' });
+    },
+    completePolygonDrawing: () => {
+      try { sketchRef.current?.complete(); } catch {}
+    },
+    undoPolygonDrawing: () => {
+      try {
+        sketchRef.current?.undo();
+        sketchVertexCountRef.current = Math.max(0, sketchVertexCountRef.current - 1);
+        drawingStateRef.current.onDrawingVertexCountChange?.(sketchVertexCountRef.current);
+      } catch {}
+    },
+    cancelPolygonDrawing: () => {
+      try { sketchRef.current?.cancel(); } catch {}
+      sketchVertexCountRef.current = 0;
+      drawingStateRef.current.onDrawingVertexCountChange?.(0);
+    },
     queryMiningTitles
   }));
 
@@ -1995,33 +2148,36 @@ export interface ArcGISMapRef {
         opacity: activeLayers.titres ? 0.7 : 0,
         definitionExpression: '1=1',
         popupTemplate: {
-          title: "{typetitre} — {tnom}",
+          title: "Titres Miniers ANAM",
           content: [
             {
               type: 'fields',
               fieldInfos: [
-                { fieldName: 'typetitre', label: 'Type' },
-                { fieldName: 'codetype', label: 'Code Type' },
-                { fieldName: 'code', label: 'Code' },
-                { fieldName: 'idtitre', label: 'ID Titre' },
+                // Champs affichés actuellement dans la popup
                 { fieldName: 'tnom', label: 'Titulaire' },
-                { fieldName: 'tprenom', label: 'Prénom titulaire' },
                 { fieldName: 'substance1', label: 'Substance' },
                 { fieldName: 'sig_area', label: 'Superficie (ha)' },
                 { fieldName: 'wilaya', label: 'Wilaya' },
                 { fieldName: 'daira', label: 'Daira' },
                 { fieldName: 'commune', label: 'Commune' },
-                { fieldName: 'carte', label: 'Carte' },
-                { fieldName: 'lieudit', label: 'Lieu-dit' },
-                { fieldName: 'dateoctroi', label: "Date d'octroi", format: { dateFormat: 'short-date' } as any },
-                { fieldName: 'dateexpiration', label: 'Date d\'expiration', format: { dateFormat: 'short-date' } as any },
-                { fieldName: 'objectid', label: 'OBJECTID' }
+                // Champs conservés pour une réactivation ultérieure si besoin :
+                // { fieldName: 'typetitre', label: 'Type' },
+                // { fieldName: 'codetype', label: 'Code Type' },
+                // { fieldName: 'code', label: 'Code' },
+                // { fieldName: 'idtitre', label: 'ID Titre' },
+                { fieldName: 'tprenom', label: 'Prénom titulaire' },
+                // { fieldName: 'carte', label: 'Carte' },
+                // { fieldName: 'lieudit', label: 'Lieu-dit' },
+                // { fieldName: 'dateoctroi', label: "Date d'octroi", format: { dateFormat: 'short-date' } as any },
+                // { fieldName: 'dateexpiration', label: 'Date d\'expiration', format: { dateFormat: 'short-date' } as any },
+                // { fieldName: 'objectid', label: 'OBJECTID' }
               ]
             }
           ] as any
         },
         renderer: buildTitresRenderer() as any
       });
+      applyLayerPerformanceDefaults(titresLayer, 'titres');
       const titresOpacity = 0.7;
       (titresLayer as any).__sigamKey = 'titres';
       (titresLayer as any).__defaultOpacity = titresOpacity;
@@ -2072,9 +2228,11 @@ export interface ArcGISMapRef {
               },
             },
           ] as any;
-          titresLayer.labelsVisible = true;
+          titresLayer.labelsVisible = !performanceMode;
         } catch {}
-        try { titresLayer.popupTemplate = buildAllFieldsPopup(titresLayer, "Titres Miniers ANAM"); } catch {}
+        // La popup personnalisée définie plus haut est volontairement conservée.
+        // Ne pas la remplacer par buildAllFieldsPopup(), sinon tous les attributs
+        // du polygone réapparaissent dans la fenêtre contextuelle.
         map.add(titresLayer);
         layers.push(titresLayer);
         titresLayerRef.current = titresLayer;
@@ -2113,6 +2271,7 @@ export interface ArcGISMapRef {
         },
         renderer: perimetresSigRenderer
       });
+      applyLayerPerformanceDefaults(perimetresSigLayer, 'perimetresSig');
       const perimetresSigOpacity = 0.4;
       (perimetresSigLayer as any).__sigamKey = 'perimetresSig';
       (perimetresSigLayer as any).__defaultOpacity = perimetresSigOpacity;
@@ -2142,6 +2301,7 @@ export interface ArcGISMapRef {
           }
         } as any
       });
+      applyLayerPerformanceDefaults(provisoireLayer, 'provisoire');
       const provisoireOpacity = 0.45;
       (provisoireLayer as any).__sigamKey = 'provisoire';
       (provisoireLayer as any).__defaultOpacity = provisoireOpacity;
@@ -2165,6 +2325,7 @@ export interface ArcGISMapRef {
         outFields: ["*"],
         renderer: promotionRenderer
       });
+      applyLayerPerformanceDefaults(promotionLayer, 'promotion');
       const promotionOpacity = 0.4;
       (promotionLayer as any).__sigamKey = 'promotion';
       (promotionLayer as any).__defaultOpacity = promotionOpacity;
@@ -2194,6 +2355,7 @@ export interface ArcGISMapRef {
           }
         } as any
       });
+      applyLayerPerformanceDefaults(paysLayer, 'pays');
       const paysOpacity = 0.5;
       (paysLayer as any).__sigamKey = 'pays';
       (paysLayer as any).__defaultOpacity = paysOpacity;
@@ -2222,6 +2384,7 @@ export interface ArcGISMapRef {
           }
         } as any
       });
+      applyLayerPerformanceDefaults(wilayasLayer, 'wilayas');
       const wilayasOpacity = 0.85;
       (wilayasLayer as any).__sigamKey = 'wilayas';
       (wilayasLayer as any).__defaultOpacity = wilayasOpacity;
@@ -2245,7 +2408,7 @@ export interface ArcGISMapRef {
               },
             },
           ] as any;
-          wilayasLayer.labelsVisible = true;
+          wilayasLayer.labelsVisible = !performanceMode;
         } catch {}
         try { wilayasLayer.popupTemplate = buildAllFieldsPopup(wilayasLayer, "Wilayas"); } catch {}
         map.add(wilayasLayer);
@@ -2269,6 +2432,7 @@ export interface ArcGISMapRef {
           }
         } as any
       });
+      applyLayerPerformanceDefaults(communesLayer, 'communes');
       const communesOpacity = 0.7;
       (communesLayer as any).__sigamKey = 'communes';
       (communesLayer as any).__defaultOpacity = communesOpacity;
@@ -2292,7 +2456,7 @@ export interface ArcGISMapRef {
               },
             },
           ] as any;
-          communesLayer.labelsVisible = true;
+          communesLayer.labelsVisible = !performanceMode;
         } catch {}
         try { communesLayer.popupTemplate = buildAllFieldsPopup(communesLayer, "Communes"); } catch {}
         map.add(communesLayer);
@@ -2308,6 +2472,7 @@ export interface ArcGISMapRef {
         title: "Villes",
         outFields: ["*"],
       });
+      applyLayerPerformanceDefaults(villesLayer, 'villes');
       const villesOpacity = 0.8;
       (villesLayer as any).__sigamKey = 'villes';
       (villesLayer as any).__defaultOpacity = villesOpacity;
@@ -2337,6 +2502,7 @@ export interface ArcGISMapRef {
           }
         } as any
       });
+      applyLayerPerformanceDefaults(exclusionLayer, 'exclusions');
       const exclusionOpacity = 0.35;
       (exclusionLayer as any).__sigamKey = 'exclusions';
       (exclusionLayer as any).__defaultOpacity = exclusionOpacity;
@@ -2378,10 +2544,20 @@ export interface ArcGISMapRef {
         } else {
           try {
             // Prefer raster topo to avoid vector-glyph network noise in restricted networks.
+            const fallbackLayer = performanceMode
+              ? new WebTileLayer({
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  title: 'OpenStreetMap fallback',
+                } as any)
+              : null;
             const esriRasterTiles = new WebTileLayer({
-              urlTemplate: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'
+              urlTemplate: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+              ...(performanceMode ? { maxScale: 2256 } : {}),
+            } as any);
+            const esriRasterBasemap = new Basemap({
+              baseLayers: fallbackLayer ? [fallbackLayer, esriRasterTiles] : [esriRasterTiles],
+              title: 'Esri World Topo Map',
             });
-            const esriRasterBasemap = new Basemap({ baseLayers: [esriRasterTiles], title: 'Esri World Topo Map' });
             map = new Map({ basemap: esriRasterBasemap });
           } catch (eRas) {
             console.warn('Esri raster tiles unavailable; trying ArcGIS vector basemap.', eRas);
@@ -2406,21 +2582,25 @@ export interface ArcGISMapRef {
           map: map,
           center: [2.632, 28.163], // Center of Algeria
           zoom: 6,
+          qualityProfile: performanceMode ? 'low' : 'high',
           constraints: {
             minZoom: 3,
-            maxZoom: 20
+            maxZoom: 20,
+            snapToZoom: false
           }
-        });
+        } as any);
         // Show ArcGIS UI components (Zoom, Attribution). Assets load from /assets
         try { (view.ui as any).components = ['zoom', 'attribution']; } catch {}
 
-        // Add ANAM Enterprise layers (non-blocking; skipped if unreachable)
+        // Add ANAM Enterprise layers in the background so the view is usable immediately.
         const enterpriseLayersDisabled = DISABLE_ENTERPRISE_LAYERS || disableEnterpriseLayers;
         if (!enterpriseLayersDisabled) {
-          if (SHOULD_ATTEMPT_ARCGIS_AUTO_LOGIN) {
-            try { await ensureArcgisCredential(API_BASE); } catch {}
-          }
-          await addEnterpriseLayers(map);
+          void (async () => {
+            if (SHOULD_ATTEMPT_ARCGIS_AUTO_LOGIN) {
+              try { await ensureArcgisCredential(API_BASE); } catch {}
+            }
+            await addEnterpriseLayers(map);
+          })();
         } else if (DISABLE_ENTERPRISE_LAYERS) {
           console.warn('Enterprise layers are disabled by VITE_ARCGIS_DISABLE_ENTERPRISE=true');
         }
@@ -2458,25 +2638,52 @@ export interface ArcGISMapRef {
         fuseauxLayerRef.current = fuseauxLayer;
         viewRef.current = view;
 
+        // ArcGIS maps pointer coordinates in the view's own pixel space. Keep
+        // that space synchronized with the actual rendered element whenever
+        // the layout changes (responsive grid, sidebar, fullscreen, etc.).
+        // This is especially important after leaving CSS zoomed containers.
+        const resizeMapView = () => {
+          try {
+            view.resize();
+            view.requestRender();
+          } catch {}
+        };
+        const resizeObserver = typeof ResizeObserver !== 'undefined'
+          ? new ResizeObserver(resizeMapView)
+          : null;
+        resizeObserverRef.current = resizeObserver;
+        resizeHandlerRef.current = resizeMapView;
+        if (resizeObserver && mapRef.current) resizeObserver.observe(mapRef.current);
+        window.addEventListener('resize', resizeMapView);
+        requestAnimationFrame(resizeMapView);
+
         // Set up click event
         view.on("click", (event) => {
-          if (isDrawing && onMapClick) {
+          const drawingState = drawingStateRef.current;
+          if (drawingState.isDrawing && drawingState.onMapClick) {
             const point = event.mapPoint;
 
             if (!point) return; // extra safeguard
 
-            const lng = point.longitude ?? 0;
-            const lat = point.latitude ?? 0;
+            // MapView is normally Web Mercator (3857/102100). Convert the
+            // actual map point through ArcGIS before applying UTM/WGS84
+            // handling, instead of relying on longitude/latitude getters
+            // whose precision depends on the point spatial reference.
+            const geographicPoint = (point.spatialReference?.isWebMercator
+              ? webMercatorUtils.webMercatorToGeographic(point)
+              : point) as Point;
+            const lng = geographicPoint.longitude ?? geographicPoint.x ?? 0;
+            const lat = geographicPoint.latitude ?? geographicPoint.y ?? 0;
 
             const converted = convertFromWGS84(
               lng,
               lat,
-              coordinateSystem,
-              utmZone,
-              utmHemisphere
+              drawingState.coordinateSystem,
+              drawingState.utmZone,
+              drawingState.utmHemisphere
             );
 
-            onMapClick(converted[0], converted[1]);
+            drawingState.onMapClick(converted[0], converted[1]);
           }
           // Additionally, log attributes of any clicked feature (Titres or Demandes)
           try {
@@ -2584,6 +2791,7 @@ export interface ArcGISMapRef {
         });
 
         await view.when();
+        resizeMapView();
 
         // Initialize Sketch for in-map editing (update-only)
         try {
@@ -2591,6 +2799,7 @@ export interface ArcGISMapRef {
             const sk = new Sketch({
               view,
               layer: graphicsLayerRef.current!,
+              creationMode: 'single',
               visibleElements: {
                 createTools: { point: false, polyline: false, polygon: false, circle: false, rectangle: false },
                 selectionTools: { 'lasso-selection': false, 'rectangle-selection': false },
@@ -2600,6 +2809,39 @@ export interface ArcGISMapRef {
             // Attach to UI in top-left, default hidden via state
             (sk as any).visible = false;
             view.ui.add(sk, 'top-left');
+            const getSketchCoordinates = (geometry: Polygon): [number, number][] => {
+              const geographicGeometry = geometry.spatialReference?.isWebMercator
+                ? (webMercatorUtils.webMercatorToGeographic(geometry) as Polygon)
+                : geometry;
+              const ring = geographicGeometry.rings?.[0] || [];
+              const openRing = ring.length > 1 && ring[0][0] === ring[ring.length - 1][0] && ring[0][1] === ring[ring.length - 1][1]
+                ? ring.slice(0, -1)
+                : ring;
+              const state = drawingStateRef.current;
+              return openRing.map(([lng, lat]: number[]) => {
+                if (state.coordinateSystem === 'WGS84') return [lng, lat];
+                return convertFromWGS84(lng, lat, state.coordinateSystem, state.utmZone, state.utmHemisphere);
+              });
+            };
+
+            sk.on('create', (evt: any) => {
+              const geometry = evt.graphic?.geometry as Polygon | undefined;
+              if (geometry?.type === 'polygon') {
+                const coordinates = getSketchCoordinates(geometry);
+                if (evt.toolEventInfo?.type === 'vertex-add') {
+                  sketchVertexCountRef.current = evt.toolEventInfo.vertices?.length ?? coordinates.length;
+                  drawingStateRef.current.onDrawingVertexCountChange?.(sketchVertexCountRef.current);
+                }
+                if (evt.state === 'complete' && coordinates.length >= 3) {
+                  sketchVertexCountRef.current = coordinates.length;
+                  drawingStateRef.current.onPolygonChange?.(coordinates);
+                }
+              }
+              if (evt.state === 'cancel') {
+                sketchVertexCountRef.current = 0;
+                drawingStateRef.current.onDrawingVertexCountChange?.(0);
+              }
+            });
             // Propagate edits back to parent
             sk.on('update', (evt: any) => {
               try {
@@ -2607,18 +2849,8 @@ export interface ArcGISMapRef {
                 const g = evt.graphics[0] as Graphic;
                 const geom = g.geometry as any;
                 if (geom?.type === 'polygon') {
-                  const rings = (geom as Polygon).rings?.[0] || [];
-                  const coords: [number, number][] = rings.map(([lng, lat]: number[]) => {
-                    const [x, y] = convertFromWGS84(lng, lat, coordinateSystem, utmZone, utmHemisphere);
-                    return [x, y];
-                  });
-                  // Remove duplicate last vertex if closed
-                  if (coords.length > 1) {
-                    const f = coords[0];
-                    const l = coords[coords.length - 1];
-                    if (f[0] === l[0] && f[1] === l[1]) coords.pop();
-                  }
-                  onPolygonChange?.(coords);
+                  const coords = getSketchCoordinates(geom as Polygon);
+                  drawingStateRef.current.onPolygonChange?.(coords);
                 }
               } catch {}
             });
@@ -2638,6 +2870,14 @@ export interface ArcGISMapRef {
     initializeMap();
 
     return () => {
+      // The view owns the observed container; disconnecting it before destroy
+      // avoids stale pointer dimensions after route changes.
+      try { resizeObserverRef.current?.disconnect(); } catch {}
+      resizeObserverRef.current = null;
+      if (resizeHandlerRef.current) {
+        window.removeEventListener('resize', resizeHandlerRef.current);
+        resizeHandlerRef.current = null;
+      }
       if (viewRef.current) {
         viewRef.current.destroy();
         viewRef.current = null;
@@ -2751,7 +2991,8 @@ export interface ArcGISMapRef {
     layer.removeAll();
     if (!isMapReady) return;
 
-    const selections = Array.isArray(overlapSelections) ? overlapSelections : [];
+    const selectionsRaw = Array.isArray(overlapSelections) ? overlapSelections : [];
+    const selections = performanceMode ? selectionsRaw.slice(0, 40) : selectionsRaw;
     if (!selections.length) return;
 
     const requestId = ++overlapHighlightRequestRef.current;
@@ -3040,10 +3281,10 @@ export interface ArcGISMapRef {
         });
         graphics.push(graphic);
 
-        const labelText = resolveOverlapLabelText(
-          layerKey,
-          feature.attributes || selection,
-        );
+        const labelText =
+          !performanceMode || selections.length <= 12
+            ? resolveOverlapLabelText(layerKey, feature.attributes || selection)
+            : '';
         const labelCenter = (feature.geometry as any).centroid ?? (feature.geometry as any).extent?.center;
         if (labelText && labelCenter) {
           const textSymbol = new TextSymbol({
@@ -3082,7 +3323,7 @@ export interface ArcGISMapRef {
     };
 
     void applyHighlights();
-  }, [overlapSelections, overlapClarityEnabled, overlapHighlightMode, isMapReady]);
+  }, [overlapSelections, overlapClarityEnabled, overlapHighlightMode, isMapReady, performanceMode]);
 
   // Update drawing mode
   useEffect(() => {
@@ -3486,7 +3727,7 @@ export interface ArcGISMapRef {
 
         // Zoom to polygon only once per lifecycle to avoid
         // constantly re-centering when the user manually changes zoom.
-        if (viewRef.current && wgs84Points.length > 0 && !hasZoomedToPolygonRef.current) {
+        if (autoZoomToPolygon && viewRef.current && wgs84Points.length > 0 && !hasZoomedToPolygonRef.current) {
           hasZoomedToPolygonRef.current = true;
           viewRef.current.goTo(polygon).catch(() => {
             // Ignore zoom errors
@@ -3539,7 +3780,7 @@ export interface ArcGISMapRef {
     } catch (error) {
       console.error('Error updating map graphics:', error);
     }
-  }, [points, isMapReady, coordinateSystem, utmZone, utmHemisphere, superficie]);
+  }, [points, isMapReady, coordinateSystem, utmZone, utmHemisphere, superficie, autoZoomToPolygon]);
 
   // Layer toggle handler
   const toggleLayer = (layerName: string) => {
@@ -4479,25 +4720,25 @@ export interface ArcGISMapRef {
       />
       
       <div className="map-toolbar">
-        <button
-          className="toolbar-btn layer-toggle-btn"
-          onClick={() => setIsLayerPanelOpen(v => !v)}
-          aria-label={isLayerPanelOpen ? 'Masquer les couches' : 'Afficher les couches'}
-        >
-          <FiLayers className="toolbar-icon" />
-          {isLayerPanelOpen ? 'Masquer les couches' : 'Afficher les couches'}
-        </button>
-        <button className="toolbar-btn" onClick={exportPNG} disabled={isExporting}>
+          <button
+            className="toolbar-btn toolbar-icon-only layer-toggle-btn"
+            onClick={() => setIsLayerPanelOpen(v => !v)}
+            aria-label={isLayerPanelOpen ? 'Masquer les couches' : 'Afficher les couches'}
+            title={isLayerPanelOpen ? 'Masquer les couches' : 'Afficher les couches'}
+          >
+            <FiLayers className="toolbar-icon" />
+          </button>
+        <button className="toolbar-btn toolbar-icon-only" onClick={exportPNG} disabled={isExporting} title="Exporter la carte en PNG" aria-label="Exporter la carte en PNG">
           <FiDownload className="toolbar-icon" />
-          {isExporting ? 'Export…' : 'Exporter PNG'}
         </button>
         <button
-          className="toolbar-btn"
+          className="toolbar-btn toolbar-icon-only"
           onClick={exportPDFV2}
           disabled={isExporting || reportV2Loading}
+          aria-label="Générer le rapport PDF"
+          title="Générer le rapport PDF"
         >
           <FiFileText className="toolbar-icon" />
-          {isExporting || reportV2Loading ? 'Export…' : 'Rapport V2'}
         </button>
         <div className="tools-menu">
           <button
@@ -4505,9 +4746,10 @@ export interface ArcGISMapRef {
             type="button"
             onClick={() => setIsToolsOpen((v) => !v)}
             aria-expanded={isToolsOpen}
+            aria-label={isToolsOpen ? 'Masquer les outils' : 'Afficher les outils'}
+            title={isToolsOpen ? 'Masquer les outils' : 'Afficher les outils'}
           >
             <FiTool className="toolbar-icon" />
-            Outils
           </button>
           {isToolsOpen && (
             <div className="tools-panel">
@@ -4519,8 +4761,10 @@ export interface ArcGISMapRef {
                   onClick={() => toggleMeasurementTool('distance')}
                   disabled={!isMapReady}
                   aria-pressed={activeMeasureTool === 'distance'}
+                  aria-label="Mesurer une distance"
+                  title="Mesurer une distance"
                 >
-                  Mesurer distance
+                  <MeasureIcon />
                 </button>
                 <button
                   className={`tools-btn ${activeMeasureTool === 'area' ? 'active' : ''}`}
@@ -4528,16 +4772,20 @@ export interface ArcGISMapRef {
                   onClick={() => toggleMeasurementTool('area')}
                   disabled={!isMapReady}
                   aria-pressed={activeMeasureTool === 'area'}
+                  aria-label="Mesurer une surface"
+                  title="Mesurer une surface"
                 >
-                  Mesurer surface
+                  <AreaMeasureIcon />
                 </button>
                 <button
                   className="tools-btn"
                   type="button"
                   onClick={clearMeasurementTools}
                   disabled={!isMapReady || activeMeasureTool === 'none'}
+                  aria-label="Effacer les mesures"
+                  title="Effacer les mesures de la carte"
                 >
-                  Effacer mesures
+                  <FiTrash2 />
                 </button>
               </div>
               <div className="tools-section">
@@ -4548,24 +4796,30 @@ export interface ArcGISMapRef {
                   onClick={toggleRotationTools}
                   disabled={!isMapReady}
                   aria-pressed={rotationToolsEnabled}
+                  aria-label="Activer ou désactiver la rotation 3D"
+                  title="Activer ou désactiver la rotation 3D"
                 >
-                  Rotation 3D
+                  <FiBox />
                 </button>
                 <button
                   className="tools-btn"
                   type="button"
                   onClick={resetRotation}
                   disabled={!isMapReady}
+                  aria-label="Réinitialiser la rotation"
+                  title="Réinitialiser la rotation de la carte"
                 >
-                  Reinitialiser rotation
+                  <FiRotateCw />
                 </button>
                 <button
                   className="tools-btn"
                   type="button"
                   onClick={() => zoomToCurrentPolygon()}
                   disabled={!isMapReady}
+                  aria-label="Recentrer le périmètre"
+                  title="Recentrer la carte sur le périmètre"
                 >
-                  Recentrer perimetre
+                  <FiCrosshair />
                 </button>
               </div>
             </div>
@@ -4966,6 +5220,26 @@ export interface ArcGISMapRef {
           box-shadow: none;
           transform: none;
         }
+        .toolbar-icon-only {
+          width: 38px;
+          min-width: 38px;
+          justify-content: center;
+          padding: 6px;
+        }
+        .toolbar-icon-only .toolbar-icon {
+          margin: 0;
+          font-size: 17px;
+        }
+        .tools-toggle {
+          width: 38px;
+          min-width: 38px;
+          justify-content: center;
+          padding: 6px;
+        }
+        .tools-toggle .toolbar-icon {
+          margin: 0;
+          font-size: 17px;
+        }
         .toolbar-icon {
           font-size: 14px;
         }
@@ -4982,7 +5256,7 @@ export interface ArcGISMapRef {
           position: absolute;
           right: 0;
           top: calc(100% + 8px);
-          width: 220px;
+          width: 52px;
           background: #ffffff;
           border: 1px solid #e2e8f0;
           border-radius: 10px;
@@ -4990,30 +5264,51 @@ export interface ArcGISMapRef {
           padding: 10px;
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          align-items: center;
+          gap: 10px;
         }
         .tools-section {
           display: flex;
           flex-direction: column;
+          align-items: center;
           gap: 6px;
         }
+        .tools-section + .tools-section {
+          width: 100%;
+          padding-top: 10px;
+          border-top: 1px solid #e5e7eb;
+        }
         .tools-title {
-          font-size: 11px;
+          font-size: 8px;
           font-weight: 700;
           color: #1f2937;
           text-transform: uppercase;
           letter-spacing: 0.04em;
+          text-align: center;
         }
         .tools-btn {
-          width: 100%;
-          text-align: left;
+          width: 36px;
+          height: 34px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
           background: #f9fafb;
           border: 1px solid #e5e7eb;
           border-radius: 8px;
-          padding: 6px 8px;
+          padding: 0;
           font-size: 12px;
           color: #111827;
           cursor: pointer;
+        }
+        .tools-btn svg {
+          width: 16px;
+          height: 16px;
+        }
+        .tools-btn:hover:not(:disabled) {
+          border-color: #1769aa;
+          color: #1769aa;
+          background: #eff6ff;
         }
         .tools-btn.active {
           background: #111827;
@@ -5543,7 +5838,7 @@ export interface ArcGISMapRef {
             justify-content: flex-end;
           }
           .tools-panel {
-            width: 180px;
+            width: 52px;
           }
           .layer-control-panel {
             right: 10px;

@@ -284,6 +284,66 @@
   gap: 8px;
 }
 
+.verificationNoticeContent {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(240px, 0.75fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.verificationNoticeMain {
+  min-width: 0;
+}
+
+.verificationNoticeAside {
+  border-left: 1px solid rgba(15, 23, 42, 0.1);
+  padding-left: 18px;
+  min-width: 0;
+}
+
+.verificationNoticeTodoTitle {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--interactive-ink);
+  margin-bottom: 2px;
+}
+
+.verificationNoticeTodoList {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: #334765;
+}
+
+.verificationNoticeTodoList li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  line-height: 1.4;
+}
+
+.verificationNoticeTodoIcon {
+  color: #d97706;
+  flex-shrink: 0;
+  margin-top: 2px;
+  font-size: 1rem;
+}
+
+.verificationNoticeSuccess .verificationNoticeTodoIcon {
+  color: #15803d;
+}
+
+.verificationNoticeBlocking .verificationNoticeTodoIcon {
+  color: #b91c1c;
+}
+
+.rightPanel .verificationNotice {
+  margin-bottom: 0;
+}
+
 .verificationNoticeClose {
   border: 1px solid rgba(141, 47, 95, 0.14);
   background: rgba(255, 255, 255, 0.86);
@@ -427,28 +487,6 @@
   gap: 8px;
   font-size: 0.85rem;
   color: #334765;
-}
-
-.datepickerWrapper :global(.react-datepicker-wrapper) {
-  width: 100%;
-}
-
-.datepickerWrapper {
-  position: relative;
-  z-index: 30;
-  overflow: visible;
-}
-
-.datepickerWrapper :global(.react-datepicker__input-container) {
-  width: 100%;
-}
-
-.datepickerPopper {
-  z-index: 9999 !important;
-}
-
-.datepickerCalendar {
-  z-index: 9999;
 }
 
 .secondaryBtn {
@@ -860,6 +898,17 @@
     gap: 10px;
   }
 
+  .verificationNoticeContent {
+    grid-template-columns: 1fr;
+  }
+
+  .verificationNoticeAside {
+    border-left: 0;
+    border-top: 1px solid rgba(15, 23, 42, 0.1);
+    padding-left: 0;
+    padding-top: 12px;
+  }
+
   .verificationNoticeClose {
     align-self: flex-end;
   }
@@ -1193,5 +1242,1020 @@
 @media (max-width: 1300px) {
   .contentGrid {
     grid-template-columns: 360px minmax(0, 1fr);
+  }
+}
+
+/* Reference-inspired verification workspace */
+.mainContent {
+  --interactive-sand-50: #faf7f1;
+  --interactive-sand-100: #f2ecdf;
+  --interactive-sand-200: #e6dcc4;
+  --interactive-stone-700: #4a463d;
+  --interactive-stone-900: #2a2720;
+  --interactive-ochre-600: #b8842a;
+  --interactive-ochre-700: #96691e;
+  --interactive-ochre-100: #fbeed7;
+  --interactive-green-600: #4f7a3f;
+  --interactive-green-100: #e7f0e0;
+  --interactive-red-600: #b5442e;
+  --interactive-red-100: #f8e3dd;
+  --interactive-amber-600: #c98a1f;
+  --interactive-amber-100: #f7ecd6;
+  --interactive-line: #e1d8c4;
+  --interactive-white: #ffffff;
+  --interactive-shadow: 0 1px 2px rgba(42, 39, 32, 0.06), 0 1px 0 rgba(42, 39, 32, 0.04);
+
+  padding: 22px 28px 28px;
+  overflow: visible;
+  background: var(--interactive-sand-50) !important;
+  color: var(--interactive-stone-900);
+}
+
+.appContainer {
+  height: auto;
+  min-height: 100vh;
+}
+
+.mainContent::before,
+.mainContent::after {
+  display: none;
+}
+
+.pageHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 18px;
+}
+
+.pageHeadText {
+  min-width: 0;
+}
+
+.breadcrumb {
+  width: auto;
+  margin: 0 0 8px;
+  padding: 0;
+  color: var(--interactive-stone-700);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.breadcrumbArrow {
+  color: var(--interactive-ochre-700);
+}
+
+.title {
+  margin: 0;
+  color: var(--interactive-stone-900);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.16;
+  letter-spacing: 0;
+}
+
+.subtitle {
+  max-width: 720px;
+  margin: 6px 0 0;
+  color: var(--interactive-stone-700);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.pageActions,
+.searchStrip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pageActions {
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.searchStrip {
+  margin: 0 0 18px;
+  padding: 12px;
+  background: var(--interactive-white);
+  border: 1px solid var(--interactive-line);
+  border-radius: 10px;
+  box-shadow: var(--interactive-shadow);
+}
+
+.headerSearchSelect,
+.headerSearchInput,
+.select,
+.searchInput,
+.coordControls select,
+.coordTable input {
+  min-height: 38px;
+  width: 100%;
+  padding: 9px 11px;
+  color: var(--interactive-stone-900);
+  background: var(--interactive-white);
+  border: 1px solid var(--interactive-line);
+  border-radius: 6px;
+  box-shadow: none;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.headerSearchSelect {
+  width: auto;
+  min-width: 170px;
+}
+
+.headerSearchInput {
+  flex: 1;
+  min-width: 260px;
+  max-width: none;
+}
+
+.headerSearchButton,
+.primaryBtn,
+.startBtn {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  color: #ffffff;
+  background: var(--interactive-ochre-600);
+  border: 1px solid var(--interactive-ochre-600);
+  border-radius: 6px;
+  box-shadow: none;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.headerSearchButton:hover:not(:disabled),
+.primaryBtn:hover:not(:disabled),
+.startBtn:hover:not(:disabled) {
+  transform: none;
+  filter: none;
+  background: var(--interactive-ochre-700);
+  border-color: var(--interactive-ochre-700);
+  box-shadow: none;
+}
+
+.secondaryBtn,
+.resetBtn {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  color: var(--interactive-ochre-700);
+  background: var(--interactive-white);
+  border: 1px solid var(--interactive-ochre-600);
+  border-radius: 6px;
+  box-shadow: none;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.secondaryBtn:hover:not(:disabled),
+.resetBtn:hover:not(:disabled) {
+  color: var(--interactive-ochre-700);
+  background: var(--interactive-ochre-100);
+  border-color: var(--interactive-ochre-600);
+}
+
+.contentGrid {
+  grid-template-columns: 340px minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
+  flex: none;
+  min-height: 0;
+}
+
+.leftPanel {
+  gap: 18px;
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
+}
+
+.rightPanel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.card,
+.mapPanel {
+  background: var(--interactive-white);
+  border: 1px solid var(--interactive-line);
+  border-radius: 10px;
+  box-shadow: var(--interactive-shadow);
+  backdrop-filter: none;
+}
+
+.card {
+  overflow: hidden;
+}
+
+.cardHeader {
+  padding: 16px 18px 0;
+  color: var(--interactive-stone-900);
+  background: transparent;
+  border-bottom: 0;
+}
+
+.cardHeader h3 {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.cardBody {
+  padding: 14px 18px 18px;
+  gap: 14px;
+}
+
+.label {
+  color: var(--interactive-stone-700);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.required {
+  color: var(--interactive-red-600);
+}
+
+.select:focus,
+.headerSearchSelect:focus,
+.headerSearchInput:focus,
+.searchInput:focus,
+.coordControls select:focus,
+.coordTable input:focus {
+  outline: 2px solid var(--interactive-ochre-600);
+  outline-offset: 1px;
+  border-color: var(--interactive-line);
+  box-shadow: none;
+}
+
+.infoBox {
+  padding: 10px 12px;
+  background: var(--interactive-sand-50);
+  border: 1px solid var(--interactive-line);
+  border-radius: 6px;
+}
+
+.infoRow {
+  min-height: 22px;
+  color: var(--interactive-stone-700);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.infoRow strong {
+  color: var(--interactive-stone-900);
+  font-weight: 800;
+}
+
+.autoDateField {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 11px;
+  color: var(--interactive-stone-900);
+  background: var(--interactive-sand-50);
+  border: 1px solid var(--interactive-line);
+  border-radius: 6px;
+  font-size: 13.5px;
+}
+
+.autoDateField strong {
+  font-weight: 800;
+}
+
+.verifDateCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: linear-gradient(145deg, #f2f7fd 0%, #edf3fb 100%);
+  border: 1px solid rgba(170, 195, 225, 0.45);
+  border-radius: 10px;
+}
+
+.verifDateIcon {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #d9e9f7;
+  color: #16365f;
+}
+
+.verifDateCalIcon {
+  font-size: 1rem;
+}
+
+.verifDateClockBadge {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 15px;
+  height: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #16365f;
+  color: #ffffff;
+  font-size: 0.55rem;
+  border: 2px solid #e8f1fa;
+}
+
+.verifDateText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.verifDateLabel {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7b8aa0;
+}
+
+.verifDateValue {
+  font-size: 0.88rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #101828;
+  white-space: nowrap;
+}
+
+.drawTools {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.drawTools button {
+  flex: 1;
+  min-width: 88px;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 8px;
+  color: var(--interactive-stone-700);
+  background: var(--interactive-white);
+  border: 1px solid var(--interactive-line);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.drawTools button:hover:not(:disabled) {
+  background: var(--interactive-sand-100);
+}
+
+.drawTools .drawToolActive {
+  color: #ffffff;
+  background: var(--interactive-ochre-600);
+  border-color: var(--interactive-ochre-600);
+}
+
+/* Etape 3 : boutons pleine largeur, Lancer bien mis en avant comme bouton principal */
+.card[data-onboarding-id="interactive-overlap-card"] .cardBody .primaryBtn,
+.card[data-onboarding-id="interactive-overlap-card"] .cardBody .secondaryBtn {
+  width: 100%;
+}
+
+.card[data-onboarding-id="interactive-overlap-card"] .cardBody .primaryBtn {
+  min-height: 44px;
+  font-size: 14.5px;
+  font-weight: 800;
+}
+
+.layerRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--interactive-sand-100);
+  color: var(--interactive-stone-900);
+  font-size: 13px;
+}
+
+.layerRow:last-child {
+  border-bottom: 0;
+}
+
+.layerRow span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+
+.layerRow strong {
+  color: var(--interactive-stone-900);
+  font-weight: 800;
+}
+
+.layerSwatch,
+.legendBar i {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  border-radius: 3px;
+  border: 1px solid rgba(42, 39, 32, 0.16);
+  flex-shrink: 0;
+}
+
+.layerPurple {
+  background: #c9a6e8;
+}
+
+.layerBlue {
+  background: #8fb8e8;
+}
+
+.layerAmber {
+  background: #f0b980;
+}
+
+.layerRed {
+  background: #e37a63;
+}
+
+.mapPanel {
+  position: relative;
+  min-height: 520px;
+  height: 58vh;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.mapDrawWidget {
+  position: absolute;
+  z-index: 5;
+  top: 16px;
+  left: 16px;
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: #ffffff;
+  background: #344054;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  box-shadow: 0 4px 14px rgba(16, 24, 40, 0.24);
+  cursor: pointer;
+  font-size: 18px;
+  transition: color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+}
+
+.mapDrawWidget:hover {
+  color: #ffffff;
+  background: #1769aa;
+  transform: translateY(-1px);
+}
+
+.mapDrawToolbar {
+  position: absolute;
+  z-index: 5;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 5px 7px;
+  color: #344054;
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(152, 162, 179, 0.55);
+  border-radius: 7px;
+  box-shadow: 0 4px 14px rgba(16, 24, 40, 0.18);
+  backdrop-filter: blur(8px);
+}
+
+.mapToolButton {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: #475467;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: color 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+}
+
+.mapToolButton:hover:not(:disabled) {
+  color: #1d2939;
+  background: #f2f4f7;
+  border-color: #d0d5dd;
+}
+
+.mapToolButton:disabled {
+  color: #b8c0cc;
+  cursor: not-allowed;
+}
+
+.mapToolButton.mapToolSelected {
+  color: #ffffff;
+  background: #1769aa;
+  border-color: #1769aa;
+  box-shadow: 0 1px 3px rgba(23, 105, 170, 0.35);
+}
+
+.mapToolButton.mapToolConfirm {
+  color: #087443;
+}
+
+.mapToolButton.mapToolConfirm:hover:not(:disabled) {
+  color: #ffffff;
+  background: #087443;
+  border-color: #087443;
+}
+
+.mapToolDivider {
+  width: 1px;
+  height: 23px;
+  margin: 0 3px;
+  background: #eaecf0;
+}
+
+.mapToolHint {
+  min-width: 58px;
+  padding: 0 5px;
+  color: #667085;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.legendBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: -20px;
+  padding: 14px 20px;
+  color: var(--interactive-stone-700);
+  background: var(--interactive-white);
+  border: 1px solid var(--interactive-line);
+  border-top: 0;
+  border-radius: 0 0 10px 10px;
+  box-shadow: var(--interactive-shadow);
+  font-size: 12.5px;
+}
+
+.legendBar span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.resultsGrid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(360px, 1.15fr);
+  gap: 20px;
+}
+
+.donutWrap {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.donut {
+  width: 140px;
+  height: 140px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, #ffffff 0 54%, transparent 55%),
+    conic-gradient(var(--interactive-sand-200) 0 100%);
+  position: relative;
+}
+
+.donutClear {
+  background:
+    radial-gradient(circle at center, #ffffff 0 54%, transparent 55%),
+    conic-gradient(var(--interactive-green-600) 0 100%);
+}
+
+.donutWarning {
+  background:
+    radial-gradient(circle at center, #ffffff 0 54%, transparent 55%),
+    conic-gradient(var(--interactive-amber-600) 0 100%);
+}
+
+.donutBlocked {
+  background:
+    radial-gradient(circle at center, #ffffff 0 54%, transparent 55%),
+    conic-gradient(var(--interactive-red-600) 0 100%);
+}
+
+.donut::after {
+  content: "";
+  position: absolute;
+  inset: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--interactive-sand-200);
+}
+
+.donut span,
+.donut small {
+  position: relative;
+  z-index: 1;
+}
+
+.donut span {
+  display: block;
+  color: var(--interactive-stone-900);
+  max-width: 92px;
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.donut small {
+  display: block;
+  margin-top: 4px;
+  color: var(--interactive-stone-700);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.statList {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 11px;
+  min-width: 0;
+}
+
+.statRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--interactive-stone-700);
+  font-size: 13px;
+}
+
+.statRow strong {
+  color: var(--interactive-stone-900);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.tableWrap {
+  padding: 14px 18px 18px;
+  overflow-x: auto;
+}
+
+.overlapTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.overlapTable th {
+  padding: 0 10px 10px;
+  color: var(--interactive-stone-700);
+  border-bottom: 1px solid var(--interactive-line);
+  text-align: left;
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.overlapTable td {
+  padding: 11px 10px;
+  color: var(--interactive-stone-900);
+  border-bottom: 1px solid var(--interactive-sand-100);
+}
+
+.overlapTable tr:last-child td {
+  border-bottom: 0;
+}
+
+.overlapTable th:last-child,
+.overlapTable td:last-child {
+  width: 88px;
+  text-align: center;
+}
+
+.tableActionBtn {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--interactive-line);
+  border-radius: 999px;
+  background: var(--interactive-white);
+  color: var(--interactive-ochre-700);
+  cursor: pointer;
+  transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.tableActionBtn:hover:not(:disabled) {
+  color: var(--interactive-ochre-800);
+  background: var(--interactive-ochre-100);
+  border-color: var(--interactive-ochre-600);
+  transform: translateY(-1px);
+}
+
+.tableActionBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.tableMoreActions {
+  display: flex;
+  justify-content: flex-start;
+  padding: 0 0 2px;
+}
+
+.tableMoreActions .overlapToggleBtn {
+  width: auto;
+  margin-top: 10px;
+}
+
+.impactBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.impactHigh {
+  color: var(--interactive-red-600);
+  background: var(--interactive-red-100);
+}
+
+.impactMid {
+  color: var(--interactive-amber-600);
+  background: var(--interactive-amber-100);
+}
+
+.impactLow {
+  color: var(--interactive-stone-700);
+  background: var(--interactive-sand-200);
+}
+
+.interpretationBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 20px;
+  background: var(--interactive-white);
+  border: 1px solid var(--interactive-line);
+  border-radius: 10px;
+  box-shadow: var(--interactive-shadow);
+}
+
+.interpretationBar h3 {
+  margin: 0 0 4px;
+  color: var(--interactive-stone-900);
+  font-size: 13.5px;
+  font-weight: 800;
+}
+
+.interpretationBar p {
+  max-width: 720px;
+  margin: 0;
+  color: var(--interactive-stone-700);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.interpretationActions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.verificationNotice {
+  margin-bottom: 18px;
+  border-radius: 10px;
+  box-shadow: var(--interactive-shadow);
+  backdrop-filter: none;
+}
+
+.statusBadge,
+.warningBadge {
+  width: fit-content;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.overlapItem,
+.overlapItemButton,
+.overlapToggleBtn {
+  border-radius: 6px;
+}
+
+.coordModalContent {
+  width: min(940px, calc(100vw - 32px));
+}
+
+.coordModalContent .modalBody {
+  padding: 18px 20px;
+}
+
+.coordModalContent .coordControls {
+  display: grid;
+  grid-template-columns: max-content minmax(180px, 1fr) max-content minmax(180px, 1fr);
+  align-items: center;
+  gap: 12px 16px;
+  margin-bottom: 20px;
+}
+
+.coordModalContent .coordControls label {
+  color: var(--interactive-stone-700);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.coordModalContent .coordControls select {
+  width: 100%;
+}
+
+.coordModalContent .coordTableHeader {
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.coordModalContent .coordActions {
+  flex-shrink: 0;
+}
+
+.coordModalContent .coordTable {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.coordModalContent .coordTable th:nth-child(1),
+.coordModalContent .coordTable td:nth-child(1) {
+  width: 36px;
+}
+
+.coordModalContent .coordTable th:nth-child(2),
+.coordModalContent .coordTable td:nth-child(2),
+.coordModalContent .coordTable th:nth-child(3),
+.coordModalContent .coordTable td:nth-child(3) {
+  width: 34%;
+}
+
+.coordModalContent .coordTable th:nth-child(4),
+.coordModalContent .coordTable td:nth-child(4) {
+  width: 160px;
+}
+
+.coordModalContent .coordTable th,
+.coordModalContent .coordTable td {
+  padding: 8px 10px;
+  vertical-align: middle;
+}
+
+.coordModalContent .coordTable input {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  box-sizing: border-box;
+}
+
+.coordModalContent .coordActionGroup {
+  justify-content: center;
+  gap: 8px;
+}
+
+.coordModalContent .coordMoveBtn,
+.coordModalContent .coordRemoveBtn {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  border-radius: 10px;
+}
+
+@media (max-width: 1280px) {
+  .contentGrid {
+    grid-template-columns: 320px minmax(0, 1fr);
+  }
+
+  .resultsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 980px) {
+  .mainContent {
+    padding: 18px;
+  }
+
+  .pageHead,
+  .interpretationBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pageActions,
+  .interpretationActions {
+    justify-content: flex-start;
+  }
+
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .mapPanel {
+    height: 60vh;
+    min-height: 420px;
+  }
+
+  .searchStrip {
+    align-items: stretch;
+  }
+
+  .headerSearchSelect,
+  .headerSearchInput,
+  .headerSearchButton {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .coordModalContent .coordControls {
+    grid-template-columns: 1fr;
+  }
+
+  .coordModalContent .coordTable th:nth-child(2),
+  .coordModalContent .coordTable td:nth-child(2),
+  .coordModalContent .coordTable th:nth-child(3),
+  .coordModalContent .coordTable td:nth-child(3) {
+    width: 30%;
+  }
+
+  .coordModalContent .coordTable th:nth-child(4),
+  .coordModalContent .coordTable td:nth-child(4) {
+    width: 138px;
+  }
+}
+
+@media (max-width: 640px) {
+  .pageActions,
+  .interpretationActions,
+  .drawTools {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .donutWrap {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

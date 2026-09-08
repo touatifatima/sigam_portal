@@ -5,19 +5,25 @@ import type { ClipboardEvent } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import axios from 'axios';
-import DatePicker from 'react-datepicker';
 import {
   FiAlertTriangle,
   FiArrowLeft,
+  FiCalendar,
   FiCheckCircle,
   FiChevronRight,
   FiChevronUp,
   FiChevronDown,
+  FiClock,
+  FiEye,
   FiX,
   FiMapPin,
   FiPlus,
   FiTrash2,
   FiLoader,
+  FiCheck,
+  FiEdit3,
+  FiMousePointer,
+  FiRotateCcw,
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import proj4 from 'proj4';
@@ -42,8 +48,6 @@ import {
   markOnboardingPageCompleted,
   stopOnboardingForever,
 } from '@/src/onboarding/storage';
-
-import 'react-datepicker/dist/react-datepicker.css';
 
 const ArcGISMap = dynamic(() => import('@/components/arcgismap/ArcgisMap'), { ssr: false });
 
@@ -111,9 +115,10 @@ type MapPoint = {
   h: number;
   x: number;
   y: number;
-  system: 'UTM';
+  system: 'UTM' | 'WGS84';
   zone?: number;
   hemisphere?: 'N';
+  displayWgs84?: [number, number];
 };
 
 type OverlapLayerKey = 'titres' | 'perimetresSig' | 'promotion' | 'exclusions';
@@ -129,7 +134,6 @@ type VerificationNoticeData = {
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL ?? '';
 const DRAFT_KEY = 'interactive_demande_draft_v1';
-const DATEPICKER_PORTAL_ID = 'interactive-verification-datepicker-portal';
 const ALLOWED_PERMIS_CODES = new Set(['APM', 'TEM', 'TEC', 'AAM', 'AAC', 'TXM', 'TXC', 'AXW', 'AXH', 'ARO']);
 
 type SearchLayerKey = 'perimetresSig' | 'titres';
@@ -179,19 +183,19 @@ const INTERACTIVE_ONBOARDING_STEPS: OnboardingStep[] = [
     placement: 'right',
   },
   {
-    id: 'interactive-perimeter-card',
-    target: '[data-onboarding-id="interactive-perimeter-card"]',
-    title: 'Saisie du périmètre',
-    description:
-      'Ajoutez les coordonnées, validez le périmètre puis exportez vos données si besoin (CSV/KML).',
-    placement: 'right',
-  },
-  {
     id: 'interactive-overlap-card',
     target: '[data-onboarding-id="interactive-overlap-card"]',
     title: 'Controle des chevauchements',
     description:
       'Lancez la vérification pour détecter les empiétements et corriger avant de continuer vers la création de demande.',
+    placement: 'right',
+  },
+  {
+    id: 'interactive-perimeter-card',
+    target: '[data-onboarding-id="interactive-perimeter-card"]',
+    title: 'Saisie du périmètre',
+    description:
+      'Ajoutez les coordonnées, validez le périmètre puis exportez vos données si besoin (CSV/KML).',
     placement: 'right',
   },
   {
@@ -330,6 +334,16 @@ export default function InteractiveDemandePage() {
     normalizeDateTime(new Date()),
   );
 
+  useEffect(() => {
+    const refreshVerificationDate = () => {
+      setDateSoumission(normalizeDateTime(new Date()));
+    };
+
+    refreshVerificationDate();
+    const interval = window.setInterval(refreshVerificationDate, 30000);
+    return () => window.clearInterval(interval);
+  }, []);
+
   const [priorModalOpen, setPriorModalOpen] = useState(false);
   const [priorLoading, setPriorLoading] = useState(false);
   const [priorError, setPriorError] = useState<string | null>(null);
@@ -403,6 +417,8 @@ export default function InteractiveDemandePage() {
   const [mapPoints, setMapPoints] = useState<MapPoint[]>([]);
   const [superficie, setSuperficie] = useState(0);
   const [hasValidatedPerimeter, setHasValidatedPerimeter] = useState(false);
+  const [isDrawingPolygon, setIsDrawingPolygon] = useState(false);
+  const [drawingVertexCount, setDrawingVertexCount] = useState(0);
 
   const [overlapTitles, setOverlapTitles] = useState<any[]>([]);
   const [isCheckingOverlaps, setIsCheckingOverlaps] = useState(false);
@@ -412,6 +428,7 @@ export default function InteractiveDemandePage() {
   const [noticeDismissed, setNoticeDismissed] = useState(false);
   const [showPerimeterPreview, setShowPerimeterPreview] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isDrawingToolsOpen, setIsDrawingToolsOpen] = useState(false);
 
   const effectivePermis = useMemo(() => {
     if (selectedPermis) return selectedPermis;
@@ -711,6 +728,8 @@ export default function InteractiveDemandePage() {
     setMapPoints([]);
     setSuperficie(0);
     setHasValidatedPerimeter(false);
+    setIsDrawingPolygon(false);
+    setDrawingVertexCount(0);
     setOverlapTitles([]);
     setOverlapDetected(false);
     setHasOverlapCheck(false);
@@ -764,7 +783,7 @@ export default function InteractiveDemandePage() {
         return;
       }
       setSelectedPermis(res.data ?? null);
-      if (code === 'APM' || code === 'TEC' || (!code.startsWith('TX') && code !== 'TEM')) {
+      if (code === 'TEM' || code === 'TXM' || code === 'TXC' || !code.startsWith('TX')) {
         openManualEntry(true);
       } else {
         await openPriorModal(code);
@@ -803,7 +822,7 @@ export default function InteractiveDemandePage() {
         setPriorError('Aucun titre retourne par le serveur.');
       }
       if (code === 'TEM') {
-        setTemFromApm('yes');
+        setTemFromApm('no');
       }
     } catch (err) {
       console.error('Erreur chargement titres anterieurs', err);
@@ -933,6 +952,69 @@ export default function InteractiveDemandePage() {
     }
     const areaM2 = Math.abs(sum) / 2;
     return areaM2 / 10000;
+  };
+
+  const startPolygonDrawing = () => {
+    setIsDrawingToolsOpen(true);
+    setMapPoints([]);
+    setSuperficie(0);
+    setHasValidatedPerimeter(false);
+    setShowPerimeterPreview(false);
+    setOverlapTitles([]);
+    setHasOverlapCheck(false);
+    setOverlapDetected(false);
+    setIsDrawingPolygon(true);
+    setDrawingVertexCount(0);
+    window.requestAnimationFrame(() => mapRef.current?.startPolygonDrawing());
+  };
+
+  const undoLastDrawingPoint = () => {
+    mapRef.current?.undoPolygonDrawing();
+  };
+
+  const commitDrawnPolygon = (wgs84Coordinates: [number, number][]) => {
+    if (wgs84Coordinates.length < 3) return;
+    const utmCoords = convertWgs84ToUtm(
+      wgs84Coordinates,
+      draftZone,
+    );
+    const utmPoints: MapPoint[] = utmCoords.map(([x, y], index) => ({
+      id: index + 1,
+      idTitre: 0,
+      h: draftZone,
+      x,
+      y,
+      system: 'UTM',
+      zone: draftZone,
+      hemisphere: draftHemisphere,
+      displayWgs84: wgs84Coordinates[index],
+    }));
+    const area = computeAreaHa(utmPoints);
+    setMapPoints(utmPoints);
+    setDraftPoints(utmPoints.map((point, index) => ({ id: index + 1, x: String(point.x), y: String(point.y) })));
+    setSuperficie(area);
+    setHasValidatedPerimeter(true);
+    setIsDrawingPolygon(false);
+    setDrawingVertexCount(0);
+    setShowPerimeterPreview(true);
+    setCoordSource('manual');
+    toast.success('Polygone enregistré. Vous pouvez lancer la vérification.');
+  };
+
+  const finishPolygonDrawing = () => {
+    if (drawingVertexCount < 3) {
+      toast.warning('Ajoutez au moins 3 points pour fermer le polygone.');
+      return;
+    }
+    mapRef.current?.completePolygonDrawing();
+  };
+
+  const cancelPolygonDrawing = (clearPoints = false) => {
+    mapRef.current?.cancelPolygonDrawing();
+    setIsDrawingPolygon(false);
+    if (!clearPoints) setIsDrawingToolsOpen(false);
+    setDrawingVertexCount(0);
+    if (clearPoints) setMapPoints([]);
   };
 
   const handleValidatePerimeter = () => {
@@ -1078,6 +1160,7 @@ export default function InteractiveDemandePage() {
       perimetresSig: true,
       promotion: false,
     };
+    setDateSoumission(normalizeDateTime(new Date()));
 
     setIsCheckingOverlaps(true);
     try {
@@ -1640,178 +1723,198 @@ export default function InteractiveDemandePage() {
     router.push(dashboardHref);
   }, [dashboardHref, router]);
 
+  const getOverlapAreaHa = (item: any) => {
+    const areaHa = Number(item?.overlap_area_ha);
+    if (Number.isFinite(areaHa) && areaHa > 0) return areaHa;
+    const areaM2 = Number(item?.overlap_area_m2);
+    if (Number.isFinite(areaM2) && areaM2 > 0) return areaM2 / 10000;
+    return 0;
+  };
+
+  const formatAreaHa = (value: number) =>
+    Number.isFinite(value) && value > 0 ? `${value.toFixed(2)} ha` : '--';
+
+  const overlapAreaHa = useMemo(
+    () => overlapTitles.reduce((sum, item) => sum + getOverlapAreaHa(item), 0),
+    [overlapTitles],
+  );
+
+  const blockedCount = overlapBuckets.titres.length + overlapBuckets.exclusions.length;
+  const warningCount = overlapBuckets.demandes.length + overlapBuckets.provisoires.length + overlapBuckets.others.length;
+  const resultStatus = !hasOverlapCheck
+    ? 'idle'
+    : blockedCount > 0
+      ? 'blocked'
+      : warningCount > 0
+        ? 'warning'
+        : 'clear';
+  const resultStatusLabel =
+    resultStatus === 'idle'
+      ? '--'
+      : resultStatus === 'clear'
+        ? 'Libre'
+        : resultStatus === 'warning'
+          ? 'À examiner'
+          : 'Bloquant';
+
+  const getOverlapTypeLabel = (item: any) => {
+    const layerType = resolveOverlapLayerType(item);
+    if (layerType === 'titres') return 'Titre minier';
+    if (layerType === 'perimetresSig') return 'Demande en instruction';
+    if (layerType === 'provisoire') return 'Inscription provisoire';
+    if (layerType === 'exclusions') return "Zone d'exclusion";
+    if (layerType === 'promotion') return 'Promotion';
+    return 'Chevauchement';
+  };
+
+  const getOverlapIdentifier = (item: any) =>
+    String(
+      item?.permis_code ??
+        item?.permisCode ??
+        item?.code ??
+        item?.code_permis ??
+        item?.idtitre ??
+        item?.sigam_proc_id ??
+        item?.id_proc ??
+        item?.objectid ??
+        item?.id ??
+        '--',
+    );
+
+  const getOverlapImpactClass = (item: any) => {
+    const layerType = resolveOverlapLayerType(item);
+    if (layerType === 'titres' || layerType === 'exclusions') return styles.impactHigh;
+    if (layerType === 'perimetresSig' || layerType === 'provisoire') return styles.impactMid;
+    return styles.impactLow;
+  };
+
+  const getOverlapImpactLabel = (item: any) => {
+    const layerType = resolveOverlapLayerType(item);
+    if (layerType === 'titres' || layerType === 'exclusions') return 'Bloquant';
+    if (layerType === 'perimetresSig' || layerType === 'provisoire') return 'A examiner';
+    return 'Faible';
+  };
+
+  const verificationDateLabel = useMemo(() => {
+    if (!dateSoumission) return '--';
+    const datePart = new Intl.DateTimeFormat('fr-DZ', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    }).format(dateSoumission);
+    const timePart = new Intl.DateTimeFormat('fr-DZ', {
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(dateSoumission);
+    return `${datePart} à ${timePart}`;
+  }, [dateSoumission]);
+
   return (
     <div className={styles.appContainer}>
       <Navbar />
       <div className={styles.appContent}>
         <Sidebar currentView={currentView} navigateTo={navigateTo} />
         <main className={styles.mainContent}>
-          <div className={styles.breadcrumb}>
-            <span>GUNAM</span>
-            <FiChevronRight className={styles.breadcrumbArrow} />
-            <span>Vérification préalable</span>
-          </div>
-
-          <div className={styles.headerRow} data-onboarding-id="interactive-header">
-            <div className={styles.headerText}>
+          <div className={styles.pageHead} data-onboarding-id="interactive-header">
+            <div className={styles.pageHeadText}>
+              <div className={styles.breadcrumb}>
+                <span>GUNAM</span>
+                <FiChevronRight className={styles.breadcrumbArrow} />
+                <span>Vérification préalable</span>
+              </div>
+              <h1 className={styles.title}>Vérification préalable d&apos;un nouveau titre</h1>
+              <p className={styles.subtitle}>
+                Vérifiez le chevauchement de votre zone demandée avec les titres miniers existants,
+                les demandes en instruction et les couches réglementaires.
+              </p>
+            </div>
+            <div className={styles.pageActions}>
               <button
                 type="button"
-                className={styles.backButton}
+                className={styles.secondaryBtn}
                 onClick={handleReturnToDashboard}
                 aria-label="Retour au tableau de bord"
               >
                 <FiArrowLeft />
-                <span>Retour au tableau de bord</span>
+                Retour tableau de bord
               </button>
-              <h1 className={styles.title}>Vérification préalable interactive</h1>
-              <p className={styles.subtitle}>
-                Projetez vos coordonnées pour vérifier les chevauchements avant de lancer la demande réelle.
-              </p>
+              <button
+                type="button"
+                className={styles.secondaryBtn}
+                onClick={exportCsv}
+                disabled={!mapPoints.length}
+              >
+                Exporter CSV
+              </button>
+              <button
+                type="button"
+                className={styles.secondaryBtn}
+                onClick={exportKml}
+                disabled={!mapPoints.length}
+              >
+                Exporter KML
+              </button>
+              <button
+                type="button"
+                className={styles.resetBtn}
+                onClick={resetDraftState}
+                title="Réinitialiser la saisie"
+              >
+                Réinitialiser
+              </button>
             </div>
-            {isAdmin && (
-              <div className={styles.headerSearch} data-onboarding-id="interactive-search">
-                <div className={styles.headerSearchSelectGroup}>
-                  <select
-                    value={searchLayer}
-                    onChange={(e) => setSearchLayer(e.target.value as SearchLayerKey)}
-                    className={styles.headerSearchSelect}
-                    title="Couche de recherche"
-                  >
-                    {SEARCH_LAYERS.map((layer) => (
-                      <option key={layer.key} value={layer.key}>
-                        {layer.label}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={searchField}
-                    onChange={(e) => setSearchField(e.target.value)}
-                    className={styles.headerSearchSelect}
-                    title="Attribut de recherche"
-                    disabled={!searchFieldOptions.length}
-                  >
-                    {searchFieldOptions.length ? (
-                      searchFieldOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))
-                    ) : (
-                      <option value="">Aucun attribut</option>
-                    )}
-                  </select>
-                </div>
-                <input
-                  value={searchPermisCode}
-                  onChange={(e) => setSearchPermisCode(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key !== 'Enter') return;
-                    e.preventDefault();
-                    handleMapSearch();
-                  }}
-                  placeholder={`Rechercher sur ${searchLayerLabel.toLowerCase()}...`}
-                  className={styles.headerSearchInput}
-                />
-                <button
-                  type="button"
-                  className={styles.headerSearchButton}
-                  onClick={handleMapSearch}
-                >
-                  Rechercher
-                </button>
-              </div>
-            )}
-            <button
-              type="button"
-              className={styles.resetBtn}
-              onClick={resetDraftState}
-              title="Réinitialiser la saisie"
-            >
-              Réinitialiser
-            </button>
           </div>
 
           {pageError && <div className={styles.errorBox}>{pageError}</div>}
-          {verificationNotice && !noticeDismissed && (
-            <div
-              className={`${styles.verificationNotice} ${
-                verificationNotice.variant === 'success'
-                  ? styles.verificationNoticeSuccess
-                  : verificationNotice.variant === 'blocking'
-                    ? styles.verificationNoticeBlocking
-                    : styles.verificationNoticeWarning
-              }`}
-            >
-              <div className={styles.verificationNoticeIcon}>
-                {verificationNotice.variant === 'success' ? (
-                  <FiCheckCircle />
-                ) : (
-                  <FiAlertTriangle />
-                )}
-              </div>
-              <div className={styles.verificationNoticeBody}>
-                <div className={styles.verificationNoticeTitle}>{verificationNotice.title}</div>
-                {verificationNotice.message.split('\n').map((line, idx) => (
-                  <p key={`notice-line-${idx}`} className={styles.verificationNoticeText}>
-                    {line}
-                  </p>
+
+          {isAdmin && (
+            <div className={styles.searchStrip} data-onboarding-id="interactive-search">
+              <select
+                value={searchLayer}
+                onChange={(e) => setSearchLayer(e.target.value as SearchLayerKey)}
+                className={styles.headerSearchSelect}
+                title="Couche de recherche"
+              >
+                {SEARCH_LAYERS.map((layer) => (
+                  <option key={layer.key} value={layer.key}>
+                    {layer.label}
+                  </option>
                 ))}
-                {verificationNotice.details.length > 0 && (
-                  <ul className={styles.verificationNoticeList}>
-                    {verificationNotice.details.map((item, idx) => (
-                      <li key={`notice-item-${idx}`}>{item}</li>
-                    ))}
-                  </ul>
+              </select>
+              <select
+                value={searchField}
+                onChange={(e) => setSearchField(e.target.value)}
+                className={styles.headerSearchSelect}
+                title="Attribut de recherche"
+                disabled={!searchFieldOptions.length}
+              >
+                {searchFieldOptions.length ? (
+                  searchFieldOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">Aucun attribut</option>
                 )}
-                <div className={styles.verificationNoticeActions}>
-                  {verificationNotice.variant === 'success' ? (
-                    <>
-                      <button
-                        type="button"
-                        className={styles.secondaryBtn}
-                        onClick={handleReturnFromVerification}
-                      >
-                        Retour
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.primaryBtn}
-                        onClick={() =>
-                          router.push('/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis')
-                        }
-                      >
-                        Créer ma demande
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        className={styles.primaryBtn}
-                        onClick={() => openManualEntry(false)}
-                      >
-                        {verificationNotice.variant === 'blocking'
-                          ? 'Modifier mon périmètre'
-                          : 'Ajuster mon périmètre'}
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.secondaryBtn}
-                        onClick={() => setNoticeDismissed(true)}
-                      >
-                        Fermer
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
+              </select>
+              <input
+                value={searchPermisCode}
+                onChange={(e) => setSearchPermisCode(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter') return;
+                  e.preventDefault();
+                  handleMapSearch();
+                }}
+                placeholder={`Rechercher sur ${searchLayerLabel.toLowerCase()}...`}
+                className={styles.headerSearchInput}
+              />
               <button
                 type="button"
-                className={styles.verificationNoticeClose}
-                onClick={() => setNoticeDismissed(true)}
-                aria-label="Fermer la notification"
+                className={styles.headerSearchButton}
+                onClick={handleMapSearch}
               >
-                <FiX />
+                Rechercher
               </button>
             </div>
           )}
@@ -1820,7 +1923,7 @@ export default function InteractiveDemandePage() {
             <section className={styles.leftPanel}>
               <div className={styles.card} data-onboarding-id="interactive-type-card">
                 <div className={styles.cardHeader}>
-                  <h3>1. Type de titre</h3>
+                  <h3>1. Définir la zone à vérifier</h3>
                 </div>
                 <div className={styles.cardBody}>
                   <label className={styles.label}>
@@ -1849,90 +1952,40 @@ export default function InteractiveDemandePage() {
                       <div className={styles.infoRow}>
                         <span>Code:</span> <strong>{effectivePermis.code_type}</strong>
                       </div>
-                      <div className={styles.infoRow}>
-                        <span>Superficie max:</span>{' '}
-                        <strong>{effectivePermis.superficie_max ?? 'Non spécifiée'} ha</strong>
-                      </div>
                     </div>
                   )}
 
-                  <label className={styles.label}>
-                    Date et heure de vérification <span className={styles.required}>*</span>
-                  </label>
-                  <div className={styles.datepickerWrapper}>
-                    <DatePicker
-                      selected={dateSoumission}
-                      onChange={(date: Date | null) =>
-                        setDateSoumission(normalizeDateTime(date))
-                      }
-                      showTimeSelect
-                      timeFormat="HH:mm"
-                      timeIntervals={5}
-                      timeCaption="Heure"
-                      dateFormat="dd/MM/yyyy HH:mm"
-                      portalId={DATEPICKER_PORTAL_ID}
-                      popperClassName={styles.datepickerPopper}
-                      calendarClassName={styles.datepickerCalendar}
-                      className={styles.select}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className={styles.card} data-onboarding-id="interactive-perimeter-card">
-                <div className={styles.cardHeader}>
-                  <h3>2. Périmètre</h3>
-                </div>
-                <div className={styles.cardBody}>
-                  <div className={styles.infoRow}>
-                    <span>Fuseau UTM:</span> <strong>{draftZone}</strong>
-                  </div>
-                  <div className={styles.infoRow}>
-                    <span>Hémisphère:</span> <strong>{draftHemisphere}</strong>
-                  </div>
-                  <div className={styles.infoRow}>
-                    <span>Points:</span> <strong>{mapPoints.length || 0}</strong>
-                  </div>
-                  <div className={styles.infoRow}>
-                    <span>Superficie:</span> <strong>{superficie ? `${superficie.toFixed(2)} ha` : '--'}</strong>
-                  </div>
-                  <button
-                    type="button"
-                    className={styles.secondaryBtn}
-                    onClick={() => {
-                      openManualEntry(false);
-                    }}
-                    disabled={!effectivePermis}
-                  >
-                    <FiMapPin /> Saisir les coordonnées
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.secondaryBtn}
-                    onClick={exportCsv}
-                    disabled={!mapPoints.length}
-                  >
-                    Exporter CSV
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.secondaryBtn}
-                    onClick={exportKml}
-                    disabled={!mapPoints.length}
-                  >
-                    Exporter KML
-                  </button>
-                  {hasValidatedPerimeter && (
-                    <div className={styles.statusBadge}>
-                      <FiCheckCircle /> Périmètre valide
+                  <div className={styles.verifDateCard}>
+                    <div className={styles.verifDateIcon} aria-hidden="true">
+                      <FiCalendar className={styles.verifDateCalIcon} />
+                      <span className={styles.verifDateClockBadge}>
+                        <FiClock />
+                      </span>
                     </div>
-                  )}
+                    <div className={styles.verifDateText}>
+                      <span className={styles.verifDateLabel}>Date et heure de vérification</span>
+                      <strong className={styles.verifDateValue}>{verificationDateLabel}</strong>
+                    </div>
+                  </div>
+                  <div className={styles.drawTools}>
+                    <button
+                      type="button"
+                      className={styles.drawToolActive}
+                      onClick={() => openManualEntry(false)}
+                      disabled={!effectivePermis}
+                    >
+                      <FiMapPin /> Coordonnées
+                    </button>
+                    <button type="button" onClick={() => openManualEntry(false)} disabled={!effectivePermis}>
+                      Importer
+                    </button>
+                  </div>
                 </div>
               </div>
 
               <div className={styles.card} data-onboarding-id="interactive-overlap-card">
                 <div className={styles.cardHeader}>
-                  <h3>3. Chevauchements</h3>
+                  <h3>2. Contrôle des chevauchements</h3>
                 </div>
                 <div className={styles.cardBody}>
                   <button
@@ -1946,7 +1999,7 @@ export default function InteractiveDemandePage() {
                         <FiLoader className={styles.spinIcon} /> Vérification...
                       </>
                     ) : (
-                      'Vérifier les chevauchements'
+                      'Lancer la vérification'
                     )}
                   </button>
                   <button
@@ -1975,7 +2028,7 @@ export default function InteractiveDemandePage() {
                       <FiAlertTriangle /> Empiétements détectés ({overlapTitles.length})
                     </div>
                   )}
-                  {overlapTitles.length > 0 && (
+                  {/*
                     <div
                       className={`${styles.overlapList} ${
                         showAllOverlaps ? styles.overlapListExpanded : ''
@@ -2022,27 +2075,350 @@ export default function InteractiveDemandePage() {
                         </button>
                       )}
                     </div>
+                  */}
+                </div>
+              </div>
+
+              <div className={styles.card} data-onboarding-id="interactive-perimeter-card">
+                <div className={styles.cardHeader}>
+                  <h3>3. Périmètre</h3>
+                </div>
+                <div className={styles.cardBody}>
+                  <div className={styles.infoRow}>
+                    <span>Fuseau UTM:</span> <strong>{draftZone}</strong>
+                  </div>
+                  <div className={styles.infoRow}>
+                    <span>Hémisphère:</span> <strong>{draftHemisphere}</strong>
+                  </div>
+                  <div className={styles.infoRow}>
+                    <span>Points:</span> <strong>{mapPoints.length || 0}</strong>
+                  </div>
+                  <div className={styles.infoRow}>
+                    <span>Superficie:</span> <strong>{superficie ? `${superficie.toFixed(2)} ha` : '--'}</strong>
+                  </div>
+                  {hasValidatedPerimeter && (
+                    <div className={styles.statusBadge}>
+                      <FiCheckCircle /> Périmètre valide
+                    </div>
                   )}
                 </div>
               </div>
             </section>
 
-            <section className={styles.mapPanel} data-onboarding-id="interactive-map">
-              <ArcGISMap
-                ref={mapRef}
-                points={mapPoints}
-                superficie={superficie}
-                isDrawing={false}
-                coordinateSystem="UTM"
-                utmZone={draftZone}
-                utmHemisphere={draftHemisphere}
-                showFuseaux
-                previewPolygons={perimeterPreviewPolygons}
-                overlapDetails={overlapTitles}
-                overlapSelections={overlapSelections}
-                overlapHighlightMode="strong"
-                enableSelectionTools
-              />
+            <section className={styles.rightPanel}>
+              <div className={styles.mapPanel} data-onboarding-id="interactive-map">
+                {!isDrawingToolsOpen ? (
+                  <button
+                    type="button"
+                    className={styles.mapDrawWidget}
+                    onClick={() => setIsDrawingToolsOpen(true)}
+                    title="Afficher les outils de dessin"
+                    aria-label="Afficher les outils de dessin"
+                  >
+                    <FiEdit3 />
+                  </button>
+                ) : (
+                <div className={styles.mapDrawToolbar} role="toolbar" aria-label="Outils de dessin">
+                  <button
+                    type="button"
+                    className={`${styles.mapToolButton} ${!isDrawingPolygon ? styles.mapToolSelected : ''}`}
+                    onClick={() => cancelPolygonDrawing(false)}
+                    title="Sélectionner"
+                    aria-label="Sélectionner"
+                  >
+                    <FiMousePointer />
+                  </button>
+                  <span className={styles.mapToolDivider} />
+                  <button
+                    type="button"
+                    className={`${styles.mapToolButton} ${isDrawingPolygon ? styles.mapToolSelected : ''}`}
+                    onClick={startPolygonDrawing}
+                    title="Dessiner un polygone"
+                    aria-label="Dessiner un polygone"
+                  >
+                    <FiEdit3 />
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.mapToolButton}
+                    onClick={undoLastDrawingPoint}
+                    disabled={!isDrawingPolygon || !drawingVertexCount}
+                    title="Annuler le dernier point"
+                    aria-label="Annuler le dernier point"
+                  >
+                    <FiRotateCcw />
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.mapToolButton}
+                    onClick={() => cancelPolygonDrawing(true)}
+                    disabled={!isDrawingPolygon || !drawingVertexCount}
+                    title="Effacer le dessin"
+                    aria-label="Effacer le dessin"
+                  >
+                    <FiX />
+                  </button>
+                  <span className={styles.mapToolDivider} />
+                  <button
+                    type="button"
+                    className={`${styles.mapToolButton} ${styles.mapToolConfirm}`}
+                    onClick={finishPolygonDrawing}
+                    disabled={!isDrawingPolygon || drawingVertexCount < 3}
+                    title="Terminer le polygone"
+                    aria-label="Terminer le polygone"
+                  >
+                    <FiCheck />
+                  </button>
+                  <span className={styles.mapToolHint}>
+                    {isDrawingPolygon
+                      ? `${drawingVertexCount} point${drawingVertexCount > 1 ? 's' : ''}`
+                      : 'Dessiner'}
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.mapToolButton}
+                    onClick={() => setIsDrawingToolsOpen(false)}
+                    title="Masquer les outils de dessin"
+                    aria-label="Masquer les outils de dessin"
+                  >
+                    <FiChevronUp />
+                  </button>
+                </div>
+                )}
+                <ArcGISMap
+                  key="interactive-native-sketch-v2"
+                  ref={mapRef}
+                  points={mapPoints}
+                  superficie={superficie}
+                  isDrawing={isDrawingPolygon}
+                  onPolygonChange={commitDrawnPolygon}
+                  onDrawingVertexCountChange={setDrawingVertexCount}
+                  coordinateSystem={isDrawingPolygon ? 'WGS84' : 'UTM'}
+                  utmZone={draftZone}
+                  utmHemisphere={draftHemisphere}
+                  showFuseaux
+                  previewPolygons={perimeterPreviewPolygons}
+                  overlapDetails={overlapTitles}
+                  overlapSelections={overlapSelections}
+                  overlapHighlightMode="strong"
+                  enableSelectionTools
+                  performanceMode
+                  autoZoomToPolygon={false}
+                />
+              </div>
+
+              <div className={styles.legendBar}>
+                <span><i className={styles.layerPurple} /> Titres miniers</span>
+                <span><i className={styles.layerBlue} /> Demandes en instruction</span>
+                <span><i className={styles.layerAmber} /> Inscriptions provisoires</span>
+                <span><i className={styles.layerRed} /> Zones d&apos;exclusion</span>
+              </div>
+
+              {verificationNotice && !noticeDismissed && (
+                <div
+                  className={`${styles.verificationNotice} ${
+                    verificationNotice.variant === 'success'
+                      ? styles.verificationNoticeSuccess
+                      : verificationNotice.variant === 'blocking'
+                        ? styles.verificationNoticeBlocking
+                        : styles.verificationNoticeWarning
+                  }`}
+                >
+                  <div className={styles.verificationNoticeIcon}>
+                    {verificationNotice.variant === 'success' ? (
+                      <FiCheckCircle />
+                    ) : (
+                      <FiAlertTriangle />
+                    )}
+                  </div>
+                  <div className={styles.verificationNoticeBody}>
+                    <div className={styles.verificationNoticeContent}>
+                      <div className={styles.verificationNoticeMain}>
+                        <div className={styles.verificationNoticeTitle}>{verificationNotice.title}</div>
+                        {verificationNotice.message.split('\n').map((line, idx) => (
+                          <p key={`notice-line-${idx}`} className={styles.verificationNoticeText}>
+                            {line}
+                          </p>
+                        ))}
+                        <div className={styles.verificationNoticeActions}>
+                          {verificationNotice.variant === 'success' ? (
+                            <>
+                              <button
+                                type="button"
+                                className={styles.secondaryBtn}
+                                onClick={handleReturnFromVerification}
+                              >
+                                Retour
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.primaryBtn}
+                                onClick={() =>
+                                  router.push('/investisseur/nouvelle_demande/step1_typepermis/page1_typepermis')
+                                }
+                              >
+                                Créer ma demande
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                className={styles.primaryBtn}
+                                onClick={() => openManualEntry(false)}
+                              >
+                                {verificationNotice.variant === 'blocking'
+                                  ? 'Modifier mon périmètre'
+                                  : 'Ajuster mon périmètre'}
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.secondaryBtn}
+                                onClick={() => setNoticeDismissed(true)}
+                              >
+                                Fermer
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className={styles.verificationNoticeAside}>
+                        <div className={styles.verificationNoticeTodoTitle}>Que faire ?</div>
+                        <ul className={styles.verificationNoticeTodoList}>
+                          {(verificationNotice.variant === 'blocking'
+                            ? [
+                                'Le dépôt est impossible dans cette zone.',
+                                'Modifiez votre périmètre pour sortir des titres / zones d’exclusion.',
+                                'Relancez la vérification avant de continuer.',
+                              ]
+                            : verificationNotice.variant === 'success'
+                              ? [
+                                  'Votre périmètre semble libre.',
+                                  'Vous pouvez passer à la création de votre demande réelle.',
+                                  'Exportez vos coordonnées (CSV/KML) si besoin.',
+                                ]
+                              : [
+                                  'Consultez les détails des couches en chevauchement ci-dessous.',
+                                  'Vous pouvez ajuster votre périmètre pour éviter les chevauchements.',
+                                  'Puis relancez la vérification si besoin.',
+                                ]
+                          ).map((todo, idx) => (
+                            <li key={`todo-${idx}`}>
+                              <FiCheckCircle className={styles.verificationNoticeTodoIcon} />
+                              <span>{todo}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.verificationNoticeClose}
+                    onClick={() => setNoticeDismissed(true)}
+                    aria-label="Fermer la notification"
+                  >
+                    <FiX />
+                  </button>
+                </div>
+              )}
+
+              <div className={styles.resultsGrid}>
+                <div className={styles.card}>
+                  <div className={styles.cardHeader}>
+                    <h3>Résultats de la vérification</h3>
+                  </div>
+                  <div className={styles.cardBody}>
+                    <div className={styles.donutWrap}>
+                      <div className={styles.statList}>
+                        <div className={styles.statRow}>
+                          <span>Superficie totale</span>
+                          <strong>{formatAreaHa(superficie)}</strong>
+                        </div>
+                        <div className={styles.statRow}>
+                          <span>Surface chevauchée cumulée</span>
+                          <strong>{hasOverlapCheck ? formatAreaHa(overlapAreaHa) : '--'}</strong>
+                        </div>
+                        <div className={styles.statRow}>
+                          <span>Chevauchements détectés</span>
+                          <strong>{hasOverlapCheck ? overlapTitles.length : '--'}</strong>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={styles.card}>
+                  <div className={styles.cardHeader}>
+                    <h3>Détails des chevauchements</h3>
+                  </div>
+                  <div className={styles.tableWrap}>
+                    <table className={styles.overlapTable}>
+                      <thead>
+                        <tr>
+                          <th>Type de couche</th>
+                          <th>Identifiant</th>
+                          <th>Superficie</th>
+                          <th>Impact</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {overlapTitles.length > 0 ? (
+                          (showAllOverlaps ? overlapTitles : overlapTitles.slice(0, 6)).map((item, idx) => {
+                            const zoomTarget = getOverlapZoomTarget(item);
+                            return (
+                              <tr key={`${getOverlapIdentifier(item)}-${idx}`}>
+                                <td>{getOverlapTypeLabel(item)}</td>
+                                <td>{getOverlapIdentifier(item)}</td>
+                                <td>{formatAreaHa(getOverlapAreaHa(item))}</td>
+                                <td>
+                                  <span className={`${styles.impactBadge} ${getOverlapImpactClass(item)}`}>
+                                    {getOverlapImpactLabel(item)}
+                                  </span>
+                                </td>
+                                <td>
+                                  <button
+                                    type="button"
+                                    className={styles.tableActionBtn}
+                                    onClick={() => handleOverlapItemClick(item)}
+                                    disabled={!zoomTarget}
+                                    title="Centrer sur cet empiètement"
+                                    aria-label="Centrer sur cet empiètement"
+                                  >
+                                    <FiEye />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan={5}>
+                              {hasOverlapCheck
+                                ? 'Aucun chevauchement détecté.'
+                                : 'Lancez la vérification pour afficher les résultats.'}
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                    {overlapTitles.length > 6 && (
+                      <div className={styles.tableMoreActions}>
+                        <button
+                          type="button"
+                          className={styles.overlapToggleBtn}
+                          onClick={() => setShowAllOverlaps((current) => !current)}
+                        >
+                          {showAllOverlaps
+                            ? 'Réduire la liste'
+                            : `+ ${overlapTitles.length - 6} autres... Afficher tous`}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </section>
           </div>
 
@@ -2203,7 +2579,7 @@ export default function InteractiveDemandePage() {
 
           {coordModalOpen && (
             <div className={styles.modalOverlay}>
-              <div className={styles.modalContent}>
+              <div className={`${styles.modalContent} ${styles.coordModalContent}`}>
                 <div className={styles.modalHeader}>
                   <h3>Saisie des coordonnées (UTM)</h3>
                   <button className={styles.modalClose} onClick={() => setCoordModalOpen(false)}>

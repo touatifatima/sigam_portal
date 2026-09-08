@@ -20,7 +20,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     pathname.startsWith('/carte/carte_public') ||
     pathname.startsWith('/admin_panel/gestion-demandes') ||
     pathname.startsWith('/admin_panel/gestion_notifications') ||
-    pathname.startsWith('/admin_panel/dossieradminpage');
+    pathname.startsWith('/admin_panel/dossieradminpage') ||
+    pathname.startsWith('/investisseur/interactive');
 
   if (!isLoaded) {
     return <BrandLoader fullScreen label="Initialisation de la session..." />;
